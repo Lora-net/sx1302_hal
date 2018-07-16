@@ -30,6 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_SPI_ERROR       -1
 #define LGW_BURST_CHUNK     1024
 
+#define SPI_SPEED       2000000
 
 #define LGW_SPI_MUX_TARGET_SX1302   0x00
 #define LGW_SPI_MUX_TARGET_RADIOA   0x01
@@ -91,9 +92,6 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
-
-int sx1262fe_write_command(void *spi_target, uint8_t op_code, uint8_t *data, uint16_t size);
-int sx1262fe_read_command(void *spi_target, uint8_t op_code, uint8_t *data, uint16_t size);
 
 #endif
 

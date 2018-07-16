@@ -65,7 +65,7 @@ $(OBJDIR)/loragw_spi.o: src/loragw_spi.native.c $(INCLUDES) inc/config.h | $(OBJ
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o
+libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1262fe.o
 	$(AR) rcs $@ $^
 
 ### test programs

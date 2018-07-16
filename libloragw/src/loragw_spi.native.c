@@ -48,7 +48,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
-#define SPI_SPEED       2000000
 #define SPI_DEV_PATH    "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
@@ -344,99 +343,6 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8
         return LGW_SPI_ERROR;
     } else {
         DEBUG_MSG("Note: SPI burst read success\n");
-        return LGW_SPI_SUCCESS;
-    }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-#define WAIT_BUSY_SX1262FE_MS  1
-
-int sx1262fe_write_command(void *spi_target, uint8_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
-    int cmd_size = 2; /* header + op_code */
-    uint8_t out_buf[cmd_size + size];
-    uint8_t command_size;
-    struct spi_ioc_transfer k;
-    int a, i;
-
-    /* wait BUSY */
-    wait_ms(WAIT_BUSY_SX1262FE_MS);
-
-    /* check input variables */
-    CHECK_NULL(spi_target);
-
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare frame to be sent */
-    out_buf[0] = LGW_SPI_MUX_TARGET_RADIOA;
-    out_buf[1] = op_code;
-    for(i = 0; i < (int)size; i++) {
-        out_buf[cmd_size + i] = data[i];
-    }
-    command_size = cmd_size + size;
-    
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI write success\n");
-        return LGW_SPI_SUCCESS;
-    }
-}
-
-int sx1262fe_read_command(void *spi_target, uint8_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
-    int cmd_size = 2; /* header + op_code + NOP */
-    uint8_t out_buf[cmd_size + size];
-    uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
-    int a, i;
-
-    /* wait BUSY */
-    wait_ms(WAIT_BUSY_SX1262FE_MS);
-
-    /* check input variables */
-    CHECK_NULL(spi_target);
-    CHECK_NULL(data);
-
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare frame to be sent */
-    out_buf[0] = LGW_SPI_MUX_TARGET_RADIOA;
-    out_buf[1] = op_code;
-    for(i = 0; i < (int)size; i++) {
-        out_buf[cmd_size + i] = data[i];
-    }
-    command_size = cmd_size + size;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI read success\n");
-        //*data = in_buf[command_size - 1];
-        memcpy(data, in_buf + cmd_size, size);
         return LGW_SPI_SUCCESS;
     }
 }
