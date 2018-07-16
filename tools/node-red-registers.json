@@ -1,0 +1,274 @@
+[
+    {
+        "id": "bf64d63f.630868",
+        "type": "tab",
+        "label": "SX1302 register C header",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "d60daf5.ed6835",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/common.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 348.5666809082031,
+        "y": 183.38333129882812,
+        "wires": [
+            [
+                "ab571926.a8a0a8"
+            ]
+        ]
+    },
+    {
+        "id": "ab571926.a8a0a8",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 462.5666809082031,
+        "y": 252.1999969482422,
+        "wires": [
+            [
+                "34de440d.259194"
+            ]
+        ]
+    },
+    {
+        "id": "3e749686.017e32",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "Parse",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 114.56666564941406,
+        "y": 107.01666259765625,
+        "wires": [
+            [
+                "d60daf5.ed6835"
+            ]
+        ]
+    },
+    {
+        "id": "34de440d.259194",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON to C header",
+        "func": "var reg_h = flow.get('reg_h');\nvar reg_c = flow.get('reg_c');\nvar reg_count = flow.get('reg_count');\n\nconsole.log(reg_count);\n\nvar rif = 'common';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 663.566650390625,
+        "y": 252.48333740234375,
+        "wires": [
+            [
+                "aae4ac70.472438"
+            ]
+        ]
+    },
+    {
+        "id": "a8c02e96.c069",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "Init",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 111.56666564941406,
+        "y": 52.01666259765625,
+        "wires": [
+            [
+                "13cca583.8beb3a"
+            ]
+        ]
+    },
+    {
+        "id": "13cca583.8beb3a",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "Init global variables",
+        "func": "var reg_c = 'const struct lgw_reg_s loregs[LGW_TOTALREGS] = {' + '\\n';\n\nflow.set('reg_h', '');\nflow.set('reg_c', reg_c);\nflow.set('reg_count', 0);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 307.5666809082031,
+        "y": 51.98333740234375,
+        "wires": [
+            [
+                "d040198e.3a7208"
+            ]
+        ]
+    },
+    {
+        "id": "d040198e.3a7208",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 548.566650390625,
+        "y": 52.98333740234375,
+        "wires": []
+    },
+    {
+        "id": "12128a9a.ea5e35",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/agc_mcu.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 355.8833312988281,
+        "y": 380.8833312988281,
+        "wires": [
+            [
+                "d6c34db.5471fb"
+            ]
+        ]
+    },
+    {
+        "id": "d6c34db.5471fb",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 469.8833312988281,
+        "y": 449.6999969482422,
+        "wires": [
+            [
+                "5696ed9e.d00f6c"
+            ]
+        ]
+    },
+    {
+        "id": "c7ba4afe.f6229",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "Parse",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 121.88331604003906,
+        "y": 304.51666259765625,
+        "wires": [
+            [
+                "12128a9a.ea5e35"
+            ]
+        ]
+    },
+    {
+        "id": "5696ed9e.d00f6c",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON to C header",
+        "func": "var reg_h = flow.get('reg_h');\nvar reg_c = flow.get('reg_c');\nvar reg_count = flow.get('reg_count');\n\nconsole.log(reg_count);\n\nvar rif = 'agc_mcu';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 670.88330078125,
+        "y": 449.98333740234375,
+        "wires": [
+            [
+                "622ff0f9.4bcfc8"
+            ]
+        ]
+    },
+    {
+        "id": "917cf46c.ceaa48",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "Create files",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 149.88333129882812,
+        "y": 582.88330078125,
+        "wires": [
+            [
+                "67447ab8.c38edc"
+            ]
+        ]
+    },
+    {
+        "id": "67447ab8.c38edc",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "Write header file",
+        "func": "var reg_count = flow.get('reg_count') || 0;\n\nvar reg_h = flow.get('reg_h') || '';\nreg_h += '\\n#define LGW_TOTALREGS = ' + reg_count + '\\n';\n\nvar reg_c = flow.get('reg_c') || '';\nreg_c += '    {0,0,0,0,0,0,0}\\n'\nreg_c += '};';\n\n// write all to file\nvar file = reg_h + '\\n' + reg_c;\nmsg.payload = file;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 336.8833312988281,
+        "y": 580.8499755859375,
+        "wires": [
+            [
+                "b1b0d974.6ae61"
+            ]
+        ]
+    },
+    {
+        "id": "b1b0d974.6ae61",
+        "type": "file",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/sx1302_reg.h",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "x": 685.88330078125,
+        "y": 580.88330078125,
+        "wires": []
+    },
+    {
+        "id": "aae4ac70.472438",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 856.5666809082031,
+        "y": 253.48333740234375,
+        "wires": []
+    },
+    {
+        "id": "622ff0f9.4bcfc8",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 868.88330078125,
+        "y": 448.8833312988281,
+        "wires": []
+    }
+]
