@@ -44,40 +44,40 @@ int main()
         return -1;
     }
 
-    x = lgw_reg_r(LGW_AGCMCU__RF_EN_A__RADIO_EN, &val);
+    x = lgw_reg_r(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, &val);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to read register\n");
         return -1;
     }
-    printf("LGW_AGCMCU__RF_EN_A__RADIO_EN: 0x%02X\n", val);
+    printf("SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN: 0x%02X\n", val);
 
-    x = lgw_reg_r(LGW_AGCMCU__RF_EN_A__RADIO_RST, &val);
+    x = lgw_reg_r(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, &val);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to read register\n");
         return -1;
     }
-    printf("LGW_AGCMCU__RF_EN_A__RADIO_EN: 0x%02X\n", val);
+    printf("SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST: 0x%02X\n", val);
 
-    x  = lgw_reg_w(LGW_AGCMCU__RF_EN_A__RADIO_EN, 0x01);
-    x |= lgw_reg_w(LGW_AGCMCU__RF_EN_A__RADIO_RST, 0x01);
+    x  = lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, 0x01);
+    x |= lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to write registers\n");
         return -1;
     }
 
-    x = lgw_reg_r(LGW_AGCMCU__RF_EN_A__RADIO_EN, &val);
+    x = lgw_reg_r(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, &val);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to read register\n");
         return -1;
     }
-    printf("LGW_AGCMCU__RF_EN_A__RADIO_EN: 0x%02X\n", val);
+    printf("SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN: 0x%02X\n", val);
 
-    x = lgw_reg_r(LGW_AGCMCU__RF_EN_A__RADIO_RST, &val);
+    x = lgw_reg_r(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, &val);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to read register\n");
         return -1;
     }
-    printf("LGW_AGCMCU__RF_EN_A__RADIO_EN: 0x%02X\n", val);
+    printf("SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST: 0x%02X\n", val);
 
     x = lgw_disconnect();
     if (x != LGW_REG_SUCCESS) {
