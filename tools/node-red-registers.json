@@ -43,7 +43,7 @@
         "id": "3e749686.017e32",
         "type": "inject",
         "z": "bf64d63f.630868",
-        "name": "Parse",
+        "name": "common",
         "topic": "",
         "payload": "true",
         "payloadType": "bool",
@@ -51,7 +51,7 @@
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
-        "x": 90,
+        "x": 100,
         "y": 160,
         "wires": [
             [
@@ -100,7 +100,7 @@
         "type": "function",
         "z": "bf64d63f.630868",
         "name": "Init global variables",
-        "func": "var reg_c = 'const struct lgw_reg_s loregs[LGW_TOTALREGS] = {' + '\\n';\n\nflow.set('reg_h', '');\nflow.set('reg_c', reg_c);\nflow.set('reg_count', 0);\n\nreturn msg;",
+        "func": "var reg_c = 'const struct lgw_reg_s loregs[LGW_TOTALREGS+1] = {' + '\\n';\n\nflow.set('reg_h', '');\nflow.set('reg_c', reg_c);\nflow.set('reg_count', 0);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "x": 280,
@@ -162,7 +162,7 @@
         "id": "c7ba4afe.f6229",
         "type": "inject",
         "z": "bf64d63f.630868",
-        "name": "Parse",
+        "name": "agc_mcu",
         "topic": "",
         "payload": "true",
         "payloadType": "bool",
@@ -170,7 +170,7 @@
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
-        "x": 90,
+        "x": 100,
         "y": 220,
         "wires": [
             [
@@ -207,7 +207,7 @@
         "once": false,
         "onceDelay": 0.1,
         "x": 110,
-        "y": 300,
+        "y": 580,
         "wires": [
             [
                 "67447ab8.c38edc"
@@ -219,11 +219,11 @@
         "type": "function",
         "z": "bf64d63f.630868",
         "name": "Write header file",
-        "func": "var reg_count = flow.get('reg_count') || 0;\n\nvar reg_h = flow.get('reg_h') || '';\nreg_h += '\\n#define LGW_TOTALREGS = ' + reg_count + '\\n';\n\nvar reg_c = flow.get('reg_c') || '';\nreg_c += '    {0,0,0,0,0,0,0}\\n'\nreg_c += '};';\n\n// write all to file\nvar file = reg_h + '\\n' + reg_c;\nmsg.payload = file;\n\nreturn msg;",
+        "func": "var reg_count = flow.get('reg_count') || 0;\n\nvar reg_h = flow.get('reg_h') || '';\nreg_h += '\\n#define LGW_TOTALREGS ' + reg_count + '\\n';\n\nvar reg_c = flow.get('reg_c') || '';\nreg_c += '    {0,0,0,0,0,0,0}\\n'\nreg_c += '};';\n\n// write all to file\nvar file = reg_h + '\\n' + reg_c;\nmsg.payload = file;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "x": 290,
-        "y": 300,
+        "y": 580,
         "wires": [
             [
                 "b1b0d974.6ae61"
@@ -240,7 +240,7 @@
         "createDir": false,
         "overwriteFile": "true",
         "x": 620,
-        "y": 300,
+        "y": 580,
         "wires": []
     },
     {
@@ -280,7 +280,7 @@
         "format": "utf8",
         "chunk": false,
         "sendError": true,
-        "x": 390,
+        "x": 410,
         "y": 100,
         "wires": [
             [
@@ -308,7 +308,7 @@
         "id": "a48ebe9c.34b028",
         "type": "inject",
         "z": "bf64d63f.630868",
-        "name": "Parse",
+        "name": "rif_top_mux",
         "topic": "",
         "payload": "true",
         "payloadType": "bool",
@@ -316,7 +316,7 @@
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
-        "x": 90,
+        "x": 110,
         "y": 100,
         "wires": [
             [
@@ -352,6 +352,255 @@
         "complete": "false",
         "x": 1070,
         "y": 100,
+        "wires": []
+    },
+    {
+        "id": "2d9b9bf2.6b3bb4",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/clk_ctrl.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 370,
+        "y": 280,
+        "wires": [
+            [
+                "7efa17e6.f8b68"
+            ]
+        ]
+    },
+    {
+        "id": "7efa17e6.f8b68",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 280,
+        "wires": [
+            [
+                "b419f271.29dd58"
+            ]
+        ]
+    },
+    {
+        "id": "5883ebc9.2fede4",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "clk_ctrl",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 90,
+        "y": 280,
+        "wires": [
+            [
+                "2d9b9bf2.6b3bb4"
+            ]
+        ]
+    },
+    {
+        "id": "b419f271.29dd58",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON to C header",
+        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'clk_ctrl';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 830,
+        "y": 280,
+        "wires": [
+            [
+                "6e67de1b.e44278"
+            ]
+        ]
+    },
+    {
+        "id": "6e67de1b.e44278",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1030,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "54a46dd.945aa14",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/tx_top.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 370,
+        "y": 340,
+        "wires": [
+            [
+                "5ae327f2.618788"
+            ]
+        ]
+    },
+    {
+        "id": "5ae327f2.618788",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 340,
+        "wires": [
+            [
+                "87c9fb72.4f37b"
+            ]
+        ]
+    },
+    {
+        "id": "ca4d9728.057d68",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "tx_top_a",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 340,
+        "wires": [
+            [
+                "54a46dd.945aa14"
+            ]
+        ]
+    },
+    {
+        "id": "87c9fb72.4f37b",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON to C header",
+        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'tx_top_a';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 830,
+        "y": 340,
+        "wires": [
+            [
+                "2b1f8a26.20c9c6"
+            ]
+        ]
+    },
+    {
+        "id": "2b1f8a26.20c9c6",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1030,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "50b73755.13ee",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/tx_top.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 370,
+        "y": 400,
+        "wires": [
+            [
+                "ce78d3ce.e6bf18"
+            ]
+        ]
+    },
+    {
+        "id": "ce78d3ce.e6bf18",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 400,
+        "wires": [
+            [
+                "23db21b6.d47206"
+            ]
+        ]
+    },
+    {
+        "id": "4791c4e5.60b12c",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "tx_top_b",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 400,
+        "wires": [
+            [
+                "50b73755.13ee"
+            ]
+        ]
+    },
+    {
+        "id": "23db21b6.d47206",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON to C header",
+        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'tx_top_b';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 830,
+        "y": 400,
+        "wires": [
+            [
+                "2e3b04b3.ef078c"
+            ]
+        ]
+    },
+    {
+        "id": "2e3b04b3.ef078c",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1030,
+        "y": 400,
         "wires": []
     }
 ]
