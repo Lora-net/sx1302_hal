@@ -81,6 +81,74 @@ int main()
     sx1262fe_read_command(0xC0, buff, 1); /* GetStatus */
     printf("SX1262FE status: 0x%02X\n", buff[0]);
 
+    printf("================================\n");
+    printf("Press enter to continue\n");
+    getchar();
+    printf("================================\n");
+    printf("Switch SX126x in FPGA Tx mode\n");
+
+    buff[0] = 0x05;
+    buff[1] = 0x84;
+    buff[2] = 0x00;
+    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="puReg", data=0x00, targetFe=True */
+
+    buff[0] = 0x05;
+    buff[1] = 0x85;
+    buff[2] = 0x00;
+    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="pdReg", data=0x00, targetFe=True */
+
+    buff[0] = 0x05;
+    buff[1] = 0x82;
+    buff[2] = 0x0F;
+    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="dsValReg", data=0xf, targetFe=True */
+
+    buff[0] = 0x05;
+    buff[1] = 0x80;
+    buff[2] = 0x3E;
+    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="outEnReg", data=self.ioTxMode, targetFe=True */
+
+    buff[0] = 0x05;
+    buff[1] = 0x83;
+    buff[2] = 0x3E;
+    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="ieValReg", data=self.ioTxMode, targetFe=True */
+
+    buff[0] = 0x05;
+    buff[1] = 0x87;
+    buff[2] = 0x09;
+    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="alfCfgReg", data=self.stdbyTestMode, targetFe=True */
+
+    printf("Switch SX1302 clock from SPI clock to SX126x clock\n");
+
+    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
+
+    printf("Setup radio A FE I/F in Tx mode(SX126x)\n");
+
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
+
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x00);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01);
+    
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF, 0x6C);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF, 0x90);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, 0x00);
+
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, 0x08);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, 0x00);
+
+    printf("================================\n");
+    printf("Start Tx\n");
+
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
+
+    printf("================================\n");
+    printf("Press enter to stop Tx\n");
+    getchar();
+    printf("================================\n");
+    printf("Stop Tx\n");
+
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00);
+
     lgw_disconnect();
     printf("=========== Test End ===========\n");
 
