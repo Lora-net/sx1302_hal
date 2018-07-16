@@ -35,7 +35,7 @@
         "y": 160,
         "wires": [
             [
-                "34de440d.259194"
+                "2efaa7ec.1e3158"
             ]
         ]
     },
@@ -44,7 +44,7 @@
         "type": "inject",
         "z": "bf64d63f.630868",
         "name": "common",
-        "topic": "",
+        "topic": "common",
         "payload": "true",
         "payloadType": "bool",
         "repeat": "",
@@ -56,22 +56,6 @@
         "wires": [
             [
                 "d60daf5.ed6835"
-            ]
-        ]
-    },
-    {
-        "id": "34de440d.259194",
-        "type": "function",
-        "z": "bf64d63f.630868",
-        "name": "JSON to C header",
-        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'common';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 830,
-        "y": 160,
-        "wires": [
-            [
-                "aae4ac70.472438"
             ]
         ]
     },
@@ -154,7 +138,7 @@
         "y": 220,
         "wires": [
             [
-                "5696ed9e.d00f6c"
+                "2efaa7ec.1e3158"
             ]
         ]
     },
@@ -163,7 +147,7 @@
         "type": "inject",
         "z": "bf64d63f.630868",
         "name": "agc_mcu",
-        "topic": "",
+        "topic": "agc_mcu",
         "payload": "true",
         "payloadType": "bool",
         "repeat": "",
@@ -175,22 +159,6 @@
         "wires": [
             [
                 "12128a9a.ea5e35"
-            ]
-        ]
-    },
-    {
-        "id": "5696ed9e.d00f6c",
-        "type": "function",
-        "z": "bf64d63f.630868",
-        "name": "JSON to C header",
-        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'agc_mcu';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 830,
-        "y": 220,
-        "wires": [
-            [
-                "622ff0f9.4bcfc8"
             ]
         ]
     },
@@ -253,22 +221,8 @@
         "console": false,
         "tostatus": false,
         "complete": "false",
-        "x": 1030,
-        "y": 160,
-        "wires": []
-    },
-    {
-        "id": "622ff0f9.4bcfc8",
-        "type": "debug",
-        "z": "bf64d63f.630868",
-        "name": "",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "x": 1030,
-        "y": 220,
+        "x": 1150,
+        "y": 280,
         "wires": []
     },
     {
@@ -328,11 +282,11 @@
         "id": "8bbc1d63.391468",
         "type": "function",
         "z": "bf64d63f.630868",
-        "name": "JSON to C header",
-        "func": "var reg_h = flow.get('reg_h') || '';\n\nvar prefix = 'SX1302_REG_';\nvar postfix = '_BASE_ADDR';\nvar line = '';\n\nfor(var item in msg.payload.map)\n{\n    var base_addr = msg.payload.map[item].addr;\n    line += '#define ' + prefix + item.toUpperCase() + postfix + ' 0x' + base_addr.toString(16) + '\\n'\n}\nconsole.log(line);\n\nreg_h += line + '\\n';\n\nflow.set('reg_h', reg_h);\n\nreturn msg;",
+        "name": "JSON Parse Base Addresses",
+        "func": "var reg_h = flow.get('reg_h') || '';\n\nvar prefix = 'SX1302_REG_';\nvar postfix = '_BASE_ADDR';\nvar line = '';\n\nfor(var item in msg.payload.map)\n{\n    var base_addr = msg.payload.map[item].addr;\n    line += '#define ' + prefix + item.toUpperCase() + postfix + ' 0x' + base_addr.toString(16) + '\\n'\n}\n//console.log(line);\n\nreg_h += line + '\\n';\n\nflow.set('reg_h', reg_h);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
-        "x": 870,
+        "x": 910,
         "y": 100,
         "wires": [
             [
@@ -350,7 +304,7 @@
         "console": false,
         "tostatus": false,
         "complete": "false",
-        "x": 1070,
+        "x": 1150,
         "y": 100,
         "wires": []
     },
@@ -383,7 +337,7 @@
         "y": 280,
         "wires": [
             [
-                "b419f271.29dd58"
+                "2efaa7ec.1e3158"
             ]
         ]
     },
@@ -392,7 +346,7 @@
         "type": "inject",
         "z": "bf64d63f.630868",
         "name": "clk_ctrl",
-        "topic": "",
+        "topic": "clk_ctrl",
         "payload": "true",
         "payloadType": "bool",
         "repeat": "",
@@ -406,36 +360,6 @@
                 "2d9b9bf2.6b3bb4"
             ]
         ]
-    },
-    {
-        "id": "b419f271.29dd58",
-        "type": "function",
-        "z": "bf64d63f.630868",
-        "name": "JSON to C header",
-        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'clk_ctrl';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 830,
-        "y": 280,
-        "wires": [
-            [
-                "6e67de1b.e44278"
-            ]
-        ]
-    },
-    {
-        "id": "6e67de1b.e44278",
-        "type": "debug",
-        "z": "bf64d63f.630868",
-        "name": "",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "x": 1030,
-        "y": 280,
-        "wires": []
     },
     {
         "id": "54a46dd.945aa14",
@@ -466,7 +390,7 @@
         "y": 340,
         "wires": [
             [
-                "87c9fb72.4f37b"
+                "2efaa7ec.1e3158"
             ]
         ]
     },
@@ -475,7 +399,7 @@
         "type": "inject",
         "z": "bf64d63f.630868",
         "name": "tx_top_a",
-        "topic": "",
+        "topic": "tx_top_a",
         "payload": "true",
         "payloadType": "bool",
         "repeat": "",
@@ -489,36 +413,6 @@
                 "54a46dd.945aa14"
             ]
         ]
-    },
-    {
-        "id": "87c9fb72.4f37b",
-        "type": "function",
-        "z": "bf64d63f.630868",
-        "name": "JSON to C header",
-        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'tx_top_a';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 830,
-        "y": 340,
-        "wires": [
-            [
-                "2b1f8a26.20c9c6"
-            ]
-        ]
-    },
-    {
-        "id": "2b1f8a26.20c9c6",
-        "type": "debug",
-        "z": "bf64d63f.630868",
-        "name": "",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "x": 1030,
-        "y": 340,
-        "wires": []
     },
     {
         "id": "50b73755.13ee",
@@ -549,7 +443,7 @@
         "y": 400,
         "wires": [
             [
-                "23db21b6.d47206"
+                "2efaa7ec.1e3158"
             ]
         ]
     },
@@ -558,7 +452,7 @@
         "type": "inject",
         "z": "bf64d63f.630868",
         "name": "tx_top_b",
-        "topic": "",
+        "topic": "tx_top_b",
         "payload": "true",
         "payloadType": "bool",
         "repeat": "",
@@ -574,33 +468,19 @@
         ]
     },
     {
-        "id": "23db21b6.d47206",
+        "id": "2efaa7ec.1e3158",
         "type": "function",
         "z": "bf64d63f.630868",
         "name": "JSON to C header",
-        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = 'tx_top_b';\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        sign = '0';\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',0,' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\nconsole.log(reg_h);\nconsole.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
+        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_count = flow.get('reg_count') || 0;\n\nvar rif = msg.topic;\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar reg_comment = '';\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        if(msg.payload[register].fields[field].hasOwnProperty('signed'))\n        {\n            console.log(msg.payload[register].fields[field].signed);\n            if(msg.payload[register].fields[field].signed === true)\n            {\n                sign = '1';\n            }\n            else\n            {\n                sign = '0';\n            }\n        }\n        else\n        {\n            sign = '0';\n        }\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',' + sign + ',' + leng + ',' + rdon + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        \n        reg_count += 1;\n    }\n}\n\n//console.log(reg_h);\n//console.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
-        "x": 830,
-        "y": 400,
+        "x": 930,
+        "y": 280,
         "wires": [
             [
-                "2e3b04b3.ef078c"
+                "aae4ac70.472438"
             ]
         ]
-    },
-    {
-        "id": "2e3b04b3.ef078c",
-        "type": "debug",
-        "z": "bf64d63f.630868",
-        "name": "",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "x": 1030,
-        "y": 400,
-        "wires": []
     }
 ]
