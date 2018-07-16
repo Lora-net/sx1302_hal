@@ -16,10 +16,18 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
+/* fix an issue between POSIX and C99 */
+#if __STDC_VERSION__ >= 199901L
+    #define _XOPEN_SOURCE 600
+#else
+    #define _XOPEN_SOURCE 500
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "loragw_reg.h"
 #include "loragw_sx1262fe.h"
@@ -28,19 +36,57 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
+#define SX1262FE_FREQ_TO_REG(f)     (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
+#define SX1302_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define BUFF_SIZE           1024
+#define DEFAULT_FREQ_HZ     868500000U
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
+
+/* describe command line options */
+void usage(void) {
+    //printf("Library version information: %s\n", lgw_version_info());
+    printf( "Available options:\n");
+    printf( " -h print this help\n");
+    printf( " -f <float> Radio TX frequency in MHz\n");
+}
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main()
+int main(int argc, char **argv)
 {
+    int i;
     uint8_t buff[16];
+    uint32_t ft = DEFAULT_FREQ_HZ;
+    uint32_t freq_reg;
+    double xd = 0.0;
 
     printf("===== sx1302 sx1262fe TX test =====\n");
+
+    /* parse command line options */
+    while ((i = getopt (argc, argv, "hf:")) != -1) {
+        switch (i) {
+            case 'h':
+                usage();
+                return -1;
+                break;
+            case 'f': /* <float> Radio TX frequency in MHz */
+                sscanf(optarg, "%lf", &xd);
+                ft = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                break;
+            default:
+                printf("ERROR: argument parsing\n");
+                usage();
+                return -1;
+        }
+    }
+
     lgw_connect();
 
     printf("Setup SX126x in Tx mode\n");
@@ -58,10 +104,11 @@ int main()
     buff[0] = 0x00;
     sx1262fe_write_command(0x8A, buff, 1); /* SetPacketType FSK */
 
-    buff[0] = 0x36;
-    buff[1] = 0x48;
-    buff[2] = 0x00;
-    buff[3] = 0x00;
+    freq_reg = SX1262FE_FREQ_TO_REG(ft);
+    buff[0] = (uint8_t)(freq_reg >> 24);//0x36;
+    buff[1] = (uint8_t)(freq_reg >> 16);//0x48;
+    buff[2] = (uint8_t)(freq_reg >> 8);//0x00;
+    buff[3] = (uint8_t)(freq_reg >> 0);//0x00;
     sx1262fe_write_command(0x86, buff, 4); /* SetRfFrequency */
 
     buff[0] = 0x0E;
@@ -119,6 +166,7 @@ int main()
 
     printf("Switch SX1302 clock from SPI clock to SX126x clock\n");
 
+    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01);
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
 
     printf("Setup radio A FE I/F in Tx mode(SX126x)\n");
@@ -129,9 +177,10 @@ int main()
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01);
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01);
     
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF, 0x6C);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF, 0x90);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, 0x00);
+    freq_reg = SX1302_FREQ_TO_REG(ft);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF, (freq_reg >> 16) & 0xFF/*0x6C*/);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF, (freq_reg >> 8) & 0xFF/*0x90*/);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, (freq_reg >> 0) & 0xFF/*0x00*/);
 
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, 0x08);
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, 0x00);
