@@ -56,7 +56,8 @@ typedef enum {
     SET_TXCONTINUOUSWAVE    = 0xD1,
     SET_TXCONTINUOUSPREAMBLE= 0xD2,
     GET_STATUS              = 0xC0,
-    SET_REGULATORMODE       = 0x96
+    SET_REGULATORMODE       = 0x96,
+    SET_FS                  = 0xC1
 } sx1262fe_op_code_t;
 
 typedef enum {
