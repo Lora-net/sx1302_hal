@@ -94,38 +94,38 @@ int main(int argc, char **argv)
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, 0x01);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
 
-    buff[0] = 0x00;
-    sx1262fe_write_command(0x80, buff, 1); /* SetStandby STDBY_RC */
+    buff[0] = (uint8_t)STDBY_RC;
+    sx1262fe_write_command(SET_STANDBY, buff, 1);
 
     buff[0] = 0x00;
-    sx1262fe_read_command(0xC0, buff, 1); /* GetStatus */
+    sx1262fe_read_command(GET_STATUS, buff, 1);
     printf("SX1262FE status: 0x%02X\n", buff[0]);
 
-    buff[0] = 0x00;
-    sx1262fe_write_command(0x8A, buff, 1); /* SetPacketType FSK */
+    buff[0] = (uint8_t)PACKET_TYPE_GFSK;
+    sx1262fe_write_command(SET_PACKET_TYPE, buff, 1);
 
     freq_reg = SX1262FE_FREQ_TO_REG(ft);
-    buff[0] = (uint8_t)(freq_reg >> 24);//0x36;
-    buff[1] = (uint8_t)(freq_reg >> 16);//0x48;
-    buff[2] = (uint8_t)(freq_reg >> 8);//0x00;
-    buff[3] = (uint8_t)(freq_reg >> 0);//0x00;
-    sx1262fe_write_command(0x86, buff, 4); /* SetRfFrequency */
+    buff[0] = (uint8_t)(freq_reg >> 24);
+    buff[1] = (uint8_t)(freq_reg >> 16);
+    buff[2] = (uint8_t)(freq_reg >> 8);
+    buff[3] = (uint8_t)(freq_reg >> 0);
+    sx1262fe_write_command(SET_RF_FREQUENCY, buff, 4);
 
-    buff[0] = 0x0E;
-    buff[1] = 0x02;
-    sx1262fe_write_command(0x8E, buff, 2); /* SetTxParams (power, RAMP_40U) */
+    buff[0] = 0x16; /* +22dBm */
+    buff[1] = (uint8_t)SET_RAMP_40U;
+    sx1262fe_write_command(SET_TX_PARAMS, buff, 2); /* SetTxParams (power, RAMP_40U) */
 
     buff[0] = 0x04;
     buff[1] = 0x07;
     buff[2] = 0x00;
     buff[3] = 0x01;
-    sx1262fe_write_command(0x95, buff, 4); /* SetPaOpt */
+    sx1262fe_write_command(SET_PA_CONFIG, buff, 4); /* SetPaConfig - high power PA - +22dBm */
 
     buff[0] = 0x00;
-    sx1262fe_write_command(0xD1, buff, 1); /* SetTxContinuousWave */
+    sx1262fe_write_command(SET_TXCONTINUOUSWAVE, buff, 0); /* SetTxContinuousWave */
 
     buff[0] = 0x00;
-    sx1262fe_read_command(0xC0, buff, 1); /* GetStatus */
+    sx1262fe_read_command(GET_STATUS, buff, 1);
     printf("SX1262FE status: 0x%02X\n", buff[0]);
 
     printf("================================\n");
@@ -137,32 +137,32 @@ int main(int argc, char **argv)
     buff[0] = 0x05;
     buff[1] = 0x84;
     buff[2] = 0x00;
-    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="puReg", data=0x00, targetFe=True */
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* WriteRegister: mod="DioCtrl", reg="puReg", data=0x00, targetFe=True */
 
     buff[0] = 0x05;
     buff[1] = 0x85;
     buff[2] = 0x00;
-    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="pdReg", data=0x00, targetFe=True */
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* WriteRegister: mod="DioCtrl", reg="pdReg", data=0x00, targetFe=True */
 
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x0F;
-    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="dsValReg", data=0xf, targetFe=True */
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* WriteRegister: mod="DioCtrl", reg="dsValReg", data=0xf, targetFe=True */
 
     buff[0] = 0x05;
     buff[1] = 0x80;
     buff[2] = 0x3E;
-    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="outEnReg", data=self.ioTxMode, targetFe=True */
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* WriteRegister: mod="DioCtrl", reg="outEnReg", data=self.ioTxMode, targetFe=True */
 
     buff[0] = 0x05;
     buff[1] = 0x83;
     buff[2] = 0x3E;
-    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="ieValReg", data=self.ioTxMode, targetFe=True */
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* WriteRegister: mod="DioCtrl", reg="ieValReg", data=self.ioTxMode, targetFe=True */
 
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x09;
-    sx1262fe_write_command(0x0D, buff, 3); /* WriteRegister: mod="DioCtrl", reg="alfCfgReg", data=self.stdbyTestMode, targetFe=True */
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* WriteRegister: mod="DioCtrl", reg="alfCfgReg", data=self.stdbyTestMode, targetFe=True */
 
     printf("Switch SX1302 clock from SPI clock to SX126x clock\n");
 
