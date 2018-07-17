@@ -57,7 +57,7 @@ extern void *lgw_spi_target; /*! generic pointer to the SPI device */
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1262fe_write_command(uint8_t op_code, uint8_t *data, uint16_t size) {
+int sx1262fe_write_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size) {
     int spi_device;
     int cmd_size = 2; /* header + op_code */
     uint8_t out_buf[cmd_size + size];
@@ -75,7 +75,7 @@ int sx1262fe_write_command(uint8_t op_code, uint8_t *data, uint16_t size) {
 
     /* prepare frame to be sent */
     out_buf[0] = LGW_SPI_MUX_TARGET_RADIOA;
-    out_buf[1] = op_code;
+    out_buf[1] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
     }
@@ -100,7 +100,7 @@ int sx1262fe_write_command(uint8_t op_code, uint8_t *data, uint16_t size) {
     }
 }
 
-int sx1262fe_read_command(uint8_t op_code, uint8_t *data, uint16_t size) {
+int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size) {
     int spi_device;
     int cmd_size = 2; /* header + op_code + NOP */
     uint8_t out_buf[cmd_size + size];
@@ -120,7 +120,7 @@ int sx1262fe_read_command(uint8_t op_code, uint8_t *data, uint16_t size) {
 
     /* prepare frame to be sent */
     out_buf[0] = LGW_SPI_MUX_TARGET_RADIOA;
-    out_buf[1] = op_code;
+    out_buf[1] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
     }
