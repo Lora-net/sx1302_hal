@@ -54,6 +54,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define MOD_GFSK            2
 
 /* -------------------------------------------------------------------------- */
+/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 int sx1262fe_init(void) {
@@ -76,7 +79,7 @@ int sx1262fe_init(void) {
     sx1262fe_read_command(GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
-    /* Configure DIO for Rx */
+    /* Configure DIO for Rx (not necessary here, just for reference) */
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x00;
@@ -97,7 +100,6 @@ int sx1262fe_init(void) {
     buff[1] = 0x80;
     buff[2] = 0x00;
     sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
-
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x08;
