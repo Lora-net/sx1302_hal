@@ -195,42 +195,38 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
         buff[2] = 0x1C;
         sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* ?? */
 
-        buff[0] = 0x00;
-        sx1262fe_write_command(0x8A, buff, 1); /* SetPacketType FSK */
+        buff[0] = 0x00; /* LoRa */
+        sx1262fe_write_command(SET_PACKET_TYPE, buff, 1);
 
         freq_reg = SX1262FE_FREQ_TO_REG(freq_hz);
         buff[0] = (uint8_t)(freq_reg >> 24);
         buff[1] = (uint8_t)(freq_reg >> 16);
         buff[2] = (uint8_t)(freq_reg >> 8);
         buff[3] = (uint8_t)(freq_reg >> 0);
-        sx1262fe_write_command(0x86, buff, 4); /* SetRfFrequency */
+        sx1262fe_write_command(SET_RF_FREQUENCY, buff, 4);
 
-        buff[0] = 0x0E;
-        buff[1] = 0x02;
-        sx1262fe_write_command(0x8E, buff, 2); /* SetTxParams (power, RAMP_40U) */
+        buff[0] = 0x0E; /* power */
+        buff[1] = 0x02; /* RAMP_40U */
+        sx1262fe_write_command(SET_TX_PARAMS, buff, 2);
 
-        buff[0] = 0x04;
-        buff[1] = 0x07;
-        buff[2] = 0x00;
-        buff[3] = 0x01;
-        sx1262fe_write_command(0x95, buff, 4); /* SetPaOpt */
-        
-        /* Switch SX1302 clock from SPI clock to SX1262 clock */
-        lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
-        lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
+        buff[0] = 0x04; /* paDutyCycle */
+        buff[1] = 0x07; /* hpMax */
+        buff[2] = 0x00; /* deviceSel */
+        buff[3] = 0x01; /* paLut */
+        sx1262fe_write_command(SET_PA_CONFIG, buff, 4); /* SX1262 Output Power +22dBm */
 
-        lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x00); /* Signal */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* SX126x Tx RFFE */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Frequency synthesis */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x01); /* Data on falling edge */
 
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x00);
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01);
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01);
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x01);
-
+        /* Set Tx frequency */
         freq_reg = SX1302_FREQ_TO_REG(freq_hz);
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF, (freq_reg >> 16) & 0xFF);
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF, (freq_reg >> 8) & 0xFF);
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, (freq_reg >> 0) & 0xFF);
 
+        /* Set bandwidth */
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, 0x08);
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, 0x00);
 

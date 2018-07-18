@@ -141,6 +141,10 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
 
+    /* Set packet type */
+    buff[0] = (modulation == MOD_LORA) ? 0x01 : 0x00;
+    sx1262fe_write_command(SET_PACKET_TYPE, buff, 1);
+
     /* Set frequency */
     freq_reg = SX1262FE_FREQ_TO_REG(freq_hz);
     buff[0] = (uint8_t)(freq_reg >> 24);
