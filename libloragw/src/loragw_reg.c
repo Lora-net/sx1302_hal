@@ -297,6 +297,25 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS+1] = {
     {0,SX1302_REG_TX_TOP_B_BASE_ADDR+51,1,0,1,0,0}, // TX_TOP_B_LORA_TX_FLAG_CONT_DONE
     {0,SX1302_REG_TX_TOP_B_BASE_ADDR+51,0,0,1,0,0}, // TX_TOP_B_LORA_TX_FLAG_PLD_DONE
     {0,SX1302_REG_TX_TOP_B_BASE_ADDR+52,3,0,1,0,0}, // TX_TOP_B_DUMMY_DUMMY
+    {0,SX1302_REG_GPIO_BASE_ADDR+0,0,0,8,0,0}, // GPIO_GPIO_DIR_DIRECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+1,0,0,8,0,0}, // GPIO_GPIO_OUT_OUT_VALUE
+    {0,SX1302_REG_GPIO_BASE_ADDR+2,0,0,8,1,0}, // GPIO_GPIO_IN_IN_VALUE
+    {0,SX1302_REG_GPIO_BASE_ADDR+3,0,0,4,0,0}, // GPIO_GPIO_SEL_0_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+4,0,0,4,0,0}, // GPIO_GPIO_SEL_1_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+5,0,0,4,0,0}, // GPIO_GPIO_SEL_2_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+6,0,0,4,0,0}, // GPIO_GPIO_SEL_3_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+7,0,0,4,0,0}, // GPIO_GPIO_SEL_4_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+8,0,0,4,0,0}, // GPIO_GPIO_SEL_5_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+9,0,0,4,0,0}, // GPIO_GPIO_SEL_6_SELECTION
+    {0,SX1302_REG_GPIO_BASE_ADDR+10,0,0,4,0,0}, // GPIO_GPIO_SEL_7_SELECTION
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+0,1,0,1,0,0}, // TIMESTAMP_GPS_CTRL_GPS_POL
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+0,0,0,1,0,0}, // TIMESTAMP_GPS_CTRL_GPS_EN
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+1,0,0,8,1,0}, // TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+2,0,0,8,1,0}, // TIMESTAMP_TIMESTAMP_PPS_LSB2_TIMESTAMP_PPS
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+3,0,0,8,1,0}, // TIMESTAMP_TIMESTAMP_PPS_LSB1_TIMESTAMP_PPS
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+4,0,0,8,1,0}, // TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+5,0,0,8,1,0}, // TIMESTAMP_TIMESTAMP_LSB2_TIMESTAMP
+    {0,SX1302_REG_TIMESTAMP_BASE_ADDR+6,0,0,8,1,0}, // TIMESTAMP_TIMESTAMP_LSB1_TIMESTAMP
     {0,0,0,0,0,0,0}
 };
 
@@ -592,4 +611,59 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_mem_wb(uint16_t mem_addr, uint8_t *data, uint16_t size) {
+    int spi_stat = LGW_SPI_SUCCESS;
+
+    /* check input parameters */
+    CHECK_NULL(data);
+    if (size == 0) {
+        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
+        return LGW_REG_ERROR;
+    }
+
+    /* check if SPI is initialised */
+    if (lgw_spi_target == NULL) {
+        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        return LGW_REG_ERROR;
+    }
+
+    /* do the burst write */
+    spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, mem_addr, data, size);
+
+    if (spi_stat != LGW_SPI_SUCCESS) {
+        DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
+        return LGW_REG_ERROR;
+    } else {
+        return LGW_REG_SUCCESS;
+    }
+}
+
+int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size) {
+    int spi_stat = LGW_SPI_SUCCESS;
+
+    /* check input parameters */
+    CHECK_NULL(data);
+    if (size == 0) {
+        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
+        return LGW_REG_ERROR;
+    }
+
+    /* check if SPI is initialised */
+    if (lgw_spi_target == NULL) {
+        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        return LGW_REG_ERROR;
+    }
+
+    /* do the burst read */
+    spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, mem_addr, data, size);
+
+    if (spi_stat != LGW_SPI_SUCCESS) {
+        DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");
+        return LGW_REG_ERROR;
+    } else {
+        return LGW_REG_SUCCESS;
+    }
+}
 /* --- EOF ------------------------------------------------------------------ */

@@ -288,8 +288,27 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 #define SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE 236
 #define SX1302_REG_TX_TOP_B_LORA_TX_FLAG_PLD_DONE 237
 #define SX1302_REG_TX_TOP_B_DUMMY_DUMMY 238
+#define SX1302_REG_GPIO_GPIO_DIR_DIRECTION 239
+#define SX1302_REG_GPIO_GPIO_OUT_OUT_VALUE 240
+#define SX1302_REG_GPIO_GPIO_IN_IN_VALUE 241
+#define SX1302_REG_GPIO_GPIO_SEL_0_SELECTION 242
+#define SX1302_REG_GPIO_GPIO_SEL_1_SELECTION 243
+#define SX1302_REG_GPIO_GPIO_SEL_2_SELECTION 244
+#define SX1302_REG_GPIO_GPIO_SEL_3_SELECTION 245
+#define SX1302_REG_GPIO_GPIO_SEL_4_SELECTION 246
+#define SX1302_REG_GPIO_GPIO_SEL_5_SELECTION 247
+#define SX1302_REG_GPIO_GPIO_SEL_6_SELECTION 248
+#define SX1302_REG_GPIO_GPIO_SEL_7_SELECTION 249
+#define SX1302_REG_TIMESTAMP_GPS_CTRL_GPS_POL 250
+#define SX1302_REG_TIMESTAMP_GPS_CTRL_GPS_EN 251
+#define SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS 252
+#define SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_LSB2_TIMESTAMP_PPS 253
+#define SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_LSB1_TIMESTAMP_PPS 254
+#define SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP 255
+#define SX1302_REG_TIMESTAMP_TIMESTAMP_LSB2_TIMESTAMP 256
+#define SX1302_REG_TIMESTAMP_TIMESTAMP_LSB1_TIMESTAMP 257
 
-#define LGW_TOTALREGS 239
+#define LGW_TOTALREGS 258
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -340,6 +359,8 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size);
 */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
 
+int lgw_mem_wb(uint16_t mem_addr, uint8_t *data, uint16_t size);
+int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size);
 
 #endif
 
