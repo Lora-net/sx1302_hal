@@ -374,6 +374,13 @@ int lgw_abort_tx(void);
 int lgw_get_trigcnt(uint32_t* trig_cnt_us);
 
 /**
+@brief Return instateneous value of internal counter
+@param inst_cnt_us pointer to receive timestamp value
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_get_instcnt(uint32_t* inst_cnt_us);
+
+/**
 @brief Allow user to check the version/options of the library once compiled
 @return pointer on a human-readable null terminated string
 */

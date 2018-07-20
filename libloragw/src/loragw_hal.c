@@ -113,7 +113,6 @@ static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static float rf_rssi_offset[LGW_RF_CHAIN_NB];
 static bool rf_tx_enable[LGW_RF_CHAIN_NB];
-static uint32_t rf_tx_notch_freq[LGW_RF_CHAIN_NB];
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
@@ -151,12 +150,6 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
         .rf_power = 27
     }};
 
-/* TX I/Q imbalance coefficients for mixer gain = 8 to 15 */
-static int8_t cal_offset_a_i[8]; /* TX I offset for radio A */
-static int8_t cal_offset_a_q[8]; /* TX Q offset for radio A */
-static int8_t cal_offset_b_i[8]; /* TX I offset for radio B */
-static int8_t cal_offset_b_q[8]; /* TX Q offset for radio B */
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -173,6 +166,7 @@ int32_t lgw_bw_getval(int x);
 /* size is the firmware size in bytes (not 14b words) */
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     /* TODO */
+    if (target == 0 && firmware != NULL && size != 0) {} /* dummy */
 
     return 0;
 }
@@ -216,8 +210,9 @@ int32_t lgw_sf_getval(int x) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint16_t lgw_get_tx_start_delay(bool tx_notch_enable, uint8_t bw) {
+uint16_t lgw_get_tx_start_delay(uint8_t bw) {
     /* TODO */
+    if (bw == 0) {} /* dummy */
 
     return (uint16_t)TX_START_DELAY_DEFAULT; /* keep truncating instead of rounding: better behaviour measured */
 }
@@ -480,18 +475,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i, err;
     int reg_stat;
-    unsigned x;
-    uint8_t radio_select;
-    int32_t read_val;
-    uint8_t load_val;
-    uint8_t fw_version;
-    uint8_t cal_cmd;
-    uint16_t cal_time;
-    uint8_t cal_status;
-
-    uint64_t fsk_sync_word_reg;
 
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
@@ -567,7 +551,7 @@ int lgw_start(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_stop(void) {
-    lgw_soft_reset();
+    //lgw_soft_reset();
     lgw_disconnect();
 
     lgw_is_started = false;
@@ -578,6 +562,7 @@ int lgw_stop(void) {
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* TODO */
+    if (max_pkt > 0) pkt_data->freq_hz = 0;
 
     return 0;
 }
@@ -586,6 +571,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* TODO */
+    if (pkt_data.freq_hz == 0) {}; /* dummy */
 
     return LGW_HAL_SUCCESS;
 }
@@ -594,6 +580,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
 int lgw_status(uint8_t select, uint8_t *code) {
     /* TODO */
+    if (select == 0) *code = 0; /* dummy */
 
     return LGW_HAL_SUCCESS;
 }
@@ -608,14 +595,42 @@ int lgw_abort_tx(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
-    /* TODO */
+int sx1302_get_cnt(bool pps, uint32_t* cnt_us) {
+    int x;
+    uint8_t buff[4];
+
+    /* Get the 32MHz timestamp counter - 4 bytes */
+    /* step of 31.25 ns */
+    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to get timestamp counter value\n");
+        *cnt_us = 0;
+        return LGW_HAL_ERROR;
+    }
+
+    *cnt_us  = (uint32_t)((buff[0] << 24) & 0xFF000000);
+    *cnt_us |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
+    *cnt_us |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
+    *cnt_us |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+
+    *cnt_us /= 32; /* scale to 1MHz */
 
     return LGW_HAL_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
+    return (sx1302_get_cnt(true, trig_cnt_us));
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_get_instcnt(uint32_t* inst_cnt_us) {
+    return (sx1302_get_cnt(false, inst_cnt_us));
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 const char* lgw_version_info() {
     return lgw_version_string;
 }
