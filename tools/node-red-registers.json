@@ -482,5 +482,111 @@
                 "aae4ac70.472438"
             ]
         ]
+    },
+    {
+        "id": "ab7535a2.47b2e8",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/gpio.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 360,
+        "y": 460,
+        "wires": [
+            [
+                "6017e95e.37841"
+            ]
+        ]
+    },
+    {
+        "id": "6017e95e.37841",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 460,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "626f34eb.dac1f4",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "gpio",
+        "topic": "gpio",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 90,
+        "y": 460,
+        "wires": [
+            [
+                "ab7535a2.47b2e8"
+            ]
+        ]
+    },
+    {
+        "id": "f6871b6f.167d",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/timestamp.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 520,
+        "wires": [
+            [
+                "d1c6c905.bbf6a"
+            ]
+        ]
+    },
+    {
+        "id": "d1c6c905.bbf6a",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 520,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "128c968f.34cc09",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "timestamp",
+        "topic": "timestamp",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 520,
+        "wires": [
+            [
+                "f6871b6f.167d"
+            ]
+        ]
     }
 ]
