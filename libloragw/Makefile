@@ -63,7 +63,7 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1262fe.o
+libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1262fe.o $(OBJDIR)/loragw_hal.o
 	$(AR) rcs $@ $^
 
 ### test programs
