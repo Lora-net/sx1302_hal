@@ -30,6 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>
 #include <math.h>
 
+#include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_sx1262fe.h"
 #include "loragw_aux.h"
@@ -59,7 +60,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 int sx1262fe_init(void) {
     uint8_t buff[16];
-    int32_t val, val2;
+    uint32_t val, val2;
 
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
 
@@ -119,8 +120,8 @@ int sx1262fe_init(void) {
 
 
     /* Check that the SX1302 timestamp counter is running */
-    lgw_reg_r(SX1302_REG_TIMESTAMP_TIMESTAMP_LSB1_TIMESTAMP, &val);
-    lgw_reg_r(SX1302_REG_TIMESTAMP_TIMESTAMP_LSB1_TIMESTAMP, &val2);
+    lgw_get_instcnt(&val);
+    lgw_get_instcnt(&val2);
     if (val == val2) {
         printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
         return -1;
@@ -146,7 +147,7 @@ int sx1262fe_set_idle(void) {
     return 0;
 }
 
-int load_firmware(void) {
+int load_agc_fw(void) {
     int i;
     uint8_t fw_check[8192];
     int32_t gpio_sel = 0x01; /* AGC MCU */
@@ -200,6 +201,7 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t sf, uint32_t bw, uint32
     int i;
     uint32_t preamble_symb_nb;
     uint32_t freq_dev = bw/2;
+    uint16_t tx_start_delay;
 
     for (i = 0; i < 10; i++) {
         /* give radio control to HOST */
@@ -282,8 +284,14 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t sf, uint32_t bw, uint32
         lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CADRXTX, 2);
         lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_1_MODEM_START, 1);
 
+        /* Set TX start delay */
+        tx_start_delay = 1500 * 32; /* us */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 8));
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 0));
+
         printf("Start Tx\n");
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
+        wait_ms(2); /* to have status updated after ramp-up */
         lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
         printf("tx status=0x%02X\n", (uint8_t)val);
 
@@ -383,8 +391,8 @@ int main(int argc, char **argv)
         printf("ERROR: failed to initialize radio\n");
         return EXIT_FAILURE;
     }
-    
-    x = load_firmware();
+
+    x = load_agc_fw();
     if (x != 0) {
         printf("ERROR: failed to load AGC firmware\n");
         return EXIT_FAILURE;
