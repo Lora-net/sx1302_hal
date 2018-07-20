@@ -49,10 +49,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BW_HZ       125000U
 #define DEFAULT_TX_DURATION 60U
 
-#define MOD_CW              0
-#define MOD_LORA            1
-#define MOD_GFSK            2
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -136,6 +132,20 @@ int sx1262fe_init(void) {
     return 0;
 }
 
+int sx1262fe_set_idle(void) {
+    uint8_t buff[16];
+
+    buff[0] = (uint8_t)STDBY_XOSC;
+    sx1262fe_write_command(SET_STANDBY, buff, 1);
+
+    buff[0] = 0x05;
+    buff[1] = 0x87;
+    buff[2] = 0x0E;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Default value */
+
+    return 0;
+}
+
 int load_firmware(void) {
     int i;
     uint8_t fw_check[8192];
@@ -183,19 +193,25 @@ int load_firmware(void) {
     return 0;
 }
 
-int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, uint32_t bw, uint32_t tx_duration) {
+int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t sf, uint32_t bw, uint32_t tx_duration) {
     uint8_t buff[16];
     uint32_t freq_reg;
     int32_t val;
     int i;
+    uint32_t preamble_symb_nb;
+    uint32_t freq_dev = bw/2;
 
     for (i = 0; i < 10; i++) {
+        /* give radio control to HOST */
+        lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
+
+        /* Configure radio */
         buff[0] = 0x08;
         buff[1] = 0xE6;
         buff[2] = 0x1C;
         sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* ?? */
 
-        buff[0] = 0x00; /* LoRa */
+        buff[0] = 0x01; /* LoRa */
         sx1262fe_write_command(SET_PACKET_TYPE, buff, 1);
 
         freq_reg = SX1262FE_FREQ_TO_REG(freq_hz);
@@ -215,10 +231,14 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
         buff[3] = 0x01; /* paLut */
         sx1262fe_write_command(SET_PA_CONFIG, buff, 4); /* SX1262 Output Power +22dBm */
 
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x00); /* Signal */
+        /* give radio control to AGC MCU */
+        lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
+
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x01); /* LoRa */
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* SX126x Tx RFFE */
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Frequency synthesis */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Modulation */
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x01); /* Data on falling edge */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE, 0x00); /* LoRa */
 
         /* Set Tx frequency */
         freq_reg = SX1302_FREQ_TO_REG(freq_hz);
@@ -227,15 +247,43 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, (freq_reg >> 0) & 0xFF);
 
         /* Set bandwidth */
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, 0x08);
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, 0x00);
+        freq_reg = SX1302_FREQ_TO_REG(freq_dev);
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, (freq_reg >>  8) & 0xFF);
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, (freq_reg >>  0) & 0xFF);
 
-        /* give radio control to AGC MCU */
-        lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
+        /* LoRa modem parameters */
+        switch(bw) {
+            case 125000:
+                printf("bandwidth 125khz\n");
+                lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW, 0x04); /* 4: 125khz, 5: 250khz, 6: 500khz */
+                break;
+            case 250000:
+                printf("bandwidth 250khz\n");
+                lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW, 0x05); /* 4: 125khz, 5: 250khz, 6: 500khz */
+                break;
+            case 500000:
+                printf("bandwidth 500khz\n");
+                lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW, 0x06); /* 4: 125khz, 5: 250khz, 6: 500khz */
+                break;
+            default:
+                printf("ERROR: bandwidth %d not supported\n", bw);
+                break;
+        }
+        /* Preamble length */
+        preamble_symb_nb = tx_duration / ((pow(2, sf) / bw));
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_3_PREAMBLE_SYMB_NB, (preamble_symb_nb >> 8) & 0xFF); /* MSB */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_2_PREAMBLE_SYMB_NB, (preamble_symb_nb >> 0) & 0xFF); /* LSB */
+        /* LoRa datarate */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_SF, sf);
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS, 7);
+
+        /* Start LoRa modem */
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_MODEM_EN, 1);
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CADRXTX, 2);
+        lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_1_MODEM_START, 1);
 
         printf("Start Tx\n");
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
-
         lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
         printf("tx status=0x%02X\n", (uint8_t)val);
 
@@ -243,15 +291,11 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
 
         printf("Stop Tx\n");
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00);
-
-        wait_ms(1);
+        wait_ms(1); /* to have status updated after ramp-down */
         lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
         printf("tx status=0x%02X\n", (uint8_t)val);
 
         wait_ms(500);
-
-        /* give radio control to HOST */
-        lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
     }
 
     return 0;
@@ -346,7 +390,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    sx1262fe_set_tx_continuous(ft, MOD_LORA, sf, bw, tx_duration);
+    sx1262fe_set_tx_continuous(ft, sf, bw, tx_duration);
+
+    sx1262fe_set_idle();
 
     lgw_disconnect();
     printf("=========== Test End ===========\n");
