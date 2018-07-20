@@ -265,6 +265,9 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
     buff[2] = 0x09;
     sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* FPGA_MODE_TX */
 
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY, (uint8_t)((1500 * 32) >> 8));
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY, (uint8_t)((1500 * 32) >> 0));
+
     printf("Start Tx\n");
     buff[0] = 0x00;
     sx1262fe_write_command(SET_TXCONTINUOUSWAVE, buff, 0); /* SetTxContinuousWave */
