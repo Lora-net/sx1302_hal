@@ -53,146 +53,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-#include "src/test_bao_sx1262.var"
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
-
-int sx1262fe_init(void) {
-    uint8_t buff[16];
-    uint32_t val, val2;
-
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
-
-    /* Enable Sx1262 and perform chip reset */
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, 0x01);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
-    wait_ms(500);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x00);
-    wait_ms(10);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
-
-    /* Set Radio in Standby mode */
-    buff[0] = (uint8_t)STDBY_XOSC;
-    sx1262fe_write_command(SET_STANDBY, buff, 1);
-    buff[0] = 0x00;
-    sx1262fe_read_command(GET_STATUS, buff, 1);
-    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
-
-    /* Configure DIO for Rx */
-    buff[0] = 0x05;
-    buff[1] = 0x82;
-    buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Drive strength to min */
-    buff[0] = 0x05;
-    buff[1] = 0x83;
-    buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
-    buff[0] = 0x05;
-    buff[1] = 0x84;
-    buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* No pull up */
-    buff[0] = 0x05;
-    buff[1] = 0x85;
-    buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* No pull down */
-    buff[0] = 0x05;
-    buff[1] = 0x80;
-    buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
-    buff[0] = 0x05;
-    buff[1] = 0x87;
-    buff[2] = 0x08;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
-
-    /* Set Radio in Rx mode, necessary to give a clock to SX1302 */
-    buff[0] = 0xFF;
-    buff[1] = 0xFF;
-    buff[2] = 0xFF;
-    sx1262fe_write_command(SET_RX, buff, 3); /* Rx Continuous */
-
-    /* Enable clock divider (Mandatory) */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01);
-    
-    /* Switch SX1302 clock from SPI clock to SX1262 clock */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
-
-
-    /* Check that the SX1302 timestamp counter is running */
-    lgw_get_instcnt(&val);
-    lgw_get_instcnt(&val2);
-    if (val == val2) {
-        printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
-        return -1;
-    }
-
-    /* Set RADIO_A to SX1262FE_MODE */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
-
-    return 0;
-}
-
-int sx1262fe_set_idle(void) {
-    uint8_t buff[16];
-
-    buff[0] = (uint8_t)STDBY_XOSC;
-    sx1262fe_write_command(SET_STANDBY, buff, 1);
-
-    buff[0] = 0x05;
-    buff[1] = 0x87;
-    buff[2] = 0x0E;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Default value */
-
-    return 0;
-}
-
-int load_agc_fw(void) {
-    int i;
-    uint8_t fw_check[8192];
-    int32_t gpio_sel = 0x01; /* AGC MCU */
-
-    /* Configure GPIO to let AGC MCU access board LEDs */
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_DIRECTION, 0xFF); /* GPIO output direction */
-
-    /* Take control over AGC MCU */
-    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x01);
-    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x01);
-    lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
-
-    /* Write AGC fw in AGC MEM */
-    for(i=0; i<8; i++) {
-        lgw_mem_wb(0x0000+(i*1024), &agc_firmware[i*1024], 1024);
-    }
-
-    /* Read back and check */
-    for(i=0; i<8; i++) {
-        lgw_mem_rb(0x0000+(i*1024), &fw_check[i*1024], 1024);
-    }
-    if (memcmp(agc_firmware, fw_check, 8192) != 0) {
-        printf ("ERROR: Failed to load fw\n");
-        return -1;
-    }
-
-    printf("AGC fw loaded\n");
-
-    /* Release control over AGC MCU */
-    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x00);
-    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
-
-    printf("Waiting for AGC fw to start...\n");
-    wait_ms(3000);
-
-    return 0;
-}
 
 int sx1262fe_send_pkt(uint32_t freq_hz, uint8_t sf, uint32_t bw, uint16_t fcnt) {
     uint8_t buff[16];
@@ -371,6 +233,8 @@ int main(int argc, char **argv)
     double arg_d = 0.0;
     unsigned int arg_u;
 
+    struct lgw_conf_rxrf_s rfconf;
+
     /* parse command line options */
     while ((i = getopt (argc, argv, "hf:s:b:n:")) != -1) {
         switch (i) {
@@ -426,17 +290,16 @@ int main(int argc, char **argv)
     /* Board reset */
     system("./reset_lgw.sh start");
 
-    lgw_connect();
+    /* Configure the gateway */
+    memset( &rfconf, 0, sizeof rfconf);
+    rfconf.enable = true;
+    rfconf.freq_hz = 868500000;
+    rfconf.type = LGW_RADIO_TYPE_SX1262FE;
+    lgw_rxrf_setconf(0, rfconf);
 
-    x = sx1262fe_init();
+    x = lgw_start();
     if (x != 0) {
-        printf("ERROR: failed to initialize radio\n");
-        return EXIT_FAILURE;
-    }
-
-    x = load_agc_fw();
-    if (x != 0) {
-        printf("ERROR: failed to load AGC firmware\n");
+        printf("ERROR: failed to start the gateway\n");
         return EXIT_FAILURE;
     }
 
@@ -444,9 +307,11 @@ int main(int argc, char **argv)
         sx1262fe_send_pkt(ft, sf, bw, (uint16_t)i);
     }
 
-    sx1262fe_set_idle();
-
-    lgw_disconnect();
+    x = lgw_stop();
+    if (x != 0) {
+        printf("ERROR: failed to stop the gateway\n");
+        return EXIT_FAILURE;
+    }
     printf("=========== Test End ===========\n");
 
     return 0;
