@@ -146,4 +146,49 @@ int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t si
     }
 }
 
+int sx1262fe_setup(void) {
+    uint8_t buff[16];
+
+    /* Set Radio in Standby mode */
+    buff[0] = (uint8_t)STDBY_XOSC;
+    sx1262fe_write_command(SET_STANDBY, buff, 1);
+    buff[0] = 0x00;
+    sx1262fe_read_command(GET_STATUS, buff, 1);
+    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
+
+    /* Configure DIO for Rx */
+    buff[0] = 0x05;
+    buff[1] = 0x82;
+    buff[2] = 0x00;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Drive strength to min */
+    buff[0] = 0x05;
+    buff[1] = 0x83;
+    buff[2] = 0x00;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
+    buff[0] = 0x05;
+    buff[1] = 0x84;
+    buff[2] = 0x00;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* No pull up */
+    buff[0] = 0x05;
+    buff[1] = 0x85;
+    buff[2] = 0x00;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* No pull down */
+    buff[0] = 0x05;
+    buff[1] = 0x80;
+    buff[2] = 0x00;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
+    buff[0] = 0x05;
+    buff[1] = 0x87;
+    buff[2] = 0x08;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
+
+    /* Set Radio in Rx mode, necessary to give a clock to SX1302 */
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = 0xFF;
+    sx1262fe_write_command(SET_RX, buff, 3); /* Rx Continuous */
+
+    return 0;
+}
+
 /* --- EOF ------------------------------------------------------------------ */

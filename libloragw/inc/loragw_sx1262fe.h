@@ -87,6 +87,8 @@ typedef enum {
 int sx1262fe_write_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
 int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
 
+int sx1262fe_setup(void);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
