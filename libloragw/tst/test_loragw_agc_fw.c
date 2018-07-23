@@ -194,7 +194,7 @@ int load_agc_fw(void) {
     return 0;
 }
 
-int sx1262fe_send_pkt(uint32_t freq_hz, uint8_t sf, uint32_t bw) {
+int sx1262fe_send_pkt(uint32_t freq_hz, uint8_t sf, uint32_t bw, uint16_t fcnt) {
     uint8_t buff[16];
     uint32_t freq_reg;
     int32_t val;
@@ -288,8 +288,20 @@ int sx1262fe_send_pkt(uint32_t freq_hz, uint8_t sf, uint32_t bw) {
     lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_1_MODEM_START, 1);
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS, 0);
 
+#if 0 /* TODO: how to do continuous lora modulation ?*/
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS, 1);
+    lgw_reg_w(SX1302_REG_TX_TOP_B_TX_CFG1_0_FRAME_NB, 2);
+#endif
+
+    /* Uplink configuration */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_INVERT, 0); /* non-inverted */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_IMPLICIT_HEADER, 0); /*  */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CRC_EN, 1); /*  */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS, 3); /*  */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS, 4); /*  */
+    
     /* Set TX start delay */
-    tx_start_delay = 1500 * 32; /* us */ /* TODO: which value should we put?? */
+    tx_start_delay = 1000 * 32; /* us */ /* TODO: which value should we put?? */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 8));
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 0));
 
@@ -298,7 +310,16 @@ int sx1262fe_send_pkt(uint32_t freq_hz, uint8_t sf, uint32_t bw) {
     lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH, payload_len);
 
     /* Write payload in transmit buffer */
-    for (i = 0; i < 255; i++) {
+    payload[0] = 0x40; /* Confirmed Data Up */
+    payload[1] = 0xAB;
+    payload[2] = 0xAB;
+    payload[3] = 0xAB;
+    payload[4] = 0xAB;
+    payload[5] = 0x00; /* FCTrl */
+    payload[6] = (uint8_t)(fcnt >> 0); /* FCnt */
+    payload[7] = (uint8_t)(fcnt >> 8); /* FCnt */
+    payload[8] = 0x02; /* FPort */
+    for (i = 9; i < 255; i++) {
         payload[i] = i;
     }
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CTRL_WRITE_BUFFER, 0x01);
@@ -309,6 +330,10 @@ int sx1262fe_send_pkt(uint32_t freq_hz, uint8_t sf, uint32_t bw) {
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
 
     do {
+        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_STATE_STATUS, &val);
+        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE, &val);
+        //lgw_reg_r(SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE, &val);
+        //printf("cont done 0x%02X\n", val);
         lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
         wait_ms(10);
     } while (val != 0x80);
@@ -397,6 +422,10 @@ int main(int argc, char **argv)
     }
 
     printf("===== sx1302 sx1262fe TX test =====\n");
+
+    /* Board reset */
+    system("./reset_lgw.sh start");
+
     lgw_connect();
 
     x = sx1262fe_init();
@@ -412,7 +441,7 @@ int main(int argc, char **argv)
     }
 
     for (i = 0; i < (int)nb_pkt; i++) {
-        sx1262fe_send_pkt(ft, sf, bw);
+        sx1262fe_send_pkt(ft, sf, bw, (uint16_t)i);
     }
 
     sx1262fe_set_idle();
