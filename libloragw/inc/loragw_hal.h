@@ -10,7 +10,6 @@ Description:
     TODO
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -29,8 +28,7 @@ Maintainer: Sylvain Miermont
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 
 #define IS_LORA_BW(bw)          ((bw == BW_125KHZ) || (bw == BW_250KHZ) || (bw == BW_500KHZ))
-#define IS_LORA_STD_DR(dr)      ((dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
-#define IS_LORA_MULTI_DR(dr)    ((dr & ~DR_LORA_MULTI) == 0) /* ones outside of DR_LORA_MULTI bitmask -> not a combination of LoRa datarates */
+#define IS_LORA_DR(dr)          ((dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
 #define IS_LORA_CR(cr)          ((cr == CR_LORA_4_5) || (cr == CR_LORA_4_6) || (cr == CR_LORA_4_7) || (cr == CR_LORA_4_8))
 
 #define IS_FSK_BW(bw)           ((bw >= 1) && (bw <= 7))
@@ -85,24 +83,19 @@ Maintainer: Sylvain Miermont
 /* values available for the 'bandwidth' parameters (LoRa & FSK) */
 /* NOTE: directly encode FSK RX bandwidth, do not change */
 #define BW_UNDEFINED    0
-#define BW_500KHZ       0x01
-#define BW_250KHZ       0x02
-#define BW_125KHZ       0x03
-#define BW_62K5HZ       0x04
-#define BW_31K2HZ       0x05
-#define BW_15K6HZ       0x06
-#define BW_7K8HZ        0x07
+#define BW_500KHZ       0x06
+#define BW_250KHZ       0x05
+#define BW_125KHZ       0x04
 
 /* values available for the 'datarate' parameters */
 /* NOTE: LoRa values used directly to code SF bitmask in 'multi' modem, do not change */
 #define DR_UNDEFINED    0
-#define DR_LORA_SF7     0x02
-#define DR_LORA_SF8     0x04
-#define DR_LORA_SF9     0x08
-#define DR_LORA_SF10    0x10
-#define DR_LORA_SF11    0x20
-#define DR_LORA_SF12    0x40
-#define DR_LORA_MULTI   0x7E
+#define DR_LORA_SF7     7
+#define DR_LORA_SF8     8
+#define DR_LORA_SF9     9
+#define DR_LORA_SF10    10
+#define DR_LORA_SF11    11
+#define DR_LORA_SF12    12
 /* NOTE: for FSK directly use baudrate between 500 bauds and 250 kbauds */
 #define DR_FSK_MIN      500
 #define DR_FSK_MAX      250000

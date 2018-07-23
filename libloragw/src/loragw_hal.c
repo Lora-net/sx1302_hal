@@ -46,9 +46,11 @@ Maintainer: Sylvain Miermont
     #define CHECK_NULL(a)                 if(a==NULL){return LGW_HAL_ERROR;}
 #endif
 
-//#define IF_HZ_TO_REG(f)     (f << 5)/15625
 #define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
+
+#define SX1262FE_FREQ_TO_REG(f)     (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
+#define SX1302_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
@@ -228,10 +230,6 @@ int32_t lgw_bw_getval(int x) {
         case BW_500KHZ: return 500000;
         case BW_250KHZ: return 250000;
         case BW_125KHZ: return 125000;
-        case BW_62K5HZ: return 62500;
-        case BW_31K2HZ: return 31200;
-        case BW_15K6HZ: return 15600;
-        case BW_7K8HZ : return 7800;
         default: return -1;
     }
 }
@@ -385,7 +383,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
-            if (!IS_LORA_STD_DR(conf.datarate)) {
+            if (!IS_LORA_DR(conf.datarate)) {
                 DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
@@ -394,7 +392,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             if_rf_chain[if_chain] = conf.rf_chain;
             if_freq[if_chain] = conf.freq_hz;
             lora_rx_bw = conf.bandwidth;
-            lora_rx_sf = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
+            lora_rx_sf = conf.datarate;
             if (SET_PPM_ON(conf.bandwidth, conf.datarate)) {
                 lora_rx_ppm_offset = true;
             } else {
@@ -410,14 +408,14 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 conf.bandwidth = BW_125KHZ;
             }
             if (conf.datarate == DR_UNDEFINED) {
-                conf.datarate = DR_LORA_MULTI;
+                conf.datarate = DR_LORA_SF7;
             }
             /* check BW & DR */
             if (conf.bandwidth != BW_125KHZ) {
                 DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
-            if (!IS_LORA_MULTI_DR(conf.datarate)) {
+            if (!IS_LORA_DR(conf.datarate)) {
                 DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
@@ -425,7 +423,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             if_enable[if_chain] = conf.enable;
             if_rf_chain[if_chain] = conf.rf_chain;
             if_freq[if_chain] = conf.freq_hz;
-            lora_multi_sfmask[if_chain] = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
+            lora_multi_sfmask[if_chain] = conf.datarate;
 
             DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
             break;
@@ -633,10 +631,149 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
-    /* TODO */
-    if (pkt_data.freq_hz == 0) {}; /* dummy */
+    uint8_t buff[16];
+    uint32_t freq_reg;
+    uint32_t freq_dev;
+    int32_t val;
+    uint16_t tx_start_delay;
 
-    return LGW_HAL_SUCCESS;
+#if 1 /* TODO: should be done by AGC fw */
+    /* give radio control to HOST */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
+
+    /* Configure radio */
+    buff[0] = 0x08;
+    buff[1] = 0xE6;
+    buff[2] = 0x1C;
+    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* ?? */
+
+    buff[0] = 0x01; /* LoRa */
+    sx1262fe_write_command(SET_PACKET_TYPE, buff, 1);
+
+    freq_reg = SX1262FE_FREQ_TO_REG(pkt_data.freq_hz);
+    buff[0] = (uint8_t)(freq_reg >> 24);
+    buff[1] = (uint8_t)(freq_reg >> 16);
+    buff[2] = (uint8_t)(freq_reg >> 8);
+    buff[3] = (uint8_t)(freq_reg >> 0);
+    sx1262fe_write_command(SET_RF_FREQUENCY, buff, 4);
+
+    buff[0] = 0x0E; /* power */
+    buff[1] = 0x02; /* RAMP_40U */
+    sx1262fe_write_command(SET_TX_PARAMS, buff, 2);
+
+    buff[0] = 0x04; /* paDutyCycle */
+    buff[1] = 0x07; /* hpMax */
+    buff[2] = 0x00; /* deviceSel */
+    buff[3] = 0x01; /* paLut */
+    sx1262fe_write_command(SET_PA_CONFIG, buff, 4); /* SX1262 Output Power +22dBm */
+
+    /* give radio control to AGC MCU */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
+#endif
+
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL, 0x00); /* VCO divider by 2 */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x01); /* LoRa */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* SX126x Tx RFFE */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Modulation */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x01); /* Data on falling edge */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE, 0x00); /* LoRa */
+
+    /* Set Tx frequency */
+    freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF, (freq_reg >> 16) & 0xFF);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF, (freq_reg >> 8) & 0xFF);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, (freq_reg >> 0) & 0xFF);
+
+    /* Set bandwidth */
+    printf("Bandwidth %dkHz\n", (int)(lgw_bw_getval(pkt_data.bandwidth) / 1E3));
+    freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
+    freq_reg = SX1302_FREQ_TO_REG(freq_dev);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, (freq_reg >>  8) & 0xFF);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, (freq_reg >>  0) & 0xFF);
+
+    /* Condifure modem */
+    switch (pkt_data.modulation) {
+        case MOD_LORA:
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW, pkt_data.bandwidth);
+
+            /* Preamble length */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_3_PREAMBLE_SYMB_NB, (pkt_data.preamble >> 8) & 0xFF); /* MSB */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_2_PREAMBLE_SYMB_NB, (pkt_data.preamble >> 0) & 0xFF); /* LSB */
+
+            /* LoRa datarate */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_SF, pkt_data.datarate);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS, 7);
+
+            /* Start LoRa modem */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_MODEM_EN, 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CADRXTX, 2);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_1_MODEM_START, 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS, 0);
+
+#if 0 /* TODO: how to do continuous lora modulation ?*/
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS, 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_B_TX_CFG1_0_FRAME_NB, 2);
+#endif
+
+            /*  */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_INVERT, (pkt_data.invert_pol) ? 1 : 0);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_IMPLICIT_HEADER, (pkt_data.no_header) ? 1 : 0); /*  */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CRC_EN, (pkt_data.no_crc) ? 0 : 1); /*  */
+
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS, 3); /*  */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS, 4); /*  */
+
+            /* Set Payload length */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH, pkt_data.size);
+            break;
+        default:
+            printf("ERROR: Modulation not supported\n");
+            return LGW_HAL_ERROR;
+    }
+
+    /* Set TX start delay */
+    tx_start_delay = 1500 * 32; /* us */ /* TODO: which value should we put?? */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 8));
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 0));
+
+    /* Write payload in transmit buffer */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CTRL_WRITE_BUFFER, 0x01);
+    lgw_mem_wb(0x5300, &(pkt_data.payload[0]), pkt_data.size);
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CTRL_WRITE_BUFFER, 0x00);
+
+    /* Trigger transmit */
+    printf("Start Tx: Freq:%u SF%u size:%u\n", pkt_data.freq_hz, pkt_data.datarate, pkt_data.size);
+    switch (pkt_data.tx_mode) {
+        case IMMEDIATE:
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
+            break;
+        case TIMESTAMPED:
+            lgw_reg_w(SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED, 0x01);
+            break;
+        case ON_GPS:
+            lgw_reg_w(SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_GPS, 0x01);
+            break;
+        default:
+            printf("ERROR: TX mode not supported\n");
+            return LGW_HAL_ERROR;
+    }
+
+#if 1
+    /* TODO: should be done by AGC fw? */
+    do {
+        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_STATE_STATUS, &val);
+        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE, &val);
+        //lgw_reg_r(SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE, &val);
+        //printf("cont done 0x%02X\n", val);
+        lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
+        wait_ms(10);
+    } while (val != 0x80);
+
+    printf("Stop Tx\n");
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00);
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
