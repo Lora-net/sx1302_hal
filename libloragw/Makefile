@@ -21,7 +21,7 @@ LIBS := -lloragw -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_sx1262fe_tx test_loragw_agc_fw
+all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_sx1262fe_tx test_loragw_hal_tx
 
 clean:
 	rm -f libloragw.a
@@ -77,7 +77,7 @@ test_loragw_reg: tst/test_loragw_reg.c libloragw.a
 test_loragw_sx1262fe_tx: tst/test_loragw_sx1262fe_tx.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
-test_loragw_agc_fw: tst/test_loragw_agc_fw.c libloragw.a
+test_loragw_hal_tx: tst/test_loragw_hal_tx.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 ### EOF
