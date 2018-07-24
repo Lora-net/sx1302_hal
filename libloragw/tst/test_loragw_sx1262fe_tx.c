@@ -7,7 +7,7 @@
   (C)2018 Semtech
 
 Description:
-    Minimum test program for the loragw_spi 'library'
+    TODO
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
