@@ -175,7 +175,7 @@
         "once": false,
         "onceDelay": 0.1,
         "x": 110,
-        "y": 580,
+        "y": 680,
         "wires": [
             [
                 "67447ab8.c38edc"
@@ -191,7 +191,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 290,
-        "y": 580,
+        "y": 680,
         "wires": [
             [
                 "b1b0d974.6ae61"
@@ -208,7 +208,7 @@
         "createDir": false,
         "overwriteFile": "true",
         "x": 620,
-        "y": 580,
+        "y": 680,
         "wires": []
     },
     {
@@ -586,6 +586,59 @@
         "wires": [
             [
                 "f6871b6f.167d"
+            ]
+        ]
+    },
+    {
+        "id": "38f6ab4d.eba4b4",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/rx_top.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 370,
+        "y": 580,
+        "wires": [
+            [
+                "f464e634.1500a8"
+            ]
+        ]
+    },
+    {
+        "id": "f464e634.1500a8",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 580,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "4dd5087.c34c178",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "rx_top",
+        "topic": "rx_top",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 90,
+        "y": 580,
+        "wires": [
+            [
+                "38f6ab4d.eba4b4"
             ]
         ]
     }
