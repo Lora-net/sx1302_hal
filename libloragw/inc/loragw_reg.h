@@ -44,6 +44,10 @@ int reg_w_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value);
 
 /* -------------------------------------------------------------------------- */
+/* --- PUBLIC MACROS -------------------------------------------------------- */
+#define REG_SELECT(rf_chain, a, b) ((rf_chain == 0) ? a : b)
+
+/* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 #define LGW_REG_SUCCESS  0
@@ -361,7 +365,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size);
 */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
 
-int lgw_mem_wb(uint16_t mem_addr, uint8_t *data, uint16_t size);
+int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size);
 int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size);
 
 #endif

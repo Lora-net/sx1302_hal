@@ -615,7 +615,7 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_mem_wb(uint16_t mem_addr, uint8_t *data, uint16_t size) {
+int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
     int spi_stat = LGW_SPI_SUCCESS;
 
     /* check input parameters */

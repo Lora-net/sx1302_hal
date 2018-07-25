@@ -81,7 +81,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read

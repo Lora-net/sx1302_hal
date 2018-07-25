@@ -239,7 +239,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
+int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int spi_device;
     uint8_t command[3];
     uint8_t command_size;
