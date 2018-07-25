@@ -654,7 +654,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_dev;
     int32_t val;
     uint16_t tx_start_delay;
-    uint16_t reg_id;
 
     /* Check if there is a TX on-going */
     /* TODO */
@@ -696,7 +695,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x01); /* LoRa */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* SX126x Tx RFFE */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Modulation */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x01); /* Data on falling edge */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
     lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE, 0x00); /* LoRa */
 
     /* Set Tx frequency */

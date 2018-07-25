@@ -199,7 +199,7 @@ int sx1262fe_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf,
 
     /* Tx RFFE interface control (TxRffeIfCtrl) */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL, 0x00); /* VCO divider by 2 */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x01); /* 1:Data on falling edge */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* 0: Data on riding edge 1:Data on falling edge */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* 0: Freq. synthesis, 1: Modulation */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* 1: SX126x Tx RFFE */
 
