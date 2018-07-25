@@ -84,10 +84,11 @@ typedef enum {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1262fe_write_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1262fe_write_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1262fe_read_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
 
-int sx1262fe_setup(void);
+int sx1262fe_reset(uint8_t rf_chain);
+int sx1262fe_setup(uint8_t rf_chain);
 
 #endif
 

@@ -27,6 +27,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <linux/spi/spidev.h>
 
 #include "loragw_spi.h"
+#include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_sx1262fe.h"
 
@@ -57,7 +58,7 @@ extern void *lgw_spi_target; /*! generic pointer to the SPI device */
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1262fe_write_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size) {
+int sx1262fe_write_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size) {
     int spi_device;
     int cmd_size = 2; /* header + op_code */
     uint8_t out_buf[cmd_size + size];
@@ -74,7 +75,7 @@ int sx1262fe_write_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t s
     spi_device = *(int *)lgw_spi_target; /* must check that spi_target is not null beforehand */
 
     /* prepare frame to be sent */
-    out_buf[0] = LGW_SPI_MUX_TARGET_RADIOA;
+    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
     out_buf[1] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
@@ -100,7 +101,9 @@ int sx1262fe_write_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t s
     }
 }
 
-int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size) {
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1262fe_read_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size) {
     int spi_device;
     int cmd_size = 2; /* header + op_code + NOP */
     uint8_t out_buf[cmd_size + size];
@@ -119,7 +122,7 @@ int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t si
     spi_device = *(int *)lgw_spi_target; /* must check that spi_target is not null beforehand */
 
     /* prepare frame to be sent */
-    out_buf[0] = LGW_SPI_MUX_TARGET_RADIOA;
+    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
     out_buf[1] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
@@ -146,47 +149,67 @@ int sx1262fe_read_command(sx1262fe_op_code_t op_code, uint8_t *data, uint16_t si
     }
 }
 
-int sx1262fe_setup(void) {
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1262fe_reset(uint8_t rf_chain) {
+    uint16_t reg_id;
+
+    reg_id = REG_SELECT(rf_chain, SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN,  SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN);
+    lgw_reg_w(reg_id,  0x01);
+
+    reg_id = REG_SELECT(rf_chain, SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST);
+    lgw_reg_w(reg_id, 0x01);
+    wait_ms(500);
+    lgw_reg_w(reg_id, 0x00);
+    wait_ms(10);
+    lgw_reg_w(reg_id, 0x01);
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1262fe_setup(uint8_t rf_chain) {
     uint8_t buff[16];
 
     /* Set Radio in Standby mode */
     buff[0] = (uint8_t)STDBY_XOSC;
-    sx1262fe_write_command(SET_STANDBY, buff, 1);
+    sx1262fe_write_command(rf_chain, SET_STANDBY, buff, 1);
     buff[0] = 0x00;
-    sx1262fe_read_command(GET_STATUS, buff, 1);
+    sx1262fe_read_command(rf_chain, GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
     /* Configure DIO for Rx */
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Drive strength to min */
+    sx1262fe_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Drive strength to min */
     buff[0] = 0x05;
     buff[1] = 0x83;
     buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
+    sx1262fe_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
     buff[0] = 0x05;
     buff[1] = 0x84;
     buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* No pull up */
+    sx1262fe_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* No pull up */
     buff[0] = 0x05;
     buff[1] = 0x85;
     buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* No pull down */
+    sx1262fe_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* No pull down */
     buff[0] = 0x05;
     buff[1] = 0x80;
     buff[2] = 0x00;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
+    sx1262fe_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x08;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
+    sx1262fe_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
     /* Set Radio in Rx mode, necessary to give a clock to SX1302 */
     buff[0] = 0xFF;
     buff[1] = 0xFF;
     buff[2] = 0xFF;
-    sx1262fe_write_command(SET_RX, buff, 3); /* Rx Continuous */
+    sx1262fe_write_command(rf_chain, SET_RX, buff, 3); /* Rx Continuous */
 
     return 0;
 }
