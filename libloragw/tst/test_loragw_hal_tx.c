@@ -77,6 +77,7 @@ int main(int argc, char **argv)
     double arg_d = 0.0;
     unsigned int arg_u;
 
+    struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_pkt_tx_s pkt;
 
@@ -157,6 +158,10 @@ int main(int argc, char **argv)
     system("./reset_lgw.sh start");
 
     /* Configure the gateway */
+    memset( &boardconf, 0, sizeof boardconf);
+    boardconf.lorawan_public = true;
+    boardconf.clksrc = 0;
+
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = true;
     rfconf.freq_hz = 868500000;
@@ -169,6 +174,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    /* Send packets */
     memset(&pkt, 0, sizeof pkt);
     pkt.freq_hz = ft;
     pkt.tx_mode = IMMEDIATE;
@@ -203,6 +209,7 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Stop the gateway */
     x = lgw_stop();
     if (x != 0) {
         printf("ERROR: failed to stop the gateway\n");

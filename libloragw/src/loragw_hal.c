@@ -55,6 +55,9 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
+/* all the code that should be enabled on final board */
+#define __SX1302_TODO__     0
+
 #define MCU_ARB             0
 #define MCU_AGC             1
 #define MCU_ARB_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
@@ -157,7 +160,7 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-int load_firmware_agc(void);
+int load_firmware_agc(const uint8_t * firmware);
 
 void lgw_constant_adjust(void);
 
@@ -168,7 +171,7 @@ int32_t lgw_bw_getval(int x);
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 /* size is the firmware size in bytes (not 14b words) */
-int load_firmware_agc(void) {
+int load_firmware_agc(const uint8_t *firmware) {
     int i;
     uint8_t fw_check[8192];
     int32_t gpio_sel = 0x01;
@@ -190,15 +193,15 @@ int load_firmware_agc(void) {
     lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
 
     /* Write AGC fw in AGC MEM */
-    for(i=0; i<8; i++) {
-        lgw_mem_wb(0x0000+(i*1024), &agc_firmware[i*1024], 1024);
+    for (i = 0; i < 8; i++) {
+        lgw_mem_wb(0x0000+(i*1024), &firmware[i*1024], 1024);
     }
 
     /* Read back and check */
-    for(i=0; i<8; i++) {
+    for (i = 0; i < 8; i++) {
         lgw_mem_rb(0x0000+(i*1024), &fw_check[i*1024], 1024);
     }
-    if (memcmp(agc_firmware, fw_check, 8192) != 0) {
+    if (memcmp(firmware, fw_check, 8192) != 0) {
         printf ("ERROR: Failed to load fw\n");
         return -1;
     }
@@ -515,8 +518,10 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
+    int i;
     uint32_t val, val2;
     int reg_stat;
+    uint8_t reg_id;
 
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
@@ -532,20 +537,29 @@ int lgw_start(void) {
 
     /* gate clocks */
 
-    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, 0x01);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
-    wait_ms(500);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x00);
-    wait_ms(10);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
-
     /* setup the radios */
     switch (rf_radio_type[0]) {
         case LGW_RADIO_TYPE_SX1262FE:
-            sx1262fe_setup();
+            for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+                if (rf_enable[i] == true) {
+                    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
+                    sx1262fe_reset(0);
+                    /* Configure the radio */
+                    sx1262fe_setup(0);
+                } else {
+                    /* TODO: set ot idle ? */
+                }
+            }
             /* Set RADIO_A to SX1262FE_MODE */
             lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
+#if __SX1302_TODO__
+            lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x01);
+#endif
+            /* Switch SX1302 clock from SPI clock to radio clock */
+            reg_id = REG_SELECT(rf_clkout, SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL);
+            lgw_reg_w(reg_id, 0x01);
+            break;
+        case LGW_RADIO_TYPE_SX1257:
             break;
         default:
             printf("ERROR: radio not supported\n");
@@ -555,11 +569,7 @@ int lgw_start(void) {
     /* Enable clock divider (Mandatory) */
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01);
 
-    /* Switch SX1302 clock from SPI clock to radio clock */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
-
-#if 1 /* Sanity check */ /* TODO: to be removed */
+#if !__SX1302_TODO__ /* Sanity check */ /* TODO: to be removed */
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val);
     lgw_get_instcnt(&val2);
@@ -603,7 +613,15 @@ int lgw_start(void) {
     /* configure FSK modem */
 
     /* Load firmware */
-    load_firmware_agc(); /* TODO: check version */
+    switch (rf_radio_type[0]) {
+        case LGW_RADIO_TYPE_SX1262FE:
+            load_firmware_agc(agc_firmware); /* TODO: check version */
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            break;
+        default:
+            break;
+    }
 
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;
@@ -636,36 +654,39 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_dev;
     int32_t val;
     uint16_t tx_start_delay;
+    uint16_t reg_id;
 
-#if 1 /* TODO: should be done by AGC fw */
+    /* Check if there is a TX on-going */
+    /* TODO */
+
+#if !__SX1302_TODO__ /* TODO: should be done by AGC fw */
     /* give radio control to HOST */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
 
-    /* Configure radio */
     buff[0] = 0x08;
     buff[1] = 0xE6;
     buff[2] = 0x1C;
-    sx1262fe_write_command(WRITE_REGISTER, buff, 3); /* ?? */
+    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* ?? */
 
     buff[0] = 0x01; /* LoRa */
-    sx1262fe_write_command(SET_PACKET_TYPE, buff, 1);
+    sx1262fe_write_command(0, SET_PACKET_TYPE, buff, 1);
 
     freq_reg = SX1262FE_FREQ_TO_REG(pkt_data.freq_hz);
     buff[0] = (uint8_t)(freq_reg >> 24);
     buff[1] = (uint8_t)(freq_reg >> 16);
     buff[2] = (uint8_t)(freq_reg >> 8);
     buff[3] = (uint8_t)(freq_reg >> 0);
-    sx1262fe_write_command(SET_RF_FREQUENCY, buff, 4);
+    sx1262fe_write_command(0, SET_RF_FREQUENCY, buff, 4);
 
     buff[0] = 0x0E; /* power */
     buff[1] = 0x02; /* RAMP_40U */
-    sx1262fe_write_command(SET_TX_PARAMS, buff, 2);
+    sx1262fe_write_command(0, SET_TX_PARAMS, buff, 2);
 
     buff[0] = 0x04; /* paDutyCycle */
     buff[1] = 0x07; /* hpMax */
     buff[2] = 0x00; /* deviceSel */
     buff[3] = 0x01; /* paLut */
-    sx1262fe_write_command(SET_PA_CONFIG, buff, 4); /* SX1262 Output Power +22dBm */
+    sx1262fe_write_command(0, SET_PA_CONFIG, buff, 4); /* SX1262 Output Power +22dBm */
 
     /* give radio control to AGC MCU */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
