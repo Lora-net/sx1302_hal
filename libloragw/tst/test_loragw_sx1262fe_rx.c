@@ -344,6 +344,9 @@ int sx1262fe_receive(void) {
     uint8_t buff[2];
     uint8_t fifo[1024];
     int i;
+    int idx;
+    uint8_t payload_size;
+    uint32_t count_us;
 
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
     nb_bytes  = (uint16_t)((buff[0] << 8) & 0xFF00);
@@ -357,12 +360,45 @@ int sx1262fe_receive(void) {
     if (nb_bytes > 0) {
         printf("nb_bytes received: %u (%u %u)\n", nb_bytes, buff[1], buff[0]);
 
+        /* read bytes from fifo */
         memset(fifo, 0, sizeof fifo);
         lgw_mem_rb(0x4000, fifo, nb_bytes);
         for (i = 0; i < nb_bytes; i++) {
             printf("%02X ", fifo[i]);
         }
         printf("\n");
+
+        /* parse packet */
+        idx = 0;
+        while (idx < nb_bytes) {
+            if ((fifo[idx] == 0xA5) && (fifo[idx+1] == 0xC0)) {
+                /* we found the start of a packet, parse it */
+                printf("---------- Packet:\n");
+                payload_size = fifo[idx+2];
+                printf("  size:     %u\n", payload_size);
+                printf("  chan:     %u\n", fifo[idx+3]);
+                printf("  crc_en:   %u\n", TAKE_N_BITS_FROM(fifo[idx+4], 0, 1));
+                printf("  codr:     %u\n", TAKE_N_BITS_FROM(fifo[idx+4], 1, 3));
+                printf("  datr:     %u\n", TAKE_N_BITS_FROM(fifo[idx+4], 4, 4));
+                printf("  modem:    %u\n", fifo[idx+5]);
+                printf("  payload: ");
+                for (i = 0; i < payload_size; i++) {
+                    printf("%02X ", fifo[idx+6+i]);
+                }
+                printf("\n");
+                printf("  status:   %u\n", TAKE_N_BITS_FROM(fifo[idx+6+payload_size], 0, 1));
+                printf("  snr_avg:  %u\n", fifo[idx+7+payload_size]);
+                printf("  rssi_chan:%u\n", fifo[idx+8+payload_size]);
+                printf("  rssi_sig: %u\n", fifo[idx+9+payload_size]);
+                count_us  = (uint32_t)((fifo[idx+12+payload_size] <<  0) & 0x000000FF);
+                count_us |= (uint32_t)((fifo[idx+13+payload_size] <<  8) & 0x0000FF00);
+                count_us |= (uint32_t)((fifo[idx+14+payload_size] << 16) & 0x00FF0000);
+                count_us |= (uint32_t)((fifo[idx+15+payload_size] << 24) & 0xFF000000);
+                printf("  timestamp:%u (count_us:%u)\n", count_us, count_us/32);
+            }
+            idx += 1;
+        }
+
     }
 
     return 0;
