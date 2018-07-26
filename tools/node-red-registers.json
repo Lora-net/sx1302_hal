@@ -175,7 +175,7 @@
         "once": false,
         "onceDelay": 0.1,
         "x": 110,
-        "y": 680,
+        "y": 720,
         "wires": [
             [
                 "67447ab8.c38edc"
@@ -191,7 +191,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 290,
-        "y": 680,
+        "y": 720,
         "wires": [
             [
                 "b1b0d974.6ae61"
@@ -208,7 +208,7 @@
         "createDir": false,
         "overwriteFile": "true",
         "x": 620,
-        "y": 680,
+        "y": 720,
         "wires": []
     },
     {
@@ -639,6 +639,59 @@
         "wires": [
             [
                 "38f6ab4d.eba4b4"
+            ]
+        ]
+    },
+    {
+        "id": "28e533a1.3ef5ac",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/arb_mcu.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 640,
+        "wires": [
+            [
+                "3c2109da.3df84e"
+            ]
+        ]
+    },
+    {
+        "id": "3c2109da.3df84e",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 640,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "c3a46357.bf67c",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "arb_mcu",
+        "topic": "arb_mcu",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 640,
+        "wires": [
+            [
+                "28e533a1.3ef5ac"
             ]
         ]
     }
