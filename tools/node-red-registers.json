@@ -175,7 +175,7 @@
         "once": false,
         "onceDelay": 0.1,
         "x": 110,
-        "y": 720,
+        "y": 760,
         "wires": [
             [
                 "67447ab8.c38edc"
@@ -191,7 +191,7 @@
         "outputs": 1,
         "noerr": 0,
         "x": 290,
-        "y": 720,
+        "y": 760,
         "wires": [
             [
                 "b1b0d974.6ae61"
@@ -208,7 +208,7 @@
         "createDir": false,
         "overwriteFile": "true",
         "x": 620,
-        "y": 720,
+        "y": 760,
         "wires": []
     },
     {
@@ -692,6 +692,59 @@
         "wires": [
             [
                 "28e533a1.3ef5ac"
+            ]
+        ]
+    },
+    {
+        "id": "b3ed4e4f.fbd358",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/radio_fe.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 700,
+        "wires": [
+            [
+                "37f7e33f.14dc6c"
+            ]
+        ]
+    },
+    {
+        "id": "37f7e33f.14dc6c",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 700,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "e9006ee1.8d154",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "radio_fe",
+        "topic": "radio_fe",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 700,
+        "wires": [
+            [
+                "b3ed4e4f.fbd358"
             ]
         ]
     }
