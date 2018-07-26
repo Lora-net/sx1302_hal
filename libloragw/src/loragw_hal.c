@@ -174,7 +174,7 @@ int32_t lgw_bw_getval(int x);
 int load_firmware_agc(const uint8_t *firmware) {
     int i;
     uint8_t fw_check[8192];
-    int32_t gpio_sel = 0x01;
+    int32_t gpio_sel = 0x01; /* AGC MCU */
 
     /* Configure GPIO to let AGC MCU access board LEDs */
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
