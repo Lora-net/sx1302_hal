@@ -29,6 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <assert.h>
 
 #include "loragw_reg.h"
 #include "loragw_sx1262fe.h"
@@ -46,9 +47,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define BUFF_SIZE           1024
 #define DEFAULT_FREQ_HZ     868500000U
-#define DEFAULT_SF          7U
-#define DEFAULT_BW_HZ       125000U
-#define DEFAULT_TX_DURATION 60U
 
 #define MOD_CW              0
 #define MOD_LORA            1
@@ -344,12 +342,28 @@ int sx1262fe_configure_channels(void) {
 int sx1262fe_receive(void) {
     uint16_t nb_bytes;
     uint8_t buff[2];
+    uint8_t fifo[1024];
+    int i;
 
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
     nb_bytes  = (uint16_t)((buff[0] << 8) & 0xFF00);
     nb_bytes |= (uint16_t)((buff[1] << 0) & 0x00FF);
 
-    printf("nb_bytes received: %u (%u %u)\n", nb_bytes, buff[1], buff[0]);
+    if (nb_bytes > 1024) {
+        printf("ERROR: more than 1024 bytes in the FIFO, to be reworked\n");
+        assert(0);
+    }
+
+    if (nb_bytes > 0) {
+        printf("nb_bytes received: %u (%u %u)\n", nb_bytes, buff[1], buff[0]);
+
+        memset(fifo, 0, sizeof fifo);
+        lgw_mem_rb(0x4000, fifo, nb_bytes);
+        for (i = 0; i < nb_bytes; i++) {
+            printf("%02X ", fifo[i]);
+        }
+        printf("\n");
+    }
 
     return 0;
 }
@@ -363,23 +377,16 @@ void usage(void) {
     printf( "Available options:\n");
     printf( " -h print this help\n");
     printf( " -f <float> Radio RX frequency in MHz\n");
-    printf( " -s <uint> LoRa datarate [7..12]\n");
-    printf( " -b <uint> LoRa bandwidth in khz [125, 250, 500]\n");
-    printf( " -t <uint> TX duration in seconds\n");
 }
 
 int main(int argc, char **argv)
 {
     int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
-    uint8_t sf = DEFAULT_SF;
-    uint32_t bw = DEFAULT_BW_HZ;
-    uint32_t tx_duration = DEFAULT_TX_DURATION;
     double arg_d = 0.0;
-    unsigned int arg_u;
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hf:s:b:t:")) != -1) {
+    while ((i = getopt (argc, argv, "hf:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -392,33 +399,6 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                }
-                break;
-            case 's': /* <uint> LoRa datarate */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u < 7) || (arg_u > 12)) {
-                    printf("ERROR: argument parsing of -s argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    sf = (uint8_t)arg_u;
-                }
-                break;
-            case 'b': /* <uint> LoRa bandwidth in khz */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 125) && (arg_u != 250) && (arg_u != 500))) {
-                    printf("ERROR: argument parsing of -b argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    bw = (uint32_t)(arg_u * 1E3);
-                }
-                break;
-            case 't': /* <uint> TX duration in seconds */
-                i = sscanf(optarg, "%u", &arg_u);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -t argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    tx_duration = (uint32_t)arg_u;
                 }
                 break;
             default:
