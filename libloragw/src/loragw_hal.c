@@ -740,8 +740,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_IMPLICIT_HEADER, (pkt_data.no_header) ? 1 : 0); /*  */
             lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CRC_EN, (pkt_data.no_crc) ? 0 : 1); /*  */
 
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS, 3); /*  */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS, 4); /*  */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS, 6); /* public */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS, 8); /* public */
 
             /* Set Payload length */
             lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH, pkt_data.size);
