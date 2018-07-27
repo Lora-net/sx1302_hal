@@ -62,7 +62,7 @@ void usage(void) {
     printf( " -f <float> Radio TX frequency in MHz\n");
     printf( " -s <uint> LoRa datarate 0:random, [7..12]\n");
     printf( " -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
-    printf( " -x <uint> Number of packets to be sent\n");
+    printf( " -n <uint> Number of packets to be sent\n");
     printf( " -z <uint> size of packets to be sent 0:random, [9..255]\n");
 }
 
