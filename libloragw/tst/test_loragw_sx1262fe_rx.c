@@ -57,6 +57,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "src/arbiter_ludo.var"
 
+static uint32_t nb_pkt_received = 0;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
@@ -447,8 +449,9 @@ int sx1262fe_receive(void) {
         idx = 0;
         while (idx < nb_bytes) {
             if ((fifo[idx] == 0xA5) && (fifo[idx+1] == 0xC0)) {
+                nb_pkt_received += 1;
                 /* we found the start of a packet, parse it */
-                printf("\n-----new packet-----\n");
+                printf("\n----- new packet (%u) -----\n", nb_pkt_received);
                 payload_size = fifo[idx+2];
                 printf("  size:     %u\n", payload_size);
                 printf("  chan:     %u\n", fifo[idx+3]);
