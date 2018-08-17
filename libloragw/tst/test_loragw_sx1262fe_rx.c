@@ -118,6 +118,14 @@ int sx1262fe_init(uint32_t freq_hz) {
     buff[3] = (uint8_t)(freq_reg >> 0);
     sx1262fe_write_command(0, SET_RF_FREQUENCY, buff, 4);
 
+    /* Set frequency offset to 0 */
+    buff[0] = 0x08;
+    buff[1] = 0x8F;
+    buff[2] = 0x00;
+    buff[3] = 0x00;
+    buff[4] = 0x00;
+    sx1262fe_write_command(0, WRITE_REGISTER, buff, 5);
+
     /* Set Rx */
     buff[0] = 0xFF;
     buff[1] = 0xFF;
@@ -207,14 +215,14 @@ int sx1262fe_configure_channels(void) {
     int32_t cnt, cnt2;
     int32_t if_freq;
 
-    int32_t if0 = 400000;
-    int32_t if1 = 300000;
-    int32_t if2 = 500000;
-    int32_t if3 = 000000;
-    int32_t if4 = 000000;
-    int32_t if5 = 000000;
-    int32_t if6 = 000000;
-    int32_t if7 = 000000;
+    int32_t if0 = 700000;
+    int32_t if1 = 500000;
+    int32_t if2 = 300000;
+    int32_t if3 = 100000;
+    int32_t if4 = -100000;
+    int32_t if5 = -300000;
+    int32_t if6 = -500000;
+    int32_t if7 = -700000;
 
     printf("if0: %d (0x%04X)\n", IF_HZ_TO_REG(if0), IF_HZ_TO_REG(if0));
     printf("if1: %d (0x%04X)\n", IF_HZ_TO_REG(if1), IF_HZ_TO_REG(if1));
@@ -232,12 +240,6 @@ int sx1262fe_configure_channels(void) {
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_MSB_IF_FREQ_0, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_LSB_IF_FREQ_0, (if_freq >> 0) & 0x000000FF);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_MSB_IF_FREQ_0, 0x1E);
-    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_LSB_IF_FREQ_0, 0x80);
-
-    /* TODO: HOW TO CONFIGURE THOSE REGISTERS ?? */
-
-#if 0 /* TODO: not working when more than 1 channel defined ? */
     if_freq = IF_HZ_TO_REG(if1);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_1_MSB_IF_FREQ_1, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_1_LSB_IF_FREQ_1, (if_freq >> 0) & 0x000000FF);
@@ -265,7 +267,6 @@ int sx1262fe_configure_channels(void) {
     if_freq = IF_HZ_TO_REG(if7);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_MSB_IF_FREQ_7, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_LSB_IF_FREQ_7, (if_freq >> 0) & 0x000000FF);
-#endif
 
     /* Configure correlators */
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG1_ACC_2_SAME_PEAKS, 1);
