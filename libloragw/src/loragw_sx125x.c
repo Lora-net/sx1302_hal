@@ -154,7 +154,7 @@ int sx125x_reg_w(void *spi_target, uint8_t spi_mux_target, uint8_t address, uint
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
-    sx125x_reg_w(lgw_spi_target, channel, addr, data);
+    sx125x_reg_w(lgw_spi_target, ((channel == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), addr, data);
     return;
 }
 
@@ -162,7 +162,7 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
 
 uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     uint8_t read_value;
-    sx125x_reg_r(lgw_spi_target, channel, addr, &read_value);
+    sx125x_reg_r(lgw_spi_target, ((channel == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), addr, &read_value);
     return (uint8_t)read_value;
 }
 
@@ -191,6 +191,7 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
         DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
     }
 
+#if 0
     switch (rf_radio_type) {
         case LGW_RADIO_TYPE_SX1255:
             sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
@@ -202,6 +203,7 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type);
             break;
     }
+#endif
 
     if (rf_enable == true) {
         /* Tx gain and trim */

@@ -87,8 +87,8 @@ int sx125x_init(uint32_t freq_hz) {
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
 
     /* Configure radio */
-#if 0
-    lgw_setup_sx125x(LGW_SPI_MUX_TARGET_RADIOB, LGW_SPI_MUX_TARGET_RADIOB, true, LGW_RADIO_TYPE_SX1257, freq_hz);
+#if 1
+    lgw_setup_sx125x(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);
 #else
     {
         uint8_t val;
@@ -172,8 +172,6 @@ int sx125x_init(uint32_t freq_hz) {
 
         /* Enable PA driver */
         /* TODO */
-
-        //sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x00, 0); /* RegMode:StandbyEnable */
     }
 #endif
 
