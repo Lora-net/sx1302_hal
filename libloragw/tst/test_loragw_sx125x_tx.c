@@ -63,8 +63,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 int sx125x_init(void) {
     uint8_t version;
 
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
-
     /* Enable radio and perform chip reset */
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN, 0x01);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST, 0x01);
@@ -85,6 +83,9 @@ int sx125x_init(void) {
             printf("ERROR: failed to detect radio version (0x%02X)\n", version);
             break;
     }
+
+    /* Set radio mode */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
 
     /* Enable 32 MHz oscillator */
     sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x00, 0x01); /* MODE_REG_ADDR, REF_ENABLE */
