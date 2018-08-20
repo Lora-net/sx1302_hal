@@ -52,6 +52,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define MOD_LORA            1
 #define MOD_GFSK            2
 
+const int32_t channel_if[8] = {
+    700000,
+    500000,
+    300000,
+    100000,
+    -100000,
+    -300000,
+    -500000,
+    -700000
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -217,56 +228,47 @@ int sx1262fe_configure_channels(void) {
     int32_t cnt, cnt2;
     int32_t if_freq;
 
-    int32_t if0 = 700000;
-    int32_t if1 = 500000;
-    int32_t if2 = 300000;
-    int32_t if3 = 100000;
-    int32_t if4 = -100000;
-    int32_t if5 = -300000;
-    int32_t if6 = -500000;
-    int32_t if7 = -700000;
-
-    printf("if0: %d (0x%04X)\n", IF_HZ_TO_REG(if0), IF_HZ_TO_REG(if0));
-    printf("if1: %d (0x%04X)\n", IF_HZ_TO_REG(if1), IF_HZ_TO_REG(if1));
-    printf("if2: %d (0x%04X)\n", IF_HZ_TO_REG(if2), IF_HZ_TO_REG(if2));
-    printf("if3: %d (0x%04X)\n", IF_HZ_TO_REG(if3), IF_HZ_TO_REG(if3));
-    printf("if4: %d (0x%04X)\n", IF_HZ_TO_REG(if4), IF_HZ_TO_REG(if4));
-    printf("if5: %d (0x%04X)\n", IF_HZ_TO_REG(if5), IF_HZ_TO_REG(if5));
-    printf("if6: %d (0x%04X)\n", IF_HZ_TO_REG(if6), IF_HZ_TO_REG(if6));
-    printf("if7: %d (0x%04X)\n", IF_HZ_TO_REG(if7), IF_HZ_TO_REG(if7));
+    // printf("if0: %d (0x%04X)\n", IF_HZ_TO_REG(if0), IF_HZ_TO_REG(if0));
+    // printf("if1: %d (0x%04X)\n", IF_HZ_TO_REG(if1), IF_HZ_TO_REG(if1));
+    // printf("if2: %d (0x%04X)\n", IF_HZ_TO_REG(if2), IF_HZ_TO_REG(if2));
+    // printf("if3: %d (0x%04X)\n", IF_HZ_TO_REG(if3), IF_HZ_TO_REG(if3));
+    // printf("if4: %d (0x%04X)\n", IF_HZ_TO_REG(if4), IF_HZ_TO_REG(if4));
+    // printf("if5: %d (0x%04X)\n", IF_HZ_TO_REG(if5), IF_HZ_TO_REG(if5));
+    // printf("if6: %d (0x%04X)\n", IF_HZ_TO_REG(if6), IF_HZ_TO_REG(if6));
+    // printf("if7: %d (0x%04X)\n", IF_HZ_TO_REG(if7), IF_HZ_TO_REG(if7));
 
     /* Configure channelizer */
     lgw_reg_w(SX1302_REG_RX_TOP_RADIO_SELECT_RADIO_SELECT, 0x00); /* RadioA */
 
-    if_freq = IF_HZ_TO_REG(if0);
+    if_freq = IF_HZ_TO_REG(channel_if[0]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_MSB_IF_FREQ_0, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_LSB_IF_FREQ_0, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if1);
+    if_freq = IF_HZ_TO_REG(channel_if[1]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_1_MSB_IF_FREQ_1, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_1_LSB_IF_FREQ_1, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if2);
+    if_freq = IF_HZ_TO_REG(channel_if[2]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_2_MSB_IF_FREQ_2, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_2_LSB_IF_FREQ_2, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if3);
+    if_freq = IF_HZ_TO_REG(channel_if[3]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_3_MSB_IF_FREQ_3, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_3_LSB_IF_FREQ_3, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if4);
+    if_freq = IF_HZ_TO_REG(channel_if[4]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_4_MSB_IF_FREQ_4, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_4_LSB_IF_FREQ_4, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if5);
+    if_freq = IF_HZ_TO_REG(channel_if[5]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_5_MSB_IF_FREQ_5, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_5_LSB_IF_FREQ_5, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if6);
+    if_freq = IF_HZ_TO_REG(channel_if[6]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_6_MSB_IF_FREQ_6, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_6_LSB_IF_FREQ_6, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if7);
+    if_freq = IF_HZ_TO_REG(channel_if[7]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_MSB_IF_FREQ_7, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_LSB_IF_FREQ_7, (if_freq >> 0) & 0x000000FF);
 
@@ -530,6 +532,11 @@ int main(int argc, char **argv)
     lgw_connect();
 
     sx1262fe_init(ft);
+
+    printf("Channel configuration:\n");
+    for (i = 0; i < 8; i++) {
+        printf(" %d: %u Hz, if:%d Hz, reg:%d\n", i, (int32_t)ft + channel_if[i], channel_if[i], IF_HZ_TO_REG(channel_if[i]));
+    }
 
     x = sx1262fe_configure_channels();
     if (x != 0) {
