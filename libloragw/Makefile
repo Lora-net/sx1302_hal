@@ -48,7 +48,7 @@ inc/config.h: ../VERSION library.cfg
 	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
 	@echo "	#define DEBUG_GPIO	$(DEBUG_GPIO)" >> $@
 	@echo "	#define DEBUG_LBT	$(DEBUG_LBT)" >> $@
-	@echo "	#define DEBUG_SX1262FE	$(DEBUG_LBT)" >> $@
+	@echo "	#define DEBUG_RAD	$(DEBUG_RAD)" >> $@
 	# end of file
 	@echo "#endif" >> $@
 	@echo "*** Configuration seems ok ***"
