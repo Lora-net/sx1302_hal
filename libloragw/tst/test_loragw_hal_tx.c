@@ -165,7 +165,7 @@ int main(int argc, char **argv)
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = true;
     rfconf.freq_hz = 868500000;
-    rfconf.type = LGW_RADIO_TYPE_SX1262FE;
+    rfconf.type = LGW_RADIO_TYPE_SX1250;
     lgw_rxrf_setconf(0, rfconf);
 
     x = lgw_start();

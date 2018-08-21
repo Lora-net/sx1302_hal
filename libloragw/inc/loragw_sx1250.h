@@ -13,8 +13,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-#ifndef _LORAGW_SX1262FE_H
-#define _LORAGW_SX1262FE_H
+#ifndef _LORAGW_SX1250_H
+#define _LORAGW_SX1250_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
@@ -58,17 +58,17 @@ typedef enum {
     GET_STATUS              = 0xC0,
     SET_REGULATORMODE       = 0x96,
     SET_FS                  = 0xC1
-} sx1262fe_op_code_t;
+} sx1250_op_code_t;
 
 typedef enum {
     STDBY_RC                = 0x00,
     STDBY_XOSC              = 0x01
-} sx1262fe_standby_modes_t;
+} sx1250_standby_modes_t;
 
 typedef enum {
     PACKET_TYPE_GFSK        = 0x00,
     PACKET_TYPE_LORA        = 0x01
-} sx1262fe_packet_type_t;
+} sx1250_packet_type_t;
 
 typedef enum {
     SET_RAMP_10U            = 0x00,
@@ -79,16 +79,16 @@ typedef enum {
     SET_RAMP_800U           = 0x05,
     SET_RAMP_1700U          = 0x06,
     SET_RAMP_3400U          = 0x07
-} sx1262fe_ramp_time_t;
+} sx1250_ramp_time_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1262fe_write_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1262fe_read_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
-int sx1262fe_reset(uint8_t rf_chain);
-int sx1262fe_setup(uint8_t rf_chain);
+int sx1250_reset(uint8_t rf_chain);
+int sx1250_setup(uint8_t rf_chain);
 
 #endif
 

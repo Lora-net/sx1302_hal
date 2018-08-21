@@ -110,7 +110,7 @@ int sx125x_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, u
 
     uint32_t freq_dev = bw/2;
 
-    /* Switch SX1302 clock from SPI clock to SX1262 clock */
+    /* Switch SX1302 clock from SPI clock to SX125x clock */
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x01);
 
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
         }
     }
 
-    printf("===== sx1302 sx1262fe TX test =====\n");
+    printf("===== sx1302 sx125x TX test =====\n");
     lgw_connect();
 
     sx125x_init();

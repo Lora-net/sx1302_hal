@@ -48,7 +48,7 @@ Maintainer: Sylvain Miermont
 #define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
-#define SX1262FE_FREQ_TO_REG(f)     (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
+#define SX1250_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
 #define SX1302_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
 
 /* -------------------------------------------------------------------------- */
@@ -296,7 +296,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     }
 
     /* check if radio type is supported */
-    if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257) && (conf.type != LGW_RADIO_TYPE_SX1262FE)) {
+    if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257) && (conf.type != LGW_RADIO_TYPE_SX1250)) {
         DEBUG_MSG("ERROR: NOT A VALID RADIO TYPE\n");
         return LGW_HAL_ERROR;
     }
@@ -538,18 +538,18 @@ int lgw_start(void) {
 
     /* setup the radios */
     switch (rf_radio_type[0]) {
-        case LGW_RADIO_TYPE_SX1262FE:
+        case LGW_RADIO_TYPE_SX1250:
             for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
                 if (rf_enable[i] == true) {
                     /* switch on and reset the radios (also starts the 32 MHz XTAL) */
-                    sx1262fe_reset(0);
+                    sx1250_reset(0);
                     /* Configure the radio */
-                    sx1262fe_setup(0);
+                    sx1250_setup(0);
                 } else {
                     /* TODO: set ot idle ? */
                 }
             }
-            /* Set RADIO_A to SX1262FE_MODE */
+            /* Set RADIO_A to SX1250_MODE */
             lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
 #if __SX1302_TODO__
             lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x01);
@@ -613,7 +613,7 @@ int lgw_start(void) {
 
     /* Load firmware */
     switch (rf_radio_type[0]) {
-        case LGW_RADIO_TYPE_SX1262FE:
+        case LGW_RADIO_TYPE_SX1250:
             load_firmware_agc(agc_firmware); /* TODO: check version */
             break;
         case LGW_RADIO_TYPE_SX1257:
@@ -664,27 +664,27 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     buff[0] = 0x08;
     buff[1] = 0xE6;
     buff[2] = 0x1C;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* ?? */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* ?? */
 
     buff[0] = 0x01; /* LoRa */
-    sx1262fe_write_command(0, SET_PACKET_TYPE, buff, 1);
+    sx1250_write_command(0, SET_PACKET_TYPE, buff, 1);
 
-    freq_reg = SX1262FE_FREQ_TO_REG(pkt_data.freq_hz);
+    freq_reg = SX1250_FREQ_TO_REG(pkt_data.freq_hz);
     buff[0] = (uint8_t)(freq_reg >> 24);
     buff[1] = (uint8_t)(freq_reg >> 16);
     buff[2] = (uint8_t)(freq_reg >> 8);
     buff[3] = (uint8_t)(freq_reg >> 0);
-    sx1262fe_write_command(0, SET_RF_FREQUENCY, buff, 4);
+    sx1250_write_command(0, SET_RF_FREQUENCY, buff, 4);
 
     buff[0] = 0x0E; /* power */
     buff[1] = 0x02; /* RAMP_40U */
-    sx1262fe_write_command(0, SET_TX_PARAMS, buff, 2);
+    sx1250_write_command(0, SET_TX_PARAMS, buff, 2);
 
     buff[0] = 0x04; /* paDutyCycle */
     buff[1] = 0x07; /* hpMax */
     buff[2] = 0x00; /* deviceSel */
     buff[3] = 0x01; /* paLut */
-    sx1262fe_write_command(0, SET_PA_CONFIG, buff, 4); /* SX1262 Output Power +22dBm */
+    sx1250_write_command(0, SET_PA_CONFIG, buff, 4); /* SX1250 Output Power +22dBm */
 
     /* give radio control to AGC MCU */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);

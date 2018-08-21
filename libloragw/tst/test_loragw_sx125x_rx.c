@@ -86,7 +86,7 @@ int sx125x_init(uint32_t freq_hz) {
     /* Configure radio */
     sx125x_setup(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);
 
-    /* Switch SX1302 clock from SPI clock to SX1262 clock */
+    /* Switch SX1302 clock from SPI clock to SX125x clock */
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x01);
 

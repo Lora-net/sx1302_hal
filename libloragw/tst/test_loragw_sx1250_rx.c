@@ -38,7 +38,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define SX1262FE_FREQ_TO_REG(f)     (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
+#define SX1250_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
 #define SX1302_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
 #define IF_HZ_TO_REG(f)             ((f << 5) / 15625)
 
@@ -73,11 +73,11 @@ static uint32_t nb_pkt_received = 0;
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
-int sx1262fe_init(uint32_t freq_hz) {
+int sx1250_init(uint32_t freq_hz) {
     int32_t freq_reg;
     uint8_t buff[16];
 
-    /* Enable Sx1262 and perform chip reset */
+    /* Enable Sx1250 and perform chip reset */
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, 0x01);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
     wait_ms(500);
@@ -90,46 +90,46 @@ int sx1262fe_init(uint32_t freq_hz) {
 
     /* Enable 32 MHz oscillator */
     buff[0] = (uint8_t)STDBY_XOSC;
-    sx1262fe_write_command(0, SET_STANDBY, buff, 1);
+    sx1250_write_command(0, SET_STANDBY, buff, 1);
     buff[0] = 0x00;
-    sx1262fe_read_command(0, GET_STATUS, buff, 1);
+    sx1250_read_command(0, GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
     /* Configure DIO for Rx (not necessary here, just for reference) */
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x00;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* Drive strength to min */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Drive strength to min */
     buff[0] = 0x05;
     buff[1] = 0x83;
     buff[2] = 0x00;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
     buff[0] = 0x05;
     buff[1] = 0x84;
     buff[2] = 0x00;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* No pull up */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* No pull up */
     buff[0] = 0x05;
     buff[1] = 0x85;
     buff[2] = 0x00;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* No pull down */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* No pull down */
     buff[0] = 0x05;
     buff[1] = 0x80;
     buff[2] = 0x00;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
 
     /* TODO ?? */
     buff[0] = 0x08;
     buff[1] = 0xB6;
     buff[2] = 0x2A;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* Fix gain 10 */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Fix gain 10 */
 
     /* Set frequency */
-    freq_reg = SX1262FE_FREQ_TO_REG(freq_hz);
+    freq_reg = SX1250_FREQ_TO_REG(freq_hz);
     buff[0] = (uint8_t)(freq_reg >> 24);
     buff[1] = (uint8_t)(freq_reg >> 16);
     buff[2] = (uint8_t)(freq_reg >> 8);
     buff[3] = (uint8_t)(freq_reg >> 0);
-    sx1262fe_write_command(0, SET_RF_FREQUENCY, buff, 4);
+    sx1250_write_command(0, SET_RF_FREQUENCY, buff, 4);
 
     /* Set frequency offset to 0 */
     buff[0] = 0x08;
@@ -137,20 +137,20 @@ int sx1262fe_init(uint32_t freq_hz) {
     buff[2] = 0x00;
     buff[3] = 0x00;
     buff[4] = 0x00;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 5);
+    sx1250_write_command(0, WRITE_REGISTER, buff, 5);
 
     /* Set Rx */
     buff[0] = 0xFF;
     buff[1] = 0xFF;
     buff[2] = 0xFF;
-    sx1262fe_write_command(0, SET_RX, buff, 3);
+    sx1250_write_command(0, SET_RX, buff, 3);
 
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x08;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
-    /* Switch SX1302 clock from SPI clock to SX1262 clock */
+    /* Switch SX1302 clock from SPI clock to SX1250 clock */
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
 
@@ -161,16 +161,16 @@ int sx1262fe_init(uint32_t freq_hz) {
     return 0;
 }
 
-int sx1262fe_set_idle(void) {
+int sx1250_set_idle(void) {
     uint8_t buff[16];
 
     buff[0] = (uint8_t)STDBY_XOSC;
-    sx1262fe_write_command(0, SET_STANDBY, buff, 1);
+    sx1250_write_command(0, SET_STANDBY, buff, 1);
 
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x0E;
-    sx1262fe_write_command(0, WRITE_REGISTER, buff, 3); /* Default value */
+    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Default value */
 
     return 0;
 }
@@ -224,7 +224,7 @@ int load_firmware_arb(const uint8_t *firmware) {
     return 0;
 }
 
-int sx1262fe_configure_channels(void) {
+int sx1250_configure_channels(void) {
     int32_t cnt, cnt2;
     int32_t if_freq;
 
@@ -418,7 +418,7 @@ int sx1262fe_configure_channels(void) {
     return 0;
 }
 
-int sx1262fe_receive(void) {
+int sx1250_receive(void) {
     uint16_t nb_bytes;
     uint8_t buff[2];
     uint8_t fifo[1024];
@@ -524,21 +524,21 @@ int main(int argc, char **argv)
         }
     }
 
-    printf("===== sx1302 sx1262fe RX test =====\n");
+    printf("===== sx1302 sx1250 RX test =====\n");
 
     /* Board reset */
     system("./reset_lgw.sh start");
 
     lgw_connect();
 
-    sx1262fe_init(ft);
+    sx1250_init(ft);
 
     printf("Channel configuration:\n");
     for (i = 0; i < 8; i++) {
         printf(" %d: %u Hz, if:%d Hz, reg:%d\n", i, (int32_t)ft + channel_if[i], channel_if[i], IF_HZ_TO_REG(channel_if[i]));
     }
 
-    x = sx1262fe_configure_channels();
+    x = sx1250_configure_channels();
     if (x != 0) {
         printf("ERROR: failed to configure channels\n");
         return -1;
@@ -546,11 +546,11 @@ int main(int argc, char **argv)
 
     printf("Waiting for packets...\n");
     while (1) {
-        sx1262fe_receive();
+        sx1250_receive();
         wait_ms(10);
     }
 
-    sx1262fe_set_idle();
+    sx1250_set_idle();
 
     lgw_disconnect();
     printf("=========== Test End ===========\n");
