@@ -31,7 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>
 
 #include "loragw_reg.h"
-#include "loragw_sx1262fe.h"
+#include "loragw_sx1250.h"
 #include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */

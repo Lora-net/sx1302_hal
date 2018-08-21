@@ -27,8 +27,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_hal.h"
 #include "loragw_aux.h"
 #include "loragw_spi.h"
-//#include "loragw_radio.h"
-#include "loragw_sx1262fe.h"
+#include "loragw_sx1250.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */

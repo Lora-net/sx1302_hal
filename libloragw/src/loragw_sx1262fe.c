@@ -29,7 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_spi.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
-#include "loragw_sx1262fe.h"
+#include "loragw_sx1250.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -81,7 +81,7 @@ int sx1262fe_write_command(uint8_t rf_chain, sx1262fe_op_code_t op_code, uint8_t
         out_buf[cmd_size + i] = data[i];
     }
     command_size = cmd_size + size;
-    
+
     /* I/O transaction */
     memset(&k, 0, sizeof(k)); /* clear k */
     k.tx_buf = (unsigned long) out_buf;
