@@ -21,7 +21,7 @@ LIBS := -lloragw -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_sx1262fe_tx test_loragw_sx125x_rx test_loragw_sx1262fe_rx test_loragw_sx125x_tx test_loragw_hal_tx
+all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_sx1250_tx test_loragw_sx125x_rx test_loragw_sx1250_rx test_loragw_sx125x_tx test_loragw_hal_tx
 
 clean:
 	rm -f libloragw.a
@@ -63,7 +63,7 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1262fe.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_hal.o
+libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_hal.o
 	$(AR) rcs $@ $^
 
 ### test programs
@@ -74,10 +74,10 @@ test_loragw_spi: tst/test_loragw_spi.c libloragw.a
 test_loragw_reg: tst/test_loragw_reg.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
-test_loragw_sx1262fe_tx: tst/test_loragw_sx1262fe_tx.c libloragw.a
+test_loragw_sx1250_tx: tst/test_loragw_sx1250_tx.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
-test_loragw_sx1262fe_rx: tst/test_loragw_sx1262fe_rx.c libloragw.a
+test_loragw_sx1250_rx: tst/test_loragw_sx1250_rx.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 test_loragw_sx125x_tx: tst/test_loragw_sx125x_tx.c libloragw.a
