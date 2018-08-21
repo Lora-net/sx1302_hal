@@ -73,9 +73,6 @@ static uint32_t nb_pkt_received = 0;
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 int sx125x_init(uint32_t freq_hz) {
-    uint8_t version;
-    uint32_t freq_reg;
-
     /* Enable radio and perform chip reset */
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN, 0x01);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST, 0x01);
@@ -87,93 +84,7 @@ int sx125x_init(uint32_t freq_hz) {
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
 
     /* Configure radio */
-#if 1
-    lgw_setup_sx125x(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);
-#else
-    {
-        uint8_t val;
-
-        uint8_t TxDacClkSel = 0;         // 0:int, 1:ext (default 0)
-        uint8_t ClkOut = 1;              // 0:disabled, 1:enabled (default 1)
-        uint8_t RfLoopBack = 0;          // 0:disabled, 1:enabled (default 0)
-        uint8_t DigitalLoopBack = 0;     // 0:disabled, 1:enabled (default 0)
-
-        val = sx125x_read(LGW_SPI_MUX_TARGET_RADIOB, 0x10);
-        printf("sx1257:0x10:0x%02X\n", val);
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x10, TxDacClkSel + ClkOut * 2 + RfLoopBack * 4 + DigitalLoopBack * 8); /* RegClkSelect */
-
-        /* Tx */
-        uint8_t TxDacGain = 2; // 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2, max 3)
-        uint8_t TxMixGain = 14; // gain = -38 + 2*TxMixGain dB (default 14, max 15)
-        uint8_t TxPllBw = 3; // 0:75, 1:150, 2:225, 3:300 kHz (default 3, max 3)
-        uint8_t TxAnaBw = 0; // 17.5 / 2*(41-TxAnaBw) MHz (default 0, max 31)
-        uint8_t TxDacBw = 5; // 24 + 8*TxDacBw Nb FIR taps (default 2, max 5)
-
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x08, TxMixGain + TxDacGain * 16); /* RegTxGain */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x0A, TxAnaBw + TxPllBw * 32); /* RegTxBw */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x0B, TxDacBw); /* RegTxDacBw */
-
-        /* Rx */
-        uint8_t RxLnaGain = 1;           // 1:G, 2:G-6, 3:G-12, 4:G-24, 5:G-36, 6:G-48 (default 1, min 1, max 6)
-        uint8_t RxBasebandGain = 15;     // gain = G+2*bb_gain (default 15, max 15)
-        uint8_t LnaZin = 0;              // 0:50, 1:200 Ohm (default 1)
-        uint8_t RxAdcBw = 7;             // 2:100<BW<200, 5:200<BW<400,7:400<BW kHz SSB (default 7, max 7)
-        uint8_t RxAdcTrim = 6;           // 6 for 32MHz ref, 5 for 36MHz ref (default 7, max 7)
-        uint8_t RxBasebandBw = 0;        // 2 // 0:750, 1:500, 2:375 3:250 kHz SSB (default 1, max 3)
-        uint8_t RxPllBw = 0;             // 0:75 1:150 2:225 3:300 kHz (default 3, max 3)
-        uint8_t RxAdcTemp = 0;           // ADC temperature measurement mode (default 0)
-
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x0C, LnaZin + RxBasebandGain * 2 + RxLnaGain * 32); /* RegRxAnaGain */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x0D, RxBasebandBw + RxAdcTrim * 4 + RxAdcBw * 32); /* RegRxBw */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x0E, RxAdcTemp + RxPllBw * 2); /* RegRxPLLBw */
-
-        /* Check radio version */
-        version = sx125x_read(LGW_SPI_MUX_TARGET_RADIOB, 0x07);
-        switch (version) {
-            case 0x11:
-                printf("sx1255 detected\n");
-                freq_reg = SX1255_FREQ_TO_REG(freq_hz);
-                break;
-            case 0x21:
-                printf("sx1257 detected\n");
-                freq_reg = SX1257_FREQ_TO_REG(freq_hz);
-                break;
-            default:
-                printf("ERROR: failed to detect radio version (0x%02X)\n", version);
-                return -1;
-        }
-
-        /* Set RX frequency */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x01, (freq_reg & 0xFF0000) >> 16); /* RegFrfRxMsb */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x02, (freq_reg & 0x00FF00) >>  8); /* RegFrfRxMid */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x03, (freq_reg & 0x0000FF) >>  0); /* RegFrfRxLsb */
-
-        /* Set TX frequency */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x04, (freq_reg & 0xFF0000) >> 16); /* RegFrfTxMsb */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x05, (freq_reg & 0x00FF00) >>  8); /* RegFrfTxMid */
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x06, (freq_reg & 0x0000FF) >>  0); /* RegFrfTxLsb */
-
-        /* Get Status */
-        val = sx125x_read(LGW_SPI_MUX_TARGET_RADIOB, 0x1A); /* RegLowBatThres */
-        printf("LOW BAT THRESHOLD: 0x%02X\n", val);
-        val = sx125x_read(LGW_SPI_MUX_TARGET_RADIOB, 0x11); /* RegModeStatus */
-        printf("MODE_STATUS: 0x%02X\n", val);
-
-        /* Enable clocks */
-        wait_ms(100);
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x00, 1); /* RegMode:StandbyEnable */
-        wait_ms(100);
-        sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x00, 1 + 2 + 0); /* RegMode: Rx enabled, Tx disabled */
-        wait_ms(100);
-
-        /* Get Status */
-        val = sx125x_read(LGW_SPI_MUX_TARGET_RADIOB, 0x11); /* RegModeStatus */
-        printf("MODE_STATUS: 0x%02X\n", val);
-
-        /* Enable PA driver */
-        /* TODO */
-    }
-#endif
+    sx125x_setup(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);
 
     /* Switch SX1302 clock from SPI clock to SX1262 clock */
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
@@ -242,15 +153,6 @@ int load_firmware_arb(const uint8_t *firmware) {
 int sx125x_configure_channels(void) {
     int32_t cnt, cnt2;
     int32_t if_freq;
-
-    // printf("if0: %d (0x%04X)\n", IF_HZ_TO_REG(if0), IF_HZ_TO_REG(if0));
-    // printf("if1: %d (0x%04X)\n", IF_HZ_TO_REG(if1), IF_HZ_TO_REG(if1));
-    // printf("if2: %d (0x%04X)\n", IF_HZ_TO_REG(if2), IF_HZ_TO_REG(if2));
-    // printf("if3: %d (0x%04X)\n", IF_HZ_TO_REG(if3), IF_HZ_TO_REG(if3));
-    // printf("if4: %d (0x%04X)\n", IF_HZ_TO_REG(if4), IF_HZ_TO_REG(if4));
-    // printf("if5: %d (0x%04X)\n", IF_HZ_TO_REG(if5), IF_HZ_TO_REG(if5));
-    // printf("if6: %d (0x%04X)\n", IF_HZ_TO_REG(if6), IF_HZ_TO_REG(if6));
-    // printf("if7: %d (0x%04X)\n", IF_HZ_TO_REG(if7), IF_HZ_TO_REG(if7));
 
     /* Configure channelizer */
     lgw_reg_w(SX1302_REG_RX_TOP_RADIO_SELECT_RADIO_SELECT, 0xFF); /* RadioB */
