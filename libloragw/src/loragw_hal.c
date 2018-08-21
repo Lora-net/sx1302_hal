@@ -28,6 +28,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_aux.h"
 #include "loragw_spi.h"
 #include "loragw_sx1250.h"
+#include "loragw_sx1302.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -541,12 +542,12 @@ int lgw_start(void) {
         case LGW_RADIO_TYPE_SX1250:
             for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
                 if (rf_enable[i] == true) {
-                    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
-                    sx1250_reset(0);
+                    /* Enable and reset the radio */
+                    sx1302_radio_reset(i, SX1302_RADIO_TYPE_SX1250);
                     /* Configure the radio */
                     sx1250_setup(0);
                 } else {
-                    /* TODO: set ot idle ? */
+                    /* TODO: set to idle ? */
                 }
             }
             /* Set RADIO_A to SX1250_MODE */

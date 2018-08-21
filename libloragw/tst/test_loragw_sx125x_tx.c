@@ -33,6 +33,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_reg.h"
 #include "loragw_spi.h"
 #include "loragw_sx125x.h"
+#include "loragw_sx1302.h"
 #include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
@@ -63,12 +64,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 int sx125x_init(void) {
     uint8_t version;
 
-    /* Enable radio and perform chip reset */
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN, 0x01);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST, 0x01);
-    wait_ms(500);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST, 0x00);
-    wait_ms(10);
+    /* Enable and reset the radio */
+    sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
 
     /* Check radio version */
     version = sx125x_read(LGW_SPI_MUX_TARGET_RADIOB, 0x07);
@@ -81,7 +78,7 @@ int sx125x_init(void) {
             break;
         default:
             printf("ERROR: failed to detect radio version (0x%02X)\n", version);
-            break;
+            return -1;
     }
 
     /* Set radio mode */
@@ -223,7 +220,7 @@ void usage(void) {
 
 int main(int argc, char **argv)
 {
-    int i;
+    int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
     uint8_t sf = DEFAULT_SF;
     uint32_t bw = DEFAULT_BW_HZ;
@@ -281,10 +278,16 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Board reset */
+    system("./reset_lgw.sh start");
+
     printf("===== sx1302 sx125x TX test =====\n");
     lgw_connect();
 
-    sx125x_init();
+    x = sx125x_init();
+    if (x != 0) {
+        return EXIT_FAILURE;;
+    }
 
     sx125x_set_tx_continuous(ft, MOD_LORA, sf, bw, tx_duration);
 

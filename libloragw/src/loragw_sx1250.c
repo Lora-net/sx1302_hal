@@ -151,24 +151,6 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1250_reset(uint8_t rf_chain) {
-    uint16_t reg_id;
-
-    reg_id = REG_SELECT(rf_chain, SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN,  SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN);
-    lgw_reg_w(reg_id,  0x01);
-
-    reg_id = REG_SELECT(rf_chain, SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST);
-    lgw_reg_w(reg_id, 0x01);
-    wait_ms(500);
-    lgw_reg_w(reg_id, 0x00);
-    wait_ms(10);
-    lgw_reg_w(reg_id, 0x01);
-
-    return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int sx1250_setup(uint8_t rf_chain) {
     uint8_t buff[16];
 

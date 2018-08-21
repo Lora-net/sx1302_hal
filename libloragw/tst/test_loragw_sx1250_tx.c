@@ -32,6 +32,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_reg.h"
 #include "loragw_sx1250.h"
+#include "loragw_sx1302.h"
 #include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
@@ -64,13 +65,8 @@ int sx1250_init(void) {
 
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
 
-    /* Enable sx1250 and perform chip reset */
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, 0x01);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
-    wait_ms(500);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x00);
-    wait_ms(10);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_RADIO_RST, 0x01);
+    /* Enable and reset the radio */
+    sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX1250);
 
     /* Enable 32 MHz oscillator */
     buff[0] = (uint8_t)STDBY_XOSC;
@@ -349,6 +345,9 @@ int main(int argc, char **argv)
                 return -1;
         }
     }
+
+    /* Board reset */
+    system("./reset_lgw.sh start");
 
     printf("===== sx1302 sx1250 TX test =====\n");
     lgw_connect();

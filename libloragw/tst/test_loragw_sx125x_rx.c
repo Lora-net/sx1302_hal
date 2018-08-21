@@ -35,6 +35,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_reg.h"
 #include "loragw_sx125x.h"
 #include "loragw_aux.h"
+#include "loragw_sx1302.h"
 #include "loragw_hal.h"
 
 /* -------------------------------------------------------------------------- */
@@ -68,17 +69,14 @@ const int32_t channel_if[8] = {
 #include "src/arbiter_ludo.var"
 
 static uint32_t nb_pkt_received = 0;
+static uint16_t fcnt_prev = 0xFFFF;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 int sx125x_init(uint32_t freq_hz) {
-    /* Enable radio and perform chip reset */
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN, 0x01);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST, 0x01);
-    wait_ms(500);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_B_RADIO_RST, 0x00);
-    wait_ms(10);
+    /* Enable and reset the radio */
+    sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
 
     /* Set radio mode */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
@@ -343,6 +341,7 @@ int sx125x_receive(void) {
     int idx;
     uint8_t payload_size;
     uint32_t count_us;
+    uint16_t fcnt;
 
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
     nb_bytes  = (uint16_t)((buff[0] << 8) & 0xFF00);
@@ -370,7 +369,9 @@ int sx125x_receive(void) {
             if ((fifo[idx] == 0xA5) && (fifo[idx+1] == 0xC0)) {
                 nb_pkt_received += 1;
                 /* we found the start of a packet, parse it */
-                printf("\n----- new packet (%u) -----\n", nb_pkt_received);
+                fcnt = (fifo[idx+6+7] << 8) | fifo[idx+6+6];
+                printf("\n----- new packet (%u) (fcnt:%u, missed:%u)-----\n", nb_pkt_received, fcnt, (fcnt - fcnt_prev - 1));
+                fcnt_prev = fcnt;
                 payload_size = fifo[idx+2];
                 printf("  size:     %u\n", payload_size);
                 printf("  chan:     %u\n", fifo[idx+3]);
