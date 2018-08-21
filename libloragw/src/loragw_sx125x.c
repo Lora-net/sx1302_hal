@@ -191,7 +191,7 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
         DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
     }
 
-#if 0
+#if 0 // TODO: disabled until there is a TCXO on the board
     switch (rf_radio_type) {
         case LGW_RADIO_TYPE_SX1255:
             sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
