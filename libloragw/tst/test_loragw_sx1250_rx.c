@@ -83,7 +83,7 @@ int sx1250_init(uint32_t freq_hz) {
     sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX1250);
 
     /* Set radio mode */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
+    sx1302_radio_set_mode(0, SX1302_RADIO_TYPE_SX1250);
 
     /* Enable 32 MHz oscillator */
     buff[0] = (uint8_t)STDBY_XOSC;

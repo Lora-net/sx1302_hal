@@ -124,6 +124,16 @@ int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type) {
         return LGW_REG_ERROR;
     }
 
+    /* Set the radio mode */
+    switch (type) {
+        case SX1302_RADIO_TYPE_SX1250:
+            lgw_reg_w(REG_SELECT(rf_chain, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B), 0x01);
+            break;
+        default:
+            lgw_reg_w(REG_SELECT(rf_chain, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B), 0x00);
+            break;
+    }
+
     return LGW_REG_SUCCESS;
 }
 

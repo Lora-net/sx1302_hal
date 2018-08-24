@@ -551,9 +551,9 @@ int lgw_start(void) {
                 }
             }
             /* Set RADIO_A to SX1250_MODE */
-            lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
+            sx1302_radio_set_mode(0, SX1302_RADIO_TYPE_SX1250);
 #if __SX1302_TODO__
-            lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x01);
+            sx1302_radio_set_mode(1, SX1302_RADIO_TYPE_SX1250);
 #endif
             /* Switch SX1302 clock from SPI clock to radio clock */
             reg_id = REG_SELECT(rf_clkout, SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL);

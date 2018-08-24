@@ -79,7 +79,7 @@ int sx125x_init(uint32_t freq_hz) {
     sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
 
     /* Set radio mode */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
+    sx1302_radio_set_mode(1, SX1302_RADIO_TYPE_SX125X);
 
     /* Configure radio */
     sx125x_setup(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);

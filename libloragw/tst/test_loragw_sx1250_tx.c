@@ -63,10 +63,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 int sx1250_init(void) {
     uint8_t buff[16];
 
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, 0x01);
-
     /* Enable and reset the radio */
     sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX1250);
+
+    /* Set radio mode */
+    sx1302_radio_set_mode(0, SX1302_RADIO_TYPE_SX1250);
 
     /* Enable 32 MHz oscillator */
     buff[0] = (uint8_t)STDBY_XOSC;

@@ -82,7 +82,7 @@ int sx125x_init(void) {
     }
 
     /* Set radio mode */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B, 0x00);
+    sx1302_radio_set_mode(1, SX1302_RADIO_TYPE_SX125X);
 
     /* Enable 32 MHz oscillator */
     sx125x_write(LGW_SPI_MUX_TARGET_RADIOB, 0x00, 0x01); /* MODE_REG_ADDR, REF_ENABLE */
