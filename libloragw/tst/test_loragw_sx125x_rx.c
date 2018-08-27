@@ -34,8 +34,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_spi.h"
 #include "loragw_reg.h"
 #include "loragw_sx125x.h"
-#include "loragw_aux.h"
 #include "loragw_sx1302.h"
+#include "loragw_aux.h"
 #include "loragw_hal.h"
 
 /* -------------------------------------------------------------------------- */
@@ -84,13 +84,8 @@ int sx125x_init(uint32_t freq_hz) {
     /* Configure radio */
     sx125x_setup(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);
 
-    /* Switch SX1302 clock from SPI clock to SX125x clock */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x01);
-
-    /* Enable clock dividers */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01); /* Mandatory */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x00); /* ?? */
+    /* Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(1);
 
     return 0;
 }
@@ -141,9 +136,6 @@ int load_firmware_arb(const uint8_t *firmware) {
 
     lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
     printf("ARB fw loaded (parity error:0x%02X)\n", val);
-
-    printf("Waiting for ARB fw to start...\n");
-    wait_ms(3000);
 
     return 0;
 }
@@ -328,7 +320,7 @@ int sx125x_configure_channels(void) {
     lgw_reg_w(SX1302_REG_COMMON_GEN_FSK_MODEM_ENABLE, 0x01);
     lgw_reg_w(SX1302_REG_COMMON_GEN_GLOBAL_EN, 0x01);
 
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01); /* ?? */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);  /* Seems necessary to do this here, why?? */
 
     return 0;
 }

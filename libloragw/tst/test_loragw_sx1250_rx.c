@@ -147,13 +147,8 @@ int sx1250_init(uint32_t freq_hz) {
     buff[2] = 0x08;
     sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
-    /* Switch SX1302 clock from SPI clock to SX1250 clock */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
-
-    /* Enable clock dividers */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01); /* Mandatory */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x00); /* ?? */
+    /* Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(0);
 
     return 0;
 }
@@ -214,9 +209,6 @@ int load_firmware_arb(const uint8_t *firmware) {
 
     lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
     printf("ARB fw loaded (parity error:0x%02X)\n", val);
-
-    printf("Waiting for ARB fw to start...\n");
-    wait_ms(3000);
 
     return 0;
 }
@@ -410,7 +402,7 @@ int sx1250_configure_channels(void) {
     lgw_reg_w(SX1302_REG_COMMON_GEN_FSK_MODEM_ENABLE, 0x01);
     lgw_reg_w(SX1302_REG_COMMON_GEN_GLOBAL_EN, 0x01);
 
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01); /* ?? */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01); /* Seems necessary to do this here, why?? */
 
     return 0;
 }

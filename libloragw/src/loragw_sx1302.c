@@ -62,6 +62,23 @@ int sx1302_radio_clock_select(uint8_t rf_chain) {
         return LGW_REG_ERROR;
     }
 
+    /* Switch SX1302 clock from SPI clock to radio clock of the selected RF chain */
+    switch (rf_chain) {
+        case 0:
+            lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
+            lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
+            break;
+        case 1:
+            lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
+            lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x01);
+            break;
+        default:
+            return LGW_REG_ERROR;
+    }
+
+    /* Enable clock dividers */
+    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01);
+
     return LGW_REG_SUCCESS;
 }
 
@@ -139,7 +156,8 @@ int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_clock_enable() {
+int sx1302_clock_enable(void) {
+
     return LGW_REG_SUCCESS;
 }
 

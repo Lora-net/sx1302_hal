@@ -102,7 +102,8 @@ int sx1250_init(void) {
     buff[2] = 0x08;
     sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01); /* Mandatory */
+    /* Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(0);
 
     return 0;
 }
@@ -131,12 +132,7 @@ int sx1250_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, u
     uint32_t freq_reg;
     uint8_t buff[16];
     uint32_t preamble_symb_nb;
-
     uint32_t freq_dev = bw/2;
-
-    /* Switch SX1302 clock from SPI clock to SX1250 clock */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
 
     /* Set packet type */
     buff[0] = (modulation == MOD_LORA) ? 0x01 : 0x00;

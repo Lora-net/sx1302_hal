@@ -521,7 +521,6 @@ int lgw_start(void) {
     int i;
     uint32_t val, val2;
     int reg_stat;
-    uint8_t reg_id;
 
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
@@ -555,9 +554,8 @@ int lgw_start(void) {
 #if __SX1302_TODO__
             sx1302_radio_set_mode(1, SX1302_RADIO_TYPE_SX1250);
 #endif
-            /* Switch SX1302 clock from SPI clock to radio clock */
-            reg_id = REG_SELECT(rf_clkout, SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL);
-            lgw_reg_w(reg_id, 0x01);
+            /* Select the radio which provides the clock to the sx1302 */
+            sx1302_radio_clock_select(rf_clkout);
             break;
         case LGW_RADIO_TYPE_SX1257:
             break;
@@ -565,9 +563,6 @@ int lgw_start(void) {
             printf("ERROR: radio not supported\n");
             return LGW_HAL_ERROR;
     }
-
-    /* Enable clock divider (Mandatory) */
-    lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01);
 
 #if !__SX1302_TODO__ /* Sanity check */ /* TODO: to be removed */
     /* Check that the SX1302 timestamp counter is running */
