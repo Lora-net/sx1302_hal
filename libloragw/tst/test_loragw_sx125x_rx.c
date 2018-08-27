@@ -49,6 +49,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define RADIO_B             1
+
 #define BUFF_SIZE           1024
 #define DEFAULT_FREQ_HZ     868500000U
 
@@ -76,16 +78,16 @@ static uint16_t fcnt_prev = 0xFFFF;
 
 int sx125x_init(uint32_t freq_hz) {
     /* Enable and reset the radio */
-    sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
+    sx1302_radio_reset(RADIO_B, SX1302_RADIO_TYPE_SX125X);
 
     /* Set radio mode */
-    sx1302_radio_set_mode(1, SX1302_RADIO_TYPE_SX125X);
+    sx1302_radio_set_mode(RADIO_B, SX1302_RADIO_TYPE_SX125X);
 
     /* Configure radio */
-    sx125x_setup(1, 1, true, LGW_RADIO_TYPE_SX1257, freq_hz);
+    sx125x_setup(RADIO_B, RADIO_B, true, LGW_RADIO_TYPE_SX1257, freq_hz);
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(1);
+    sx1302_radio_clock_select(RADIO_B);
 
     return 0;
 }

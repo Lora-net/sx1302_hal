@@ -44,6 +44,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define RADIO_A             0
+
 #define BUFF_SIZE           1024
 #define DEFAULT_FREQ_HZ     868500000U
 #define DEFAULT_SF          7U
@@ -64,46 +66,46 @@ int sx1250_init(void) {
     uint8_t buff[16];
 
     /* Enable and reset the radio */
-    sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX1250);
+    sx1302_radio_reset(RADIO_A, SX1302_RADIO_TYPE_SX1250);
 
     /* Set radio mode */
-    sx1302_radio_set_mode(0, SX1302_RADIO_TYPE_SX1250);
+    sx1302_radio_set_mode(RADIO_A, SX1302_RADIO_TYPE_SX1250);
 
     /* Enable 32 MHz oscillator */
     buff[0] = (uint8_t)STDBY_XOSC;
-    sx1250_write_command(0, SET_STANDBY, buff, 1);
+    sx1250_write_command(RADIO_A, SET_STANDBY, buff, 1);
     buff[0] = 0x00;
-    sx1250_read_command(0, GET_STATUS, buff, 1);
+    sx1250_read_command(RADIO_A, GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
     /* Configure DIO for Rx (not necessary here, just for reference) */
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Drive strength to min */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* Drive strength to min */
     buff[0] = 0x05;
     buff[1] = 0x83;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
     buff[0] = 0x05;
     buff[1] = 0x84;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* No pull up */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* No pull up */
     buff[0] = 0x05;
     buff[1] = 0x85;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* No pull down */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* No pull down */
     buff[0] = 0x05;
     buff[1] = 0x80;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x08;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(0);
+    sx1302_radio_clock_select(RADIO_A);
 
     return 0;
 }
@@ -113,7 +115,7 @@ int sx1250_set_idle(void) {
     int32_t val;
 
     buff[0] = (uint8_t)STDBY_XOSC;
-    sx1250_write_command(0, SET_STANDBY, buff, 1);
+    sx1250_write_command(RADIO_A, SET_STANDBY, buff, 1);
 
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00);
 
@@ -123,7 +125,7 @@ int sx1250_set_idle(void) {
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x0E;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Default value */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* Default value */
 
     return 0;
 }
@@ -153,28 +155,28 @@ int sx1250_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, u
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, (freq_reg >>  0) & 0xFF);
 
     /* SX126x in FS mode from Rx mode */
-    sx1250_write_command(0, SET_FS, buff, 0);
+    sx1250_write_command(RADIO_A, SET_FS, buff, 0);
     buff[0] = 0x00;
-    sx1250_read_command(0, GET_STATUS, buff, 1);
+    sx1250_read_command(RADIO_A, GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
     /* Configure DIO for Rx */
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Drive strength to min */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* Drive strength to min */
     buff[0] = 0x05;
     buff[1] = 0x83;
     buff[2] = 0x3E;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* Input enable, all enabled except clk_32m */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* Input enable, all enabled except clk_32m */
     buff[0] = 0x05;
     buff[1] = 0x84;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* No pull up */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* No pull up */
     buff[0] = 0x05;
     buff[1] = 0x85;
     buff[2] = 0x00;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* No pull down */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* No pull down */
     buff[0] = 0x05;
     buff[1] = 0x80;
     buff[2] = 0x3E;
@@ -183,12 +185,12 @@ int sx1250_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, u
     /* Configure SX1250 for Tx */
     buff[0] = 0x0;
     buff[1] = (uint8_t)SET_RAMP_40U;
-    sx1250_write_command(0, SET_TX_PARAMS, buff, 2); /* SetTxParams (power, RAMP_40U) */
+    sx1250_write_command(RADIO_A, SET_TX_PARAMS, buff, 2); /* SetTxParams (power, RAMP_40U) */
     buff[0] = 0x04;
     buff[1] = 0x07;
     buff[2] = 0x00;
     buff[3] = 0x01;
-    sx1250_write_command(0, SET_PA_CONFIG, buff, 4); /* SetPaConfig - high power PA - +22dBm */
+    sx1250_write_command(RADIO_A, SET_PA_CONFIG, buff, 4); /* SetPaConfig - high power PA - +22dBm */
 
     /* Tx RFFE interface control (TxRffeIfCtrl) */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL, 0x00); /* VCO divider by 2 */
@@ -256,14 +258,14 @@ int sx1250_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, u
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x09;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* FPGA_MODE_TX */
+    sx1250_write_command(RADIO_A, WRITE_REGISTER, buff, 3); /* FPGA_MODE_TX */
 
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY, (uint8_t)((1500 * 32) >> 8));
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY, (uint8_t)((1500 * 32) >> 0));
 
     printf("Start Tx\n");
     buff[0] = 0x00;
-    sx1250_write_command(0, SET_TXCONTINUOUSWAVE, buff, 0); /* SetTxContinuousWave */
+    sx1250_write_command(RADIO_A, SET_TXCONTINUOUSWAVE, buff, 0); /* SetTxContinuousWave */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
 
     return 0;
