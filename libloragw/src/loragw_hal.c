@@ -518,9 +518,9 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i;
     uint32_t val, val2;
     int reg_stat;
+    sx1302_radio_type_t radio_type;
 
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
@@ -536,33 +536,24 @@ int lgw_start(void) {
 
     /* gate clocks */
 
-    /* setup the radios */
-    switch (rf_radio_type[0]) {
-        case LGW_RADIO_TYPE_SX1250:
-            for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-                if (rf_enable[i] == true) {
-                    /* Enable and reset the radio */
-                    sx1302_radio_reset(i, SX1302_RADIO_TYPE_SX1250);
-                    /* Configure the radio */
-                    sx1250_setup(0);
-                } else {
-                    /* TODO: set to idle ? */
-                }
-            }
-            /* Set RADIO_A to SX1250_MODE */
-            sx1302_radio_set_mode(0, SX1302_RADIO_TYPE_SX1250);
-#if __SX1302_TODO__
-            sx1302_radio_set_mode(1, SX1302_RADIO_TYPE_SX1250);
-#endif
-            /* Select the radio which provides the clock to the sx1302 */
-            sx1302_radio_clock_select(rf_clkout);
-            break;
-        case LGW_RADIO_TYPE_SX1257:
-            break;
-        default:
-            printf("ERROR: radio not supported\n");
-            return LGW_HAL_ERROR;
+    /* setup radio A */
+    radio_type = ((rf_radio_type[0] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
+    if (rf_enable[0] == true) {
+        sx1302_radio_reset(0, radio_type);
+        sx1250_setup(0);
     }
+    sx1302_radio_set_mode(0, radio_type);
+
+    /* setup radio B */
+    radio_type = ((rf_radio_type[1] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
+    if (rf_enable[1] == true) {
+        sx1302_radio_reset(1, radio_type);
+        sx1250_setup(1);
+    }
+    sx1302_radio_set_mode(1, radio_type);
+
+    /* Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(rf_clkout);
 
 #if !__SX1302_TODO__ /* Sanity check */ /* TODO: to be removed */
     /* Check that the SX1302 timestamp counter is running */
@@ -604,8 +595,10 @@ int lgw_start(void) {
     /* configure LoRa 'multi' demodulators */
 
     /* configure LoRa 'stand-alone' modem */
+    /* TODO */
 
     /* configure FSK modem */
+    /* TODO */
 
     /* Load firmware */
     switch (rf_radio_type[0]) {
