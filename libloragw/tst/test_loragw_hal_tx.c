@@ -122,7 +122,7 @@ int main(int argc, char **argv)
                         case 500:
                             bw = BW_500KHZ;
                             break;
-                         default:
+                        default:
                             break;
                     }
                 }
