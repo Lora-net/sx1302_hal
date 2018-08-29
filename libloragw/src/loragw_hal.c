@@ -85,9 +85,9 @@ Maintainer: Sylvain Miermont
 
 /* Useful bandwidth of SX125x radios to consider depending on channel bandwidth */
 /* Note: the below values come from lab measurements. For any question, please contact Semtech support */
-#define LGW_RF_RX_BANDWIDTH_125KHZ  925000      /* for 125KHz channels */
-#define LGW_RF_RX_BANDWIDTH_250KHZ  1000000     /* for 250KHz channels */
-#define LGW_RF_RX_BANDWIDTH_500KHZ  1100000     /* for 500KHz channels */
+#define LGW_RF_RX_BANDWIDTH_125KHZ  1600000     /* for 125KHz channels */
+#define LGW_RF_RX_BANDWIDTH_250KHZ  1600000     /* for 250KHz channels */
+#define LGW_RF_RX_BANDWIDTH_500KHZ  1600000     /* for 500KHz channels */
 
 #define TX_START_DELAY_DEFAULT  1497 /* Calibrated value for 500KHz BW */ /* TODO */
 
@@ -104,6 +104,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/test_bao_sx1262.var"
+#include "src/arbiter_ludo.var"
 
 /*
 The following static variables are the configuration set that the user can
@@ -161,6 +162,7 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 int load_firmware_agc(const uint8_t * firmware);
+int load_firmware_arb(const uint8_t * firmware);
 
 void lgw_constant_adjust(void);
 
@@ -170,7 +172,6 @@ int32_t lgw_bw_getval(int x);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-/* size is the firmware size in bytes (not 14b words) */
 int load_firmware_agc(const uint8_t *firmware) {
     int i;
     uint8_t fw_check[8192];
@@ -214,6 +215,53 @@ int load_firmware_agc(const uint8_t *firmware) {
 
     printf("Waiting for AGC fw to start...\n");
     wait_ms(3000);
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int load_firmware_arb(const uint8_t *firmware) {
+    int i;
+    uint8_t fw_check[8192];
+    int32_t gpio_sel = 0x02; /* ARB MCU */
+    int32_t val;
+
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_DIRECTION, 0xFF); /* GPIO output direction */
+
+    /* Take control over ARB MCU */
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x01);
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_HOST_PROG, 0x01);
+    lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
+
+    /* Write ARB fw in ARB MEM */
+    for (i = 0; i < 8; i++) {
+        lgw_mem_wb(0x2000+(i*1024), &firmware[i*1024], 1024);
+    }
+
+    /* Read back and check */
+    for (i = 0; i < 8; i++) {
+        lgw_mem_rb(0x2000+(i*1024), &fw_check[i*1024], 1024);
+    }
+    if (memcmp(firmware, fw_check, 8192) != 0) {
+        printf ("ERROR: Failed to load fw\n");
+        return -1;
+    }
+
+    /* Release control over ARB MCU */
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_HOST_PROG, 0x00);
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x00);
+
+    lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
+    printf("ARB fw loaded (parity error:0x%02X)\n", val);
 
     return 0;
 }
@@ -540,7 +588,7 @@ int lgw_start(void) {
     radio_type = ((rf_radio_type[0] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
     if (rf_enable[0] == true) {
         sx1302_radio_reset(0, radio_type);
-        sx1250_setup(0);
+        sx1250_setup(0, rf_rx_freq[0]);
     }
     sx1302_radio_set_mode(0, radio_type);
 
@@ -548,7 +596,7 @@ int lgw_start(void) {
     radio_type = ((rf_radio_type[1] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
     if (rf_enable[1] == true) {
         sx1302_radio_reset(1, radio_type);
-        sx1250_setup(1);
+        sx1250_setup(1, rf_rx_freq[1]);
     }
     sx1302_radio_set_mode(1, radio_type);
 
@@ -593,6 +641,11 @@ int lgw_start(void) {
     }
 
     /* configure LoRa 'multi' demodulators */
+    sx1302_channelizer_configure();
+    sx1302_correlator_configure();
+    sx1302_modem_configure();
+    sx1302_lora_syncword();
+    sx1302_agc_configure();
 
     /* configure LoRa 'stand-alone' modem */
     /* TODO */
@@ -604,12 +657,21 @@ int lgw_start(void) {
     switch (rf_radio_type[0]) {
         case LGW_RADIO_TYPE_SX1250:
             load_firmware_agc(agc_firmware); /* TODO: check version */
+            load_firmware_arb(arb_firmware); /* TODO: check version */
             break;
         case LGW_RADIO_TYPE_SX1257:
             break;
         default:
             break;
     }
+
+    /* enable demodulators */
+    sx1302_modem_enable();
+
+#if 1
+    /* TODO */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);  /* Seems necessary to do this here, why?? */
+#endif
 
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;

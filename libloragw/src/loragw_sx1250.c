@@ -45,6 +45,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
 #endif
 
+#define SX1250_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -151,7 +153,8 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1250_setup(uint8_t rf_chain) {
+int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
+    int32_t freq_reg;
     uint8_t buff[16];
 
     /* Set Radio in Standby mode */
@@ -182,16 +185,39 @@ int sx1250_setup(uint8_t rf_chain) {
     buff[1] = 0x80;
     buff[2] = 0x00;
     sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
-    buff[0] = 0x05;
-    buff[1] = 0x87;
-    buff[2] = 0x08;
-    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
+
+    /* TODO ?? */
+    buff[0] = 0x08;
+    buff[1] = 0xB6;
+    buff[2] = 0x2A;
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Fix gain 10 */
+
+    /* Set frequency */
+    freq_reg = SX1250_FREQ_TO_REG(freq_hz);
+    buff[0] = (uint8_t)(freq_reg >> 24);
+    buff[1] = (uint8_t)(freq_reg >> 16);
+    buff[2] = (uint8_t)(freq_reg >> 8);
+    buff[3] = (uint8_t)(freq_reg >> 0);
+    sx1250_write_command(rf_chain, SET_RF_FREQUENCY, buff, 4);
+
+    /* Set frequency offset to 0 */
+    buff[0] = 0x08;
+    buff[1] = 0x8F;
+    buff[2] = 0x00;
+    buff[3] = 0x00;
+    buff[4] = 0x00;
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 5);
 
     /* Set Radio in Rx mode, necessary to give a clock to SX1302 */
     buff[0] = 0xFF;
     buff[1] = 0xFF;
     buff[2] = 0xFF;
     sx1250_write_command(rf_chain, SET_RX, buff, 3); /* Rx Continuous */
+
+    buff[0] = 0x05;
+    buff[1] = 0x87;
+    buff[2] = 0x08;
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
     return 0;
 }

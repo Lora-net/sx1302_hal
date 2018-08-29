@@ -48,6 +48,14 @@ int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type);
 
 int sx1302_clock_enable(void);
 
+int sx1302_channelizer_configure();
+int sx1302_correlator_configure();
+int sx1302_modem_configure();
+int sx1302_modem_enable();
+int sx1302_agc_configure();
+
+int sx1302_lora_syncword();
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
