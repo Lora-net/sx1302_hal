@@ -80,6 +80,7 @@ int main(int argc, char **argv)
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_pkt_tx_s pkt;
+    uint8_t tx_status;
 
     /* parse command line options */
     while ((i = getopt (argc, argv, "hf:s:b:n:z:")) != -1) {
@@ -207,6 +208,12 @@ int main(int argc, char **argv)
             printf("ERROR: failed to send packet\n");
             return EXIT_FAILURE;
         }
+        /* wait for packet to finish sending */
+        do {
+            wait_ms(5);
+            lgw_status(TX_STATUS, &tx_status); /* get TX status */
+        } while (tx_status != TX_FREE);
+        printf("TX done\n");
     }
 
     /* Stop the gateway */

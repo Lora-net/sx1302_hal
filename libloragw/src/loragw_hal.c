@@ -103,7 +103,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/test_bao_sx1262.var"
+#include "src/text_agc_sx1262_29_aout_1.var"
 #include "src/arbiter_ludo.var"
 
 /*
@@ -665,12 +665,16 @@ int lgw_start(void) {
             break;
     }
 
+    /* give radio control to AGC MCU */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
+
     /* enable demodulators */
     sx1302_modem_enable();
 
 #if 1
     /* TODO */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);  /* Seems necessary to do this here, why?? */
+    /* Without this, there is a one-byte shift in the data received, behaviour is not consistent */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);
 #endif
 
     lgw_is_started = true;
@@ -702,13 +706,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint8_t buff[16];
     uint32_t freq_reg;
     uint32_t freq_dev;
-    int32_t val;
     uint16_t tx_start_delay;
 
     /* Check if there is a TX on-going */
     /* TODO */
 
-#if !__SX1302_TODO__ /* TODO: should be done by AGC fw */
+#if 0//!__SX1302_TODO__ /* TODO: should be done by AGC fw */
     /* give radio control to HOST */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
 
@@ -815,6 +818,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     printf("Start Tx: Freq:%u SF%u size:%u\n", pkt_data.freq_hz, pkt_data.datarate, pkt_data.size);
     switch (pkt_data.tx_mode) {
         case IMMEDIATE:
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00); /* reset state machine */
             lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
             break;
         case TIMESTAMPED:
@@ -828,29 +832,41 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             return LGW_HAL_ERROR;
     }
 
-#if 1
-    /* TODO: should be done by AGC fw? */
-    do {
-        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_STATE_STATUS, &val);
-        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE, &val);
-        //lgw_reg_r(SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE, &val);
-        //printf("cont done 0x%02X\n", val);
-        lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
-        wait_ms(10);
-    } while (val != 0x80);
-
-    printf("Stop Tx\n");
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00);
-#endif
-
     return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_status(uint8_t select, uint8_t *code) {
-    /* TODO */
-    if (select == 0) *code = 0; /* dummy */
+    int32_t read_value;
+
+    /* check input variables */
+    CHECK_NULL(code);
+
+    if (select == TX_STATUS) {
+        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_STATE_STATUS, &val);
+        //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE, &val);
+        //lgw_reg_r(SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE, &val);
+        lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &read_value);
+        if (lgw_is_started == false) {
+            *code = TX_OFF;
+        } else if (read_value == 0x80) {
+            *code = TX_FREE;
+        } else if ((read_value == 0x30) || (read_value == 0x50) || (read_value == 0x70)) {
+            *code = TX_EMITTING;
+        } else if ((read_value == 0x91) || (read_value == 0x92)) {
+            *code = TX_SCHEDULED;
+        } else {
+            *code = TX_STATUS_UNKNOWN;
+            DEBUG_PRINTF("ERROR: UNKNOWN TX STATUS 0x%02X\n", read_value);
+            return LGW_HAL_ERROR;
+        }
+    } else if (select == RX_STATUS) {
+        *code = RX_STATUS_UNKNOWN; /* todo */
+    } else {
+        DEBUG_MSG("ERROR: SELECTION INVALID, NO STATUS TO RETURN\n");
+        return LGW_HAL_ERROR;
+    }
 
     return LGW_HAL_SUCCESS;
 }
