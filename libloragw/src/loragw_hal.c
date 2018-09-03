@@ -159,6 +159,8 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
         .rf_power = 27
     }};
 
+static uint8_t rx_fifo[4096];
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -697,37 +699,141 @@ int lgw_stop(void) {
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t nb_bytes;
     uint8_t buff[2];
-    uint8_t fifo[1024];
     int i;
+    uint16_t nb_pkt_fetch = 0;
+    uint16_t nb_pkt_dropped = 0;
+    struct lgw_pkt_rx_s *p;
+    int ifmod; /* type of if_chain/modem a packet was received by */
+    uint32_t sf, cr = 0;
+
+    /* check if the concentrator is running */
+    if (lgw_is_started == false) {
+        DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE RECEIVING\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* check input variables */
+    if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
+        DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
+        return LGW_HAL_ERROR;
+    }
+    CHECK_NULL(pkt_data);
 
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
     nb_bytes  = (uint16_t)((buff[0] << 8) & 0xFF00);
     nb_bytes |= (uint16_t)((buff[1] << 0) & 0x00FF);
 
+    /* TODO */
     if (nb_bytes > 1024) {
-        printf("ERROR: more than 1024 bytes in the FIFO, to be reworked\n");
+        printf("ERROR: received %u bytes (more than 1024 bytes in the FIFO, to be reworked)\n", nb_bytes);
         assert(0);
     }
 
     if (nb_bytes > 0) {
         printf("nb_bytes received: %u (%u %u)\n", nb_bytes, buff[1], buff[0]);
-
         /* read bytes from fifo */
-        memset(fifo, 0, sizeof fifo);
-        lgw_mem_rb(0x4000, fifo, nb_bytes);
+        memset(rx_fifo, 0, sizeof rx_fifo);
+        lgw_mem_rb(0x4000, rx_fifo, nb_bytes);
         for (i = 0; i < nb_bytes; i++) {
-            printf("%02X ", fifo[i]);
+            printf("%02X ", rx_fifo[i]);
         }
         printf("\n");
+
+        /* parse packets */
+        for (i = 0; i < nb_bytes; i++) {
+            if ((rx_fifo[i] == 0xA5) && (rx_fifo[i+1] == 0xC0)) {
+                /* point to the proper struct in the struct array */
+                p = &pkt_data[nb_pkt_fetch];
+
+                /* we found the start of a packet, parse it */
+                if ((nb_pkt_fetch + 1) > max_pkt) {
+                    printf("WARNING: no space left, dropping packet\n");
+                    nb_pkt_dropped += 1;
+                    continue;
+                }
+                nb_pkt_fetch += 1;
+
+                p->size = rx_fifo[i+2];
+
+                 /* copy payload to result struct */
+                memcpy((void *)p->payload, (void *)(&rx_fifo[i+6]), p->size);
+
+                /* process metadata */
+                p->if_chain = rx_fifo[i+3];
+                if (p->if_chain >= LGW_IF_CHAIN_NB) {
+                    DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
+                    break;
+                }
+                ifmod = ifmod_config[p->if_chain];
+                DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
+
+                p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
+                p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
+                p->rssi = (float)rx_fifo[i+8+p->size] + rf_rssi_offset[p->rf_chain];
+
+                if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
+                    DEBUG_MSG("Note: LoRa packet\n");
+                    if (rx_fifo[i+4] & 0x01) {
+                        /* CRC enabled */
+                        if (rx_fifo[i+6+p->size] & 0x01) {
+                            p->status = STAT_CRC_BAD;
+                        } else {
+                            p->status = STAT_CRC_OK;
+                        }
+                    } else {
+                        /* CRC disabled */
+                        p->status = STAT_NO_CRC;
+                    }
+                    p->modulation = MOD_LORA;
+                    p->snr = rx_fifo[i+7+p->size];
+                    if (ifmod == IF_LORA_MULTI) {
+                        p->bandwidth = BW_125KHZ; /* fixed in hardware */
+                    } else {
+                        p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
+                    }
+                    sf = TAKE_N_BITS_FROM(rx_fifo[i+4], 4, 4);
+                    switch (sf) {
+                        case 7: p->datarate = DR_LORA_SF7; break;
+                        case 8: p->datarate = DR_LORA_SF8; break;
+                        case 9: p->datarate = DR_LORA_SF9; break;
+                        case 10: p->datarate = DR_LORA_SF10; break;
+                        case 11: p->datarate = DR_LORA_SF11; break;
+                        case 12: p->datarate = DR_LORA_SF12; break;
+                        default: p->datarate = DR_UNDEFINED;
+                    }
+                    cr = TAKE_N_BITS_FROM(rx_fifo[i+4], 1, 3);
+                    switch (cr) {
+                        case 1: p->coderate = CR_LORA_4_5; break;
+                        case 2: p->coderate = CR_LORA_4_6; break;
+                        case 3: p->coderate = CR_LORA_4_7; break;
+                        case 4: p->coderate = CR_LORA_4_8; break;
+                        default: p->coderate = CR_UNDEFINED;
+                    }
+                } else if (ifmod == IF_FSK_STD) {
+                    DEBUG_MSG("Note: FSK packet\n");
+                } else {
+                    DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
+                    p->status = STAT_UNDEFINED;
+                    p->modulation = MOD_UNDEFINED;
+                    p->rssi = -128.0;
+                    p->snr = -128.0;
+                    p->snr_min = -128.0;
+                    p->snr_max = -128.0;
+                    p->bandwidth = BW_UNDEFINED;
+                    p->datarate = DR_UNDEFINED;
+                    p->coderate = CR_UNDEFINED;
+                }
+            }
+        }
+        printf("INFO: nb pkt fetched:%u dropped:%u\n", nb_pkt_fetch, nb_pkt_dropped);
     }
 
-    return 0;
+    return nb_pkt_fetch;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
-    uint8_t buff[16];
     uint32_t freq_reg;
     uint32_t freq_dev;
     uint16_t tx_start_delay;
@@ -736,6 +842,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* TODO */
 
 #if 0//!__SX1302_TODO__ /* TODO: should be done by AGC fw */
+    uint8_t buff[16];
+
     /* give radio control to HOST */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
 

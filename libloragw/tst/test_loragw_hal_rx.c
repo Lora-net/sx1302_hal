@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 {
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
-    int i, x;
+    int i, j, x;
     uint32_t fa = DEFAULT_FREQ_HZ;
     uint32_t fb = DEFAULT_FREQ_HZ;
     double arg_d = 0.0;
@@ -193,7 +193,24 @@ int main(int argc, char **argv)
         if (nb_pkt == 0) {
             wait_ms(10);
         } else {
+            //wait_ms(2000);
             printf("Received %d packets\n", nb_pkt);
+            for (i = 0; i < nb_pkt; i++) {
+                printf("\n----- %s packet -----\n", (rxpkt[i].modulation == MOD_LORA) ? "LoRa" : "FSK");
+                printf("  size:     %u\n", rxpkt[i].size);
+                printf("  chan:     %u\n", rxpkt[i].if_chain);
+                printf("  status:   0x%02X\n", rxpkt[i].status);
+                printf("  datr:     %u\n", rxpkt[i].datarate);
+                printf("  codr:     %u\n", rxpkt[i].coderate);
+                printf("  rf_chain  %u\n", rxpkt[i].rf_chain);
+                printf("  freq_hz   %u\n", rxpkt[i].freq_hz);
+                printf("  snr_avg:  %.1f\n", rxpkt[i].snr);
+                printf("  rssi_chan:%.1f\n", rxpkt[i].rssi);
+                for (j = 0; j < rxpkt[i].size; j++) {
+                    printf("%02X ", rxpkt[i].payload[j]);
+                }
+                printf("\n");
+            }
         }
     }
 
