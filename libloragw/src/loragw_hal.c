@@ -22,6 +22,7 @@ Maintainer: Sylvain Miermont
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
+#include <assert.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -694,8 +695,31 @@ int lgw_stop(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
-    /* TODO */
-    if (max_pkt > 0) pkt_data->freq_hz = 0;
+    uint16_t nb_bytes;
+    uint8_t buff[2];
+    uint8_t fifo[1024];
+    int i;
+
+    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    nb_bytes  = (uint16_t)((buff[0] << 8) & 0xFF00);
+    nb_bytes |= (uint16_t)((buff[1] << 0) & 0x00FF);
+
+    if (nb_bytes > 1024) {
+        printf("ERROR: more than 1024 bytes in the FIFO, to be reworked\n");
+        assert(0);
+    }
+
+    if (nb_bytes > 0) {
+        printf("nb_bytes received: %u (%u %u)\n", nb_bytes, buff[1], buff[0]);
+
+        /* read bytes from fifo */
+        memset(fifo, 0, sizeof fifo);
+        lgw_mem_rb(0x4000, fifo, nb_bytes);
+        for (i = 0; i < nb_bytes; i++) {
+            printf("%02X ", fifo[i]);
+        }
+        printf("\n");
+    }
 
     return 0;
 }
