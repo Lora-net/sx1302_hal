@@ -119,7 +119,7 @@ int sx1250_set_idle(void) {
 
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00);
 
-    lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &val);
+    lgw_reg_r(SX1302_REG_TX_TOP_A_TX_FSM_STATUS_TX_STATUS, &val);
     printf("Tx status: 0x%02X\n", val);
 
     buff[0] = 0x05;
