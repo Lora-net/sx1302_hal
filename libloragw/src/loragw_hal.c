@@ -105,7 +105,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1262_29_aout_1.var"
-#include "src/arbiter_ludo.var"
+#include "src/text_arb_sx1302_04_sep_2.var"
 
 /*
 The following static variables are the configuration set that the user can
@@ -979,7 +979,8 @@ int lgw_status(uint8_t select, uint8_t *code) {
         //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_STATE_STATUS, &val);
         //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE, &val);
         //lgw_reg_r(SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE, &val);
-        lgw_reg_r(SX1302_REG_TX_TOP_A_TX_STATUS_TX_STATUS, &read_value);
+        lgw_reg_r(SX1302_REG_TX_TOP_A_TX_FSM_STATUS_TX_STATUS, &read_value);
+        // TODO: select porper TX rf chain
         if (lgw_is_started == false) {
             *code = TX_OFF;
         } else if (read_value == 0x80) {
