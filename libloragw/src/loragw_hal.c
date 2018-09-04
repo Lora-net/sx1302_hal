@@ -104,8 +104,8 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1262_29_aout_1.var"
-#include "src/text_arb_sx1302_04_sep_2.var"
+#include "src/text_agc_sx1250_04_sep_13.var"
+#include "src/text_arb_sx1302_04_sep_9.var"
 
 /*
 The following static variables are the configuration set that the user can
@@ -174,6 +174,24 @@ int32_t lgw_bw_getval(int x);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+void led(uint8_t val) {
+    int32_t gpio_sel = 0x00; /* SPI */
+
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_DIRECTION, 0xFF); /* GPIO output direction */
+
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_OUT_OUT_VALUE, val);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int load_firmware_agc(const uint8_t *firmware) {
     int i;
@@ -606,6 +624,12 @@ int lgw_start(void) {
     /* Select the radio which provides the clock to the sx1302 */
     sx1302_radio_clock_select(rf_clkout);
 
+#if 1
+    /* TODO */
+    /* Without this, there is a one-byte shift in the data received, behaviour is not consistent */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);
+#endif
+
 #if !__SX1302_TODO__ /* Sanity check */ /* TODO: to be removed */
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val);
@@ -648,7 +672,6 @@ int lgw_start(void) {
     sx1302_correlator_configure();
     sx1302_modem_configure();
     sx1302_lora_syncword();
-    sx1302_agc_configure();
 
     /* configure LoRa 'stand-alone' modem */
     /* TODO */
@@ -674,7 +697,7 @@ int lgw_start(void) {
     /* enable demodulators */
     sx1302_modem_enable();
 
-#if 1
+#if 0
     /* TODO */
     /* Without this, there is a one-byte shift in the data received, behaviour is not consistent */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);
@@ -841,47 +864,21 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* Check if there is a TX on-going */
     /* TODO */
 
-#if 0//!__SX1302_TODO__ /* TODO: should be done by AGC fw */
-    uint8_t buff[16];
-
-    /* give radio control to HOST */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
-
-    buff[0] = 0x08;
-    buff[1] = 0xE6;
-    buff[2] = 0x1C;
-    sx1250_write_command(0, WRITE_REGISTER, buff, 3); /* ?? */
-
-    buff[0] = 0x01; /* LoRa */
-    sx1250_write_command(0, SET_PACKET_TYPE, buff, 1);
-
-    freq_reg = SX1250_FREQ_TO_REG(pkt_data.freq_hz);
-    buff[0] = (uint8_t)(freq_reg >> 24);
-    buff[1] = (uint8_t)(freq_reg >> 16);
-    buff[2] = (uint8_t)(freq_reg >> 8);
-    buff[3] = (uint8_t)(freq_reg >> 0);
-    sx1250_write_command(0, SET_RF_FREQUENCY, buff, 4);
-
-    buff[0] = 0x0E; /* power */
-    buff[1] = 0x02; /* RAMP_40U */
-    sx1250_write_command(0, SET_TX_PARAMS, buff, 2);
-
-    buff[0] = 0x04; /* paDutyCycle */
-    buff[1] = 0x07; /* hpMax */
-    buff[2] = 0x00; /* deviceSel */
-    buff[3] = 0x01; /* paLut */
-    sx1250_write_command(0, SET_PA_CONFIG, buff, 4); /* SX1250 Output Power +22dBm */
-
-    /* give radio control to AGC MCU */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
-#endif
+    /* check input variables */
+    if ((pkt_data.rf_power < 0) || (pkt_data.rf_power > 15)) { /* TODO: if sx1250 */
+        DEBUG_MSG("ERROR: RF power not supported\n");
+        return LGW_HAL_ERROR;
+    }
 
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL, 0x00); /* VCO divider by 2 */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x01); /* LoRa */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* SX126x Tx RFFE */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Modulation */
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
+
+    lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_RADIO_SEL, 0);
     lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE, 0x00); /* LoRa */
+    lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER, pkt_data.rf_power);
 
     /* Set Tx frequency */
     freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz);

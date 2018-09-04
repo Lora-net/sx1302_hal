@@ -68,7 +68,7 @@ const int32_t channel_if[8] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-#include "src/text_arb_sx1302_04_sep_2.var"
+#include "src/text_arb_sx1302_04_sep_9.var"
 
 static uint32_t nb_pkt_received = 0;
 static uint16_t fcnt_prev = 0xFFFF;
@@ -272,7 +272,7 @@ int sx125x_configure_channels(void) {
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 3);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_MSP2_PEAK_NB, 3);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFF); /* 12 11 10 9 8 7 6 5 */
+    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFC); /* 12 11 10 9 8 7 6 5 */
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0x01);
 
     /* Configure multi-sf */

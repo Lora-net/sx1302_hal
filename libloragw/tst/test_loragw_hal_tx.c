@@ -64,18 +64,21 @@ void usage(void) {
     printf( " -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
     printf( " -n <uint> Number of packets to be sent\n");
     printf( " -z <uint> size of packets to be sent 0:random, [9..255]\n");
+    printf( " -p <int>  RF power [0..15] -- TBD sx1250 --\n");
 }
 
 int main(int argc, char **argv)
 {
     int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
+    int8_t rf_power = 0;
     uint8_t sf = 0;
     uint32_t bw = 0;
     uint32_t nb_pkt = DEFAULT_NB_PKT;
     uint8_t size = 0;
     double arg_d = 0.0;
     unsigned int arg_u;
+    int arg_i;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -83,7 +86,7 @@ int main(int argc, char **argv)
     uint8_t tx_status;
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hf:s:b:n:z:")) != -1) {
+    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -137,6 +140,15 @@ int main(int argc, char **argv)
                     nb_pkt = (uint32_t)arg_u;
                 }
                 break;
+            case 'p': /* <int> RF power */
+                i = sscanf(optarg, "%d", &arg_i);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -p argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    rf_power = (int8_t)arg_i;
+                }
+                break;
             case 'z': /* <uint> packet size */
                 i = sscanf(optarg, "%u", &arg_u);
                 if ((i != 1) || (arg_u < 9) || (arg_u > 255)) {
@@ -178,6 +190,7 @@ int main(int argc, char **argv)
     /* Send packets */
     memset(&pkt, 0, sizeof pkt);
     pkt.freq_hz = ft;
+    pkt.rf_power = rf_power;
     pkt.tx_mode = IMMEDIATE;
     pkt.modulation = MOD_LORA;
     pkt.invert_pol = false;
