@@ -624,12 +624,6 @@ int lgw_start(void) {
     /* Select the radio which provides the clock to the sx1302 */
     sx1302_radio_clock_select(rf_clkout);
 
-#if 1
-    /* TODO */
-    /* Without this, there is a one-byte shift in the data received, behaviour is not consistent */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);
-#endif
-
 #if !__SX1302_TODO__ /* Sanity check */ /* TODO: to be removed */
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val);
@@ -696,12 +690,6 @@ int lgw_start(void) {
 
     /* enable demodulators */
     sx1302_modem_enable();
-
-#if 0
-    /* TODO */
-    /* Without this, there is a one-byte shift in the data received, behaviour is not consistent */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);
-#endif
 
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;

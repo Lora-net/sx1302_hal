@@ -208,6 +208,7 @@ int sx1250_set_tx_continuous(uint32_t freq_hz, uint8_t modulation, uint8_t sf, u
         case MOD_LORA:
             printf("Modulation LoRa\n");
             lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x01); /* 0: Signal, 1: LoRa, 2: GFSK */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_RADIO_SEL, 0x00);
             lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE, 0x00); /* 0: LoRa, 1: GFSK */
             /* Preamble length */
             preamble_symb_nb = tx_duration / ((pow(2, sf) / bw));

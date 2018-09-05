@@ -329,8 +329,6 @@ int sx125x_configure_channels(void) {
     lgw_reg_w(SX1302_REG_COMMON_GEN_FSK_MODEM_ENABLE, 0x01);
     lgw_reg_w(SX1302_REG_COMMON_GEN_GLOBAL_EN, 0x01);
 
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);  /* Seems necessary to do this here, why?? */
-
     return 0;
 }
 

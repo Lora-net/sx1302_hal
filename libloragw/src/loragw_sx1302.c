@@ -81,6 +81,9 @@ int sx1302_radio_clock_select(uint8_t rf_chain) {
     /* Enable clock dividers */
     lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLKDIV_EN, 0x01);
 
+    /* Set the RIF clock to the 32MHz clock of the radio */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x01);
+
     return LGW_REG_SUCCESS;
 }
 
