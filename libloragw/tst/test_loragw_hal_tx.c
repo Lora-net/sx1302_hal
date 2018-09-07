@@ -42,8 +42,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
-#define DEFAULT_NB_PKT      1U
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -59,6 +59,9 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf( "Available options:\n");
     printf( " -h print this help\n");
+    printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf( " -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
+    printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
     printf( " -f <float> Radio TX frequency in MHz\n");
     printf( " -s <uint> LoRa datarate 0:random, [7..12]\n");
     printf( " -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
@@ -74,11 +77,14 @@ int main(int argc, char **argv)
     int8_t rf_power = 0;
     uint8_t sf = 0;
     uint32_t bw = 0;
-    uint32_t nb_pkt = DEFAULT_NB_PKT;
+    uint32_t nb_pkt = 1;
     uint8_t size = 0;
     double arg_d = 0.0;
     unsigned int arg_u;
     int arg_i;
+    uint8_t clocksource = 0;
+    uint8_t rf_chain = 0;
+    enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -86,11 +92,48 @@ int main(int argc, char **argv)
     uint8_t tx_status;
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:")) != -1) {
+    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:k:r:c:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'r': /* <uint> Radio type */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
+                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    switch (arg_u) {
+                        case 1255:
+                            radio_type = LGW_RADIO_TYPE_SX1255;
+                            break;
+                        case 1257:
+                            radio_type = LGW_RADIO_TYPE_SX1257;
+                            break;
+                        default: /* 1250 */
+                            radio_type = LGW_RADIO_TYPE_SX1250;
+                            break;
+                    }
+                }
+                break;
+            case 'k': /* <uint> Clock Source */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 1)) {
+                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    clocksource = (uint8_t)arg_u;
+                }
+                break;
+            case 'c': /* <uint> RF chain */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 1)) {
+                    printf("ERROR: argument parsing of -c argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    rf_chain = (uint8_t)arg_u;
+                }
                 break;
             case 'f': /* <float> Radio TX frequency in MHz */
                 i = sscanf(optarg, "%lf", &arg_d);
@@ -173,13 +216,22 @@ int main(int argc, char **argv)
     /* Configure the gateway */
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
-    boardconf.clksrc = 0;
+    boardconf.clksrc = clocksource;
+    lgw_board_setconf(boardconf);
 
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = true;
-    rfconf.freq_hz = 868500000;
-    rfconf.type = LGW_RADIO_TYPE_SX1250;
+
+    rfconf.enable = ((rf_chain == 0) ? true : false);
+    rfconf.freq_hz = 868500000; /* dummy */
+    rfconf.type = radio_type;
+    rfconf.tx_enable = true;
     lgw_rxrf_setconf(0, rfconf);
+
+    rfconf.enable = ((rf_chain == 1) ? true : false);
+    rfconf.freq_hz = 868500000; /* dummy */
+    rfconf.type = radio_type;
+    rfconf.tx_enable = true;
+    lgw_rxrf_setconf(1, rfconf);
 
     x = lgw_start();
     if (x != 0) {
@@ -189,6 +241,7 @@ int main(int argc, char **argv)
 
     /* Send packets */
     memset(&pkt, 0, sizeof pkt);
+    pkt.rf_chain = rf_chain;
     pkt.freq_hz = ft;
     pkt.rf_power = rf_power;
     pkt.tx_mode = IMMEDIATE;
@@ -214,6 +267,7 @@ int main(int argc, char **argv)
         pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(7, 12) : sf;
         pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
         pkt.bandwidth = (bw == 0) ? (uint8_t)RAND_RANGE(4, 6) : bw;
+
         pkt.payload[6] = (uint8_t)(i >> 0); /* FCnt */
         pkt.payload[7] = (uint8_t)(i >> 8); /* FCnt */
         x = lgw_send(pkt);
@@ -224,7 +278,7 @@ int main(int argc, char **argv)
         /* wait for packet to finish sending */
         do {
             wait_ms(5);
-            lgw_status(TX_STATUS, &tx_status); /* get TX status */
+            lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
         } while (tx_status != TX_FREE);
         printf("TX done\n");
     }

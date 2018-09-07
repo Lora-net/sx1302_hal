@@ -351,7 +351,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data);
 @param code is used to return the status code
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_status(uint8_t select, uint8_t *code);
+int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code);
 
 /**
 @brief Abort a currently scheduled or ongoing TX

@@ -67,10 +67,12 @@ int sx1302_radio_clock_select(uint8_t rf_chain) {
     /* Switch SX1302 clock from SPI clock to radio clock of the selected RF chain */
     switch (rf_chain) {
         case 0:
+            printf("Select Radio A clock\n");
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
             break;
         case 1:
+            printf("Select Radio B clock\n");
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x01);
             break;
@@ -134,6 +136,8 @@ int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type) {
+    uint16_t reg;
+
     /* Check input parameters */
     if (rf_chain >= LGW_RF_CHAIN_NB)
     {
@@ -147,12 +151,16 @@ int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type) {
     }
 
     /* Set the radio mode */
+    reg = REG_SELECT(rf_chain,  SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A,
+                                SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B);
     switch (type) {
         case SX1302_RADIO_TYPE_SX1250:
-            lgw_reg_w(REG_SELECT(rf_chain, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B), 0x01);
+            printf("Setting rf_chain_%u in sx1250 mode\n", rf_chain);
+            lgw_reg_w(reg, 0x01);
             break;
         default:
-            lgw_reg_w(REG_SELECT(rf_chain, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A, SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B), 0x00);
+            printf("Setting rf_chain_%u in sx125x mode\n", rf_chain);
+            lgw_reg_w(reg, 0x00);
             break;
     }
 

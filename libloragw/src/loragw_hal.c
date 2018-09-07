@@ -29,6 +29,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_aux.h"
 #include "loragw_spi.h"
 #include "loragw_sx1250.h"
+#include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 
 /* -------------------------------------------------------------------------- */
@@ -50,6 +51,8 @@ Maintainer: Sylvain Miermont
 #define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
+#define SX1257_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 19) / 32000000U)
+#define SX1255_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 20) / 32000000U)
 #define SX1250_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 25) / 32000000U)
 #define SX1302_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
 
@@ -105,6 +108,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_04_sep_13.var"
+#include "src/text_agc_sx1257_06_sep_1.var"
 #include "src/text_arb_sx1302_04_sep_9.var"
 
 /*
@@ -609,17 +613,37 @@ int lgw_start(void) {
     radio_type = ((rf_radio_type[0] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
     if (rf_enable[0] == true) {
         sx1302_radio_reset(0, radio_type);
-        sx1250_setup(0, rf_rx_freq[0]);
+        switch (radio_type) {
+            case SX1302_RADIO_TYPE_SX1250:
+                sx1250_setup(0, rf_rx_freq[0]);
+                break;
+            case SX1302_RADIO_TYPE_SX125X:
+                sx125x_setup(0, rf_clkout, true, rf_radio_type[0], rf_rx_freq[0]);
+                break;
+            default:
+                DEBUG_MSG("ERROR: RADIO TYPE NOT SUPPORTED\n");
+                return LGW_HAL_ERROR;
+        }
+        sx1302_radio_set_mode(0, radio_type);
     }
-    sx1302_radio_set_mode(0, radio_type);
 
     /* setup radio B */
     radio_type = ((rf_radio_type[1] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
     if (rf_enable[1] == true) {
         sx1302_radio_reset(1, radio_type);
-        sx1250_setup(1, rf_rx_freq[1]);
+        switch (radio_type) {
+            case SX1302_RADIO_TYPE_SX1250:
+                sx1250_setup(1, rf_rx_freq[1]);
+                break;
+            case SX1302_RADIO_TYPE_SX125X:
+                sx125x_setup(1, rf_clkout, true, rf_radio_type[1], rf_rx_freq[1]);
+                break;
+            default:
+                DEBUG_MSG("ERROR: RADIO TYPE NOT SUPPORTED\n");
+                return LGW_HAL_ERROR;
+        }
+        sx1302_radio_set_mode(1, radio_type);
     }
-    sx1302_radio_set_mode(1, radio_type);
 
     /* Select the radio which provides the clock to the sx1302 */
     sx1302_radio_clock_select(rf_clkout);
@@ -674,16 +698,19 @@ int lgw_start(void) {
     /* TODO */
 
     /* Load firmware */
-    switch (rf_radio_type[0]) {
+    switch (rf_radio_type[rf_clkout]) {
         case LGW_RADIO_TYPE_SX1250:
-            load_firmware_agc(agc_firmware); /* TODO: check version */
-            load_firmware_arb(arb_firmware); /* TODO: check version */
+            printf("Loading AGC fw for sx1250\n");
+            load_firmware_agc(agc_firmware_sx1250); /* TODO: check version */
             break;
         case LGW_RADIO_TYPE_SX1257:
+            printf("Loading AGC fw for sx125x\n");
+            load_firmware_agc(agc_firmware_sx125x); /* TODO: check version */
             break;
         default:
             break;
     }
+    load_firmware_arb(arb_firmware); /* TODO: check version */
 
     /* give radio control to AGC MCU */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
@@ -845,9 +872,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
-    uint32_t freq_reg;
-    uint32_t freq_dev;
+    uint32_t freq_reg, fdev_reg;
+    uint32_t freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;;
     uint16_t tx_start_delay;
+    uint16_t reg;
+    uint16_t mem_addr;
 
     /* Check if there is a TX on-going */
     /* TODO */
@@ -858,63 +887,170 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
         return LGW_HAL_ERROR;
     }
 
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL, 0x00); /* VCO divider by 2 */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC, 0x01); /* LoRa */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01); /* SX126x Tx RFFE */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE, 0x01); /* Modulation */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_PLL_DIV_CTRL);
+    lgw_reg_w(reg, 0x00); /* VCO divider by 2 */
 
-    lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_RADIO_SEL, 0);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE, 0x00); /* LoRa */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER, pkt_data.rf_power);
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_SRC);
+    lgw_reg_w(reg, 0x01); /* LoRa */
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_DST);
+    switch (rf_radio_type[pkt_data.rf_chain]) {
+        case LGW_RADIO_TYPE_SX1250:
+            lgw_reg_w(reg, 0x01); /* SX126x Tx RFFE */
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            lgw_reg_w(reg, 0x00); /* SX1255/57 Tx RFFE */
+            break;
+        default:
+            DEBUG_MSG("ERROR: radio type not supported\n");
+            return LGW_HAL_ERROR;
+    }
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_MODE);
+    lgw_reg_w(reg, 0x01); /* Modulation */
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_CLK_EDGE);
+    lgw_reg_w(reg, 0x00); /* Data on rising edge */
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_RADIO_SEL,
+                                        SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_RADIO_SEL);
+    lgw_reg_w(reg, pkt_data.rf_chain);
+
+    switch (pkt_data.modulation) {
+        case MOD_LORA:
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE,
+                                                SX1302_REG_TX_TOP_B_GEN_CFG_0_MODULATION_TYPE);
+            lgw_reg_w(reg, 0x00);
+            break;
+        case MOD_FSK:
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE,
+                                                SX1302_REG_TX_TOP_B_GEN_CFG_0_MODULATION_TYPE);
+            lgw_reg_w(reg, 0x01);
+            break;
+        default:
+            DEBUG_MSG("ERROR: modulation type not supported\n");
+            return LGW_HAL_ERROR;
+    }
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER,
+                                        SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_POWER);
+    lgw_reg_w(reg, pkt_data.rf_power);
+
+    /* Get TX frequency and bandwidth (fdev) */
+    switch (rf_radio_type[pkt_data.rf_chain]) {
+        case LGW_RADIO_TYPE_SX1255:
+            freq_reg = SX1255_FREQ_TO_REG(pkt_data.freq_hz);
+            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            freq_reg = SX1257_FREQ_TO_REG(pkt_data.freq_hz);
+            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
+            break;
+        case LGW_RADIO_TYPE_SX1250:
+            freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz);
+            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
+            break;
+        default:
+            DEBUG_MSG("ERROR: radio type not supported\n");
+            return LGW_HAL_ERROR;
+    }
 
     /* Set Tx frequency */
-    freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF, (freq_reg >> 16) & 0xFF);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF, (freq_reg >> 8) & 0xFF);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF, (freq_reg >> 0) & 0xFF);
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_RF_H_FREQ_RF);
+    lgw_reg_w(reg, (freq_reg >> 16) & 0xFF);
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_RF_M_FREQ_RF);
+    lgw_reg_w(reg, (freq_reg >> 8) & 0xFF);
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_RF_L_FREQ_RF);
+    lgw_reg_w(reg, (freq_reg >> 0) & 0xFF);
 
     /* Set bandwidth */
     printf("Bandwidth %dkHz\n", (int)(lgw_bw_getval(pkt_data.bandwidth) / 1E3));
-    freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
-    freq_reg = SX1302_FREQ_TO_REG(freq_dev);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV, (freq_reg >>  8) & 0xFF);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV, (freq_reg >>  0) & 0xFF);
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV);
+    lgw_reg_w(reg, (fdev_reg >>  8) & 0xFF);
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV);
+    lgw_reg_w(reg, (fdev_reg >>  0) & 0xFF);
 
     /* Condifure modem */
     switch (pkt_data.modulation) {
         case MOD_LORA:
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW, pkt_data.bandwidth);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_0_MODEM_BW);
+            lgw_reg_w(reg, pkt_data.bandwidth);
 
             /* Preamble length */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_3_PREAMBLE_SYMB_NB, (pkt_data.preamble >> 8) & 0xFF); /* MSB */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_2_PREAMBLE_SYMB_NB, (pkt_data.preamble >> 0) & 0xFF); /* LSB */
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG1_3_PREAMBLE_SYMB_NB,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG1_3_PREAMBLE_SYMB_NB);
+            lgw_reg_w(reg, (pkt_data.preamble >> 8) & 0xFF); /* MSB */
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG1_2_PREAMBLE_SYMB_NB,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG1_2_PREAMBLE_SYMB_NB);
+            lgw_reg_w(reg, (pkt_data.preamble >> 0) & 0xFF); /* LSB */
 
             /* LoRa datarate */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_SF, pkt_data.datarate);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS, 7);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_SF,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_0_MODEM_SF);
+            lgw_reg_w(reg, pkt_data.datarate);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS,
+                                                SX1302_REG_TX_TOP_B_TX_CFG0_0_CHIRP_LOWPASS);
+            lgw_reg_w(reg, 7);
 
             /* Start LoRa modem */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_MODEM_EN, 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CADRXTX, 2);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG1_1_MODEM_START, 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS, 0);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_MODEM_EN,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_2_MODEM_EN);
+            lgw_reg_w(reg, 1);
 
-#if 0 /* TODO: how to do continuous lora modulation ?*/
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS, 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_B_TX_CFG1_0_FRAME_NB, 2);
-#endif
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CADRXTX,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_2_CADRXTX);
+            lgw_reg_w(reg, 2);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG1_1_MODEM_START,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG1_1_MODEM_START);
+            lgw_reg_w(reg, 1);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_CFG0_0_CONTINUOUS,
+                                                SX1302_REG_TX_TOP_B_TX_CFG0_0_CONTINUOUS);
+            lgw_reg_w(reg, 0);
 
             /*  */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_INVERT, (pkt_data.invert_pol) ? 1 : 0);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_IMPLICIT_HEADER, (pkt_data.no_header) ? 1 : 0); /*  */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CRC_EN, (pkt_data.no_crc) ? 0 : 1); /*  */
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_INVERT,
+                                                SX1302_REG_TX_TOP_B_TX_CFG0_0_CHIRP_INVERT);
+            lgw_reg_w(reg, (pkt_data.invert_pol) ? 1 : 0);
 
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS, 6); /* public */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS, 8); /* public */
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_IMPLICIT_HEADER,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_2_IMPLICIT_HEADER);
+            lgw_reg_w(reg, (pkt_data.no_header) ? 1 : 0);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_CRC_EN,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_2_CRC_EN);
+            lgw_reg_w(reg, (pkt_data.no_crc) ? 0 : 1);
+
+            /* Syncword */
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS,
+                                                SX1302_REG_TX_TOP_B_FRAME_SYNCH_0_PEAK1_POS);
+            lgw_reg_w(reg, 6); /* public */
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS,
+                                                SX1302_REG_TX_TOP_B_FRAME_SYNCH_1_PEAK2_POS);
+            lgw_reg_w(reg, 8); /* public */
 
             /* Set Payload length */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH, pkt_data.size);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_3_PAYLOAD_LENGTH);
+            lgw_reg_w(reg, pkt_data.size);
             break;
         default:
             printf("ERROR: Modulation not supported\n");
@@ -923,26 +1059,42 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
     /* Set TX start delay */
     tx_start_delay = 1500 * 32; /* us */ /* TODO: which value should we put?? */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 8));
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY, (uint8_t)(tx_start_delay >> 0));
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY,
+                                        SX1302_REG_TX_TOP_B_TX_START_DELAY_MSB_TX_START_DELAY);
+    lgw_reg_w(reg, (uint8_t)(tx_start_delay >> 8));
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY,
+                                        SX1302_REG_TX_TOP_B_TX_START_DELAY_LSB_TX_START_DELAY);
+    lgw_reg_w(reg, (uint8_t)(tx_start_delay >> 0));
 
     /* Write payload in transmit buffer */
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CTRL_WRITE_BUFFER, 0x01);
-    lgw_mem_wb(0x5300, &(pkt_data.payload[0]), pkt_data.size);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_CTRL_WRITE_BUFFER, 0x00);
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_CTRL_WRITE_BUFFER,
+                                        SX1302_REG_TX_TOP_B_TX_CTRL_WRITE_BUFFER);
+    lgw_reg_w(reg, 0x01);
+    mem_addr = REG_SELECT(pkt_data.rf_chain, 0x5300, 0x5500);
+    lgw_mem_wb(mem_addr, &(pkt_data.payload[0]), pkt_data.size);
+    lgw_reg_w(reg, 0x00);
 
     /* Trigger transmit */
     printf("Start Tx: Freq:%u SF%u size:%u\n", pkt_data.freq_hz, pkt_data.datarate, pkt_data.size);
     switch (pkt_data.tx_mode) {
         case IMMEDIATE:
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x00); /* reset state machine */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE, 0x01);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE,
+                                                SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_IMMEDIATE);
+            lgw_reg_w(reg, 0x00); /* reset state machine */
+            lgw_reg_w(reg, 0x01);
             break;
         case TIMESTAMPED:
-            lgw_reg_w(SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED, 0x01);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_DELAYED,
+                                                SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED);
+            lgw_reg_w(reg, 0x00); /* reset state machine */
+            lgw_reg_w(reg, 0x01);
             break;
         case ON_GPS:
-            lgw_reg_w(SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_GPS, 0x01);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_GPS,
+                                                SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_GPS);
+            lgw_reg_w(reg, 0x00); /* reset state machine */
+            lgw_reg_w(reg, 0x01);
             break;
         default:
             printf("ERROR: TX mode not supported\n");
@@ -954,17 +1106,24 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_status(uint8_t select, uint8_t *code) {
+int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
     int32_t read_value;
+    uint16_t reg;
 
     /* check input variables */
     CHECK_NULL(code);
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
+        return LGW_HAL_ERROR;
+    }
 
     if (select == TX_STATUS) {
         //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_STATE_STATUS, &val);
         //lgw_reg_r(SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE, &val);
         //lgw_reg_r(SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE, &val);
-        lgw_reg_r(SX1302_REG_TX_TOP_A_TX_FSM_STATUS_TX_STATUS, &read_value);
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_FSM_STATUS_TX_STATUS,
+                                    SX1302_REG_TX_TOP_B_TX_FSM_STATUS_TX_STATUS);
+        lgw_reg_r(reg, &read_value);
         // TODO: select porper TX rf chain
         if (lgw_is_started == false) {
             *code = TX_OFF;
