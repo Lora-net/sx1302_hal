@@ -175,21 +175,16 @@ int sx1302_clock_enable(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_channelizer_configure() {
+int sx1302_channelizer_configure(bool * if_rf_chain, int32_t * channel_if) {
     int32_t if_freq;
+    uint8_t channels_mask = 0x00;
+    int i;
 
-    const int32_t channel_if[8] = {
-        700000,
-        500000,
-        300000,
-        100000,
-        -100000,
-        -300000,
-        -500000,
-        -700000
-    };
-
-    lgw_reg_w(SX1302_REG_RX_TOP_RADIO_SELECT_RADIO_SELECT, 0x00); /* all on RadioA */
+    for (i = 0; i < 8; i++) {
+        channels_mask |= (if_rf_chain[i] << i);
+    }
+    printf("RX radio select: 0x%02X\n", channels_mask);
+    lgw_reg_w(SX1302_REG_RX_TOP_RADIO_SELECT_RADIO_SELECT, channels_mask);
 
     if_freq = IF_HZ_TO_REG(channel_if[0]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_MSB_IF_FREQ_0, (if_freq >> 8) & 0x0000001F);

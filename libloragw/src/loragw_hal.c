@@ -107,7 +107,8 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_04_sep_13.var"
+//#include "src/text_agc_sx1250_04_sep_13.var"
+#include "src/text_agc_sx1250_07_sep_1.var"
 #include "src/text_agc_sx1257_06_sep_1.var"
 #include "src/text_arb_sx1302_04_sep_9.var"
 
@@ -686,7 +687,7 @@ int lgw_start(void) {
     }
 
     /* configure LoRa 'multi' demodulators */
-    sx1302_channelizer_configure();
+    sx1302_channelizer_configure(if_rf_chain, if_freq);
     sx1302_correlator_configure();
     sx1302_modem_configure();
     sx1302_lora_syncword();

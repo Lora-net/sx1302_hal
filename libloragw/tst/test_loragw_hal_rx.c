@@ -150,6 +150,7 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = 0;
+    lgw_board_setconf(boardconf);
 
     /* set configuration for RF chains */
     memset( &rfconf, 0, sizeof rfconf);
