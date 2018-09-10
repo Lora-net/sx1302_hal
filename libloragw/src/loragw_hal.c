@@ -107,7 +107,6 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-//#include "src/text_agc_sx1250_04_sep_13.var"
 #include "src/text_agc_sx1250_07_sep_1.var"
 #include "src/text_agc_sx1257_10_sep_1.var"
 #include "src/text_arb_sx1302_04_sep_9.var"
