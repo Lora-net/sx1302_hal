@@ -109,7 +109,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_07_sep_1.var"
 #include "src/text_agc_sx1257_10_sep_1.var"
-#include "src/text_arb_sx1302_04_sep_9.var"
+#include "src/text_arb_sx1302_10_sep_1.var"
 
 /*
 The following static variables are the configuration set that the user can
@@ -314,6 +314,8 @@ int32_t lgw_bw_getval(int x) {
 
 int32_t lgw_sf_getval(int x) {
     switch (x) {
+        case DR_LORA_SF5: return 5;
+        case DR_LORA_SF6: return 6;
         case DR_LORA_SF7: return 7;
         case DR_LORA_SF8: return 8;
         case DR_LORA_SF9: return 9;
@@ -810,7 +812,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->rssi = (float)rx_fifo[i+8+p->size] + rf_rssi_offset[p->rf_chain];
 
                 if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
-                    DEBUG_MSG("Note: LoRa packet\n");
+                    DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[i+5], p->if_chain);
                     if (rx_fifo[i+4] & 0x01) {
                         /* CRC enabled */
                         if (rx_fifo[i+6+p->size] & 0x01) {
@@ -831,6 +833,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                     }
                     sf = TAKE_N_BITS_FROM(rx_fifo[i+4], 4, 4);
                     switch (sf) {
+                        case 5: p->datarate = DR_LORA_SF5; break;
+                        case 6: p->datarate = DR_LORA_SF6; break;
                         case 7: p->datarate = DR_LORA_SF7; break;
                         case 8: p->datarate = DR_LORA_SF8; break;
                         case 9: p->datarate = DR_LORA_SF9; break;

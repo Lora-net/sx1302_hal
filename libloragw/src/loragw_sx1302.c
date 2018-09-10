@@ -224,6 +224,36 @@ int sx1302_channelizer_configure(bool * if_rf_chain, int32_t * channel_if) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_correlator_configure() {
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_2_SAME_PEAKS, 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_AUTO_RESCALE, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_COEFF, 2);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_PEAK_POS_SEL, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_PEAK_SUM_EN, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG3_MIN_SINGLE_PEAK, 11);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_CNT_MODE, 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_POS_SEL, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG7_NOISE_COEFF, 2);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG2_ACC_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG4_MSP_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG5_MSP2_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_PEAK_NB, 5);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG7_MSP2_PEAK_NB, 5);
+
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_2_SAME_PEAKS, 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_AUTO_RESCALE, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_COEFF, 2);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_PEAK_POS_SEL, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_PEAK_SUM_EN, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG3_MIN_SINGLE_PEAK, 11);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_CNT_MODE, 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_POS_SEL, 1);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG7_NOISE_COEFF, 2);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG2_ACC_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG4_MSP_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG5_MSP2_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_PEAK_NB, 4);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG7_MSP2_PEAK_NB, 4);
+
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG1_ACC_2_SAME_PEAKS, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG1_ACC_AUTO_RESCALE, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG1_ACC_COEFF, 2);
@@ -314,8 +344,8 @@ int sx1302_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 3);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_MSP2_PEAK_NB, 3);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFF); /* 12 11 10 9 8 7 6 5 */
-    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0x01);
+    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFC); /* 12 11 10 9 8 7 6 5 */
+    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0xFF); /* 1 correlator per channel */
 
     return LGW_REG_SUCCESS;
 }
@@ -330,8 +360,8 @@ int sx1302_modem_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_RX_CFG0_CHIRP_INVERT, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_MODEM_SYNC_DELTA_LSB_MODEM_SYNC_DELTA, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_MODEM_SYNC_DELTA_MSB_MODEM_SYNC_DELTA, 0);
-    lgw_reg_w(SX1302_REG_OTP_MODEM_EN_0_MODEM_EN, 0x03); /* Only 2 full modems available on FPGA */
-    lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0x00); /* No limited modem available */
+    lgw_reg_w(SX1302_REG_OTP_MODEM_EN_0_MODEM_EN, 0xFF); /* Only 2 full modems available on FPGA */
+    lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0x0F); /* No limited modem available */
 
     lgw_reg_w(SX1302_REG_RX_TOP_MODEM_PPM_OFFSET1_PPM_OFFSET_SF5, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_MODEM_PPM_OFFSET1_PPM_OFFSET_SF6, 0x00);

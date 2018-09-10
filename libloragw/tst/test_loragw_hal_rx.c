@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
-    struct lgw_pkt_rx_s rxpkt[8];
+    struct lgw_pkt_rx_s rxpkt[16];
 
     int nb_pkt;
 

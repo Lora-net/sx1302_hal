@@ -28,7 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 
 #define IS_LORA_BW(bw)          ((bw == BW_125KHZ) || (bw == BW_250KHZ) || (bw == BW_500KHZ))
-#define IS_LORA_DR(dr)          ((dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
+#define IS_LORA_DR(dr)          ((dr == DR_LORA_SF5) || (dr == DR_LORA_SF6) || (dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
 #define IS_LORA_CR(cr)          ((cr == CR_LORA_4_5) || (cr == CR_LORA_4_6) || (cr == CR_LORA_4_7) || (cr == CR_LORA_4_8))
 
 #define IS_FSK_BW(bw)           ((bw >= 1) && (bw <= 7))
@@ -90,6 +90,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* values available for the 'datarate' parameters */
 /* NOTE: LoRa values used directly to code SF bitmask in 'multi' modem, do not change */
 #define DR_UNDEFINED    0
+#define DR_LORA_SF5     5
+#define DR_LORA_SF6     6
 #define DR_LORA_SF7     7
 #define DR_LORA_SF8     8
 #define DR_LORA_SF9     9
