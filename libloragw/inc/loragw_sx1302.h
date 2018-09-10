@@ -53,7 +53,7 @@ int sx1302_correlator_configure();
 int sx1302_modem_configure();
 int sx1302_modem_enable();
 
-int sx1302_lora_syncword();
+int sx1302_lora_syncword(bool public);
 
 #endif
 

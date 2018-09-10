@@ -690,7 +690,7 @@ int lgw_start(void) {
     sx1302_channelizer_configure(if_rf_chain, if_freq);
     sx1302_correlator_configure();
     sx1302_modem_configure();
-    sx1302_lora_syncword();
+    sx1302_lora_syncword(lorawan_public);
 
     /* configure LoRa 'stand-alone' modem */
     /* TODO */
