@@ -109,7 +109,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 //#include "src/text_agc_sx1250_04_sep_13.var"
 #include "src/text_agc_sx1250_07_sep_1.var"
-#include "src/text_agc_sx1257_06_sep_1.var"
+#include "src/text_agc_sx1257_10_sep_1.var"
 #include "src/text_arb_sx1302_04_sep_9.var"
 
 /*
@@ -943,23 +943,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     lgw_reg_w(reg, pkt_data.rf_power);
 
     /* Get TX frequency and bandwidth (fdev) */
-    switch (rf_radio_type[pkt_data.rf_chain]) {
-        case LGW_RADIO_TYPE_SX1255:
-            freq_reg = SX1255_FREQ_TO_REG(pkt_data.freq_hz);
-            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
-            break;
-        case LGW_RADIO_TYPE_SX1257:
-            freq_reg = SX1257_FREQ_TO_REG(pkt_data.freq_hz);
-            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
-            break;
-        case LGW_RADIO_TYPE_SX1250:
-            freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz);
-            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
-            break;
-        default:
-            DEBUG_MSG("ERROR: radio type not supported\n");
-            return LGW_HAL_ERROR;
-    }
+    freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */
+    fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
 
     /* Set Tx frequency */
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF,
