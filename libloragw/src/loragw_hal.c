@@ -871,6 +871,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                     p->datarate = DR_UNDEFINED;
                     p->coderate = CR_UNDEFINED;
                 }
+
+                p->count_us  = (uint32_t)((rx_fifo[i+12+p->size] <<  0) & 0x000000FF);
+                p->count_us |= (uint32_t)((rx_fifo[i+13+p->size] <<  8) & 0x0000FF00);
+                p->count_us |= (uint32_t)((rx_fifo[i+14+p->size] << 16) & 0x00FF0000);
+                p->count_us |= (uint32_t)((rx_fifo[i+15+p->size] << 24) & 0xFF000000);
+                p->count_us /= 32;
+
+                p->crc = (uint16_t)rx_fifo[i+16+p->size] + ((uint16_t)rx_fifo[i+17+p->size] << 8);
             }
         }
         printf("INFO: nb pkt fetched:%u dropped:%u\n", nb_pkt_fetch, nb_pkt_dropped);
