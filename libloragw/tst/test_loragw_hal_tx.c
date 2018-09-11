@@ -29,6 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <signal.h>     /* sigaction */
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -48,11 +49,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
+/* Signal handling variables */
+static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
+static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
 /* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 /* describe command line options */
 void usage(void) {
@@ -70,6 +72,20 @@ void usage(void) {
     printf( " -p <int>  RF power [0..15] -- TBD sx1250 --\n");
 }
 
+/* handle signals */
+static void sig_handler(int sigio)
+{
+    if (sigio == SIGQUIT) {
+        quit_sig = 1;
+    }
+    else if((sigio == SIGINT) || (sigio == SIGTERM)) {
+        exit_sig = 1;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* --- MAIN FUNCTION -------------------------------------------------------- */
+
 int main(int argc, char **argv)
 {
     int i, x;
@@ -85,14 +101,17 @@ int main(int argc, char **argv)
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+    uint16_t preamble = 8;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_pkt_tx_s pkt;
     uint8_t tx_status;
 
+    static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:k:r:c:")) != -1) {
+    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:k:r:c:l:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -115,6 +134,15 @@ int main(int argc, char **argv)
                             radio_type = LGW_RADIO_TYPE_SX1250;
                             break;
                     }
+                }
+                break;
+            case 'l': /* <uint> LoRa preamble length */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 65535)) {
+                    printf("ERROR: argument parsing of -l argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    preamble = (uint16_t)arg_u;
                 }
                 break;
             case 'k': /* <uint> Clock Source */
@@ -210,6 +238,14 @@ int main(int argc, char **argv)
 
     printf("===== sx1302 HAL TX test =====\n");
 
+    /* Configure signal handling */
+    sigemptyset( &sigact.sa_mask );
+    sigact.sa_flags = 0;
+    sigact.sa_handler = sig_handler;
+    sigaction( SIGQUIT, &sigact, NULL );
+    sigaction( SIGINT, &sigact, NULL );
+    sigaction( SIGTERM, &sigact, NULL );
+
     /* Board reset */
     system("./reset_lgw.sh start");
 
@@ -247,7 +283,7 @@ int main(int argc, char **argv)
     pkt.tx_mode = IMMEDIATE;
     pkt.modulation = MOD_LORA;
     pkt.invert_pol = false;
-    pkt.preamble = 8;
+    pkt.preamble = preamble;
     pkt.no_crc = false;
     pkt.no_header = false;
     pkt.payload[0] = 0x40; /* Confirmed Data Up */
@@ -279,7 +315,7 @@ int main(int argc, char **argv)
         do {
             wait_ms(5);
             lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
-        } while (tx_status != TX_FREE);
+        } while ((tx_status != TX_FREE) && (quit_sig != 1) && (exit_sig != 1));
         printf("TX done\n");
     }
 
@@ -289,6 +325,10 @@ int main(int argc, char **argv)
         printf("ERROR: failed to stop the gateway\n");
         return EXIT_FAILURE;
     }
+
+    /* Board reset */
+    system("./reset_lgw.sh start");
+
     printf("=========== Test End ===========\n");
 
     return 0;
