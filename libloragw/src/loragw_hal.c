@@ -365,6 +365,12 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
         return LGW_HAL_ERROR;
     }
 
+    if (conf.enable == false) {
+        /* nothing to do */
+        DEBUG_PRINTF("Note: rf_chain %d disabled\n", rf_chain);
+        return LGW_HAL_SUCCESS;
+    }
+
     /* check input range (segfault prevention) */
     if (rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
@@ -373,7 +379,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
     /* check if radio type is supported */
     if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257) && (conf.type != LGW_RADIO_TYPE_SX1250)) {
-        DEBUG_MSG("ERROR: NOT A VALID RADIO TYPE\n");
+        DEBUG_PRINTF("ERROR: NOT A VALID RADIO TYPE (%d)\n", conf.type);
         return LGW_HAL_ERROR;
     }
 
