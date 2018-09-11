@@ -67,6 +67,9 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf( "Available options:\n");
     printf( " -h print this help\n");
+    printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf( " -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
+    printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
     printf( " -a <float> Radio A RX frequency in MHz\n");
     printf( " -b <float> Radio B RX frequency in MHz\n");
 }
@@ -82,6 +85,10 @@ int main(int argc, char **argv)
     uint32_t fa = DEFAULT_FREQ_HZ;
     uint32_t fb = DEFAULT_FREQ_HZ;
     double arg_d = 0.0;
+    unsigned int arg_u;
+    uint8_t clocksource = 0;
+    uint8_t rf_chain = 0;
+    enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -102,11 +109,48 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:")) != -1) {
+    while ((i = getopt (argc, argv, "ha:b:k:r:c:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'r': /* <uint> Radio type */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
+                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    switch (arg_u) {
+                        case 1255:
+                            radio_type = LGW_RADIO_TYPE_SX1255;
+                            break;
+                        case 1257:
+                            radio_type = LGW_RADIO_TYPE_SX1257;
+                            break;
+                        default: /* 1250 */
+                            radio_type = LGW_RADIO_TYPE_SX1250;
+                            break;
+                    }
+                }
+                break;
+            case 'k': /* <uint> Clock Source */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 1)) {
+                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    clocksource = (uint8_t)arg_u;
+                }
+                break;
+            case 'c': /* <uint> RF chain */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 1)) {
+                    printf("ERROR: argument parsing of -c argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    rf_chain = (uint8_t)arg_u;
+                }
                 break;
             case 'a': /* <float> Radio A RX frequency in MHz */
                 i = sscanf(optarg, "%lf", &arg_d);
@@ -149,21 +193,21 @@ int main(int argc, char **argv)
     /* Configure the gateway */
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
-    boardconf.clksrc = 0;
+    boardconf.clksrc = clocksource;
     lgw_board_setconf(boardconf);
 
     /* set configuration for RF chains */
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = true;
+    rfconf.enable = ((rf_chain == 0) ? true : false);
     rfconf.freq_hz = fa;
-    rfconf.type = LGW_RADIO_TYPE_SX1250;
+    rfconf.type = radio_type;
     rfconf.tx_enable = false;
     lgw_rxrf_setconf(0, rfconf);
 
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = false;
+    rfconf.enable = ((rf_chain == 1) ? true : false);
     rfconf.freq_hz = fb;
-    rfconf.type = LGW_RADIO_TYPE_SX1250;
+    rfconf.type = radio_type;
     rfconf.tx_enable = false;
     lgw_rxrf_setconf(1, rfconf);
 
@@ -172,7 +216,7 @@ int main(int argc, char **argv)
 
     for (i = 0; i < 8; i++) {
         ifconf.enable = true;
-        ifconf.rf_chain = 0;
+        ifconf.rf_chain = rf_chain;
         ifconf.freq_hz = channel_if[i];
         ifconf.datarate = DR_LORA_SF7;
         lgw_rxif_setconf(i, ifconf);
@@ -198,6 +242,7 @@ int main(int argc, char **argv)
             printf("Received %d packets\n", nb_pkt);
             for (i = 0; i < nb_pkt; i++) {
                 printf("\n----- %s packet -----\n", (rxpkt[i].modulation == MOD_LORA) ? "LoRa" : "FSK");
+                printf("  count_us: %u\n", rxpkt[i].count_us);
                 printf("  size:     %u\n", rxpkt[i].size);
                 printf("  chan:     %u\n", rxpkt[i].if_chain);
                 printf("  status:   0x%02X\n", rxpkt[i].status);
@@ -207,6 +252,7 @@ int main(int argc, char **argv)
                 printf("  freq_hz   %u\n", rxpkt[i].freq_hz);
                 printf("  snr_avg:  %.1f\n", rxpkt[i].snr);
                 printf("  rssi_chan:%.1f\n", rxpkt[i].rssi);
+                printf("  crc:      0x%04X\n", rxpkt[i].crc);
                 for (j = 0; j < rxpkt[i].size; j++) {
                     printf("%02X ", rxpkt[i].payload[j]);
                 }

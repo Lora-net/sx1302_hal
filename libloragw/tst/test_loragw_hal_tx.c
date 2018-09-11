@@ -220,13 +220,13 @@ int main(int argc, char **argv)
     lgw_board_setconf(boardconf);
 
     memset( &rfconf, 0, sizeof rfconf);
-
     rfconf.enable = ((rf_chain == 0) ? true : false);
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
     lgw_rxrf_setconf(0, rfconf);
 
+    memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = ((rf_chain == 1) ? true : false);
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
