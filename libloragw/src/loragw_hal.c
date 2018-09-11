@@ -239,7 +239,7 @@ int load_firmware_agc(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
 
     printf("Waiting for AGC fw to start...\n");
-    wait_ms(3000);
+    wait_ms(100);
 
     return 0;
 }
