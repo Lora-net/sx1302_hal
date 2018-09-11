@@ -30,7 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_SPI_ERROR       -1
 #define LGW_BURST_CHUNK     1024
 
-#define SPI_SPEED       10000000
+#define SPI_SPEED       2000000
 
 #define LGW_SPI_MUX_TARGET_SX1302   0x00
 #define LGW_SPI_MUX_TARGET_RADIOA   0x01
