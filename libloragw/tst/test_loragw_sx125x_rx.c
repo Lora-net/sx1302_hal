@@ -68,7 +68,7 @@ const int32_t channel_if[8] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-#include "src/text_arb_sx1302_04_sep_9.var"
+#include "src/text_arb_sx1302_10_sep_1.var"
 
 static uint32_t nb_pkt_received = 0;
 static uint16_t fcnt_prev = 0xFFFF;
