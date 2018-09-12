@@ -399,4 +399,29 @@ int sx1302_lora_syncword(bool public) {
     return LGW_REG_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_get_cnt(bool pps, uint32_t* cnt_us) {
+    int x;
+    uint8_t buff[4];
+
+    /* Get the 32MHz timestamp counter - 4 bytes */
+    /* step of 31.25 ns */
+    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to get timestamp counter value\n");
+        *cnt_us = 0;
+        return LGW_HAL_ERROR;
+    }
+
+    *cnt_us  = (uint32_t)((buff[0] << 24) & 0xFF000000);
+    *cnt_us |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
+    *cnt_us |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
+    *cnt_us |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+
+    *cnt_us /= 32; /* scale to 1MHz */
+
+    return LGW_HAL_SUCCESS;
+}
+
 /* --- EOF ------------------------------------------------------------------ */

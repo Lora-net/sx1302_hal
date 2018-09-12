@@ -70,6 +70,7 @@ void usage(void) {
     printf( " -n <uint> Number of packets to be sent\n");
     printf( " -z <uint> size of packets to be sent 0:random, [9..255]\n");
     printf( " -p <int>  RF power [0..15] -- TBD sx1250 --\n");
+    printf( " -t <uint> TX mode timestamped with delay in ms\n");
 }
 
 /* handle signals */
@@ -107,11 +108,14 @@ int main(int argc, char **argv)
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_pkt_tx_s pkt;
     uint8_t tx_status;
+    uint32_t count_us;
+    uint32_t trig_delay_us = 1000000;
+    bool trig_delay = false;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:k:r:c:l:")) != -1) {
+    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -143,6 +147,16 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     preamble = (uint16_t)arg_u;
+                }
+                break;
+            case 't': /* <uint> Trigger delay in ms */
+                i = sscanf(optarg, "%u", &arg_u);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -t argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    trig_delay = true;
+                    trig_delay_us = (uint32_t)(arg_u * 1E3);
                 }
                 break;
             case 'k': /* <uint> Clock Source */
@@ -280,7 +294,11 @@ int main(int argc, char **argv)
     pkt.rf_chain = rf_chain;
     pkt.freq_hz = ft;
     pkt.rf_power = rf_power;
-    pkt.tx_mode = IMMEDIATE;
+    if (trig_delay == false) {
+        pkt.tx_mode = IMMEDIATE;
+    } else {
+        pkt.tx_mode = TIMESTAMPED;
+    }
     pkt.modulation = MOD_LORA;
     pkt.invert_pol = false;
     pkt.preamble = preamble;
@@ -300,6 +318,13 @@ int main(int argc, char **argv)
     }
 
     for (i = 0; i < (int)nb_pkt; i++) {
+        if (trig_delay == true) {
+            lgw_get_instcnt(&count_us);
+            printf("count_us:%u\n", count_us);
+            pkt.count_us = count_us + trig_delay_us;
+            printf("programming TX for %u\n", pkt.count_us);
+        }
+
         pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(7, 12) : sf;
         pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
         pkt.bandwidth = (bw == 0) ? (uint8_t)RAND_RANGE(4, 6) : bw;
@@ -316,6 +341,10 @@ int main(int argc, char **argv)
             wait_ms(5);
             lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
         } while ((tx_status != TX_FREE) && (quit_sig != 1) && (exit_sig != 1));
+
+        if ((quit_sig == 1) || (exit_sig == 1)) {
+            break;
+        }
         printf("TX done\n");
     }
 

@@ -895,6 +895,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint16_t tx_start_delay;
     uint16_t reg;
     uint16_t mem_addr;
+    uint32_t count_us;
 
     /* Check if there is a TX on-going */
     /* TODO */
@@ -1088,6 +1089,14 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(reg, 0x01);
             break;
         case TIMESTAMPED:
+            /* TODO */
+            count_us = pkt_data.count_us * 32;
+            printf("--> programming trig delay at %u\n", count_us);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG, (uint8_t)((count_us >>  0) & 0x000000FF));
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG, (uint8_t)((count_us >>  8) & 0x000000FF));
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE2_TIMER_DELAYED_TRIG, (uint8_t)((count_us >> 16) & 0x000000FF));
+            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE3_TIMER_DELAYED_TRIG, (uint8_t)((count_us >> 24) & 0x000000FF));
+
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_DELAYED,
                                                 SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED);
             lgw_reg_w(reg, 0x00); /* reset state machine */
@@ -1148,6 +1157,7 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
         return LGW_HAL_ERROR;
     }
 
+    //DEBUG_PRINTF("INFO: STATUS %u\n", *code);
     return LGW_HAL_SUCCESS;
 }
 
@@ -1155,31 +1165,6 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
 
 int lgw_abort_tx(void) {
     /* TODO */
-
-    return LGW_HAL_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int sx1302_get_cnt(bool pps, uint32_t* cnt_us) {
-    int x;
-    uint8_t buff[4];
-
-    /* Get the 32MHz timestamp counter - 4 bytes */
-    /* step of 31.25 ns */
-    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
-    if (x != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to get timestamp counter value\n");
-        *cnt_us = 0;
-        return LGW_HAL_ERROR;
-    }
-
-    *cnt_us  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    *cnt_us |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    *cnt_us |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    *cnt_us |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
-
-    *cnt_us /= 32; /* scale to 1MHz */
 
     return LGW_HAL_SUCCESS;
 }
