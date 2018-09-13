@@ -97,7 +97,7 @@ void thread_timersync(void) {
 
         /* Get current concentrator counter value (1MHz) */
         pthread_mutex_lock(&mx_concent);
-        lgw_get_trigcnt(&sx1301_timecount);
+        lgw_get_instcnt(&sx1301_timecount);
         pthread_mutex_unlock(&mx_concent);
         concentrator_timeval.tv_sec = sx1301_timecount / 1000000UL;
         concentrator_timeval.tv_usec = sx1301_timecount - (concentrator_timeval.tv_sec * 1000000UL);
