@@ -107,7 +107,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_07_sep_1.var"
+#include "src/text_agc_sx1250_12_sep_7.var"
 #include "src/text_agc_sx1257_10_sep_1.var"
 #include "src/text_arb_sx1302_10_sep_1.var"
 
@@ -718,6 +718,8 @@ int lgw_start(void) {
         default:
             break;
     }
+
+    wait_ms(10000);
     load_firmware_arb(arb_firmware); /* TODO: check version */
 
     /* give radio control to AGC MCU */
@@ -891,7 +893,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_reg, fdev_reg;
-    uint32_t freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;;
+    uint32_t freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
     uint16_t tx_start_delay;
     uint16_t reg;
     uint16_t mem_addr;
@@ -1089,13 +1091,24 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(reg, 0x01);
             break;
         case TIMESTAMPED:
-            /* TODO */
             count_us = pkt_data.count_us * 32;
-            printf("--> programming trig delay at %u\n", count_us);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG, (uint8_t)((count_us >>  0) & 0x000000FF));
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG, (uint8_t)((count_us >>  8) & 0x000000FF));
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE2_TIMER_DELAYED_TRIG, (uint8_t)((count_us >> 16) & 0x000000FF));
-            lgw_reg_w(SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE3_TIMER_DELAYED_TRIG, (uint8_t)((count_us >> 24) & 0x000000FF));
+            printf("--> programming trig delay at %u (%u)\n", pkt_data.count_us, count_us);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG,
+                                                SX1302_REG_TX_TOP_B_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG);
+            lgw_reg_w(reg, (uint8_t)((count_us >>  0) & 0x000000FF));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG,
+                                                SX1302_REG_TX_TOP_B_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG);
+            lgw_reg_w(reg, (uint8_t)((count_us >>  8) & 0x000000FF));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE2_TIMER_DELAYED_TRIG,
+                                                SX1302_REG_TX_TOP_B_TIMER_TRIG_BYTE2_TIMER_DELAYED_TRIG);
+            lgw_reg_w(reg, (uint8_t)((count_us >> 16) & 0x000000FF));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TIMER_TRIG_BYTE3_TIMER_DELAYED_TRIG,
+                                                SX1302_REG_TX_TOP_B_TIMER_TRIG_BYTE3_TIMER_DELAYED_TRIG);
+            lgw_reg_w(reg, (uint8_t)((count_us >> 24) & 0x000000FF));
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_DELAYED,
                                                 SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED);
