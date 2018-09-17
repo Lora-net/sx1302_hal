@@ -186,11 +186,11 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
     buff[2] = 0x00;
     sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
 
-    /* TODO ?? */
+    /* Set fix gain (??) */
     buff[0] = 0x08;
     buff[1] = 0xB6;
     buff[2] = 0x2A;
-    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* Fix gain 10 */
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3);
 
     /* Set frequency */
     freq_reg = SX1250_FREQ_TO_REG(freq_hz);
