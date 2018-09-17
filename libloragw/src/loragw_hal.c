@@ -107,7 +107,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_12_sep_7.var"
+#include "src/text_agc_sx1250_17_sep_5.var"
 #include "src/text_agc_sx1257_10_sep_1.var"
 #include "src/text_arb_sx1302_10_sep_1.var"
 
@@ -705,6 +705,9 @@ int lgw_start(void) {
     /* configure FSK modem */
     /* TODO */
 
+    /* give radio control to AGC MCU */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
+
     /* Load firmware */
     switch (rf_radio_type[rf_clkout]) {
         case LGW_RADIO_TYPE_SX1250:
@@ -718,12 +721,7 @@ int lgw_start(void) {
         default:
             break;
     }
-
-    wait_ms(10000);
     load_firmware_arb(arb_firmware); /* TODO: check version */
-
-    /* give radio control to AGC MCU */
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
 
     /* enable demodulators */
     sx1302_modem_enable();
@@ -1114,6 +1112,30 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                                 SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED);
             lgw_reg_w(reg, 0x00); /* reset state machine */
             lgw_reg_w(reg, 0x01);
+
+#if 0
+            wait_ms(1000);
+
+            lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
+
+            //sx1250_setup(0, 865800000);
+
+            buff2[0] = 0x08;
+            buff2[1] = 0x8B;
+            buff2[2] = 0x00;
+            buff2[3] = 0x00;
+            buff2[4] = 0x00;
+            buff2[5] = 0x00;
+            buff2[6] = 0x00;
+            sx1250_read_command(0, READ_REGISTER, buff2, 7);
+            printf("reading %u\n", buff2[3]);
+            printf("reading %u\n", buff2[4]);
+            printf("reading %u\n", buff2[5]);
+            printf("reading %u\n", buff2[6]);
+
+            lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
+#endif
+
             break;
         case ON_GPS:
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_GPS,
