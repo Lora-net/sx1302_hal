@@ -49,7 +49,6 @@ Maintainer: Michael Coracin
 
 #include "trace.h"
 #include "jitqueue.h"
-#include "timersync.h"
 #include "parson.h"
 #include "base64.h"
 #include "loragw_hal.h"
@@ -201,7 +200,6 @@ static int get_tx_gain_lut_index(int8_t rf_power, uint8_t * lut_index);
 void thread_up(void);
 void thread_down(void);
 void thread_jit(void);
-void thread_timersync(void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -766,7 +764,6 @@ int main(void)
     pthread_t thrid_up;
     pthread_t thrid_down;
     pthread_t thrid_jit;
-    pthread_t thrid_timersync;
 
     /* network socket creation */
     struct addrinfo hints;
@@ -973,11 +970,6 @@ int main(void)
         MSG("ERROR: [main] impossible to create JIT thread\n");
         exit(EXIT_FAILURE);
     }
-    i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create Timer Sync thread\n");
-        exit(EXIT_FAILURE);
-    }
 
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
@@ -1108,7 +1100,6 @@ int main(void)
     pthread_join(thrid_up, NULL);
     pthread_cancel(thrid_down); /* don't wait for downstream thread */
     pthread_cancel(thrid_jit); /* don't wait for jit thread */
-    pthread_cancel(thrid_timersync); /* don't wait for timer sync thread */
 
     /* if an exit signal was received, try to quit properly */
     if (exit_sig) {
@@ -1602,8 +1593,7 @@ void thread_down(void) {
     uint32_t autoquit_cnt = 0; /* count the number of PULL_DATA sent since the latest PULL_ACK */
 
     /* Just In Time downlink */
-    struct timeval current_unix_time;
-    struct timeval current_concentrator_time;
+    uint32_t current_concentrator_time;
     enum jit_error_e jit_result = JIT_ERROR_OK;
     enum jit_pkt_type_e downlink_type;
     enum jit_error_e warning_result = JIT_ERROR_OK;
@@ -1951,9 +1941,10 @@ void thread_down(void) {
 
             /* insert packet to be sent into JIT queue */
             if (jit_result == JIT_ERROR_OK) {
-                gettimeofday(&current_unix_time, NULL);
-                get_concentrator_time(&current_concentrator_time, current_unix_time);
-                jit_result = jit_enqueue(&jit_queue, &current_concentrator_time, &txpkt, downlink_type);
+                pthread_mutex_lock(&mx_concent);
+                lgw_get_instcnt(&current_concentrator_time);
+                pthread_mutex_unlock(&mx_concent);
+                jit_result = jit_enqueue(&jit_queue, current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {
                     printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
                 } else {
@@ -2000,8 +1991,7 @@ void thread_jit(void) {
     int result = LGW_HAL_SUCCESS;
     struct lgw_pkt_tx_s pkt;
     int pkt_index = -1;
-    struct timeval current_unix_time;
-    struct timeval current_concentrator_time;
+    uint32_t current_concentrator_time;
     enum jit_error_e jit_result;
     enum jit_pkt_type_e pkt_type;
     uint8_t tx_status;
@@ -2010,9 +2000,10 @@ void thread_jit(void) {
         wait_ms(10);
 
         /* transfer data and metadata to the concentrator, and schedule TX */
-        gettimeofday(&current_unix_time, NULL);
-        get_concentrator_time(&current_concentrator_time, current_unix_time);
-        jit_result = jit_peek(&jit_queue, &current_concentrator_time, &pkt_index);
+        pthread_mutex_lock(&mx_concent);
+        lgw_get_instcnt(&current_concentrator_time);
+        pthread_mutex_unlock(&mx_concent);
+        jit_result = jit_peek(&jit_queue, current_concentrator_time, &pkt_index);
         if (jit_result == JIT_ERROR_OK) {
             if (pkt_index > -1) {
                 jit_result = jit_dequeue(&jit_queue, pkt_index, &pkt, &pkt_type);

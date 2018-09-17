@@ -104,7 +104,7 @@ void jit_queue_init(struct jit_queue_s *queue);
 @brief Add a packet in a Just-in-Time queue
 
 @param queue[in/out] Just in Time queue in which the packet should be inserted
-@param time[in] Current concentrator time
+@param time_us[in] Current concentrator time
 @param packet[in] Packet to be queued in JiT queue
 @param pkt_type[in] Type of packet to be queued: Downlink, Beacon
 @return success if the function was able to queue the packet
@@ -113,7 +113,7 @@ This function is typically used when a packet is received from server for downli
 It will check if packet can be queued, with several criterias. Once the packet is queued, it has to be
 sent over the air. So all checks should happen before the packet being actually in the queue.
 */
-enum jit_error_e jit_enqueue(struct jit_queue_s *queue, struct timeval *time, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type);
+enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type);
 
 /**
 @brief Dequeue a packet from a Just-in-Time queue
@@ -133,7 +133,7 @@ enum jit_error_e jit_dequeue(struct jit_queue_s *queue, int index, struct lgw_pk
 @brief Check if there is a packet soon to be sent from the JiT queue.
 
 @param queue[in] Just in Time queue to parse for peeking a packet
-@param time[in] Current concentrator time
+@param time_us[in] Current concentrator time
 @param pkt_idx[out] Packet index which is soon to be dequeued.
 @return success if the function was able to parse the queue. pkt_idx is set to -1 if no packet found.
 
@@ -141,7 +141,7 @@ This function is typically used to check in JiT queue if there is a packet soon 
 It search the packet with the highest priority in queue, and check if its timestamp is near
 enough the current concentrator time.
 */
-enum jit_error_e jit_peek(struct jit_queue_s *queue, struct timeval *time, int *pkt_idx);
+enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_idx);
 
 /**
 @brief Debug function to print the queue's content on console

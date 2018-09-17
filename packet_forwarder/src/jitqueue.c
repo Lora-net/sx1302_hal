@@ -128,9 +128,8 @@ bool jit_collision_test(uint32_t p1_count_us, uint32_t p1_pre_delay, uint32_t p1
     }
 }
 
-enum jit_error_e jit_enqueue(struct jit_queue_s *queue, struct timeval *time, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type) {
+enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type) {
     int i = 0;
-    uint32_t time_us = time->tv_sec * 1000000UL + time->tv_usec; /* convert time in µs */
     uint32_t packet_post_delay = 0;
     uint32_t packet_pre_delay = 0;
     uint32_t target_pre_delay = 0;
@@ -364,13 +363,11 @@ enum jit_error_e jit_dequeue(struct jit_queue_s *queue, int index, struct lgw_pk
     return JIT_ERROR_OK;
 }
 
-enum jit_error_e jit_peek(struct jit_queue_s *queue, struct timeval *time, int *pkt_idx) {
+enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_idx) {
     /* Return index of node containing a packet inline with given time */
     int i = 0;
     int idx_highest_priority = -1;
-    uint32_t time_us;
-
-    if ((time == NULL) || (pkt_idx == NULL)) {
+    if (pkt_idx == NULL) {
         MSG("ERROR: invalid parameter\n");
         return JIT_ERROR_INVALID;
     }
@@ -378,8 +375,6 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, struct timeval *time, int *
     if (jit_queue_is_empty(queue)) {
         return JIT_ERROR_EMPTY;
     }
-
-    time_us = time->tv_sec * 1000000UL + time->tv_usec;
 
     pthread_mutex_lock(&mx_jit_queue);
 
