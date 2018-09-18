@@ -48,9 +48,14 @@ int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type);
 
 int sx1302_clock_enable(void);
 
-int sx1302_channelizer_configure(bool * if_rf_chain, int32_t * channel_if);
-int sx1302_correlator_configure();
-int sx1302_modem_configure();
+int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if);
+int sx1302_lora_correlator_configure();
+int sx1302_lora_modem_configure();
+
+int sx1302_lora_service_channelizer_configure(bool * if_rf_chain, int32_t * channel_if);
+int sx1302_lora_service_correlator_configure(uint8_t sf);
+int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw);
+
 int sx1302_modem_enable();
 
 int sx1302_lora_syncword(bool public);

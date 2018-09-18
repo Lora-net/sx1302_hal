@@ -107,7 +107,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_17_sep_5.var"
+#include "src/text_agc_sx1250_18_sep_1.var"
 #include "src/text_agc_sx1257_10_sep_1.var"
 #include "src/text_arb_sx1302_10_sep_1.var"
 
@@ -136,7 +136,6 @@ static uint8_t lora_multi_sfmask[LGW_MULTI_NB]; /* enables SF for LoRa 'multi' m
 
 static uint8_t lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
 static uint8_t lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
-static bool lora_rx_ppm_offset;
 
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
@@ -477,11 +476,6 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             if_freq[if_chain] = conf.freq_hz;
             lora_rx_bw = conf.bandwidth;
             lora_rx_sf = conf.datarate;
-            if (SET_PPM_ON(conf.bandwidth, conf.datarate)) {
-                lora_rx_ppm_offset = true;
-            } else {
-                lora_rx_ppm_offset = false;
-            }
 
             DEBUG_PRINTF("Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
             break;
@@ -694,16 +688,20 @@ int lgw_start(void) {
     }
 
     /* configure LoRa 'multi' demodulators */
-    sx1302_channelizer_configure(if_rf_chain, if_freq);
-    sx1302_correlator_configure();
-    sx1302_modem_configure();
-    sx1302_lora_syncword(lorawan_public);
+    sx1302_lora_channelizer_configure(if_rf_chain, if_freq);
+    sx1302_lora_correlator_configure();
+    sx1302_lora_modem_configure();
 
     /* configure LoRa 'stand-alone' modem */
-    /* TODO */
+    sx1302_lora_service_channelizer_configure(if_rf_chain, if_freq);
+    sx1302_lora_service_correlator_configure(lora_rx_sf);
+    sx1302_lora_service_modem_configure(lora_rx_sf, lora_rx_bw);
 
     /* configure FSK modem */
     /* TODO */
+
+    /* configure syncword */
+    sx1302_lora_syncword(lorawan_public);
 
     /* give radio control to AGC MCU */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
@@ -721,6 +719,7 @@ int lgw_start(void) {
         default:
             break;
     }
+    printf("Loading ARB fw\n");
     load_firmware_arb(arb_firmware); /* TODO: check version */
 
     /* enable demodulators */
