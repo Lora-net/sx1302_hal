@@ -91,7 +91,7 @@ Maintainer: Michael Coracin
 #define PKT_PULL_ACK    4
 #define PKT_TX_ACK      5
 
-#define NB_PKT_MAX      8 /* max number of packets per fetch/send cycle */
+#define NB_PKT_MAX      16 /* max number of packets per fetch/send cycle */
 
 #define MIN_LORA_PREAMB 6 /* minimum Lora preamble length for this application */
 #define STD_LORA_PREAMB 8
@@ -1217,7 +1217,6 @@ void thread_up(void) {
             switch(p->status) {
                 case STAT_CRC_OK:
                     meas_nb_rx_ok += 1;
-                    printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
                     if (!fwd_valid_pkt) {
                         pthread_mutex_unlock(&mx_meas_up);
                         continue; /* skip that packet */
@@ -1246,6 +1245,7 @@ void thread_up(void) {
             meas_up_pkt_fwd += 1;
             meas_up_payload_byte += p->size;
             pthread_mutex_unlock(&mx_meas_up);
+            printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
 
             /* Start of packet, add inter-packet separator if necessary */
             if (pkt_in_dgram == 0) {

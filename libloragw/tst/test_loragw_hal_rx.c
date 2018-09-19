@@ -97,15 +97,16 @@ int main(int argc, char **argv)
 
     int nb_pkt;
 
-    const int32_t channel_if[8] = {
-        700000,
-        500000,
-        300000,
+    const int32_t channel_if[9] = {
         100000,
-        -100000,
-        -300000,
-        -500000,
-        -700000
+        100000,
+        100000,
+        100000,
+        100000,
+        100000,
+        100000,
+        100000,
+        100000,
     };
 
     /* parse command line options */
@@ -213,8 +214,7 @@ int main(int argc, char **argv)
 
     /* set configuration for LoRa multi-SF channels (bandwidth cannot be set) */
     memset(&ifconf, 0, sizeof(ifconf));
-
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < 9; i++) {
         ifconf.enable = true;
         ifconf.rf_chain = rf_chain;
         ifconf.freq_hz = channel_if[i];
