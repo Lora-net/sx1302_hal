@@ -267,21 +267,30 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
-    lgw_board_setconf(boardconf);
+    if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure board\n");
+        return EXIT_FAILURE;
+    }
 
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = ((rf_chain == 0) ? true : false);
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
-    lgw_rxrf_setconf(0, rfconf);
+    if (lgw_rxrf_setconf(0, rfconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxrf 0\n");
+        return EXIT_FAILURE;
+    }
 
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = ((rf_chain == 1) ? true : false);
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
-    lgw_rxrf_setconf(1, rfconf);
+    if (lgw_rxrf_setconf(1, rfconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxrf 1\n");
+        return EXIT_FAILURE;
+    }
 
     x = lgw_start();
     if (x != 0) {

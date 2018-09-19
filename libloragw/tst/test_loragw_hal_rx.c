@@ -195,7 +195,10 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
-    lgw_board_setconf(boardconf);
+    if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure board\n");
+        return EXIT_FAILURE;
+    }
 
     /* set configuration for RF chains */
     memset( &rfconf, 0, sizeof rfconf);
@@ -203,14 +206,20 @@ int main(int argc, char **argv)
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
-    lgw_rxrf_setconf(0, rfconf);
+    if (lgw_rxrf_setconf(0, rfconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxrf 0\n");
+        return EXIT_FAILURE;
+    }
 
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = ((rf_chain == 1) ? true : false);
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
-    lgw_rxrf_setconf(1, rfconf);
+    if (lgw_rxrf_setconf(1, rfconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxrf 1\n");
+        return EXIT_FAILURE;
+    }
 
     /* set configuration for LoRa multi-SF channels (bandwidth cannot be set) */
     memset(&ifconf, 0, sizeof(ifconf));
@@ -219,7 +228,10 @@ int main(int argc, char **argv)
         ifconf.rf_chain = rf_chain;
         ifconf.freq_hz = channel_if[i];
         ifconf.datarate = DR_LORA_SF7;
-        lgw_rxif_setconf(i, ifconf);
+        if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
+            printf("ERROR: failed to configure rxif %d\n", i);
+            return EXIT_FAILURE;
+        }
     }
 
     /* connect, configure and start the LoRa concentrator */
