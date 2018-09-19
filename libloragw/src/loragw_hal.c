@@ -95,6 +95,9 @@ Maintainer: Sylvain Miermont
 
 #define TX_START_DELAY_DEFAULT  1497 /* Calibrated value for 500KHz BW */ /* TODO */
 
+#define LGW_RF_RX_FREQ_MIN          100E6
+#define LGW_RF_RX_FREQ_MAX          1E9
+
 /* constant arrays defining hardware capability */
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
@@ -379,6 +382,12 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     /* check if radio type is supported */
     if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257) && (conf.type != LGW_RADIO_TYPE_SX1250)) {
         DEBUG_PRINTF("ERROR: NOT A VALID RADIO TYPE (%d)\n", conf.type);
+        return LGW_HAL_ERROR;
+    }
+
+    /* check if the radio central frequency is valid */
+    if ((conf.freq_hz < LGW_RF_RX_FREQ_MIN) || (conf.freq_hz > LGW_RF_RX_FREQ_MAX)) {
+        DEBUG_PRINTF("ERROR: NOT A VALID RADIO CENTER FREQUENCY, PLEASE CHECK IF IT HAS BEEN GIVEN IN HZ (%u)\n", conf.freq_hz);
         return LGW_HAL_ERROR;
     }
 
