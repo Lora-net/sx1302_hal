@@ -68,8 +68,8 @@ Maintainer: Sylvain Miermont
 #define MCU_AGC_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define FW_VERSION_ADDR     0x0 /* Address of firmware version in data memory */ /* TODO */
 #define FW_VERSION_CAL      0 /* Expected version of calibration firmware */ /* TODO */
-#define FW_VERSION_AGC      0 /* Expected version of AGC firmware */ /* TODO */
-#define FW_VERSION_ARB      0 /* Expected version of arbiter firmware */ /* TODO */
+#define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
+#define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
 #define TX_METADATA_NB      16
 #define RX_METADATA_NB      16
@@ -110,9 +110,9 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_18_sep_1.var"
-#include "src/text_agc_sx1257_10_sep_1.var"
-#include "src/text_arb_sx1302_18_sep_3.var"
+#include "src/text_agc_sx1250_24_sep_3.var"
+#include "src/text_agc_sx1257_24_sep_2.var"
+#include "src/text_arb_sx1302_24_sep_3.var"
 
 /*
 The following static variables are the configuration set that the user can
@@ -241,9 +241,8 @@ int load_firmware_agc(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
 
     printf("Waiting for AGC fw to start...\n");
-    wait_ms(100);
 
-    return 0;
+    return LGW_HAL_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -289,6 +288,8 @@ int load_firmware_arb(const uint8_t *firmware) {
 
     lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
     printf("ARB fw loaded (parity error:0x%02X)\n", val);
+
+    printf("Waiting for ARB fw to start...\n");
 
     return 0;
 }
@@ -719,17 +720,32 @@ int lgw_start(void) {
     switch (rf_radio_type[rf_clkout]) {
         case LGW_RADIO_TYPE_SX1250:
             printf("Loading AGC fw for sx1250\n");
-            load_firmware_agc(agc_firmware_sx1250); /* TODO: check version */
+            if (load_firmware_agc(agc_firmware_sx1250) != LGW_HAL_SUCCESS) {
+                return LGW_HAL_ERROR;
+            }
+            if (sx1302_agc_start(FW_VERSION_AGC, SX1302_RADIO_TYPE_SX1250, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, 0) != LGW_HAL_SUCCESS) {
+                return LGW_HAL_ERROR;
+            }
             break;
         case LGW_RADIO_TYPE_SX1257:
             printf("Loading AGC fw for sx125x\n");
-            load_firmware_agc(agc_firmware_sx125x); /* TODO: check version */
+            if (load_firmware_agc(agc_firmware_sx125x) != LGW_HAL_SUCCESS) {
+                return LGW_HAL_ERROR;
+            }
+            if (sx1302_agc_start(FW_VERSION_AGC, SX1302_RADIO_TYPE_SX125X, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, 0) != LGW_HAL_SUCCESS) {
+                return LGW_HAL_ERROR;
+            }
             break;
         default:
             break;
     }
     printf("Loading ARB fw\n");
-    load_firmware_arb(arb_firmware); /* TODO: check version */
+    if (load_firmware_arb(arb_firmware) != LGW_HAL_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
+    if (sx1302_arb_start(FW_VERSION_ARB) != LGW_HAL_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
 
     /* enable demodulators */
     sx1302_modem_enable();
@@ -966,7 +982,34 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER,
                                         SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_POWER);
+#if 1
     lgw_reg_w(reg, pkt_data.rf_power);
+#else
+    /* TODO */
+    uint8_t power;
+    uint8_t pow_index;
+
+    /* Find the proper index in the TX gain LUT according to requested rf_power */
+    for (pow_index = txgain_lut.size-1; pow_index > 0; pow_index--) {
+        if (txgain_lut.lut[pow_index].rf_power <= pkt_data.rf_power) {
+            break;
+        }
+    }
+
+    /* Set the power parameters to be used for TX */
+    switch (rf_radio_type[pkt_data.rf_chain]) {
+        case LGW_RADIO_TYPE_SX1250:
+            power = (txgain_lut.lut[pow_index].pa_gain << 6) | pkt_data.rf_power; /* TBC */
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            power = (txgain_lut.lut[pow_index].pa_gain << 6) | (txgain_lut.lut[pow_index].dac_gain << 4) | txgain_lut.lut[pow_index].mix_gain;
+            break;
+        default:
+            DEBUG_MSG("ERROR: radio type not supported\n");
+            return LGW_HAL_ERROR;
+    }
+    lgw_reg_w(reg, power);
+#endif
 
     /* Get TX frequency and bandwidth (fdev) */
     freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */

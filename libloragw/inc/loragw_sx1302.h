@@ -26,6 +26,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
+#define SX1302_AGC_RADIO_GAIN_AUTO 0
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 
@@ -61,6 +63,18 @@ int sx1302_modem_enable();
 int sx1302_lora_syncword(bool public);
 
 int sx1302_get_cnt(bool pps, uint32_t* cnt_us);
+
+int sx1302_agc_status(uint8_t* status);
+int sx1302_agc_wait_status(uint8_t status);
+int sx1302_agc_mailbox_read(uint8_t mailbox, uint8_t* value);
+int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value);
+int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode);
+
+int sx1302_arb_status(uint8_t* status);
+int sx1302_arb_wait_status(uint8_t status);
+int sx1302_agc_debug_read(uint8_t reg_id, uint8_t* value);
+int sx1302_agc_debug_write(uint8_t reg_id, uint8_t value);
+int sx1302_arb_start(uint8_t version);
 
 #endif
 

@@ -51,6 +51,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define AGC_RADIO_A_INIT_DONE   0x80
+#define AGC_RADIO_B_INIT_DONE   0x20
+
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
@@ -578,6 +581,273 @@ int sx1302_get_cnt(bool pps, uint32_t* cnt_us) {
     *cnt_us |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
 
     *cnt_us /= 32; /* scale to 1MHz */
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_status(uint8_t* status) {
+    int32_t val;
+
+#if 0
+    if (lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_MCU_AGC_STATUS, &val) != LGW_REG_SUCCESS) {
+#else
+    if (lgw_reg_r(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_RD_DATA_BYTE3_MCU_MAIL_BOX_RD_DATA, &val) != LGW_REG_SUCCESS) {
+#endif
+        printf("ERROR: Failed to get AGC status\n");
+        return LGW_HAL_ERROR;
+    }
+
+    *status = (uint8_t)val;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_wait_status(uint8_t status) {
+    uint8_t val;
+
+    do {
+        if (sx1302_agc_status(&val) != LGW_HAL_SUCCESS) {
+            return LGW_HAL_ERROR;
+        }
+    } while (val != status);
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_mailbox_read(uint8_t mailbox, uint8_t* value) {
+    uint16_t reg;
+    int32_t val;
+
+    /* Check parameters */
+    if (mailbox > 3) {
+        printf("ERROR: invalid AGC mailbox ID\n");
+        return LGW_HAL_ERROR;
+    }
+
+    reg = SX1302_REG_AGC_MCU_MCU_MAIL_BOX_RD_DATA_BYTE0_MCU_MAIL_BOX_RD_DATA - mailbox;
+    if (lgw_reg_r(reg, &val) != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to read AGC mailbox\n");
+        return LGW_HAL_ERROR;
+    }
+
+    *value = (uint8_t)val;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
+    uint16_t reg;
+
+    /* Check parameters */
+    if (mailbox > 3) {
+        printf("ERROR: invalid AGC mailbox ID\n");
+        return LGW_HAL_ERROR;
+    }
+
+    reg = SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE0_MCU_MAIL_BOX_WR_DATA - mailbox;
+    if (lgw_reg_w(reg, (int32_t)value) != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to write AGC mailbox\n");
+        return LGW_HAL_ERROR;
+    }
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
+    uint8_t val;
+
+    /* Wait for AGC fw to be started, and VERSION available in mailbox */
+    sx1302_agc_wait_status(0x01); /* fw has started, VERSION is ready in mailbox */
+
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != version) {
+        printf("ERROR: wrong AGC fw version (%d)\n", val);
+        return LGW_HAL_ERROR;
+    }
+    printf("AGC FW VERSION: %d\n", val);
+
+    /* Configure Radio A gains */
+    sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
+    sx1302_agc_mailbox_write(1, dec_gain);
+    if (radio_type == SX1302_RADIO_TYPE_SX125X) {
+        sx1302_agc_mailbox_write(2, fdd_mode);
+    }
+
+    /* notify AGC that gains has been set to mailbox for Radio A */
+    sx1302_agc_mailbox_write(3, AGC_RADIO_A_INIT_DONE);
+
+    /* Wait for AGC to acknoledge it has received gain settings for Radio A */
+    sx1302_agc_wait_status(0x02);
+
+    /* Check ana_gain setting */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != ana_gain) {
+        printf("ERROR: Analog gain of Radio A has not been set properly\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Check dec_gain setting */
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != dec_gain) {
+        printf("ERROR: Decimator gain of Radio A has not been set properly\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Check FDD mode setting */
+    sx1302_agc_mailbox_read(2, &val);
+    if (val != fdd_mode) {
+        printf("ERROR: FDD mode of Radio A has not been set properly\n");
+        return LGW_HAL_ERROR;
+    }
+
+    printf("AGC: Radio A config done\n");
+
+    /* Configure Radio B gains */
+    sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
+    sx1302_agc_mailbox_write(1, dec_gain);
+    if (radio_type == SX1302_RADIO_TYPE_SX125X) {
+        sx1302_agc_mailbox_write(2, fdd_mode);
+    }
+
+    /* notify AGC that gains has been set to mailbox for Radio B */
+    sx1302_agc_mailbox_write(3, AGC_RADIO_B_INIT_DONE);
+
+    /* Wait for AGC to acknoledge it has received gain settings for Radio B */
+    sx1302_agc_wait_status(0x00);
+
+    /* Check ana_gain setting */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != ana_gain) {
+        printf("ERROR: Analog gain of Radio B has not been set properly\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Check dec_gain setting */
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != dec_gain) {
+        printf("ERROR: Decimator gain of Radio B has not been set properly\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Check FDD mode setting */
+    sx1302_agc_mailbox_read(2, &val);
+    if (val != fdd_mode) {
+        printf("ERROR: FDD mode of Radio B has not been set properly\n");
+        return LGW_HAL_ERROR;
+    }
+
+    printf("AGC: Radio B config done\n");
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_arb_status(uint8_t* status) {
+    int32_t val;
+
+#if 0
+    if (lgw_reg_r(SX1302_REG_ARB_MCU_MCU_ARB_STATUS_MCU_ARB_STATUS, &val) != LGW_REG_SUCCESS) {
+#else
+    if (lgw_reg_r(SX1302_REG_ARB_MCU_ARB_DEBUG_STS_1_ARB_DEBUG_STS_1, &val) != LGW_REG_SUCCESS) {
+#endif
+        printf("ERROR: Failed to get AGC status\n");
+        return LGW_HAL_ERROR;
+    }
+
+    *status = (uint8_t)val;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_arb_wait_status(uint8_t status) {
+    uint8_t val;
+
+    do {
+        if (sx1302_arb_status(&val) != LGW_HAL_SUCCESS) {
+            return LGW_HAL_ERROR;
+        }
+    } while (val != status);
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_debug_read(uint8_t reg_id, uint8_t* value) {
+    uint16_t reg;
+    int32_t val;
+
+    /* Check parameters */
+    if (reg_id > 15) {
+        printf("ERROR: invalid ARB debug register ID\n");
+        return LGW_HAL_ERROR;
+    }
+
+    reg = SX1302_REG_ARB_MCU_ARB_DEBUG_STS_0_ARB_DEBUG_STS_0 + reg_id;
+    if (lgw_reg_r(reg, &val) != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to read ARB debug register\n");
+        return LGW_HAL_ERROR;
+    }
+
+    *value = (uint8_t)val;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_agc_debug_write(uint8_t reg_id, uint8_t value) {
+    uint16_t reg;
+
+    /* Check parameters */
+    if (reg_id > 3) {
+        printf("ERROR: invalid ARB debug register ID\n");
+        return LGW_HAL_ERROR;
+    }
+
+    reg = SX1302_REG_ARB_MCU_ARB_DEBUG_CFG_0_ARB_DEBUG_CFG_0 + reg_id;
+    if (lgw_reg_w(reg, (int32_t)value) != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to write ARB debug register ID\n");
+        return LGW_HAL_ERROR;
+    }
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_arb_start(uint8_t version) {
+    uint8_t val;
+
+    /* Wait for ARB fw to be started, and VERSION available in debug registers */
+    sx1302_arb_wait_status(0x01);
+
+    /* Get firmware VERSION */
+    sx1302_agc_debug_read(0, &val);
+    if (val != version) {
+        printf("ERROR: wrong ARB fw version (%d)\n", val);
+        return LGW_HAL_ERROR;
+    }
+    printf("ARB FW VERSION: %d\n", val);
+
+    /* Notify ARB that it can resume */
+    sx1302_agc_debug_write(1, 1);
+
+    /* Wait for ARB to acknoledge */
+    sx1302_arb_wait_status(0x00);
 
     return LGW_HAL_SUCCESS;
 }
