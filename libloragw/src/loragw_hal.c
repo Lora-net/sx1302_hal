@@ -141,20 +141,14 @@ static bool lorawan_public = false;
 static uint8_t rf_clkout = 0;
 
 static struct lgw_tx_gain_lut_s txgain_lut = {
-    .size = 2,
+    .size = 1,
     .lut[0] = {
+        .rf_power = 14,
         .dig_gain = 0,
         .pa_gain = 2,
         .dac_gain = 3,
         .mix_gain = 10,
-        .rf_power = 14
-    },
-    .lut[1] = {
-        .dig_gain = 0,
-        .pa_gain = 3,
-        .dac_gain = 3,
-        .mix_gain = 14,
-        .rf_power = 27
+        .pwr_idx = 0
     }};
 
 static uint8_t rx_fifo[4096];
@@ -859,15 +853,13 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             return LGW_HAL_ERROR;
     }
 
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER,
-                                        SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_POWER);
-
     /* Find the proper index in the TX gain LUT according to requested rf_power */
     for (pow_index = txgain_lut.size-1; pow_index > 0; pow_index--) {
         if (txgain_lut.lut[pow_index].rf_power <= pkt_data.rf_power) {
             break;
         }
     }
+    printf("INFO: selecting TX Gain LUT index %u\n", pow_index);
 
     /* Set the power parameters to be used for TX */
     switch (rf_radio_type[pkt_data.rf_chain]) {
@@ -881,10 +873,14 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             DEBUG_MSG("ERROR: radio type not supported\n");
             return LGW_HAL_ERROR;
     }
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER,
+                                        SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_POWER);
     lgw_reg_w(reg, power);
 
     /* Set digital gain */
-    /* TODO */
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_IQ_GAIN_IQ_GAIN,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_IQ_GAIN_IQ_GAIN);
+    lgw_reg_w(reg, txgain_lut.lut[pow_index].dig_gain);
 
     /* Get TX frequency and bandwidth (fdev) */
     freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */

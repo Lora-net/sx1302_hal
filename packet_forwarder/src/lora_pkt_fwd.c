@@ -322,6 +322,14 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "pa_gain", i);
                 txlut.lut[i].pa_gain = 0;
             }
+            /* DIG gain */
+            val = json_object_dotget_value(conf_txgain_obj, "dig_gain");
+            if (json_value_get_type(val) == JSONNumber) {
+                txlut.lut[i].dig_gain = (uint8_t)json_value_get_number(val);
+            } else {
+                printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "dig_gain", i);
+                txlut.lut[i].dig_gain = 0;
+            }
             if (sx1250_tx_lut == false) {
                 /* DAC gain */
                 val = json_object_dotget_value(conf_txgain_obj, "dac_gain");
@@ -338,14 +346,6 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 } else {
                     printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "mix_gain", i);
                     txlut.lut[i].mix_gain = 0;
-                }
-                /* DIG gain */
-                val = json_object_dotget_value(conf_txgain_obj, "dig_gain");
-                if (json_value_get_type(val) == JSONNumber) {
-                    txlut.lut[i].dig_gain = (uint8_t)json_value_get_number(val);
-                } else {
-                    printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "dig_gain", i);
-                    txlut.lut[i].dig_gain = 0;
                 }
             } else {
                 /* power index */
