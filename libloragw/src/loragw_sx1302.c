@@ -54,6 +54,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define AGC_RADIO_A_INIT_DONE   0x80
 #define AGC_RADIO_B_INIT_DONE   0x20
 
+#define MCU_AGC                 0x01
+#define MCU_ARB                 0x02
+
+#define AGC_MEM_ADDR            0x0000
+#define ARB_MEM_ADDR            0x2000
+
+#define MCU_FW_SIZE             8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
@@ -587,6 +595,56 @@ int sx1302_get_cnt(bool pps, uint32_t* cnt_us) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int sx1302_agc_load_firmware(const uint8_t *firmware) {
+    int32_t val;
+    int i;
+    uint8_t fw_check[MCU_FW_SIZE];
+    int32_t gpio_sel = MCU_AGC;
+
+    /* Configure GPIO to let AGC MCU access board LEDs */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
+
+    /* Take control over AGC MCU */
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x01);
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x01);
+    lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
+
+    /* Write AGC fw in AGC MEM */
+    for (i = 0; i < 8; i++) {
+        lgw_mem_wb(AGC_MEM_ADDR + (i*1024), &firmware[i*1024], 1024);
+    }
+
+    /* Read back and check */
+    for (i = 0; i < 8; i++) {
+        lgw_mem_rb(AGC_MEM_ADDR + (i*1024), &fw_check[i*1024], 1024);
+    }
+    if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
+        printf ("ERROR: Failed to load fw\n");
+        return -1;
+    }
+
+    /* Release control over AGC MCU */
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x00);
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
+
+    lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_PARITY_ERROR, &val);
+    printf("AGC fw loaded (parity error:0x%02X)\n", val);
+
+    printf("Waiting for AGC fw to start...\n");
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_agc_status(uint8_t* status) {
     int32_t val;
 
@@ -753,6 +811,55 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int sx1302_arb_load_firmware(const uint8_t *firmware) {
+    int i;
+    uint8_t fw_check[MCU_FW_SIZE];
+    int32_t gpio_sel = MCU_ARB;
+    int32_t val;
+
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
+
+    /* Take control over ARB MCU */
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x01);
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_HOST_PROG, 0x01);
+    lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
+
+    /* Write ARB fw in ARB MEM */
+    for (i = 0; i < 8; i++) {
+        lgw_mem_wb(ARB_MEM_ADDR + (i*1024), &firmware[i*1024], 1024);
+    }
+
+    /* Read back and check */
+    for (i = 0; i < 8; i++) {
+        lgw_mem_rb(ARB_MEM_ADDR + (i*1024), &fw_check[i*1024], 1024);
+    }
+    if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
+        printf ("ERROR: Failed to load fw\n");
+        return -1;
+    }
+
+    /* Release control over ARB MCU */
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_HOST_PROG, 0x00);
+    lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x00);
+
+    lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
+    printf("ARB fw loaded (parity error:0x%02X)\n", val);
+
+    printf("Waiting for ARB fw to start...\n");
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_arb_status(uint8_t* status) {
     int32_t val;
 
@@ -786,7 +893,7 @@ int sx1302_arb_wait_status(uint8_t status) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_agc_debug_read(uint8_t reg_id, uint8_t* value) {
+int sx1302_arb_debug_read(uint8_t reg_id, uint8_t* value) {
     uint16_t reg;
     int32_t val;
 
@@ -809,7 +916,7 @@ int sx1302_agc_debug_read(uint8_t reg_id, uint8_t* value) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_agc_debug_write(uint8_t reg_id, uint8_t value) {
+int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value) {
     uint16_t reg;
 
     /* Check parameters */
@@ -836,7 +943,7 @@ int sx1302_arb_start(uint8_t version) {
     sx1302_arb_wait_status(0x01);
 
     /* Get firmware VERSION */
-    sx1302_agc_debug_read(0, &val);
+    sx1302_arb_debug_read(0, &val);
     if (val != version) {
         printf("ERROR: wrong ARB fw version (%d)\n", val);
         return LGW_HAL_ERROR;
@@ -844,7 +951,7 @@ int sx1302_arb_start(uint8_t version) {
     printf("ARB FW VERSION: %d\n", val);
 
     /* Notify ARB that it can resume */
-    sx1302_agc_debug_write(1, 1);
+    sx1302_arb_debug_write(1, 1);
 
     /* Wait for ARB to acknoledge */
     sx1302_arb_wait_status(0x00);
