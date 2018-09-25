@@ -855,7 +855,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         p->status = STAT_NO_CRC;
                     }
                     p->modulation = MOD_LORA;
-                    p->snr = rx_fifo[i+7+p->size];
+                    p->snr = (int8_t)rx_fifo[i+7+p->size] / 4;
                     if (ifmod == IF_LORA_MULTI) {
                         p->bandwidth = BW_125KHZ; /* fixed in hardware */
                     } else {
