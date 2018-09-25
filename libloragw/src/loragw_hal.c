@@ -797,6 +797,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint16_t reg;
     uint16_t mem_addr;
     uint32_t count_us;
+    uint8_t power;
+    uint8_t pow_index;
 
     /* Check if there is a TX on-going */
     /* TODO */
@@ -859,12 +861,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER,
                                         SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_POWER);
-#if 1
-    lgw_reg_w(reg, pkt_data.rf_power);
-#else
-    /* TODO */
-    uint8_t power;
-    uint8_t pow_index;
 
     /* Find the proper index in the TX gain LUT according to requested rf_power */
     for (pow_index = txgain_lut.size-1; pow_index > 0; pow_index--) {
@@ -876,7 +872,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* Set the power parameters to be used for TX */
     switch (rf_radio_type[pkt_data.rf_chain]) {
         case LGW_RADIO_TYPE_SX1250:
-            power = (txgain_lut.lut[pow_index].pa_gain << 6) | pkt_data.rf_power; /* TBC */
+            power = (txgain_lut.lut[pow_index].pa_gain << 6) | txgain_lut.lut[pow_index].pwr_idx;
             break;
         case LGW_RADIO_TYPE_SX1257:
             power = (txgain_lut.lut[pow_index].pa_gain << 6) | (txgain_lut.lut[pow_index].dac_gain << 4) | txgain_lut.lut[pow_index].mix_gain;
@@ -886,7 +882,9 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             return LGW_HAL_ERROR;
     }
     lgw_reg_w(reg, power);
-#endif
+
+    /* Set digital gain */
+    /* TODO */
 
     /* Get TX frequency and bandwidth (fdev) */
     freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */
