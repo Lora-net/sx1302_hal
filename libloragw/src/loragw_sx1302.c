@@ -30,6 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 #include "loragw_sx1302.h"
+#include "loragw_agc_params.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -723,6 +724,7 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
 
 int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
     uint8_t val;
+    struct agc_gain_params_s agc_params;
 
     /* Wait for AGC fw to be started, and VERSION available in mailbox */
     sx1302_agc_wait_status(0x01); /* fw has started, VERSION is ready in mailbox */
@@ -781,7 +783,7 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     sx1302_agc_mailbox_write(3, AGC_RADIO_B_INIT_DONE);
 
     /* Wait for AGC to acknoledge it has received gain settings for Radio B */
-    sx1302_agc_wait_status(0x00);
+    sx1302_agc_wait_status(0x03);
 
     /* Check ana_gain setting */
     sx1302_agc_mailbox_read(0, &val);
@@ -805,6 +807,150 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     }
 
     printf("AGC: Radio B config done\n");
+
+    /* Configure AGC gains */
+    agc_params = (radio_type == SX1302_RADIO_TYPE_SX125X) ? agc_params_sx125x : agc_params_sx1250;
+
+    /* Configure analog gain min/max */
+    sx1302_agc_mailbox_write(0, agc_params.ana_min);
+    sx1302_agc_mailbox_write(1, agc_params.ana_max);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x03);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x04);
+
+    /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != agc_params.ana_min) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != agc_params.ana_max) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Configure analog thresholds */
+    sx1302_agc_mailbox_write(0, agc_params.ana_thresh_l);
+    sx1302_agc_mailbox_write(1, agc_params.ana_thresh_h);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x04);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x05);
+
+    /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != agc_params.ana_thresh_l) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != agc_params.ana_thresh_h) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Configure decimator attenuation min/max */
+    sx1302_agc_mailbox_write(0, agc_params.dec_attn_min);
+    sx1302_agc_mailbox_write(1, agc_params.dec_attn_max);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x05);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x06);
+
+    /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != agc_params.dec_attn_min) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != agc_params.dec_attn_max) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Configure decimator attenuation thresholds */
+    sx1302_agc_mailbox_write(0, agc_params.dec_thresh_l);
+    sx1302_agc_mailbox_write(1, agc_params.dec_thresh_h1);
+    sx1302_agc_mailbox_write(2, agc_params.dec_thresh_h2);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x06);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x07);
+
+        /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != agc_params.dec_thresh_l) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != agc_params.dec_thresh_h1) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(2, &val);
+    if (val != agc_params.dec_thresh_h2) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Configure channel attenuation min/max */
+    sx1302_agc_mailbox_write(0, agc_params.chan_attn_min);
+    sx1302_agc_mailbox_write(1, agc_params.chan_attn_max);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x07);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x08);
+
+    /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != agc_params.chan_attn_min) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != agc_params.chan_attn_max) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Configure channel attenuation threshold */
+    sx1302_agc_mailbox_write(0, agc_params.chan_thresh_l);
+    sx1302_agc_mailbox_write(1, agc_params.chan_thresh_h);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x08);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x09);
+
+    /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if (val != agc_params.chan_thresh_l) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+    sx1302_agc_mailbox_read(1, &val);
+    if (val != agc_params.chan_thresh_h) {
+        printf("ERROR: \n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* notify AGC that it can resume */
+    sx1302_agc_mailbox_write(3, 0x09);
 
     return LGW_HAL_SUCCESS;
 }
