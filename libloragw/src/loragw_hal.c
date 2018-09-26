@@ -449,28 +449,32 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1301 digital gain must be between 0 and 3\n");
             return LGW_HAL_ERROR;
         }
-        if (conf->lut[i].dac_gain != 3) {
-            DEBUG_MSG("ERROR: TX gain LUT: SX1257 DAC gains != 3 are not supported\n");
+        if (conf->lut[i].dac_gain > 3) {
+            DEBUG_MSG("ERROR: TX gain LUT: SX1257 DAC gains must not exceed 3\n");
             return LGW_HAL_ERROR;
         }
         if (conf->lut[i].mix_gain > 15) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15\n");
-            return LGW_HAL_ERROR;
-        } else if (conf->lut[i].mix_gain < 8) {
-            DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
             return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pa_gain > 3) {
             DEBUG_MSG("ERROR: TX gain LUT: External PA gain must not exceed 3\n");
             return LGW_HAL_ERROR;
         }
+        if (conf->lut[i].pwr_idx > 15) {
+            DEBUG_MSG("ERROR: TX gain LUT: SX1250 power iundex must not exceed 63\n");
+            return LGW_HAL_ERROR;
+        }
 
         /* Set internal LUT */
+        txgain_lut.lut[i].rf_power = conf->lut[i].rf_power;
         txgain_lut.lut[i].dig_gain = conf->lut[i].dig_gain;
+        txgain_lut.lut[i].pa_gain  = conf->lut[i].pa_gain;
+        /* sx125x */
         txgain_lut.lut[i].dac_gain = conf->lut[i].dac_gain;
         txgain_lut.lut[i].mix_gain = conf->lut[i].mix_gain;
-        txgain_lut.lut[i].pa_gain  = conf->lut[i].pa_gain;
-        txgain_lut.lut[i].rf_power = conf->lut[i].rf_power;
+        /* sx1250 */
+        txgain_lut.lut[i].pwr_idx = conf->lut[i].pwr_idx;
     }
 
     return LGW_HAL_SUCCESS;

@@ -358,6 +358,15 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 }
             }
         }
+        /* all parameters parsed, submitting configuration to the HAL */
+        if (txlut.size > 0) {
+            if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure concentrator TX Gain LUT\n");
+                return -1;
+            }
+        } else {
+            MSG("WARNING: No TX gain LUT defined\n");
+        }
     }
 
     /* set configuration for RF chains */

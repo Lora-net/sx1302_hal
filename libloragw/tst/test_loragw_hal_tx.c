@@ -30,6 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>
 #include <math.h>
 #include <signal.h>     /* sigaction */
+#include <getopt.h>     /* getopt_long */
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -59,18 +60,24 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* describe command line options */
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf( " -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
-    printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
-    printf( " -f <float> Radio TX frequency in MHz\n");
-    printf( " -s <uint> LoRa datarate 0:random, [7..12]\n");
-    printf( " -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
-    printf( " -n <uint> Number of packets to be sent\n");
-    printf( " -z <uint> size of packets to be sent 0:random, [9..255]\n");
-    printf( " -p <int>  RF power [0..15] -- TBD sx1250 --\n");
-    printf( " -t <uint> TX mode timestamped with delay in ms\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
+    printf(" -f <float> Radio TX frequency in MHz\n");
+    printf(" -s <uint> LoRa datarate 0:random, [7..12]\n");
+    printf(" -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
+    printf(" -n <uint> Number of packets to be sent\n");
+    printf(" -z <uint> size of packets to be sent 0:random, [9..255]\n");
+    printf(" -t <uint> TX mode timestamped with delay in ms\n");
+    printf(" -p <int>  RF power in dBm\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --pa   <uint> PA gain [0..3]\n");
+    printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
+    printf(" --dac  <uint> sx1257 DAC gain [0..3]\n");
+    printf(" --mix  <uint> sx1257 MIX gain [0..15]\n");
+    printf(" --pwid <uint> sx1250 power index [0..63]\n");
 }
 
 /* handle signals */
@@ -107,6 +114,7 @@ int main(int argc, char **argv)
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_pkt_tx_s pkt;
+    struct lgw_tx_gain_lut_s txlut; /* TX gain table */
     uint8_t tx_status;
     uint32_t count_us;
     uint32_t trig_delay_us = 1000000;
@@ -114,8 +122,23 @@ int main(int argc, char **argv)
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
+    /* Initialize TX gain LUT */
+    txlut.size = 0;
+    memset(txlut.lut, 0, sizeof txlut.lut);
+
+    /* Parameter parsing */
+    int option_index = 0;
+    static struct option long_options[] = {
+        {"pa", 1, 0, 0},
+        {"dac", 1, 0, 0},
+        {"dig", 1, 0, 0},
+        {"mix", 1, 0, 0},
+        {"pidx", 1, 0, 0},
+        {0, 0, 0, 0}
+    };
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:")) != -1) {
+    while ((i = getopt_long (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -232,6 +255,8 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     rf_power = (int8_t)arg_i;
+                    txlut.size = 1;
+                    txlut.lut[0].rf_power = rf_power;
                 }
                 break;
             case 'z': /* <uint> packet size */
@@ -241,6 +266,57 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     size = (uint8_t)arg_u;
+                }
+                break;
+            case 0:
+                if (strcmp(long_options[option_index].name, "pa") == 0) {
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if ((i != 1) || (arg_u > 3)) {
+                        printf("ERROR: argument parsing of --pa argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        txlut.size = 1;
+                        txlut.lut[0].pa_gain = (uint8_t)arg_u;
+                    }
+                } else if (strcmp(long_options[option_index].name, "dac") == 0) {
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if ((i != 1) || (arg_u > 3)) {
+                        printf("ERROR: argument parsing of --dac argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        txlut.size = 1;
+                        txlut.lut[0].dac_gain = (uint8_t)arg_u;
+                    }
+                } else if (strcmp(long_options[option_index].name, "mix") == 0) {
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if ((i != 1) || (arg_u > 15)) {
+                        printf("ERROR: argument parsing of --mix argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        txlut.size = 1;
+                        txlut.lut[0].mix_gain = (uint8_t)arg_u;
+                    }
+                } else if (strcmp(long_options[option_index].name, "dig") == 0) {
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if ((i != 1) || (arg_u > 3)) {
+                        printf("ERROR: argument parsing of --dig argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        txlut.size = 1;
+                        txlut.lut[0].dig_gain = (uint8_t)arg_u;
+                    }
+                } else if (strcmp(long_options[option_index].name, "pwid") == 0) {
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if ((i != 1) || (arg_u > 63)) {
+                        printf("ERROR: argument parsing of --pwid argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        txlut.size = 1;
+                        txlut.lut[0].pwr_idx = (uint8_t)arg_u;
+                    }
+                } else {
+                    printf("ERROR: argument parsing options. Use -h to print help\n");
+                    return EXIT_FAILURE;
                 }
                 break;
             default:
@@ -289,6 +365,11 @@ int main(int argc, char **argv)
     rfconf.tx_enable = true;
     if (lgw_rxrf_setconf(1, rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
+        return EXIT_FAILURE;
+    }
+
+    if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure txgain lut\n");
         return EXIT_FAILURE;
     }
 
