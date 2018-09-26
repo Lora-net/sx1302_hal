@@ -390,6 +390,7 @@ int main(int argc, char **argv)
         pkt.tx_mode = TIMESTAMPED;
     }
     pkt.modulation = MOD_LORA;
+    pkt.coderate = CR_LORA_4_5;
     pkt.invert_pol = false;
     pkt.preamble = preamble;
     pkt.no_crc = false;
