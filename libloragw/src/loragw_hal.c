@@ -135,7 +135,7 @@ static uint8_t lora_rx_sf; /* spreading factor setting for LoRa standalone modem
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
-static uint64_t fsk_sync_word= 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
+static uint64_t fsk_sync_word = 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
 
 static bool lorawan_public = false;
 static uint8_t rf_clkout = 0;
@@ -583,7 +583,7 @@ int lgw_start(void) {
     sx1302_lora_service_modem_configure(lora_rx_sf, lora_rx_bw);
 
     /* configure FSK modem */
-    /* TODO */
+    sx1302_fsk_configure(if_rf_chain, if_freq, fsk_sync_word, fsk_sync_word_size);
 
     /* configure syncword */
     sx1302_lora_syncword(lorawan_public);
