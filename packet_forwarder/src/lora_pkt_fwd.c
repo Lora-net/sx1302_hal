@@ -1329,7 +1329,7 @@ void thread_up(void) {
                     buff_index += 9;
                     break;
                 default:
-                    MSG("ERROR: [up] received packet with unknown status\n");
+                    MSG("ERROR: [up] received packet with unknown status 0x%02X\n", p->status);
                     memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":?", 9);
                     buff_index += 9;
                     exit(EXIT_FAILURE);
@@ -1367,7 +1367,7 @@ void thread_up(void) {
                         buff_index += 13;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown datarate\n");
+                        MSG("ERROR: [up] lora packet with unknown datarate 0x%02X\n", p->datarate);
                         memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
                         buff_index += 12;
                         exit(EXIT_FAILURE);
@@ -1386,7 +1386,7 @@ void thread_up(void) {
                         buff_index += 6;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown bandwidth\n");
+                        MSG("ERROR: [up] lora packet with unknown bandwidth 0x%02X\n", p->bandwidth);
                         memcpy((void *)(buff_up + buff_index), (void *)"BW?\"", 4);
                         buff_index += 4;
                         exit(EXIT_FAILURE);
@@ -1415,7 +1415,7 @@ void thread_up(void) {
                         buff_index += 13;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown coderate\n");
+                        MSG("ERROR: [up] lora packet with unknown coderate 0x%02X\n", p->coderate);
                         memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"?\"", 11);
                         buff_index += 11;
                         exit(EXIT_FAILURE);
@@ -1442,7 +1442,7 @@ void thread_up(void) {
                     exit(EXIT_FAILURE);
                 }
             } else {
-                MSG("ERROR: [up] received packet with unknown modulation\n");
+                MSG("ERROR: [up] received packet with unknown modulation 0x%02X\n", p->modulation);
                 exit(EXIT_FAILURE);
             }
 
