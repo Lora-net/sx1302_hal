@@ -133,7 +133,7 @@ int main(int argc, char **argv)
         {"dac", 1, 0, 0},
         {"dig", 1, 0, 0},
         {"mix", 1, 0, 0},
-        {"pidx", 1, 0, 0},
+        {"pwid", 1, 0, 0},
         {0, 0, 0, 0}
     };
 
