@@ -461,6 +461,9 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 3);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_MSP2_PEAK_NB, 5);
 
+    lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_GATE_OVERRIDE_0_CLK_OVERRIDE, 0xFF);
+    lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_GATE_OVERRIDE_1_CLK_OVERRIDE, 0xFF);
+
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE, 0xFF);
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFC); /* 12 11 10 9 8 7 6 5 */
@@ -716,7 +719,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x00);
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
 
-    lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_PARITY_ERROR, &val);
+    lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
     printf("AGC fw loaded (parity error:0x%02X)\n", val);
 
     printf("Waiting for AGC fw to start...\n");

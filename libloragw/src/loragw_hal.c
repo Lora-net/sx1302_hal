@@ -914,10 +914,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_CLK_EDGE);
     lgw_reg_w(reg, 0x00); /* Data on rising edge */
 
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_RADIO_SEL,
-                                        SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_RADIO_SEL);
-    lgw_reg_w(reg, pkt_data.rf_chain);
-
     switch (pkt_data.modulation) {
         case MOD_LORA:
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE,
@@ -954,8 +950,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             DEBUG_MSG("ERROR: radio type not supported\n");
             return LGW_HAL_ERROR;
     }
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_TX_POWER,
-                                        SX1302_REG_TX_TOP_B_GEN_CFG_0_TX_POWER);
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_AGC_TX_PWR_AGC_TX_PWR,
+                                        SX1302_REG_TX_TOP_B_AGC_TX_PWR_AGC_TX_PWR);
     lgw_reg_w(reg, power);
 
     /* Set digital gain */
@@ -989,6 +985,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV,
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV);
     lgw_reg_w(reg, (fdev_reg >>  0) & 0xFF);
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW,
+                                        SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW);
+    lgw_reg_w(reg, 0); /* TODO: define BW table with AGC */
 
     /* Condifure modem */
     switch (pkt_data.modulation) {

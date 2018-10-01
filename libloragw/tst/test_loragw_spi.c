@@ -60,7 +60,7 @@ int main()
     /* burst R/W test, large bursts >> LGW_BURST_CHUNK */
     /* TODO */
 
-    lgw_spi_r(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_COMMON + 5, &data);
+    lgw_spi_r(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_COMMON + 6, &data);
     printf("SX1302 version: 0x%02X\n", data);
 
     lgw_spi_r(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, &data);
