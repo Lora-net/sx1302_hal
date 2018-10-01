@@ -650,6 +650,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint32_t sf, cr = 0;
+    uint32_t timestamp_correction; /* correction to account for processing delay */
 
     /* check if the concentrator is running */
     if (lgw_is_started == false) {
@@ -670,7 +671,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* TODO */
     if (nb_bytes > 1024) {
-        printf("ERROR: received %u bytes (more than 1024 bytes in the FIFO, to be reworked)\n", nb_bytes);
+        printf("ERROR: received %u bytes (%02X %02X)\n", nb_bytes, buff[0], buff[1]);
         assert(0);
     }
 
@@ -715,6 +716,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
                 p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
                 p->rssi = (float)rx_fifo[i+8+p->size] + rf_rssi_offset[p->rf_chain];
+                /* TODO: RSSI correction */
+
 
                 if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
                     DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[i+5], p->if_chain);
@@ -756,8 +759,30 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         case 4: p->coderate = CR_LORA_4_8; break;
                         default: p->coderate = CR_UNDEFINED;
                     }
+                    timestamp_correction = 0; /* TODO */
                 } else if (ifmod == IF_FSK_STD) {
-                    DEBUG_MSG("Note: FSK packet\n");
+                    DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", rx_fifo[i+5], p->if_chain);
+                    if (rx_fifo[i+4] & 0x01) {
+                        /* CRC enabled */
+                        if (rx_fifo[i+6+p->size] & 0x01) {
+                            printf("FSK: CRC ERR\n");
+                            p->status = STAT_CRC_BAD;
+                        } else {
+                            printf("FSK: CRC OK\n");
+                            p->status = STAT_CRC_OK;
+                        }
+                    } else {
+                        /* CRC disabled */
+                        p->status = STAT_NO_CRC;
+                    }
+                    p->modulation = MOD_FSK;
+                    p->snr = -128.0;
+                    p->bandwidth = fsk_rx_bw;
+                    p->datarate = fsk_rx_dr;
+                    p->coderate = CR_UNDEFINED;
+
+                    timestamp_correction = 0; /* TODO */
+                    /* TODO: rssi correction */
                 } else {
                     DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
                     p->status = STAT_UNDEFINED;
@@ -776,6 +801,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->count_us |= (uint32_t)((rx_fifo[i+14+p->size] << 16) & 0x00FF0000);
                 p->count_us |= (uint32_t)((rx_fifo[i+15+p->size] << 24) & 0xFF000000);
                 p->count_us /= 32;
+                p->count_us -= timestamp_correction; /* TODO */
 
                 p->crc = (uint16_t)rx_fifo[i+16+p->size] + ((uint16_t)rx_fifo[i+17+p->size] << 8);
             }
