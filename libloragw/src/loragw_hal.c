@@ -578,12 +578,16 @@ int lgw_start(void) {
     sx1302_lora_modem_configure();
 
     /* configure LoRa 'stand-alone' modem */
-    sx1302_lora_service_channelizer_configure(if_rf_chain, if_freq);
-    sx1302_lora_service_correlator_configure(lora_rx_sf);
-    sx1302_lora_service_modem_configure(lora_rx_sf, lora_rx_bw);
+    if (if_enable[8] == true) {
+        sx1302_lora_service_channelizer_configure(if_rf_chain, if_freq);
+        sx1302_lora_service_correlator_configure(lora_rx_sf);
+        sx1302_lora_service_modem_configure(lora_rx_sf, lora_rx_bw);
+    }
 
     /* configure FSK modem */
-    sx1302_fsk_configure(if_rf_chain, if_freq, fsk_sync_word, fsk_sync_word_size);
+    if (if_enable[9] == true) {
+        sx1302_fsk_configure(if_rf_chain, if_freq, fsk_sync_word, fsk_sync_word_size);
+    }
 
     /* configure syncword */
     sx1302_lora_syncword(lorawan_public);
@@ -649,173 +653,194 @@ int lgw_stop(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
-    uint16_t nb_bytes;
-    uint8_t buff[2];
     int i;
-    uint16_t nb_pkt_fetch = 0;
+    uint8_t buff[2];
+    uint16_t sz = 0;
+    uint16_t buffer_index;
+    uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_dropped = 0;
+    uint16_t payload_length;
+    uint8_t num_ts_metrics = 0;
+
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint32_t sf, cr = 0;
     uint32_t timestamp_correction; /* correction to account for processing delay */
 
-    /* check if the concentrator is running */
-    if (lgw_is_started == false) {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE RECEIVING\n");
-        return LGW_HAL_ERROR;
-    }
 
-    /* check input variables */
-    if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
-        DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
-        return LGW_HAL_ERROR;
-    }
-    CHECK_NULL(pkt_data);
-
+    /* Check if there is data in the FIFO */
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    nb_bytes  = (uint16_t)((buff[0] << 8) & 0xFF00);
-    nb_bytes |= (uint16_t)((buff[1] << 0) & 0x00FF);
-
-    /* TODO */
-    if (nb_bytes > 1024) {
-        printf("ERROR: received %u bytes (%02X %02X)\n", nb_bytes, buff[0], buff[1]);
-        assert(0);
+    sz  = (uint16_t)((buff[0] << 8) & 0xFF00);
+    sz |= (uint16_t)((buff[1] << 0) & 0x00FF);
+    if( sz == 0 )
+    {
+        //printf( "No message in DSP%d FIFO\n", dsp);
+        return 0;
     }
+    printf("nb_bytes received: %u (%u %u)\n", sz, buff[1], buff[0]);
 
-    if (nb_bytes > 0) {
-        printf("nb_bytes received: %u (%u %u)\n", nb_bytes, buff[1], buff[0]);
-        /* read bytes from fifo */
-        memset(rx_fifo, 0, sizeof rx_fifo);
-        lgw_mem_rb(0x4000, rx_fifo, nb_bytes);
-        for (i = 0; i < nb_bytes; i++) {
-            printf("%02X ", rx_fifo[i]);
+    /* read bytes from fifo */
+    memset(rx_fifo, 0, sizeof rx_fifo);
+    lgw_mem_rb(0x4000, rx_fifo, sz);
+    for (i = 0; i < sz; i++) {
+        printf("%02X ", rx_fifo[i]);
+    }
+    printf("\n");
+
+    /* Parse raw data and fill messages array */
+    buffer_index = 0;
+    while ((nb_pkt_found <= max_pkt) && (buffer_index < sz)) {
+        /* Get pkt sync words */
+        if ((rx_fifo[buffer_index] != SX1302_PKT_SYNCWORD_BYTE_0) || (rx_fifo[buffer_index + 1] != SX1302_PKT_SYNCWORD_BYTE_1) ) {
+            printf("INFO: searching syncword...\n");
+            buffer_index++;
+            continue;
         }
-        printf("\n");
+        printf("INFO: pkt syncword found at index %u\n", buffer_index);
 
-        /* parse packets */
-        for (i = 0; i < nb_bytes; i++) {
-            if ((rx_fifo[i] == 0xA5) && (rx_fifo[i+1] == 0xC0)) {
-                /* point to the proper struct in the struct array */
-                p = &pkt_data[nb_pkt_fetch];
+        payload_length = rx_fifo[buffer_index+2];
 
-                /* we found the start of a packet, parse it */
-                if ((nb_pkt_fetch + 1) > max_pkt) {
-                    printf("WARNING: no space left, dropping packet\n");
-                    nb_pkt_dropped += 1;
-                    continue;
-                }
-                nb_pkt_fetch += 1;
+        if((buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics) > sz) {
+            printf("WARNING: aborting truncated message (size=%u), got %u messages\n", sz, nb_pkt_found);
+            break;
+        }
 
-                p->size = rx_fifo[i+2];
+#if 1
+        printf("-----------------\n");
+        printf("  modem:    %u\n", rx_fifo[buffer_index + 5]);
+        printf("  chan:     %u\n", rx_fifo[buffer_index + 3]);
+        printf("  size:     %u\n", rx_fifo[buffer_index + 2]);
+        printf("  crc_en:   %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 0, 1));
+        printf("  status:   %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 6 + payload_length], 0, 1));
+        printf("  codr:     %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 1, 3));
+        printf("  datr:     %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 4, 4));
+        printf("-----------------\n");
+#endif
 
-                 /* copy payload to result struct */
-                memcpy((void *)p->payload, (void *)(&rx_fifo[i+6]), p->size);
+        /* point to the proper struct in the struct array */
+        p = &pkt_data[nb_pkt_found];
 
-                /* process metadata */
-                p->if_chain = rx_fifo[i+3];
-                if (p->if_chain >= LGW_IF_CHAIN_NB) {
-                    DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
-                    break;
-                }
-                ifmod = ifmod_config[p->if_chain];
-                DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
+        /* we found the start of a packet, parse it */
+        if ((nb_pkt_found + 1) > max_pkt) {
+            printf("WARNING: no space left, dropping packet\n");
+            nb_pkt_dropped += 1;
+            continue;
+        }
+        nb_pkt_found += 1;
 
-                p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
-                p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
-                p->rssi = (float)rx_fifo[i+8+p->size] + rf_rssi_offset[p->rf_chain];
-                /* TODO: RSSI correction */
+        p->size = rx_fifo[buffer_index + 2];
 
-                if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
-                    DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[i+5], p->if_chain);
-                    if (rx_fifo[i+4] & 0x01) {
-                        /* CRC enabled */
-                        if (rx_fifo[i+6+p->size] & 0x01) {
-                            p->status = STAT_CRC_BAD;
-                        } else {
-                            p->status = STAT_CRC_OK;
-                        }
-                    } else {
-                        /* CRC disabled */
-                        p->status = STAT_NO_CRC;
-                    }
-                    p->modulation = MOD_LORA;
-                    p->snr = (int8_t)rx_fifo[i+7+p->size] / 4;
-                    if (ifmod == IF_LORA_MULTI) {
-                        p->bandwidth = BW_125KHZ; /* fixed in hardware */
-                    } else {
-                        p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
-                    }
-                    sf = TAKE_N_BITS_FROM(rx_fifo[i+4], 4, 4);
-                    switch (sf) {
-                        case 5: p->datarate = DR_LORA_SF5; break;
-                        case 6: p->datarate = DR_LORA_SF6; break;
-                        case 7: p->datarate = DR_LORA_SF7; break;
-                        case 8: p->datarate = DR_LORA_SF8; break;
-                        case 9: p->datarate = DR_LORA_SF9; break;
-                        case 10: p->datarate = DR_LORA_SF10; break;
-                        case 11: p->datarate = DR_LORA_SF11; break;
-                        case 12: p->datarate = DR_LORA_SF12; break;
-                        default: p->datarate = DR_UNDEFINED;
-                    }
-                    cr = TAKE_N_BITS_FROM(rx_fifo[i+4], 1, 3);
-                    switch (cr) {
-                        case 1: p->coderate = CR_LORA_4_5; break;
-                        case 2: p->coderate = CR_LORA_4_6; break;
-                        case 3: p->coderate = CR_LORA_4_7; break;
-                        case 4: p->coderate = CR_LORA_4_8; break;
-                        default: p->coderate = CR_UNDEFINED;
-                    }
-                    timestamp_correction = 0; /* TODO */
-                } else if (ifmod == IF_FSK_STD) {
-                    DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", rx_fifo[i+5], p->if_chain);
-                    if (rx_fifo[i+4] & 0x01) {
-                        /* CRC enabled */
-                        if (rx_fifo[i+6+p->size] & 0x01) {
-                            printf("FSK: CRC ERR\n");
-                            p->status = STAT_CRC_BAD;
-                        } else {
-                            printf("FSK: CRC OK\n");
-                            p->status = STAT_CRC_OK;
-                        }
-                    } else {
-                        /* CRC disabled */
-                        p->status = STAT_NO_CRC;
-                    }
-                    p->modulation = MOD_FSK;
-                    p->snr = -128.0;
-                    p->bandwidth = fsk_rx_bw;
-                    p->datarate = fsk_rx_dr;
-                    p->coderate = CR_UNDEFINED;
+        /* copy payload to result struct */
+        memcpy((void *)p->payload, (void *)(&rx_fifo[buffer_index + SX1302_PKT_HEAD_METADATA]), p->size);
 
-                    timestamp_correction = 0; /* TODO */
-                    /* TODO: rssi correction */
+        /* process metadata */
+        p->if_chain = rx_fifo[buffer_index + 3];
+        if (p->if_chain >= LGW_IF_CHAIN_NB) {
+            DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
+            break;
+        }
+        ifmod = ifmod_config[p->if_chain];
+        DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
+
+        p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
+        p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
+        p->rssi = (float)rx_fifo[buffer_index + 8 + p->size] + rf_rssi_offset[p->rf_chain];
+        /* TODO: RSSI correction */
+
+        if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
+            DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[buffer_index + 5], p->if_chain);
+            if (rx_fifo[buffer_index + 4] & 0x01) {
+                /* CRC enabled */
+                if (rx_fifo[buffer_index + 6 + p->size] & 0x01) {
+                    p->status = STAT_CRC_BAD;
                 } else {
-                    DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
-                    p->status = STAT_UNDEFINED;
-                    p->modulation = MOD_UNDEFINED;
-                    p->rssi = -128.0;
-                    p->snr = -128.0;
-                    p->snr_min = -128.0;
-                    p->snr_max = -128.0;
-                    p->bandwidth = BW_UNDEFINED;
-                    p->datarate = DR_UNDEFINED;
-                    p->coderate = CR_UNDEFINED;
+                    p->status = STAT_CRC_OK;
                 }
-
-                p->count_us  = (uint32_t)((rx_fifo[i+12+p->size] <<  0) & 0x000000FF);
-                p->count_us |= (uint32_t)((rx_fifo[i+13+p->size] <<  8) & 0x0000FF00);
-                p->count_us |= (uint32_t)((rx_fifo[i+14+p->size] << 16) & 0x00FF0000);
-                p->count_us |= (uint32_t)((rx_fifo[i+15+p->size] << 24) & 0xFF000000);
-                p->count_us /= 32;
-                p->count_us -= timestamp_correction; /* TODO */
-
-                p->crc = (uint16_t)rx_fifo[i+16+p->size] + ((uint16_t)rx_fifo[i+17+p->size] << 8);
+            } else {
+                /* CRC disabled */
+                p->status = STAT_NO_CRC;
             }
+            p->modulation = MOD_LORA;
+            p->snr = (int8_t)rx_fifo[buffer_index + 7 + p->size] / 4;
+            if (ifmod == IF_LORA_MULTI) {
+                p->bandwidth = BW_125KHZ; /* fixed in hardware */
+            } else {
+                p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
+            }
+            sf = TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 4, 4);
+            switch (sf) {
+                case 5: p->datarate = DR_LORA_SF5; break;
+                case 6: p->datarate = DR_LORA_SF6; break;
+                case 7: p->datarate = DR_LORA_SF7; break;
+                case 8: p->datarate = DR_LORA_SF8; break;
+                case 9: p->datarate = DR_LORA_SF9; break;
+                case 10: p->datarate = DR_LORA_SF10; break;
+                case 11: p->datarate = DR_LORA_SF11; break;
+                case 12: p->datarate = DR_LORA_SF12; break;
+                default: p->datarate = DR_UNDEFINED;
+            }
+            cr = TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 1, 3);
+            switch (cr) {
+                case 1: p->coderate = CR_LORA_4_5; break;
+                case 2: p->coderate = CR_LORA_4_6; break;
+                case 3: p->coderate = CR_LORA_4_7; break;
+                case 4: p->coderate = CR_LORA_4_8; break;
+                default: p->coderate = CR_UNDEFINED;
+            }
+            num_ts_metrics = rx_fifo[buffer_index + 18 + p->size];
+            timestamp_correction = 0; /* TODO */
+        } else if (ifmod == IF_FSK_STD) {
+            DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", rx_fifo[buffer_index + 5], p->if_chain);
+            if (rx_fifo[buffer_index + 4] & 0x01) {
+                /* CRC enabled */
+                if (rx_fifo[buffer_index + 6 + p->size] & 0x01) {
+                    printf("FSK: CRC ERR\n");
+                    p->status = STAT_CRC_BAD;
+                } else {
+                    printf("FSK: CRC OK\n");
+                    p->status = STAT_CRC_OK;
+                }
+            } else {
+                /* CRC disabled */
+                p->status = STAT_NO_CRC;
+            }
+            p->modulation = MOD_FSK;
+            p->snr = -128.0;
+            p->bandwidth = fsk_rx_bw;
+            p->datarate = fsk_rx_dr;
+            p->coderate = CR_UNDEFINED;
+
+            timestamp_correction = 0; /* TODO */
+            /* TODO: rssi correction */
+        } else {
+            DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
+            p->status = STAT_UNDEFINED;
+            p->modulation = MOD_UNDEFINED;
+            p->rssi = -128.0;
+            p->snr = -128.0;
+            p->snr_min = -128.0;
+            p->snr_max = -128.0;
+            p->bandwidth = BW_UNDEFINED;
+            p->datarate = DR_UNDEFINED;
+            p->coderate = CR_UNDEFINED;
         }
-        printf("INFO: nb pkt fetched:%u dropped:%u\n", nb_pkt_fetch, nb_pkt_dropped);
+
+        p->count_us  = (uint32_t)((rx_fifo[buffer_index + 12 + p->size] <<  0) & 0x000000FF);
+        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 13 + p->size] <<  8) & 0x0000FF00);
+        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 14 + p->size] << 16) & 0x00FF0000);
+        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 15 + p->size] << 24) & 0xFF000000);
+        p->count_us /= 32;
+        p->count_us -= timestamp_correction; /* TODO */
+
+        p->crc = (uint16_t)rx_fifo[buffer_index + 16 + p->size] + ((uint16_t)rx_fifo[buffer_index + 17 + p->size] << 8);
+
+        /* move buffer index toward next message */
+        buffer_index += (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics));
     }
 
-    return nb_pkt_fetch;
+    printf("INFO: nb pkt found:%u dropped:%u\n", nb_pkt_found, nb_pkt_dropped);
+
+    return nb_pkt_found;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

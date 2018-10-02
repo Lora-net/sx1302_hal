@@ -590,8 +590,6 @@ int sx1302_lora_modem_configure() {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw) {
-    /* TODO: test if channel is enabled */
-
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_ENABLE, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FREEZE_ON_SYNC, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FORCE_DEFAULT_FIR, 0x01);
@@ -621,7 +619,7 @@ int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw) {
 
 int sx1302_modem_enable() {
     lgw_reg_w(SX1302_REG_COMMON_GEN_CONCENTRATOR_MODEM_ENABLE, 0x01);
-    lgw_reg_w(SX1302_REG_COMMON_GEN_MBWSSF_MODEM_ENABLE, 0x01);
+    lgw_reg_w(SX1302_REG_COMMON_GEN_MBWSSF_MODEM_ENABLE, 0x01); /* TODO: this register has no effect */
     lgw_reg_w(SX1302_REG_COMMON_GEN_FSK_MODEM_ENABLE, 0x01);
     lgw_reg_w(SX1302_REG_COMMON_GEN_GLOBAL_EN, 0x01);
 
