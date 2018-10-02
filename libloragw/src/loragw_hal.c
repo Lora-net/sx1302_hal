@@ -825,10 +825,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             p->coderate = CR_UNDEFINED;
         }
 
-        p->count_us  = (uint32_t)((rx_fifo[buffer_index + 12 + p->size] <<  0) & 0x000000FF);
-        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 13 + p->size] <<  8) & 0x0000FF00);
-        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 14 + p->size] << 16) & 0x00FF0000);
-        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 15 + p->size] << 24) & 0xFF000000);
+        p->count_us  = (uint32_t)((rx_fifo[buffer_index + 15 + p->size] <<  0) & 0x000000FF);
+        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 16 + p->size] <<  8) & 0x0000FF00);
+        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 17 + p->size] << 16) & 0x00FF0000);
+        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 18 + p->size] << 24) & 0xFF000000);
         p->count_us /= 32;
         p->count_us -= timestamp_correction; /* TODO */
 
