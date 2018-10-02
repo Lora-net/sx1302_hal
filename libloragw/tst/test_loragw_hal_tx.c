@@ -66,8 +66,9 @@ void usage(void) {
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
     printf(" -f <float> Radio TX frequency in MHz\n");
-    printf(" -s <uint> LoRa datarate 0:random, [7..12]\n");
+    printf(" -s <uint> LoRa datarate 0:random, [5..12]\n");
     printf(" -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
+    printf(" -l <uint> LoRa preamble length, [0..65535]\n");
     printf(" -n <uint> Number of packets to be sent\n");
     printf(" -z <uint> size of packets to be sent 0:random, [9..255]\n");
     printf(" -t <uint> TX mode timestamped with delay in ms\n");
@@ -211,7 +212,7 @@ int main(int argc, char **argv)
                 break;
             case 's': /* <uint> LoRa datarate */
                 i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u < 7) || (arg_u > 12)) {
+                if ((i != 1) || (arg_u < 5) || (arg_u > 12)) {
                     printf("ERROR: argument parsing of -s argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
@@ -418,7 +419,7 @@ int main(int argc, char **argv)
             printf("programming TX for %u\n", pkt.count_us);
         }
 
-        pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(7, 12) : sf;
+        pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
         pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
         pkt.bandwidth = (bw == 0) ? (uint8_t)RAND_RANGE(4, 6) : bw;
 
