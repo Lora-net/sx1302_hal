@@ -30,7 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define SX1302_PKT_SYNCWORD_BYTE_0  0xA5
 #define SX1302_PKT_SYNCWORD_BYTE_1  0xC0
-#define SX1302_PKT_HEAD_METADATA    6
+#define SX1302_PKT_HEAD_METADATA    9
 #define SX1302_PKT_TAIL_METADATA    14
 
 /* -------------------------------------------------------------------------- */

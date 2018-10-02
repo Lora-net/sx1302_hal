@@ -461,8 +461,7 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 3);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_MSP2_PEAK_NB, 5);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_GATE_OVERRIDE_0_CLK_OVERRIDE, 0xFF);
-    lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_GATE_OVERRIDE_1_CLK_OVERRIDE, 0xFF);
+    lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_ENABLE_CLK_EN, 0xFF);
 
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE, 0xFF);
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0x00);
@@ -905,12 +904,12 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Check params */
     sx1302_agc_mailbox_read(0, &val);
     if (val != agc_params.ana_min) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong ana_min (w:%u r:%u)\n", agc_params.ana_min, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(1, &val);
     if (val != agc_params.ana_max) {
-        printf("ERROR: \n");
+        printf("ERROR: ana_max (w:%u r:%u)\n", agc_params.ana_max, val);
         return LGW_HAL_ERROR;
     }
 
@@ -927,12 +926,12 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Check params */
     sx1302_agc_mailbox_read(0, &val);
     if (val != agc_params.ana_thresh_l) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong ana_thresh_l (w:%u r:%u)\n", agc_params.ana_thresh_l, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(1, &val);
     if (val != agc_params.ana_thresh_h) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong ana_thresh_h (w:%u r:%u)\n", agc_params.ana_thresh_h, val);
         return LGW_HAL_ERROR;
     }
 
@@ -949,12 +948,12 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Check params */
     sx1302_agc_mailbox_read(0, &val);
     if (val != agc_params.dec_attn_min) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong dec_attn_min (w:%u r:%u)\n", agc_params.dec_attn_min, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(1, &val);
     if (val != agc_params.dec_attn_max) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong dec_attn_max (w:%u r:%u)\n", agc_params.dec_attn_max, val);
         return LGW_HAL_ERROR;
     }
 
@@ -972,17 +971,17 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         /* Check params */
     sx1302_agc_mailbox_read(0, &val);
     if (val != agc_params.dec_thresh_l) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong dec_thresh_l (w:%u r:%u)\n", agc_params.dec_thresh_l, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(1, &val);
     if (val != agc_params.dec_thresh_h1) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong dec_thresh_h1 (w:%u r:%u)\n", agc_params.dec_thresh_h1, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(2, &val);
     if (val != agc_params.dec_thresh_h2) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong dec_thresh_h2 (w:%u r:%u)\n", agc_params.dec_thresh_h2, val);
         return LGW_HAL_ERROR;
     }
 
@@ -999,12 +998,12 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Check params */
     sx1302_agc_mailbox_read(0, &val);
     if (val != agc_params.chan_attn_min) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong chan_attn_min (w:%u r:%u)\n", agc_params.chan_attn_min, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(1, &val);
     if (val != agc_params.chan_attn_max) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong chan_attn_max (w:%u r:%u)\n", agc_params.chan_attn_max, val);
         return LGW_HAL_ERROR;
     }
 
@@ -1021,12 +1020,12 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Check params */
     sx1302_agc_mailbox_read(0, &val);
     if (val != agc_params.chan_thresh_l) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong chan_thresh_l (w:%u r:%u)\n", agc_params.chan_thresh_l, val);
         return LGW_HAL_ERROR;
     }
     sx1302_agc_mailbox_read(1, &val);
     if (val != agc_params.chan_thresh_h) {
-        printf("ERROR: \n");
+        printf("ERROR: wrong chan_thresh_h (w:%u r:%u)\n", agc_params.chan_thresh_h, val);
         return LGW_HAL_ERROR;
     }
 

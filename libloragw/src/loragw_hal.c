@@ -102,8 +102,8 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_26_sep_5.var"
-#include "src/text_agc_sx1257_26_sep_1.var"
+#include "src/agc_sx1250_02_Oct_1.var"
+#include "src/agc_sx125x_02_Oct_1.var"
 #include "src/text_arb_sx1302_24_sep_3.var"
 
 /*
@@ -751,7 +751,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[buffer_index + 5], p->if_chain);
             if (rx_fifo[buffer_index + 4] & 0x01) {
                 /* CRC enabled */
-                if (rx_fifo[buffer_index + 6 + p->size] & 0x01) {
+                if (rx_fifo[buffer_index + 9 + p->size] & 0x01) {
                     p->status = STAT_CRC_BAD;
                 } else {
                     p->status = STAT_CRC_OK;
@@ -761,7 +761,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->status = STAT_NO_CRC;
             }
             p->modulation = MOD_LORA;
-            p->snr = (int8_t)rx_fifo[buffer_index + 7 + p->size] / 4;
+            p->snr = (int8_t)rx_fifo[buffer_index + 10 + p->size] / 4;
             if (ifmod == IF_LORA_MULTI) {
                 p->bandwidth = BW_125KHZ; /* fixed in hardware */
             } else {
@@ -787,7 +787,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 4: p->coderate = CR_LORA_4_8; break;
                 default: p->coderate = CR_UNDEFINED;
             }
-            num_ts_metrics = rx_fifo[buffer_index + 18 + p->size];
+            num_ts_metrics = rx_fifo[buffer_index + 21 + p->size];
             timestamp_correction = 0; /* TODO */
         } else if (ifmod == IF_FSK_STD) {
             DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", rx_fifo[buffer_index + 5], p->if_chain);
@@ -832,7 +832,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->count_us /= 32;
         p->count_us -= timestamp_correction; /* TODO */
 
-        p->crc = (uint16_t)rx_fifo[buffer_index + 16 + p->size] + ((uint16_t)rx_fifo[buffer_index + 17 + p->size] << 8);
+        p->crc = (uint16_t)rx_fifo[buffer_index + 19 + p->size] + ((uint16_t)rx_fifo[buffer_index + 20 + p->size] << 8);
 
         /* move buffer index toward next message */
         buffer_index += (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics));
