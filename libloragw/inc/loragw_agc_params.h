@@ -39,15 +39,15 @@ struct agc_gain_params_s {
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 const struct agc_gain_params_s agc_params_sx1250 = {
-    .ana_min = 0,
+    .ana_min = 1,
     .ana_max = 13,
-    .ana_thresh_l = 16,
-    .ana_thresh_h = 35,
+    .ana_thresh_l = 3,
+    .ana_thresh_h = 12,
     .dec_attn_min = 4,
     .dec_attn_max = 15,
-    .dec_thresh_l = 45,
-    .dec_thresh_h1 = 100,
-    .dec_thresh_h2 = 115,
+    .dec_thresh_l = 40,
+    .dec_thresh_h1 = 80,
+    .dec_thresh_h2 = 90,
     .chan_attn_min = 4,
     .chan_attn_max = 14,
     .chan_thresh_l = 52,
