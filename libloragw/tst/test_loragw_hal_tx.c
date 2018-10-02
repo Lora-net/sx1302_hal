@@ -368,9 +368,11 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
-        printf("ERROR: failed to configure txgain lut\n");
-        return EXIT_FAILURE;
+    if (txlut.size > 0) {
+        if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
+            printf("ERROR: failed to configure txgain lut\n");
+            return EXIT_FAILURE;
+        }
     }
 
     x = lgw_start();
