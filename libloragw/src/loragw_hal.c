@@ -632,7 +632,14 @@ int lgw_start(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_stop(void) {
-    //lgw_soft_reset();
+    int i;
+
+    DEBUG_MSG("INFO: aborting TX\n");
+    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+        lgw_abort_tx(i);
+    }
+
+    DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
 
     lgw_is_started = false;
@@ -717,7 +724,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
                 p->rssi = (float)rx_fifo[i+8+p->size] + rf_rssi_offset[p->rf_chain];
                 /* TODO: RSSI correction */
-
 
                 if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
                     DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[i+5], p->if_chain);
@@ -1201,8 +1207,26 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_abort_tx(void) {
-    /* TODO */
+int lgw_abort_tx(uint8_t rf_chain) {
+    uint16_t reg;
+    uint8_t tx_status;
+
+    reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE,
+                                SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_IMMEDIATE);
+    lgw_reg_w(reg, 0x00);
+
+    reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_DELAYED,
+                                SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED);
+    lgw_reg_w(reg, 0x00);
+
+    reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_GPS,
+                                SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_GPS);
+    lgw_reg_w(reg, 0x00);
+
+    do {
+        wait_ms(1);
+        lgw_status(rf_chain, TX_STATUS, &tx_status);
+    } while (tx_status != TX_FREE);
 
     return LGW_HAL_SUCCESS;
 }

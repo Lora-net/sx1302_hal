@@ -448,9 +448,6 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    /* Board reset */
-    system("./reset_lgw.sh start");
-
     printf("=========== Test End ===========\n");
 
     return 0;

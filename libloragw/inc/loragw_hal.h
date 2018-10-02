@@ -360,7 +360,7 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code);
 @brief Abort a currently scheduled or ongoing TX
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_abort_tx(void);
+int lgw_abort_tx(uint8_t rf_chain);
 
 /**
 @brief Return value of internal counter when latest event (eg GPS pulse) was captured
