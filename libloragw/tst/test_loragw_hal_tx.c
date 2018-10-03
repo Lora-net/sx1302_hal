@@ -66,9 +66,11 @@ void usage(void) {
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
     printf(" -f <float> Radio TX frequency in MHz\n");
+    printf(" -m <str>  modulation type ['LORA', 'FSK']\n");
     printf(" -s <uint> LoRa datarate 0:random, [5..12]\n");
     printf(" -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
     printf(" -l <uint> LoRa preamble length, [0..65535]\n");
+    printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -n <uint> Number of packets to be sent\n");
     printf(" -z <uint> size of packets to be sent 0:random, [9..255]\n");
     printf(" -t <uint> TX mode timestamped with delay in ms\n");
@@ -104,9 +106,13 @@ int main(int argc, char **argv)
     uint32_t bw = 0;
     uint32_t nb_pkt = 1;
     uint8_t size = 0;
+    char mod[64] = "LORA";
+    float br_kbps = 50;
     double arg_d = 0.0;
     unsigned int arg_u;
     int arg_i;
+    char arg_s[64];
+    float xf = 0.0;
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
@@ -139,7 +145,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:m:q:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -171,6 +177,24 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     preamble = (uint16_t)arg_u;
+                }
+                break;
+            case 'm': /* <str> Modulation type */
+                i = sscanf(optarg, "%s", arg_s);
+                if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
+                    printf("ERROR: invalid modulation type\n");
+                    return EXIT_FAILURE;
+                } else {
+                    sprintf(mod, "%s", arg_s);
+                }
+                break;
+            case 'q': /* <float> FSK bitrate */
+                i = sscanf(optarg, "%f", &xf);
+                if ((i != 1) || (xf < 0.5) || (xf > 250)) {
+                    printf("ERROR: invalid FSK bitrate\n");
+                    return EXIT_FAILURE;
+                } else {
+                    br_kbps = xf;
                 }
                 break;
             case 't': /* <uint> Trigger delay in ms */
@@ -327,7 +351,12 @@ int main(int argc, char **argv)
         }
     }
 
-    printf("===== sx1302 HAL TX test =====\n");
+    /* Summary of packet parameters */
+    if (strcmp(mod, "FSK") == 0) {
+        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, 0, br_kbps, size, preamble, rf_power);
+    } else {
+        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, bw, sf, 1, size, preamble, rf_power);
+    }
 
     /* Configure signal handling */
     sigemptyset( &sigact.sa_mask );
@@ -392,11 +421,17 @@ int main(int argc, char **argv)
     } else {
         pkt.tx_mode = TIMESTAMPED;
     }
-    pkt.modulation = MOD_LORA;
-    pkt.coderate = CR_LORA_4_5;
+    if( strcmp( mod, "FSK" ) == 0 ) {
+        pkt.modulation = MOD_FSK;
+        pkt.no_crc = false;
+        pkt.datarate = br_kbps * 1e3;
+    } else {
+        pkt.modulation = MOD_LORA;
+        pkt.coderate = CR_LORA_4_5;
+        pkt.no_crc = true;
+    }
     pkt.invert_pol = false;
     pkt.preamble = preamble;
-    pkt.no_crc = false;
     pkt.no_header = false;
     pkt.payload[0] = 0x40; /* Confirmed Data Up */
     pkt.payload[1] = 0xAB;
@@ -419,9 +454,11 @@ int main(int argc, char **argv)
             printf("programming TX for %u\n", pkt.count_us);
         }
 
-        pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
-        pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
+        if( strcmp( mod, "LORA" ) == 0 ) {
+            pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
+        }
         pkt.bandwidth = (bw == 0) ? (uint8_t)RAND_RANGE(4, 6) : bw;
+        pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
 
         pkt.payload[6] = (uint8_t)(i >> 0); /* FCnt */
         pkt.payload[7] = (uint8_t)(i >> 8); /* FCnt */

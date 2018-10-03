@@ -848,6 +848,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_reg, fdev_reg;
     uint32_t freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
+    uint32_t fsk_br_reg;
     uint16_t tx_start_delay;
     uint16_t reg;
     uint16_t mem_addr;
@@ -898,10 +899,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             return LGW_HAL_ERROR;
         }
     } else if (pkt_data.modulation == MOD_FSK) {
+#if 0 /* TODO */
         if((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
             DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
             return LGW_HAL_ERROR;
         }
+#endif
         if(!IS_FSK_DR(pkt_data.datarate)) {
             DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
             return LGW_HAL_ERROR;
@@ -1089,6 +1092,55 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH,
                                                 SX1302_REG_TX_TOP_B_TXRX_CFG0_3_PAYLOAD_LENGTH);
             lgw_reg_w(reg, pkt_data.size);
+            break;
+        case MOD_FSK:
+            /*
+            SX1302_REG_TX_TOP_A_FSK_PKT_LEN_PKT_LENGTH 93
+            SX1302_REG_TX_TOP_A_FSK_CFG_0_TX_CONT 94
+            SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_IBM 95
+            SX1302_REG_TX_TOP_A_FSK_CFG_0_DCFREE_ENC 96
+            SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_EN 97
+            SX1302_REG_TX_TOP_A_FSK_CFG_0_PKT_MODE 98
+            SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE 99
+            SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE 100
+            SX1302_REG_TX_TOP_A_FSK_BIT_RATE_MSB_BIT_RATE 101
+            SX1302_REG_TX_TOP_A_FSK_BIT_RATE_LSB_BIT_RATE 102
+            SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_SIZE 103
+            SX1302_REG_TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ 104
+            SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_EN 105
+            SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_SELECT_BT 106
+            SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN 107
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN 108
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN 109
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE5_FSK_REF_PATTERN 110
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE4_FSK_REF_PATTERN 111
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE3_FSK_REF_PATTERN 112
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN 113
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN 114
+            SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN 115
+            */
+
+            /* */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_PKT_MODE, 1); /* Variable length */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_EN, 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_IBM, 0); /* TODO: ?? */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_DCFREE_ENC, 0); /* TODO: ?? */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN, 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_SELECT_BT, 2);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_EN, 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ, 0);
+
+            /* Set datarate */
+            fsk_br_reg = 32000000 / pkt_data.datarate;
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_BIT_RATE_MSB_BIT_RATE, fsk_br_reg >> 8);
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_BIT_RATE_LSB_BIT_RATE, fsk_br_reg >> 0);
+
+            /* Preamble length */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE, (pkt_data.preamble >> 8) & 0xFF); /* MSB */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE, (pkt_data.preamble >> 0) & 0xFF); /* LSB */
+
+            /* Set Payload length */
+            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_PKT_LEN_PKT_LENGTH, pkt_data.size);
             break;
         default:
             printf("ERROR: Modulation not supported\n");
