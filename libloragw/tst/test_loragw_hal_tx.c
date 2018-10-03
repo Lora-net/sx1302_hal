@@ -103,11 +103,12 @@ int main(int argc, char **argv)
     uint32_t ft = DEFAULT_FREQ_HZ;
     int8_t rf_power = 0;
     uint8_t sf = 0;
-    uint32_t bw = 0;
+    uint16_t bw_khz = 0;
     uint32_t nb_pkt = 1;
     uint8_t size = 0;
     char mod[64] = "LORA";
     float br_kbps = 50;
+    uint8_t fdev_khz = 25;
     double arg_d = 0.0;
     unsigned int arg_u;
     int arg_i;
@@ -145,7 +146,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:m:q:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:m:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -186,6 +187,15 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     sprintf(mod, "%s", arg_s);
+                }
+                break;
+            case 'd': /* <uint> FSK frequency deviation */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
+                    printf("ERROR: invalid FSK frequency deviation\n");
+                    return EXIT_FAILURE;
+                } else {
+                    fdev_khz = (uint8_t)arg_u;
                 }
                 break;
             case 'q': /* <float> FSK bitrate */
@@ -249,19 +259,7 @@ int main(int argc, char **argv)
                     printf("ERROR: argument parsing of -b argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    switch (arg_u) {
-                        case 125:
-                            bw = BW_125KHZ;
-                            break;
-                        case 250:
-                            bw = BW_250KHZ;
-                            break;
-                        case 500:
-                            bw = BW_500KHZ;
-                            break;
-                        default:
-                            break;
-                    }
+                    bw_khz = (uint16_t)arg_u;
                 }
                 break;
             case 'n': /* <uint> Number of packets to be sent */
@@ -353,9 +351,9 @@ int main(int argc, char **argv)
 
     /* Summary of packet parameters */
     if (strcmp(mod, "FSK") == 0) {
-        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, 0, br_kbps, size, preamble, rf_power);
+        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, fdev_khz, br_kbps, size, preamble, rf_power);
     } else {
-        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, bw, sf, 1, size, preamble, rf_power);
+        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, rf_power);
     }
 
     /* Configure signal handling */
@@ -425,6 +423,7 @@ int main(int argc, char **argv)
         pkt.modulation = MOD_FSK;
         pkt.no_crc = false;
         pkt.datarate = br_kbps * 1e3;
+        pkt.f_dev = fdev_khz;
     } else {
         pkt.modulation = MOD_LORA;
         pkt.coderate = CR_LORA_4_5;
@@ -457,7 +456,22 @@ int main(int argc, char **argv)
         if( strcmp( mod, "LORA" ) == 0 ) {
             pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
         }
-        pkt.bandwidth = (bw == 0) ? (uint8_t)RAND_RANGE(4, 6) : bw;
+
+        switch (bw_khz) {
+            case 125:
+                pkt.bandwidth = BW_125KHZ;
+                break;
+            case 250:
+                pkt.bandwidth = BW_250KHZ;
+                break;
+            case 500:
+                pkt.bandwidth = BW_500KHZ;
+                break;
+            default:
+                pkt.bandwidth = (uint8_t)RAND_RANGE(BW_125KHZ, BW_500KHZ);
+                break;
+        }
+
         pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
 
         pkt.payload[6] = (uint8_t)(i >> 0); /* FCnt */

@@ -847,7 +847,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_reg, fdev_reg;
-    uint32_t freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
+    uint32_t freq_dev;
     uint32_t fsk_br_reg;
     uint16_t tx_start_delay;
     uint16_t reg;
@@ -899,12 +899,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             return LGW_HAL_ERROR;
         }
     } else if (pkt_data.modulation == MOD_FSK) {
-#if 0 /* TODO */
         if((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
             DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
             return LGW_HAL_ERROR;
         }
-#endif
         if(!IS_FSK_DR(pkt_data.datarate)) {
             DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
             return LGW_HAL_ERROR;
@@ -993,11 +991,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_IQ_GAIN_IQ_GAIN);
     lgw_reg_w(reg, txgain_lut.lut[pow_index].dig_gain);
 
-    /* Get TX frequency and bandwidth (fdev) */
-    freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */
-    fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
-
     /* Set Tx frequency */
+    freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF,
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_RF_H_FREQ_RF);
     lgw_reg_w(reg, (freq_reg >> 16) & 0xFF);
@@ -1010,16 +1005,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_RF_L_FREQ_RF);
     lgw_reg_w(reg, (freq_reg >> 0) & 0xFF);
 
-    /* Set bandwidth */
-    printf("Bandwidth %dkHz\n", (int)(lgw_bw_getval(pkt_data.bandwidth) / 1E3));
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV,
-                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV);
-    lgw_reg_w(reg, (fdev_reg >>  8) & 0xFF);
-
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV,
-                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV);
-    lgw_reg_w(reg, (fdev_reg >>  0) & 0xFF);
-
+    /* Set AGC bandwidth */
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW,
                                         SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW);
     lgw_reg_w(reg, 0); /* TODO: define BW table with AGC */
@@ -1027,6 +1013,18 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* Condifure modem */
     switch (pkt_data.modulation) {
         case MOD_LORA:
+            /* Set bandwidth */
+            printf("Bandwidth %dkHz\n", (int)(lgw_bw_getval(pkt_data.bandwidth) / 1E3));
+            freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
+            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV,
+                                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV);
+            lgw_reg_w(reg, (fdev_reg >>  8) & 0xFF);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV,
+                                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV);
+            lgw_reg_w(reg, (fdev_reg >>  0) & 0xFF);
+
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_0_MODEM_BW,
                                                 SX1302_REG_TX_TOP_B_TXRX_CFG0_0_MODEM_BW);
             lgw_reg_w(reg, pkt_data.bandwidth);
@@ -1119,6 +1117,18 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN 114
             SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN 115
             */
+
+            /* Set frequency deviation */
+            printf("f_dev %dkHz\n", (int)(pkt_data.f_dev));
+            freq_dev = pkt_data.f_dev * 1e3;
+            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV,
+                                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV);
+            lgw_reg_w(reg, (fdev_reg >>  8) & 0xFF);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV,
+                                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV);
+            lgw_reg_w(reg, (fdev_reg >>  0) & 0xFF);
 
             /* */
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_PKT_MODE,
