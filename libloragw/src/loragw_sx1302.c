@@ -913,6 +913,8 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         return LGW_HAL_ERROR;
     }
 
+    printf("AGC: config of analog gain min/max done\n");
+
     /* Configure analog thresholds */
     sx1302_agc_mailbox_write(0, agc_params.ana_thresh_l);
     sx1302_agc_mailbox_write(1, agc_params.ana_thresh_h);
@@ -935,6 +937,8 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         return LGW_HAL_ERROR;
     }
 
+    printf("AGC: config of analog threshold done\n");
+
     /* Configure decimator attenuation min/max */
     sx1302_agc_mailbox_write(0, agc_params.dec_attn_min);
     sx1302_agc_mailbox_write(1, agc_params.dec_attn_max);
@@ -956,6 +960,8 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         printf("ERROR: wrong dec_attn_max (w:%u r:%u)\n", agc_params.dec_attn_max, val);
         return LGW_HAL_ERROR;
     }
+
+    printf("AGC: config of decimator atten min/max done\n");
 
     /* Configure decimator attenuation thresholds */
     sx1302_agc_mailbox_write(0, agc_params.dec_thresh_l);
@@ -985,6 +991,8 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         return LGW_HAL_ERROR;
     }
 
+    printf("AGC: config of decimator threshold done\n");
+
     /* Configure channel attenuation min/max */
     sx1302_agc_mailbox_write(0, agc_params.chan_attn_min);
     sx1302_agc_mailbox_write(1, agc_params.chan_attn_max);
@@ -1006,6 +1014,8 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         printf("ERROR: wrong chan_attn_max (w:%u r:%u)\n", agc_params.chan_attn_max, val);
         return LGW_HAL_ERROR;
     }
+
+    printf("AGC: config of channel atten min/max done\n");
 
     /* Configure channel attenuation threshold */
     sx1302_agc_mailbox_write(0, agc_params.chan_thresh_l);
@@ -1029,8 +1039,12 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         return LGW_HAL_ERROR;
     }
 
+    printf("AGC: config of channel atten threshold done\n");
+
     /* notify AGC that it can resume */
     sx1302_agc_mailbox_write(3, 0x09);
+
+    printf("AGC: started (hopefully)\n");
 
     return LGW_HAL_SUCCESS;
 }
