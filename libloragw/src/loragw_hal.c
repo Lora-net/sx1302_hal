@@ -1121,26 +1121,61 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             */
 
             /* */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_PKT_MODE, 1); /* Variable length */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_EN, 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_IBM, 0); /* TODO: ?? */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_CFG_0_DCFREE_ENC, 0); /* TODO: ?? */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN, 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_SELECT_BT, 2);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_EN, 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ, 0);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_PKT_MODE,
+                                                SX1302_REG_TX_TOP_B_FSK_CFG_0_PKT_MODE);
+            lgw_reg_w(reg, 1); /* Variable length */
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_EN,
+                                                SX1302_REG_TX_TOP_B_FSK_CFG_0_CRC_EN);
+            lgw_reg_w(reg, 1);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_IBM,
+                                                SX1302_REG_TX_TOP_B_FSK_CFG_0_CRC_IBM);
+            lgw_reg_w(reg, 0); /* TODO: ?? */
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_DCFREE_ENC,
+                                                SX1302_REG_TX_TOP_B_FSK_CFG_0_DCFREE_ENC);
+            lgw_reg_w(reg, 0); /* TODO: ?? */
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN,
+                                                SX1302_REG_TX_TOP_B_FSK_MOD_FSK_GAUSSIAN_EN);
+            lgw_reg_w(reg, 1);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_SELECT_BT,
+                                                SX1302_REG_TX_TOP_B_FSK_MOD_FSK_GAUSSIAN_SELECT_BT);
+            lgw_reg_w(reg, 2);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_EN,
+                                                SX1302_REG_TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_EN);
+            lgw_reg_w(reg, 1);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ,
+                                                SX1302_REG_TX_TOP_B_FSK_MOD_FSK_PREAMBLE_SEQ);
+            lgw_reg_w(reg, 0);
 
             /* Set datarate */
             fsk_br_reg = 32000000 / pkt_data.datarate;
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_BIT_RATE_MSB_BIT_RATE, fsk_br_reg >> 8);
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_BIT_RATE_LSB_BIT_RATE, fsk_br_reg >> 0);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_BIT_RATE_MSB_BIT_RATE,
+                                                SX1302_REG_TX_TOP_B_FSK_BIT_RATE_MSB_BIT_RATE);
+            lgw_reg_w(reg, fsk_br_reg >> 8);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_BIT_RATE_LSB_BIT_RATE,
+                                                SX1302_REG_TX_TOP_B_FSK_BIT_RATE_LSB_BIT_RATE);
+            lgw_reg_w(reg, fsk_br_reg >> 0);
 
             /* Preamble length */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE, (pkt_data.preamble >> 8) & 0xFF); /* MSB */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE, (pkt_data.preamble >> 0) & 0xFF); /* LSB */
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE,
+                                                SX1302_REG_TX_TOP_B_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE);
+            lgw_reg_w(reg, (pkt_data.preamble >> 8) & 0xFF); /* MSB */
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE,
+                                                SX1302_REG_TX_TOP_B_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE);
+            lgw_reg_w(reg, (pkt_data.preamble >> 0) & 0xFF); /* LSB */
 
             /* Set Payload length */
-            lgw_reg_w(SX1302_REG_TX_TOP_A_FSK_PKT_LEN_PKT_LENGTH, pkt_data.size);
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_PKT_LEN_PKT_LENGTH,
+                                                SX1302_REG_TX_TOP_B_FSK_PKT_LEN_PKT_LENGTH);
+            lgw_reg_w(reg, pkt_data.size);
             break;
         default:
             printf("ERROR: Modulation not supported\n");
