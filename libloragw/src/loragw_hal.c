@@ -567,10 +567,12 @@ int lgw_start(void) {
     /* Get calibration status */
 
     /* Sanity check for RX frequency */
+#if 0
     if (rf_rx_freq[0] == 0) {
         DEBUG_MSG("ERROR: wrong configuration, rf_rx_freq[0] is not set\n");
         return LGW_HAL_ERROR;
     }
+#endif
 
     /* configure LoRa 'multi' demodulators */
     sx1302_lora_channelizer_configure(if_rf_chain, if_freq);
@@ -698,7 +700,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         }
         printf("INFO: pkt syncword found at index %u\n", buffer_index);
 
-        payload_length = rx_fifo[buffer_index+2];
+        payload_length = SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index);
 
         if((buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics) > sz) {
             printf("WARNING: aborting truncated message (size=%u), got %u messages\n", sz, nb_pkt_found);
@@ -707,13 +709,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 #if 1
         printf("-----------------\n");
-        printf("  modem:    %u\n", rx_fifo[buffer_index + 5]);
-        printf("  chan:     %u\n", rx_fifo[buffer_index + 3]);
-        printf("  size:     %u\n", rx_fifo[buffer_index + 2]);
-        printf("  crc_en:   %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 0, 1));
-        printf("  status:   %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 6 + payload_length], 0, 1));
-        printf("  codr:     %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 1, 3));
-        printf("  datr:     %u\n", TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 4, 4));
+        printf("  modem:    %u\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index));
+        printf("  chan:     %u\n", SX1302_PKT_CHANNEL(rx_fifo, buffer_index));
+        printf("  size:     %u\n", SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index));
+        printf("  crc_en:   %u\n", SX1302_PKT_CRC_EN(rx_fifo, buffer_index));
+        printf("  crc_err:  %u\n", SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index));
+        printf("  codr:     %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
+        printf("  datr:     %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
         printf("-----------------\n");
 #endif
 
@@ -728,13 +730,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         }
         nb_pkt_found += 1;
 
-        p->size = rx_fifo[buffer_index + 2];
-
         /* copy payload to result struct */
-        memcpy((void *)p->payload, (void *)(&rx_fifo[buffer_index + SX1302_PKT_HEAD_METADATA]), p->size);
+        memcpy((void *)p->payload, (void *)(&rx_fifo[buffer_index + SX1302_PKT_HEAD_METADATA]), payload_length);
 
         /* process metadata */
-        p->if_chain = rx_fifo[buffer_index + 3];
+        p->if_chain = SX1302_PKT_CHANNEL(rx_fifo, buffer_index);
         if (p->if_chain >= LGW_IF_CHAIN_NB) {
             DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
             break;
@@ -742,16 +742,17 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         ifmod = ifmod_config[p->if_chain];
         DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
 
+        p->size = payload_length;
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
         p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
-        p->rssi = (float)rx_fifo[buffer_index + 8 + p->size] + rf_rssi_offset[p->rf_chain];
+        p->rssi = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         /* TODO: RSSI correction */
 
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
-            DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", rx_fifo[buffer_index + 5], p->if_chain);
-            if (rx_fifo[buffer_index + 4] & 0x01) {
+            DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index), p->if_chain);
+            if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index)) {
                 /* CRC enabled */
-                if (rx_fifo[buffer_index + 9 + p->size] & 0x01) {
+                if (SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + p->size)) {
                     p->status = STAT_CRC_BAD;
                 } else {
                     p->status = STAT_CRC_OK;
@@ -761,13 +762,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->status = STAT_NO_CRC;
             }
             p->modulation = MOD_LORA;
-            p->snr = (int8_t)rx_fifo[buffer_index + 10 + p->size] / 4;
+            p->snr = (int8_t)(SX1302_PKT_SNR_AVG(rx_fifo, buffer_index + p->size) / 4);
             if (ifmod == IF_LORA_MULTI) {
                 p->bandwidth = BW_125KHZ; /* fixed in hardware */
             } else {
                 p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
             }
-            sf = TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 4, 4);
+            sf = SX1302_PKT_DATARATE(rx_fifo, buffer_index);
             switch (sf) {
                 case 5: p->datarate = DR_LORA_SF5; break;
                 case 6: p->datarate = DR_LORA_SF6; break;
@@ -779,7 +780,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 12: p->datarate = DR_LORA_SF12; break;
                 default: p->datarate = DR_UNDEFINED;
             }
-            cr = TAKE_N_BITS_FROM(rx_fifo[buffer_index + 4], 1, 3);
+            cr = SX1302_PKT_CODING_RATE(rx_fifo, buffer_index);
             switch (cr) {
                 case 1: p->coderate = CR_LORA_4_5; break;
                 case 2: p->coderate = CR_LORA_4_6; break;
@@ -787,13 +788,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 4: p->coderate = CR_LORA_4_8; break;
                 default: p->coderate = CR_UNDEFINED;
             }
-            num_ts_metrics = rx_fifo[buffer_index + 21 + p->size];
+            num_ts_metrics = SX1302_PKT_NUM_TS_METRICS(rx_fifo, buffer_index + p->size);
             timestamp_correction = 0; /* TODO */
         } else if (ifmod == IF_FSK_STD) {
-            DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", rx_fifo[buffer_index + 5], p->if_chain);
-            if (rx_fifo[buffer_index + 4] & 0x01) {
+            DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index), p->if_chain);
+            if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index)) {
                 /* CRC enabled */
-                if (rx_fifo[buffer_index + 6 + p->size] & 0x01) {
+                if (SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + p->size)) {
                     printf("FSK: CRC ERR\n");
                     p->status = STAT_CRC_BAD;
                 } else {
@@ -825,14 +826,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             p->coderate = CR_UNDEFINED;
         }
 
-        p->count_us  = (uint32_t)((rx_fifo[buffer_index + 15 + p->size] <<  0) & 0x000000FF);
-        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 16 + p->size] <<  8) & 0x0000FF00);
-        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 17 + p->size] << 16) & 0x00FF0000);
-        p->count_us |= (uint32_t)((rx_fifo[buffer_index + 18 + p->size] << 24) & 0xFF000000);
+        p->count_us  = (uint32_t)((SX1302_PKT_TIMESTAMP_7_0(rx_fifo, buffer_index + p->size) <<  0) & 0x000000FF);
+        p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_15_8(rx_fifo, buffer_index + p->size) <<  8) & 0x0000FF00);
+        p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(rx_fifo, buffer_index + p->size) << 16) & 0x00FF0000);
+        p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(rx_fifo, buffer_index + p->size) << 24) & 0xFF000000);
         p->count_us /= 32;
         p->count_us -= timestamp_correction; /* TODO */
 
-        p->crc = (uint16_t)rx_fifo[buffer_index + 19 + p->size] + ((uint16_t)rx_fifo[buffer_index + 20 + p->size] << 8);
+        p->crc = (uint16_t)(SX1302_PKT_CRC_PAYLOAD_7_0(rx_fifo, buffer_index + p->size)) + ((uint16_t)(SX1302_PKT_CRC_PAYLOAD_15_8(rx_fifo, buffer_index + p->size)) << 8);
 
         /* move buffer index toward next message */
         buffer_index += (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics));
