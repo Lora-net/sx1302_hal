@@ -70,6 +70,7 @@ void usage(void) {
     printf(" -s <uint> LoRa datarate 0:random, [5..12]\n");
     printf(" -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
     printf(" -l <uint> LoRa preamble length, [0..65535]\n");
+    printf(" -d <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -n <uint> Number of packets to be sent\n");
     printf(" -z <uint> size of packets to be sent 0:random, [9..255]\n");
