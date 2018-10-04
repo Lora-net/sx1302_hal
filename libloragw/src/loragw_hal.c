@@ -345,7 +345,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 conf.bandwidth = BW_250KHZ;
             }
             if (conf.datarate == DR_UNDEFINED) {
-                conf.datarate = DR_LORA_SF9;
+                conf.datarate = DR_LORA_SF7;
             }
             /* check BW & DR */
             if (!IS_LORA_BW(conf.bandwidth)) {

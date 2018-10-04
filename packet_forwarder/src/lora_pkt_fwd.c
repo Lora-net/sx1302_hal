@@ -455,7 +455,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.if", i);
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, param_name);
             // TODO: handle individual SF enabling and disabling (spread_factor)
-            MSG("INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
+            MSG("INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 5 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
@@ -490,6 +490,8 @@ static int parse_SX1301_configuration(const char * conf_file) {
             }
             sf = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.spread_factor");
             switch(sf) {
+                case  5: ifconf.datarate = DR_LORA_SF5;  break;
+                case  6: ifconf.datarate = DR_LORA_SF6;  break;
                 case  7: ifconf.datarate = DR_LORA_SF7;  break;
                 case  8: ifconf.datarate = DR_LORA_SF8;  break;
                 case  9: ifconf.datarate = DR_LORA_SF9;  break;
@@ -1342,6 +1344,14 @@ void thread_up(void) {
 
                 /* Lora datarate & bandwidth, 16-19 useful chars */
                 switch (p->datarate) {
+                    case DR_LORA_SF5:
+                        memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF5", 12);
+                        buff_index += 12;
+                        break;
+                    case DR_LORA_SF6:
+                        memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF6", 12);
+                        buff_index += 12;
+                        break;
                     case DR_LORA_SF7:
                         memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF7", 12);
                         buff_index += 12;
@@ -1809,6 +1819,8 @@ void thread_down(void) {
                     continue;
                 }
                 switch (x0) {
+                    case  5: txpkt.datarate = DR_LORA_SF5;  break;
+                    case  6: txpkt.datarate = DR_LORA_SF6;  break;
                     case  7: txpkt.datarate = DR_LORA_SF7;  break;
                     case  8: txpkt.datarate = DR_LORA_SF8;  break;
                     case  9: txpkt.datarate = DR_LORA_SF9;  break;
