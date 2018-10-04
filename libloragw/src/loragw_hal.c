@@ -713,7 +713,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("  chan:     %u\n", SX1302_PKT_CHANNEL(rx_fifo, buffer_index));
         printf("  size:     %u\n", SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index));
         printf("  crc_en:   %u\n", SX1302_PKT_CRC_EN(rx_fifo, buffer_index));
-        printf("  crc_err:  %u\n", SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index));
+        printf("  crc_err:  %u\n", SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + payload_length));
         printf("  codr:     %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
         printf("  datr:     %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
         printf("-----------------\n");
