@@ -10,7 +10,7 @@
 
 # The reset pin of SX1301 is wired with RPi GPIO7
 # If used on another platform, the GPIO number can be given as parameter.
-if [ -z "$2" ]; then 
+if [ -z "$2" ]; then
     IOT_SK_SX1301_RESET_PIN=7
 else
     IOT_SK_SX1301_RESET_PIN=$2
@@ -32,9 +32,6 @@ iot_sk_init() {
     # write output for SX1301 reset
     echo "1" > /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN/value; WAIT_GPIO
     echo "0" > /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN/value; WAIT_GPIO
-
-    # set GPIO 7 as input
-    echo "in" > /sys/class/gpio/gpio$IOT_SK_SX1301_RESET_PIN/direction; WAIT_GPIO
 }
 
 iot_sk_term() {
