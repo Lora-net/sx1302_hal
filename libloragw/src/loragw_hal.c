@@ -578,7 +578,7 @@ int lgw_start(void) {
     sx1302_radio_fe_configure();
 
     /* configure LoRa 'multi' demodulators */
-    sx1302_lora_channelizer_configure(if_rf_chain, if_freq);
+    sx1302_lora_channelizer_configure(if_rf_chain, if_freq, false);
     sx1302_lora_correlator_configure();
     sx1302_lora_modem_configure();
 

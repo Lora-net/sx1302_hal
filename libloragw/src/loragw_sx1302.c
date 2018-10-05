@@ -214,7 +214,7 @@ int sx1302_radio_fe_configure() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if) {
+int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if, bool fix_gain) {
     int32_t if_freq;
     uint8_t channels_mask = 0x00;
     int i;
@@ -263,6 +263,15 @@ int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if) 
     if_freq = IF_HZ_TO_REG(channel_if[7]);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_MSB_IF_FREQ_7, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_LSB_IF_FREQ_7, (if_freq >> 0) & 0x000000FF);
+
+    /* Force channelizer in fix gain, or let it be controlled by AGC */
+    if (fix_gain == true) {
+        lgw_reg_w(SX1302_REG_RX_TOP_CHANN_DAGC_CFG5_CHAN_DAGC_MODE, 0x00);
+        lgw_reg_w(SX1302_REG_RX_TOP_GAIN_CONTROL_CHAN_GAIN, 5);
+    } else {
+        /* Allow the AGC to control gains */
+        lgw_reg_w(SX1302_REG_RX_TOP_CHANN_DAGC_CFG5_CHAN_DAGC_MODE, 0x01);
+    }
 
     return LGW_REG_SUCCESS;
 }
@@ -493,8 +502,6 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFF); /* 12 11 10 9 8 7 6 5 */
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0xFF); /* 1 correlator per channel */
-
-    lgw_reg_w(SX1302_REG_RX_TOP_CHANN_DAGC_CFG5_CHAN_DAGC_MODE, 0x01); /* Enable software AGC mode */
 
     /* For debug: get packets with sync_error and header_error in FIFO */
 #if 1

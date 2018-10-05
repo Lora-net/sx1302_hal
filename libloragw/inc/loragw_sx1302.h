@@ -80,7 +80,7 @@ int sx1302_clock_enable(void);
 
 int sx1302_radio_fe_configure();
 
-int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if);
+int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if, bool fix_gain);
 int sx1302_lora_correlator_configure();
 int sx1302_lora_modem_configure();
 
