@@ -14,10 +14,12 @@
         },
         "radio_1": {
             "enable": false,
-            "type": "SX1250",
-            "freq": 868500000,
-            "rssi_offset": -166.0,
-            "tx_enable": false
+            "type": "SX1257",
+            "freq": 865800000,
+            "rssi_offset": -191.0,
+            "tx_enable": false,
+            "tx_freq_min": 863000000,
+            "tx_freq_max": 870000000
         },
         "chan_multiSF_0": {"enable": true, "radio": 0, "if": -700000},
         "chan_multiSF_1": {"enable": true, "radio": 0, "if": -500000},
