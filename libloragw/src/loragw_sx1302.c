@@ -504,7 +504,7 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0xFF); /* 1 correlator per channel */
 
     /* For debug: get packets with sync_error and header_error in FIFO */
-#if 1
+#if 0
     lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_STORE_SYNC_FAIL_META, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_STORE_HEADER_ERR_META, 0x01);
 #endif
