@@ -574,6 +574,9 @@ int lgw_start(void) {
     }
 #endif
 
+    /* Configure Radio FE */
+    sx1302_radio_fe_configure();
+
     /* configure LoRa 'multi' demodulators */
     sx1302_lora_channelizer_configure(if_rf_chain, if_freq);
     sx1302_lora_correlator_configure();
@@ -679,6 +682,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         //printf( "No message in DSP%d FIFO\n", dsp);
         return 0;
     }
+    printf("-----------------\n");
+    printf("lgw_receive()\n");
     printf("nb_bytes received: %u (%u %u)\n", sz, buff[1], buff[0]);
 
     /* read bytes from fifo */
@@ -714,6 +719,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("  size:     %u\n", SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index));
         printf("  crc_en:   %u\n", SX1302_PKT_CRC_EN(rx_fifo, buffer_index));
         printf("  crc_err:  %u\n", SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + payload_length));
+        printf("  sync_err: %u\n", SX1302_PKT_SYNC_ERROR(rx_fifo, buffer_index + payload_length));
+        printf("  hdr_err:  %u\n", SX1302_PKT_HEADER_ERROR(rx_fifo, buffer_index + payload_length));
         printf("  codr:     %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
         printf("  datr:     %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
         printf("-----------------\n");
