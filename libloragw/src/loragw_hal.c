@@ -928,10 +928,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_PLL_DIV_CTRL);
     lgw_reg_w(reg, 0x00); /* VCO divider by 2 */
 
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC,
-                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_SRC);
-    lgw_reg_w(reg, 0x01); /* LoRa */
-
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST,
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_DST);
     switch (rf_radio_type[pkt_data.rf_chain]) {
@@ -959,11 +955,19 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE,
                                                 SX1302_REG_TX_TOP_B_GEN_CFG_0_MODULATION_TYPE);
             lgw_reg_w(reg, 0x00);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC,
+                                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_SRC);
+            lgw_reg_w(reg, 0x01);
             break;
         case MOD_FSK:
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_GEN_CFG_0_MODULATION_TYPE,
                                                 SX1302_REG_TX_TOP_B_GEN_CFG_0_MODULATION_TYPE);
             lgw_reg_w(reg, 0x01);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC,
+                                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_SRC);
+            lgw_reg_w(reg, 0x02);
             break;
         default:
             DEBUG_MSG("ERROR: modulation type not supported\n");
