@@ -678,6 +678,7 @@ int sx1302_modem_enable() {
 
 int sx1302_lora_syncword(bool public) {
     if (public) {
+        printf("INFO: configuring LoRa syncword PUBLIC\n");
         /* multi-sf modems */
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_PEAK1_POS, 6);
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_PEAK2_POS, 8);
@@ -686,6 +687,7 @@ int sx1302_lora_syncword(bool public) {
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH0_PEAK1_POS, 6);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS, 8);
     } else {
+        printf("INFO: configuring LoRa syncword PRIVATE\n");
         /* multi-sf modems */
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_PEAK1_POS, 2);
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_PEAK2_POS, 4);
