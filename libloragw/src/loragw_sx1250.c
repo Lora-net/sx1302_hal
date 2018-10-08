@@ -216,7 +216,7 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
 
     buff[0] = 0x05;
     buff[1] = 0x87;
-    buff[2] = 0x08;
+    buff[2] = 0x0B;
     sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
 
     return 0;
