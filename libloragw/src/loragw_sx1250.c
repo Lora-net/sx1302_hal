@@ -164,6 +164,20 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
     sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
+    /* Set Bitrate to maximum (to lower TX to FS switch time) */
+    buff[0] = 0x06;
+    buff[1] = 0xA1;
+    buff[2] = 0x01;
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3);
+    buff[0] = 0x06;
+    buff[1] = 0xA2;
+    buff[2] = 0x00;
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3);
+    buff[0] = 0x06;
+    buff[1] = 0xA3;
+    buff[2] = 0x00;
+    sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3);
+
     /* Configure DIO for Rx */
     buff[0] = 0x05;
     buff[1] = 0x82;

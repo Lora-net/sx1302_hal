@@ -102,7 +102,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/agc_sx1250_with_mailbox.var"
+#include "src/agc_sx1250_09_Oct_27.var"
 #include "src/agc_sx125x_02_Oct_1.var"
 #include "src/text_arb_sx1302_24_sep_3.var"
 
@@ -547,14 +547,6 @@ int lgw_start(void) {
         printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
         return -1;
     }
-
-    /* GPIOs table :
-    DGPIO0 -> N/A
-    DGPIO1 -> N/A
-    DGPIO2 -> N/A
-    DGPIO3 -> TX digital filter ON
-    DGPIO4 -> TX ON
-    */
 
     /* select calibration command */
 
@@ -1022,7 +1014,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW);
     lgw_reg_w(reg, 0); /* TODO: define BW table with AGC */
 
-    /* Condifure modem */
+    /* Configure modem */
     switch (pkt_data.modulation) {
         case MOD_LORA:
             /* Set bandwidth */
