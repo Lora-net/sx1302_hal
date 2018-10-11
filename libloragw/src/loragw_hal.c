@@ -483,6 +483,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
+    int i;
     uint32_t val, val2;
     int reg_stat;
     sx1302_radio_type_t radio_type;
@@ -501,40 +502,24 @@ int lgw_start(void) {
 
     /* gate clocks */
 
-    /* setup radio A */
-    radio_type = ((rf_radio_type[0] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
-    if (rf_enable[0] == true) {
-        sx1302_radio_reset(0, radio_type);
-        switch (radio_type) {
-            case SX1302_RADIO_TYPE_SX1250:
-                sx1250_setup(0, rf_rx_freq[0]);
-                break;
-            case SX1302_RADIO_TYPE_SX125X:
-                sx125x_setup(0, rf_clkout, true, rf_radio_type[0], rf_rx_freq[0]);
-                break;
-            default:
-                DEBUG_MSG("ERROR: RADIO TYPE NOT SUPPORTED\n");
-                return LGW_HAL_ERROR;
+    /* setup radios */
+    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+        radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
+        if (rf_enable[i] == true) {
+            sx1302_radio_reset(i, radio_type);
+            switch (radio_type) {
+                case SX1302_RADIO_TYPE_SX1250:
+                    sx1250_setup(i, rf_rx_freq[i]);
+                    break;
+                case SX1302_RADIO_TYPE_SX125X:
+                    sx125x_setup(i, rf_clkout, true, rf_radio_type[i], rf_rx_freq[i]);
+                    break;
+                default:
+                    DEBUG_PRINTF("ERROR: RADIO TYPE NOT SUPPORTED (RF_CHAIN %d)\n", i);
+                    return LGW_HAL_ERROR;
+            }
+            sx1302_radio_set_mode(i, radio_type);
         }
-        sx1302_radio_set_mode(0, radio_type);
-    }
-
-    /* setup radio B */
-    radio_type = ((rf_radio_type[1] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
-    if (rf_enable[1] == true) {
-        sx1302_radio_reset(1, radio_type);
-        switch (radio_type) {
-            case SX1302_RADIO_TYPE_SX1250:
-                sx1250_setup(1, rf_rx_freq[1]);
-                break;
-            case SX1302_RADIO_TYPE_SX125X:
-                sx125x_setup(1, rf_clkout, true, rf_radio_type[1], rf_rx_freq[1]);
-                break;
-            default:
-                DEBUG_MSG("ERROR: RADIO TYPE NOT SUPPORTED\n");
-                return LGW_HAL_ERROR;
-        }
-        sx1302_radio_set_mode(1, radio_type);
     }
 
     /* Select the radio which provides the clock to the sx1302 */
@@ -1012,7 +997,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* Set AGC bandwidth */
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW,
                                         SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW);
-    lgw_reg_w(reg, 0); /* TODO: define BW table with AGC */
+    lgw_reg_w(reg, pkt_data.bandwidth);
 
     /* Configure modem */
     switch (pkt_data.modulation) {
