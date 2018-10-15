@@ -1161,11 +1161,7 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
 int sx1302_arb_status(uint8_t* status) {
     int32_t val;
 
-#if 0
     if (lgw_reg_r(SX1302_REG_ARB_MCU_MCU_ARB_STATUS_MCU_ARB_STATUS, &val) != LGW_REG_SUCCESS) {
-#else
-    if (lgw_reg_r(SX1302_REG_ARB_MCU_ARB_DEBUG_STS_1_ARB_DEBUG_STS_1, &val) != LGW_REG_SUCCESS) {
-#endif
         printf("ERROR: Failed to get AGC status\n");
         return LGW_HAL_ERROR;
     }
