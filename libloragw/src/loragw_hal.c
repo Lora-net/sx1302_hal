@@ -102,8 +102,8 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_10_Oct_3.var"
-#include "src/text_agc_sx1257_10_Oct_3.var"
+#include "src/text_agc_sx1250_12_Oct_9.var"
+#include "src/text_agc_sx1257_11_Oct_1.var"
 #include "src/text_arb_sx1302_24_sep_3.var"
 
 /*
@@ -840,6 +840,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t count_us;
     uint8_t power;
     uint8_t pow_index;
+    uint8_t mod_bw;
 
     /* check if the concentrator is running */
     if (lgw_is_started == false) {
@@ -994,10 +995,22 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_RF_L_FREQ_RF);
     lgw_reg_w(reg, (freq_reg >> 0) & 0xFF);
 
-    /* Set AGC bandwidth */
+    /* Set AGC bandwidth and modulation type*/
+    switch (pkt_data.modulation) {
+        case MOD_LORA:
+            mod_bw = (0x00 << 7) | pkt_data.bandwidth;
+            break;
+        case MOD_FSK:
+            mod_bw = (0x01 << 7) | pkt_data.bandwidth;
+            mod_bw = pkt_data.bandwidth;
+            break;
+        default:
+            printf("ERROR: Modulation not supported\n");
+            return LGW_HAL_ERROR;
+    }
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW,
                                         SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW);
-    lgw_reg_w(reg, pkt_data.bandwidth);
+    lgw_reg_w(reg, mod_bw);
 
     /* Configure modem */
     switch (pkt_data.modulation) {
@@ -1119,6 +1132,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                                 SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV);
             lgw_reg_w(reg, (fdev_reg >>  0) & 0xFF);
 
+            /* Send frequency deviation to AGC fw for radio config */
+            fdev_reg = SX1250_FREQ_TO_REG(freq_dev);
+            lgw_reg_w(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE2_MCU_MAIL_BOX_WR_DATA, (fdev_reg >> 16) & 0xFF); /* Needed by AGC to configure the sx1250 */
+            lgw_reg_w(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE1_MCU_MAIL_BOX_WR_DATA, (fdev_reg >>  8) & 0xFF); /* Needed by AGC to configure the sx1250 */
+            lgw_reg_w(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE0_MCU_MAIL_BOX_WR_DATA, (fdev_reg >>  0) & 0xFF); /* Needed by AGC to configure the sx1250 */
+
             /* */
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_PKT_MODE,
                                                 SX1302_REG_TX_TOP_B_FSK_CFG_0_PKT_MODE);
@@ -1130,11 +1149,11 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_IBM,
                                                 SX1302_REG_TX_TOP_B_FSK_CFG_0_CRC_IBM);
-            lgw_reg_w(reg, 0); /* TODO: ?? */
+            lgw_reg_w(reg, 0);
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_DCFREE_ENC,
                                                 SX1302_REG_TX_TOP_B_FSK_CFG_0_DCFREE_ENC);
-            lgw_reg_w(reg, 0); /* TODO: ?? */
+            lgw_reg_w(reg, 2);
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_GAUSSIAN_EN);
@@ -1147,6 +1166,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_EN,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_EN);
             lgw_reg_w(reg, 1);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_SIZE,
+                                                SX1302_REG_TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_SIZE);
+            lgw_reg_w(reg, 3); /* TODO */
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_PREAMBLE_SEQ);
