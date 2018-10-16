@@ -31,6 +31,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_sx1250.h"
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
+#include "loragw_cal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -59,7 +60,7 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define FW_VERSION_CAL      0 /* Expected version of calibration firmware */ /* TODO */
+#define FW_VERSION_CAL      1 /* Expected version of calibration firmware */
 #define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
@@ -104,6 +105,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_15_Oct_5.var"
 #include "src/text_agc_sx1257_15_Oct_5.var"
+#include "src/text_cal_sx1257_16_Oct_8.var"
 #include "src/text_arb_sx1302_15_Oct_5.var"
 
 /*
@@ -148,6 +150,8 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
         .pa_gain = 2,
         .dac_gain = 3,
         .mix_gain = 10,
+        .offset_i = 0,
+        .offset_q = 0,
         .pwr_idx = 0
     }};
 
@@ -473,11 +477,33 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         /* sx125x */
         txgain_lut.lut[i].dac_gain = conf->lut[i].dac_gain;
         txgain_lut.lut[i].mix_gain = conf->lut[i].mix_gain;
+        txgain_lut.lut[i].offset_i = 0; /* To be calibrated */
+        txgain_lut.lut[i].offset_q = 0; /* To be calibrated */
+
         /* sx1250 */
         txgain_lut.lut[i].pwr_idx = conf->lut[i].pwr_idx;
     }
 
     return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_cal(void) {
+    if (rf_radio_type[rf_clkout] != LGW_RADIO_TYPE_SX1257) {
+        /* No calibration needed */
+        return 0;
+    }
+
+    printf("Loading CAL fw for sx125x\n");
+    if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
+    if (sx1302_cal_start(FW_VERSION_AGC, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -498,14 +524,26 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* reset the registers (also shuts the radios down) */
-
-    /* gate clocks */
-
-    /* setup radios */
+#if 0
+    /* Reset radios */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
         if (rf_enable[i] == true) {
+            radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
+            sx1302_radio_reset(i, radio_type);
+        }
+    }
+
+    /* Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(rf_clkout, false);
+
+    /* Radio Calibration */
+    lgw_cal();
+#endif
+
+    /* Setup radios for RX */
+    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+        if (rf_enable[i] == true) {
+            radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
             sx1302_radio_reset(i, radio_type);
             switch (radio_type) {
                 case SX1302_RADIO_TYPE_SX1250:
@@ -523,7 +561,7 @@ int lgw_start(void) {
     }
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout);
+    sx1302_radio_clock_select(rf_clkout, true);
 
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val);
@@ -532,16 +570,6 @@ int lgw_start(void) {
         printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
         return -1;
     }
-
-    /* select calibration command */
-
-    /* Load the calibration firmware  */
-
-    /* Check firmware version */
-
-    /* Wait for calibration to end */
-
-    /* Get calibration status */
 
     /* Sanity check for RX frequency */
 #if 0
@@ -959,6 +987,15 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
         }
     }
     printf("INFO: selecting TX Gain LUT index %u\n", pow_index);
+
+    /* loading calibrated Tx DC offsets */
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+    lgw_reg_w(reg, txgain_lut.lut[pow_index].offset_i);
+
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+    lgw_reg_w(reg, txgain_lut.lut[pow_index].offset_q);
 
     /* Set the power parameters to be used for TX */
     switch (rf_radio_type[pkt_data.rf_chain]) {

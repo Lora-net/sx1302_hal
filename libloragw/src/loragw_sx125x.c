@@ -63,22 +63,59 @@ struct lgw_radio_type_version_s {
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
 
-#define SX125x_TX_DAC_CLK_SEL   0   /* 0:int, 1:ext */
-#define SX125x_TX_DAC_GAIN      2   /* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
-#define SX125x_TX_MIX_GAIN      14  /* -38 + 2*TxMixGain dB (default 14) */
-#define SX125x_TX_PLL_BW        1   /* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
-#define SX125x_TX_ANA_BW        0   /* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
-#define SX125x_TX_DAC_BW        5   /* 24 + 8*TxDacBw Nb FIR taps (default 2) */
-#define SX125x_RX_LNA_GAIN      1   /* 1 to 6, 1 highest gain */
-#define SX125x_RX_BB_GAIN       15  /* 0 to 15 , 15 highest gain */
-#define SX125x_LNA_ZIN          0   /* 0:50, 1:200 Ohms (default 1) */
-#define SX125x_RX_ADC_BW        7   /* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW kHz SSB (default 7) */
-#define SX125x_RX_ADC_TRIM      6   /* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
-#define SX125x_RX_BB_BW         0   /* 0:750, 1:500, 2:375; 3:250 kHz SSB (default 1, max 3) */
-#define SX125x_RX_PLL_BW        0   /* 0:75, 1:150, 2:225, 3:300 kHz (default 3, max 3) */
-#define SX125x_ADC_TEMP         0   /* ADC temperature measurement mode (default 0) */
-#define SX125x_XOSC_GM_STARTUP  13  /* (default 13) */
-#define SX125x_XOSC_DISABLE     2   /* Disable of Xtal Oscillator blocks bit0:regulator, bit1:core(gm), bit2:amplifier */
+static const struct radio_reg_s sx125x_regs[RADIO_TOTALREGS] = {
+    {0,0,8}, /* MODE */
+    {0,3,1}, /* MODE__PA_DRIVER_EN */
+    {0,2,1}, /* MODE__TX_EN */
+    {0,1,1}, /* MODE__RX_EN */
+    {0,0,1}, /* MODE__STANDBY_EN */
+    {1,0,8}, /* FRF_RX_MSB */
+    {2,0,8}, /* FRF_RX_MID */
+    {3,0,8}, /* FRF_RX_LSB */
+    {4,0,8}, /* FRF_TX_MSB */
+    {5,0,8}, /* FRF_TX_MID */
+    {6,0,8}, /* FRF_TX_LSB */
+    {7,0,8}, /* VERSION */
+    {8,0,8}, /* TX_GAIN */
+    {8,4,3}, /* TX_GAIN__DAC_GAIN */
+    {8,0,4}, /* TX_GAIN__MIX_GAIN */
+    {10,0,8}, /* TX_BW */
+    {10,5,2}, /* TX_BW__PLL_BW */
+    {10,0,5}, /* TX_BW__ANA_BW */
+    {11,0,8}, /* TX_DAC_BW */
+    {12,0,8}, /* RX_ANA_GAIN */
+    {12,5,3}, /* RX_ANA_GAIN__LNA_GAIN */
+    {12,1,4}, /* RX_ANA_GAIN__BB_GAIN */
+    {12,0,1}, /* RX_ANA_GAIN__LNA_ZIN */
+    {13,0,8}, /* RX_BW */
+    {13,5,3}, /* RX_BW__ADC_BW */
+    {13,2,3}, /* RX_BW__ADC_TRIM */
+    {13,0,2}, /* RX_BW__BB_BW */
+    {14,0,8}, /* RX_PLL_BW */
+    {14,1,2}, /* RX_PLL_BW__PLL_BW */
+    {14,0,1}, /* RX_PLL_BW__ADC_TEMP_EN */
+    {15,0,8}, /* DIO_MAPPING */
+    {15,6,2}, /* DIO_MAPPING__DIO_0_MAPPING */
+    {15,4,2}, /* DIO_MAPPING__DIO_1_MAPPING */
+    {15,2,2}, /* DIO_MAPPING__DIO_2_MAPPING */
+    {15,0,2}, /* DIO_MAPPING__DIO_3_MAPPING */
+    {16,0,8}, /* CLK_SELECT */
+    {16,3,1}, /* CLK_SELECT__DIG_LOOPBACK_EN */
+    {16,2,1}, /* CLK_SELECT__RF_LOOPBACK_EN */
+    {16,1,1}, /* CLK_SELECT__CLK_OUT */
+    {16,0,1}, /* CLK_SELECT__DAC_CLK_SELECT */
+    {17,0,8}, /* MODE_STATUS */
+    {17,2,1}, /* MODE_STATUS__LOW_BAT_EN */
+    {17,1,1}, /* MODE_STATUS__RX_PLL_LOCKED */
+    {17,0,1}, /* MODE_STATUS__TX_PLL_LOCKED */
+    {26,0,8}, /* LOW_BAT_THRESH */
+    {38,0,8}, /* SX1257_XOSC_TEST */
+    {38,4,3}, /* SX1257_XOSC_TEST__DISABLE */
+    {38,0,4}, /* SX1257_XOSC_TEST__GM_STARTUP */
+    {40,0,8}, /* SX1255_XOSC_TEST */
+    {40,4,3}, /* SX1255_XOSC_TEST__DISABLE */
+    {40,0,4} /* SX1255_XOSC_TEST__GM_STARTUP */
+};
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -122,7 +159,7 @@ int sx125x_reg_r(void *spi_target, uint8_t spi_mux_target, uint8_t address, uint
         DEBUG_MSG("ERROR: SPI READ FAILURE\n");
         return LGW_SPI_ERROR;
     } else {
-        DEBUG_MSG("Note: SPI read success\n");
+        //DEBUG_MSG("Note: SPI read success\n");
         *data = in_buf[command_size - 1];
         return LGW_SPI_SUCCESS;
     }
@@ -162,26 +199,87 @@ int sx125x_reg_w(void *spi_target, uint8_t spi_mux_target, uint8_t address, uint
         DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
         return LGW_SPI_ERROR;
     } else {
-        DEBUG_MSG("Note: SPI write success\n");
+        //DEBUG_MSG("Note: SPI write success\n");
         return LGW_SPI_SUCCESS;
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
+
+    int spi_stat;
+    struct radio_reg_s reg;
+    uint8_t mask;
+    uint8_t r;
+    uint8_t w;
+
+    /* checking input parameters */
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        return LGW_REG_ERROR;
+    }
+    if (idx >= RADIO_TOTALREGS) {
+        DEBUG_MSG("ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        return LGW_REG_ERROR;
+    }
+
+    reg = sx125x_regs[idx];
+
+    if ((reg.leng == 8) && (reg.offs == 0)){
+        /* direct write */
+        spi_stat = sx125x_reg_w(lgw_spi_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, data);
+    } else {
+        /* read-modify-write */
+        spi_stat = sx125x_reg_r(lgw_spi_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
+        mask = ((1 << reg.leng) - 1) << reg.offs;
+        w = (r & ~mask) | ((data << reg.offs) & mask);
+        spi_stat |= sx125x_reg_w(lgw_spi_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, w);
+    }
+
+    if (spi_stat != LGW_SPI_SUCCESS) {
+        DEBUG_MSG("ERROR: SPI ERROR DURING RADIO REGISTER WRITE\n");
+        return LGW_REG_ERROR;
+    } else {
+        return LGW_REG_SUCCESS;
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain) {
+
+    int spi_stat;
+    struct radio_reg_s reg;
+    uint8_t mask;
+    uint8_t r;
+
+    /* checking input parameters */
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        return LGW_REG_ERROR;
+    }
+    if (idx >= RADIO_TOTALREGS) {
+        DEBUG_MSG("ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        return LGW_REG_ERROR;
+    }
+
+    reg = sx125x_regs[idx];
+
+    spi_stat = sx125x_reg_r(lgw_spi_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
+    mask = ((1 << reg.leng) - 1) << reg.offs;
+    *data = (r & mask) >> reg.offs;
+
+    if (spi_stat != LGW_SPI_SUCCESS) {
+        DEBUG_MSG("ERROR: SPI ERROR DURING RADIO REGISTER READ\n");
+        return LGW_REG_ERROR;
+    } else {
+        return LGW_REG_SUCCESS;
     }
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
-    sx125x_reg_w(lgw_spi_target, ((channel == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), addr, data);
-    return;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
-    uint8_t read_value;
-    sx125x_reg_r(lgw_spi_target, ((channel == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), addr, &read_value);
-    return (uint8_t)read_value;
-}
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -190,6 +288,7 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
     uint32_t part_int = 0;
     uint32_t part_frac = 0;
     int cpt_attempts = 0;
+    uint8_t val;
 
     if (rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
@@ -197,24 +296,27 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
     }
 
     /* Get version to identify SX1255/57 silicon revision */
-    DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
+    lgw_sx125x_reg_r(SX125x_REG_VERSION, &val, rf_chain);
+    DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, val);
 
     /* General radio setup */
     if (rf_clkout == rf_chain) {
-        sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
+        lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT, SX125x_TX_DAC_CLK_SEL + 2, rf_chain);
         DEBUG_PRINTF("Note: SX125x #%d clock output enabled\n", rf_chain);
     } else {
-        sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
+        lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT, SX125x_TX_DAC_CLK_SEL, rf_chain);
         DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
     }
 
-#if 0 // TODO: disabled until there is a TCXO on the board
+#if 1 // TODO: disabled until there is a TCXO on the board
     switch (rf_radio_type) {
         case LGW_RADIO_TYPE_SX1255:
-            sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+            lgw_sx125x_reg_w(SX125x_REG_SX1255_XOSC_TEST__GM_STARTUP, SX125x_XOSC_GM_STARTUP, rf_chain);
+            lgw_sx125x_reg_w(SX125x_REG_SX1255_XOSC_TEST__DISABLE, SX125x_XOSC_DISABLE, rf_chain);
             break;
         case LGW_RADIO_TYPE_SX1257:
-            sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+            lgw_sx125x_reg_w(SX125x_REG_SX1257_XOSC_TEST__GM_STARTUP, SX125x_XOSC_GM_STARTUP, rf_chain);
+            lgw_sx125x_reg_w(SX125x_REG_SX1257_XOSC_TEST__DISABLE, SX125x_XOSC_DISABLE, rf_chain);
             break;
         default:
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type);
@@ -224,14 +326,25 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
 
     if (rf_enable == true) {
         /* Tx gain and trim */
-        sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
-        sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW*32);
-        sx125x_write(rf_chain, 0x0B, SX125x_TX_DAC_BW);
+        lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, SX125x_TX_MIX_GAIN, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, SX125x_TX_DAC_GAIN, rf_chain);
+
+        lgw_sx125x_reg_w(SX125x_REG_TX_BW__ANA_BW, SX125x_TX_ANA_BW, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, SX125x_TX_PLL_BW, rf_chain);
+
+        lgw_sx125x_reg_w(SX125x_REG_TX_DAC_BW, SX125x_TX_DAC_BW, rf_chain);
 
         /* Rx gain and trim */
-        sx125x_write(rf_chain, 0x0C, SX125x_LNA_ZIN + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32);
-        sx125x_write(rf_chain, 0x0D, SX125x_RX_BB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
-        sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW*2);
+        lgw_sx125x_reg_w(SX125x_REG_RX_ANA_GAIN__LNA_ZIN, SX125x_LNA_ZIN, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_RX_ANA_GAIN__BB_GAIN, SX125x_RX_BB_GAIN, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_RX_ANA_GAIN__LNA_GAIN, SX125x_RX_LNA_GAIN, rf_chain);
+
+        lgw_sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, SX125x_RX_BB_BW, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, SX125x_RX_ADC_TRIM, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_RX_BW__ADC_BW, SX125x_RX_ADC_BW, rf_chain);
+
+        lgw_sx125x_reg_w(SX125x_REG_RX_PLL_BW__ADC_TEMP_EN, SX125x_ADC_TEMP, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, SX125x_RX_PLL_BW, rf_chain);
 
         /* set RX PLL frequency */
         switch (rf_radio_type) {
@@ -248,9 +361,9 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
                 break;
         }
 
-        sx125x_write(rf_chain, 0x01, 0xFF & part_int); /* Most Significant Byte */
-        sx125x_write(rf_chain, 0x02, 0xFF & (part_frac >> 8)); /* middle byte */
-        sx125x_write(rf_chain, 0x03, 0xFF & part_frac); /* Least Significant Byte */
+        lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & part_int, rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (part_frac >> 8), rf_chain);
+        lgw_sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & part_frac, rf_chain);
 
         /* start and PLL lock */
         do {
@@ -258,12 +371,13 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
                 DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
                 return -1;
             }
-            sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
-            sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
+            lgw_sx125x_reg_w(SX125x_REG_MODE, 1, rf_chain);
+            lgw_sx125x_reg_w(SX125x_REG_MODE, 3, rf_chain);
             ++cpt_attempts;
             DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
             wait_ms(1);
-        } while((sx125x_read(rf_chain, 0x11) & 0x02) == 0);
+            lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS, &val, rf_chain);
+        } while ((val & 0x02) == 0);
     } else {
         DEBUG_PRINTF("Note: SX125x #%d kept in standby mode\n", rf_chain);
     }
