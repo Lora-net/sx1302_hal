@@ -710,6 +710,13 @@ int sx1302_lora_syncword(bool public) {
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS, 4);
     }
 
+    /* TODO: using same syncword now for public & private */
+    printf("INFO: configuring LoRa SF5/SF6 with syncword PRIVATE\n");
+    lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF5_PEAK1_POS_SF5, 2);
+    lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_SF5_PEAK2_POS_SF5, 4);
+    lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF6_PEAK1_POS_SF6, 2);
+    lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_SF6_PEAK2_POS_SF6, 4);
+
     return LGW_REG_SUCCESS;
 }
 
