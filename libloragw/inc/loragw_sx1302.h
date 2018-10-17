@@ -110,6 +110,10 @@ int sx1302_arb_debug_read(uint8_t reg_id, uint8_t* value);
 int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value);
 int sx1302_arb_start(uint8_t version);
 
+uint8_t sx1302_arb_get_debug_stats_detect(uint8_t channel);
+uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel);
+void sx1302_arb_print_debug_stats(bool full);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

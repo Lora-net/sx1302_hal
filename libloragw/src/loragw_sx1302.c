@@ -1219,6 +1219,77 @@ int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+void sx1302_arb_set_debug_stats(bool enable, uint8_t sf) {
+    if (enable == true) {
+        printf("ARB: Debug stats enabled for SF%u\n", sf);
+        lgw_reg_w(SX1302_REG_ARB_MCU_ARB_DEBUG_CFG_0_ARB_DEBUG_CFG_0, sf);
+    } else {
+        printf("ARB: Debug stats disabled\n");
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint8_t sx1302_arb_get_debug_stats_detect(uint8_t channel) {
+    int32_t dbg_val;
+
+    if (channel >= 8) {
+        printf("ERROR: wrong configuration, channel num must be < 8");
+        return 0;
+    }
+    lgw_reg_r(SX1302_REG_ARB_MCU_ARB_DEBUG_STS_0_ARB_DEBUG_STS_0 + channel, &dbg_val);
+
+    return (uint8_t)dbg_val;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel) {
+    int32_t dbg_val;
+
+    if (channel >= 8) {
+        printf("ERROR: wrong configuration, channel num must be < 8");
+        return 0;
+    }
+    lgw_reg_r(SX1302_REG_ARB_MCU_ARB_DEBUG_STS_8_ARB_DEBUG_STS_8 + channel, &dbg_val);
+
+    return (uint8_t)dbg_val;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void sx1302_arb_print_debug_stats(bool full) {
+    int i;
+    uint8_t nb_detect;
+    uint8_t nb_alloc;
+    int nb_detect_total = 0;
+    int nb_alloc_total = 0;
+
+    /* Get number of detects for all channels */
+    nb_detect_total = 0;
+    for (i = 0; i < 8; i++) {
+        nb_detect = sx1302_arb_get_debug_stats_detect(i);
+        if (full == true) {
+            printf("ARB: CH%d: nb detect %u\n", i, nb_detect);
+        }
+        nb_detect_total += nb_detect;
+    }
+
+    /* Get number of modem allocation for all channels */
+    nb_alloc_total = 0;
+    for (i = 0; i < 8; i++) {
+        nb_alloc = sx1302_arb_get_debug_stats_alloc(i);
+        if (full == true) {
+            printf("ARB: CH%d: nb alloc %u\n", i, nb_alloc);
+        }
+        nb_alloc_total += nb_alloc;
+    }
+
+    printf("ARB: DEBUG STATS: nb detect:%d, nb_alloc:%d\n", nb_detect_total, nb_alloc_total);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_arb_start(uint8_t version) {
     uint8_t val;
 
@@ -1232,6 +1303,9 @@ int sx1302_arb_start(uint8_t version) {
         return LGW_HAL_ERROR;
     }
     printf("ARB FW VERSION: %d\n", val);
+
+    /* Enable/disable ARB detect/modem alloc stats for the specified SF */
+    sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
 
     /* Notify ARB that it can resume */
     sx1302_arb_debug_write(1, 1);
