@@ -270,6 +270,7 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
 
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_FREQ_FREQ, f_offset);
 
+#if 0 /* FPGA 10.2 */
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
 
         for (i = 0; i < loop_len; i++) {
@@ -287,6 +288,26 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
 
             res_sig[i] = abs_iq;
         }
+#else /* FPGA 10.1 */
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
+
+        for (i = 0; i < loop_len; i++) {
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 0);
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 0);
+
+            do {
+                lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+                wait_ms(1);
+            } while (val == 1); /* busy */
+
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CORR_I_OUT_CORR_I_OUT, &corr_i);
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CORR_Q_OUT_CORR_Q_OUT, &corr_q);
+            abs_iq = (corr_q << 8) | corr_i;
+
+            res_sig[i] = abs_iq;
+        }
+#endif
     }
 
     if (full_log == true) {
@@ -562,7 +583,7 @@ int main(int argc, char **argv)
 
     /* testing */
     test_freq_scan(rf_chain, true);
-    test_iq_offset(rf_chain, 16, true, false);
+    test_iq_offset(rf_chain, 16, true, true);
 
     /* disconnect the gateway */
     x = lgw_disconnect();
