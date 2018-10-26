@@ -59,7 +59,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* to use array parameters, declare a local const and use 'if_chain' as index */
 #define LGW_IF_CHAIN_NB     10    /* number of IF+modem RX chains */
 #define LGW_PKT_FIFO_SIZE   16    /* depth of the RX packet FIFO */
-#define LGW_DATABUFF_SIZE   1024    /* size in bytes of the RX data buffer (contains payload & metadata) */
 #define LGW_REF_BW          125000    /* typical bandwidth of data channel */
 #define LGW_MULTI_NB        8    /* number of LoRa 'multi SF' chains */
 #define LGW_IFMODEM_CONFIG {\

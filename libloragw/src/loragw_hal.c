@@ -105,7 +105,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_15_Oct_5.var"
 #include "src/text_agc_sx1257_15_Oct_5.var"
-#include "src/text_cal_sx1257_16_Oct_8.var"
+#include "src/text_cal_sx1257_26_Oct_5.var"
 #include "src/text_arb_sx1302_15_Oct_5.var"
 
 /*
@@ -489,7 +489,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_cal(void) {
+int lgw_calibrate(void) {
     if (rf_radio_type[rf_clkout] != LGW_RADIO_TYPE_SX1257) {
         /* No calibration needed */
         return 0;
@@ -499,7 +499,7 @@ int lgw_cal(void) {
     if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-    if (sx1302_cal_start(FW_VERSION_AGC, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
+    if (sx1302_cal_start(FW_VERSION_CAL, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
 
@@ -524,20 +524,30 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-#if 0
-    /* Reset radios */
-    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        if (rf_enable[i] == true) {
-            radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
-            sx1302_radio_reset(i, radio_type);
+#if 1
+    /* Radio calibration - only for sx1257/1255*/
+    if ((rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1257) || (rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1255)) {
+        /* Reset radios */
+        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+            if (rf_enable[i] == true) {
+                radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
+                sx1302_radio_reset(i, radio_type);
+            }
+        }
+
+        /* Select the radio which provides the clock to the sx1302 */
+        sx1302_radio_clock_select(rf_clkout, false);
+
+        /* Start calibration */
+        printf("Loading CAL fw for sx125x\n");
+        if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
+            return LGW_HAL_ERROR;
+        }
+        if (sx1302_cal_start(FW_VERSION_CAL, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
+            printf("ERROR: radio calibration failed\n");
+            return LGW_HAL_ERROR;
         }
     }
-
-    /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout, false);
-
-    /* Radio Calibration */
-    lgw_cal();
 #endif
 
     /* Setup radios for RX */
