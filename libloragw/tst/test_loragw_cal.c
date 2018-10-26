@@ -54,6 +54,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
 
+#define DEFAULT_DAC_GAIN    2
+#define DEFAULT_MIX_GAIN    14
+
 #define CAL_TX_TONE_FREQ_HZ     250000
 #define CAL_DEC_GAIN            8
 #define CAL_SIG_ANA_DURATION    0 /* correlation duration: 0:1, 1:2, 2:4, 3:8 ms) */
@@ -75,11 +78,9 @@ struct cal_tx_log {
 
 FILE * fp;
 
-static uint8_t nb_gains = 1;
-static uint8_t rf_dac_gain[TX_GAIN_LUT_SIZE_MAX] = { 2 };
-static uint8_t rf_mix_gain[TX_GAIN_LUT_SIZE_MAX] = { 14 };
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {865500000, 865500000};
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX1257, LGW_RADIO_TYPE_SX1257};
+static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 
 /* Signal handling variables */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
@@ -372,7 +373,7 @@ int test_freq_scan(uint8_t rf_chain, bool full_log, bool use_agc) {
     printf("-------------------------------------\n");
     for (f = 0; f < 256; f++)
     {
-        cal_tx_dc_offset(TEST_FREQ_SCAN, rf_chain, rf_rx_freq[rf_chain], rf_dac_gain[0], rf_mix_gain[0], rf_radio_type[rf_chain], f, 0, 0, full_log, use_agc, 0, 0);
+        cal_tx_dc_offset(TEST_FREQ_SCAN, rf_chain, rf_rx_freq[rf_chain], txlut.lut[0].dac_gain, txlut.lut[0].mix_gain, rf_radio_type[rf_chain], f, 0, 0, full_log, use_agc, 0, 0);
 
         if ((quit_sig == 1) || (exit_sig == 1)) {
             break;
@@ -383,18 +384,16 @@ int test_freq_scan(uint8_t rf_chain, bool full_log, bool use_agc) {
 }
 
 int test_iq_offset(uint8_t rf_chain, uint8_t f_offset, bool full_log, bool use_agc) {
-    int l, m, j;
+    int i, q;
 
     printf("-------------------------------------\n");
-    for (j = 0; j < nb_gains; j++) {
-        for (l = 0; l < 40; l+=1)
+    for (i = 0; i < 40; i++)
+    {
+        for (q = 0; q < 30; q++)
         {
-            for (m = 0; m < 30; m+=1)
-            {
-                cal_tx_dc_offset(TEST_OFFSET_IQ, rf_chain, rf_rx_freq[rf_chain], rf_dac_gain[j], rf_mix_gain[j], rf_radio_type[rf_chain], f_offset, l, m, full_log, use_agc, 0, 0);
-                if ((quit_sig == 1) || (exit_sig == 1)) {
-                    return 0;
-                }
+            cal_tx_dc_offset(TEST_OFFSET_IQ, rf_chain, rf_rx_freq[rf_chain], txlut.lut[0].dac_gain, txlut.lut[0].mix_gain, rf_radio_type[rf_chain], f_offset, i, q, full_log, use_agc, 0, 0);
+            if ((quit_sig == 1) || (exit_sig == 1)) {
+                return 0;
             }
         }
     }
@@ -410,7 +409,7 @@ int test_amp_phi(uint8_t rf_chain, uint8_t f_offset, bool full_log, bool use_agc
     {
         for (phi = 0; phi < 64; phi++)
         {
-            cal_tx_dc_offset(TEST_AMP_PHI, rf_chain, rf_rx_freq[rf_chain], rf_dac_gain[0], rf_mix_gain[0], rf_radio_type[rf_chain], f_offset, 0, 0, full_log, use_agc, amp, phi);
+            cal_tx_dc_offset(TEST_AMP_PHI, rf_chain, rf_rx_freq[rf_chain], txlut.lut[0].dac_gain, txlut.lut[0].mix_gain, rf_radio_type[rf_chain], f_offset, 0, 0, full_log, use_agc, amp, phi);
             if ((quit_sig == 1) || (exit_sig == 1)) {
                 return 0;
             }
@@ -432,20 +431,19 @@ int main(int argc, char **argv)
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
-    struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     /* Initialize TX gain LUT */
-    txlut.size = 0;
+    txlut.size = 1;
     memset(txlut.lut, 0, sizeof txlut.lut);
+    txlut.lut[0].dac_gain = DEFAULT_DAC_GAIN;
+    txlut.lut[0].mix_gain = DEFAULT_MIX_GAIN;
 
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
-        {"pa", 1, 0, 0},
         {"dac", 1, 0, 0},
-        {"dig", 1, 0, 0},
         {"mix", 1, 0, 0},
         {0, 0, 0, 0}
     };
@@ -504,16 +502,7 @@ int main(int argc, char **argv)
                 }
                 break;
             case 0:
-                if (strcmp(long_options[option_index].name, "pa") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 3)) {
-                        printf("ERROR: argument parsing of --pa argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].pa_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "dac") == 0) {
+                if (strcmp(long_options[option_index].name, "dac") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --dac argument. Use -h to print help\n");
@@ -530,15 +519,6 @@ int main(int argc, char **argv)
                     } else {
                         txlut.size = 1;
                         txlut.lut[0].mix_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "dig") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 3)) {
-                        printf("ERROR: argument parsing of --dig argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].dig_gain = (uint8_t)arg_u;
                     }
                 } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
@@ -621,7 +601,7 @@ int main(int argc, char **argv)
     wait_ms(1000);
 
     /* testing */
-    printf("testing: rf_chain:%u, dec_gain:%u, sig_ana_duration:%u\n", rf_chain, CAL_DEC_GAIN, CAL_SIG_ANA_DURATION);
+    printf("testing: rf_chain:%u, dac_gain: %u, mix_gain:%u, dec_gain:%u, sig_ana_duration:%u\n", rf_chain, txlut.lut[0].dac_gain, txlut.lut[0].mix_gain, CAL_DEC_GAIN, CAL_SIG_ANA_DURATION);
 
     test_freq_scan(rf_chain, false, false); /* rf_chain, full_log, use_agc */
     /* gnuplot> plot 'log.txt' with lines */

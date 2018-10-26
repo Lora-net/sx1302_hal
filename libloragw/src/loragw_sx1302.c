@@ -1313,6 +1313,8 @@ int sx1302_arb_start(uint8_t version) {
     /* Wait for ARB to acknoledge */
     sx1302_arb_wait_status(0x00);
 
+    printf("ARB: started\n");
+
     return LGW_HAL_SUCCESS;
 }
 
