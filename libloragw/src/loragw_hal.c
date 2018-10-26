@@ -770,6 +770,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
             DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index), p->if_chain);
+            /* TODO: handle sync_err and hdr_err, to be reported when enabled (RX_BUFFER_STORE_SYNC_FAIL_META, RX_BUFFER_STORE_HEADER_ERR_META) */
             if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index)) {
                 /* CRC enabled */
                 if (SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + p->size)) {
@@ -832,7 +833,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             p->coderate = CR_UNDEFINED;
 
             timestamp_correction = 0; /* TODO */
-            /* TODO: rssi correction */
+
+            /* RSSI correction */
+            p->rssi = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssi + RSSI_FSK_POLY_2 * pow(p->rssi, 2);
         } else {
             DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
             p->status = STAT_UNDEFINED;
@@ -1004,6 +1007,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
     lgw_reg_w(reg, txgain_lut.lut[pow_index].offset_q);
+
+    printf("INFO: Applying IQ offset (i:%d, q:%d)\n", txgain_lut.lut[pow_index].offset_i, txgain_lut.lut[pow_index].offset_q);
 
     /* Set the power parameters to be used for TX */
     switch (rf_radio_type[pkt_data.rf_chain]) {
