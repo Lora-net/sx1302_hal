@@ -229,6 +229,16 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
         txgain_lut->lut[i].offset_q = offset_q[j];
     }
 
+    printf("-------------------------------------------------------------------\n");
+    printf("Radio calibration completed:\n");
+    printf("  RadioA: amp:%d phi:%d\n", rf_rx_image_amp[0], rf_rx_image_phi[0]);
+    printf("  RadioB: amp:%d phi:%d\n", rf_rx_image_amp[1], rf_rx_image_phi[1]);
+    printf("  TX calibration params:\n");
+    for (i = 0; i < txgain_lut->size; i++) {
+        printf("  -- power:%d\tdac:%u\tmix:%u\toffset_i:%d\toffset_q:%d\n", txgain_lut->lut[i].rf_power, txgain_lut->lut[i].dac_gain, txgain_lut->lut[i].mix_gain, txgain_lut->lut[i].offset_i, txgain_lut->lut[i].offset_q);
+    }
+    printf("-------------------------------------------------------------------\n");
+
     return LGW_HAL_SUCCESS;
 }
 
@@ -336,7 +346,7 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     sx1302_agc_mailbox_write(3, 0x03);
     sx1302_agc_wait_status(0x03);
 
-    sx1302_agc_mailbox_write(2, 0);
+    sx1302_agc_mailbox_write(2, 0); /* dec_gain (not used) */
     sx1302_agc_mailbox_write(1, rx_threshold);
 
     sx1302_agc_mailbox_write(3, 0x04);

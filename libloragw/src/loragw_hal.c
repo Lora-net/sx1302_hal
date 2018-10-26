@@ -105,7 +105,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_15_Oct_5.var"
 #include "src/text_agc_sx1257_15_Oct_5.var"
-#include "src/text_cal_sx1257_26_Oct_5.var"
+#include "src/text_cal_sx1257_26_Oct_7.var"
 #include "src/text_arb_sx1302_15_Oct_5.var"
 
 /*
@@ -524,7 +524,6 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-#if 1
     /* Radio calibration - only for sx1257/1255*/
     if ((rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1257) || (rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1255)) {
         /* Reset radios */
@@ -548,7 +547,6 @@ int lgw_start(void) {
             return LGW_HAL_ERROR;
         }
     }
-#endif
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {

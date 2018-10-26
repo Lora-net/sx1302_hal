@@ -31,6 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>
 #include <signal.h>     /* sigaction */
 #include <getopt.h>     /* getopt_long */
+#include <sys/time.h>
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -54,6 +55,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_FREQ_HZ     868500000U
 
 #define CAL_TX_TONE_FREQ_HZ     250000
+#define CAL_DEC_GAIN            8
+#define CAL_SIG_ANA_DURATION    0 /* correlation duration: 0:1, 1:2, 2:4, 3:8 ms) */
+
+#define TEST_FREQ_SCAN          0
+#define TEST_OFFSET_IQ          1
+#define TEST_AMP_PHI            2
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -69,8 +76,8 @@ struct cal_tx_log {
 FILE * fp;
 
 static uint8_t nb_gains = 1;
-static uint8_t dac_gain[TX_GAIN_LUT_SIZE_MAX] = { 2 };
-static uint8_t mix_gain[TX_GAIN_LUT_SIZE_MAX] = { 14 };
+static uint8_t rf_dac_gain[TX_GAIN_LUT_SIZE_MAX] = { 2 };
+static uint8_t rf_mix_gain[TX_GAIN_LUT_SIZE_MAX] = { 14 };
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {865500000, 865500000};
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX1257, LGW_RADIO_TYPE_SX1257};
 
@@ -78,7 +85,7 @@ static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
-#include "src/text_cal_sx1257_26_Oct_5.var"
+#include "src/text_cal_sx1257_26_Oct_7.var"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -170,7 +177,7 @@ int setup_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uin
     return 0;
 }
 
-int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, int32_t f_offset, int32_t i_offset, int32_t q_offset, bool full_log, bool use_agc, uint8_t amp, uint8_t phi) {
+int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, int32_t f_offset, int32_t i_offset, int32_t q_offset, bool full_log, bool use_agc, uint8_t amp, uint8_t phi) {
     int i;
     uint16_t reg;
     int32_t val_min, val_max;
@@ -179,11 +186,11 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
     float val_std;
     float acc2 = 0 ;
     int loop_len = 3;
-    uint8_t dec_gain = 6;
     float res_sig[loop_len];
+    struct timeval start, stop;
 
-//    DEBUG_MSG("\n");
-//    DEBUG_PRINTF("rf_chain:%u, freq_hz:%u, dac_gain:%u, mix_gain:%u, radio_type:%d\n", rf_chain, freq_hz, dac_gain, mix_gain, radio_type);
+    //DEBUG_MSG("\n");
+    //DEBUG_PRINTF("rf_chain:%u, freq_hz:%u, dac_gain:%u, mix_gain:%u, radio_type:%d\n", rf_chain, freq_hz, dac_gain, mix_gain, radio_type);
 
     if (setup_tx_dc_offset(rf_chain, freq_hz, dac_gain, mix_gain, radio_type) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
@@ -212,7 +219,7 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
         /* Set calibration parameters */
         sx1302_agc_mailbox_write(2, rf_chain + 4); /* Sig ana test radio A/B */
         sx1302_agc_mailbox_write(1, f_offset/*(CAL_TX_TONE_FREQ_HZ + f_offset) * 64e-6*/); /* Set frequency */
-        sx1302_agc_mailbox_write(0, 0); /* correlation duration: 0:1, 1:2, 2:4, 3:8 ms) */
+        sx1302_agc_mailbox_write(0, CAL_SIG_ANA_DURATION);
 
         /*  */
         sx1302_agc_mailbox_write(3, 0x00);
@@ -231,7 +238,8 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
         sx1302_agc_mailbox_write(3, 0x03);
         sx1302_agc_wait_status(0x03);
 
-        sx1302_agc_mailbox_write(2, dec_gain); /* dec_gain */
+        sx1302_agc_mailbox_write(2, CAL_DEC_GAIN); /* dec_gain */
+        sx1302_agc_mailbox_write(2, 0); /* threshold (not used) */
 
         sx1302_agc_mailbox_write(3, 0x04);
 
@@ -239,6 +247,7 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
                                     SX1302_REG_TX_TOP_B_TX_TRIG_TX_TRIG_IMMEDIATE);
         lgw_reg_w(reg, 0);
 
+        gettimeofday (&start, NULL);
         for (i = 0; i < loop_len; i++) {
             sx1302_agc_wait_status(0x06);
             sx1302_agc_mailbox_write(3, 0x06);
@@ -254,9 +263,11 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
                 sx1302_agc_mailbox_write(3, 0x00); /* unlock */
             }
         }
+        gettimeofday (&stop, NULL);
+        //printf("processing time: %ld us\n", ((stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec) - start.tv_usec);
     } else {
         int32_t val;
-        int32_t corr_i, corr_q;
+        int32_t abs_lsb, abs_msb;
         float abs_iq;
 
         lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET, (int8_t)q_offset);
@@ -265,16 +276,16 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
         lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN, 1);
         lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_FORCE_HOST_FILTER_GAIN, 0x01);
 
-        lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_HOST_FILTER_GAIN, dec_gain);
+        lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_HOST_FILTER_GAIN, CAL_DEC_GAIN);
         //lgw_reg_r(SX1302_REG_RADIO_FE_DEC_FILTER_RD_RADIO_A_DEC_FILTER_GAIN, &val);
         //dec_gain = (uint8_t)val;
 
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_FREQ_FREQ, f_offset);
 
-#if 1 /* FPGA 10.2 */
-        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_DURATION, 3);
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_DURATION, CAL_SIG_ANA_DURATION);
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
 
+        gettimeofday (&start, NULL);
         for (i = 0; i < loop_len; i++) {
             lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
             lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
@@ -284,40 +295,33 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
                 wait_ms(1);
             } while (val == 0);
 
-            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CORR_I_OUT_CORR_I_OUT, &corr_i);
-            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CORR_Q_OUT_CORR_Q_OUT, &corr_q);
-            abs_iq = (corr_q << 8) | corr_i;
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+            abs_iq = (abs_msb << 8) | abs_lsb;
 
             res_sig[i] = abs_iq;
         }
-#else /* FPGA 10.1 */
-        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
-
-        for (i = 0; i < loop_len; i++) {
-            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 0);
-            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
-            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 0);
-
-            do {
-                lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
-                wait_ms(1);
-            } while (val == 1); /* busy */
-
-            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CORR_I_OUT_CORR_I_OUT, &corr_i);
-            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CORR_Q_OUT_CORR_Q_OUT, &corr_q);
-            abs_iq = (corr_q << 8) | corr_i;
-
-            res_sig[i] = abs_iq;
-        }
-#endif
+        gettimeofday (&stop, NULL);
+        //printf("processing time: %ld us\n", ((stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec) - start.tv_usec);
     }
 
     if (full_log == true) {
-        printf("i_offset:%d q_offset:%d f_offset:%d dac_gain:%d mix_gain:%d dec_gain:%d amp:%u phi:%u => ", i_offset, q_offset, f_offset, dac_gain, mix_gain, dec_gain, amp, phi);
+        printf("i_offset:%d q_offset:%d f_offset:%d dac_gain:%d mix_gain:%d dec_gain:%d amp:%u phi:%u => ", i_offset, q_offset, f_offset, dac_gain, mix_gain, CAL_DEC_GAIN, amp, phi);
     } else {
-        fprintf(fp, "%d %d ", i_offset, q_offset);
-        //printf("%d %d ", i_offset, q_offset);
-        //printf("%d %d ", amp, phi);
+        switch (test_id) {
+            case TEST_FREQ_SCAN:
+                fprintf(fp, "%u ", f_offset);
+                break;
+            case TEST_OFFSET_IQ:
+                fprintf(fp, "%d %d ", i_offset, q_offset);
+                break;
+            case TEST_AMP_PHI:
+                fprintf(fp, "%d %d ", amp, phi);
+                break;
+            default:
+                printf("ERROR: wrong test ID (%u)\n", test_id);
+                break;
+        }
     }
 
     /* Analyze result */
@@ -343,7 +347,17 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
     if (full_log == true) {
         printf(" min:%u max:%u mean:%u std:%f\n", val_min, val_max, val_mean, val_std);
     } else {
-        fprintf(fp, "%u %u %u %f\n", val_min, val_max, val_mean, val_std);
+        switch (test_id) {
+            case TEST_OFFSET_IQ:
+            case TEST_AMP_PHI:
+                fprintf(fp, "%u %u %u %f\n", val_min, val_max, val_mean, val_std);
+                break;
+            case TEST_FREQ_SCAN:
+                fprintf(fp, "%u\n", val_mean);
+                break;
+            default:
+                break;
+        }
     }
 
     return LGW_HAL_SUCCESS;
@@ -352,13 +366,13 @@ int cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int test_freq_scan(uint8_t rf_chain, bool full_log) {
+int test_freq_scan(uint8_t rf_chain, bool full_log, bool use_agc) {
     int f;
 
     printf("-------------------------------------\n");
     for (f = 0; f < 256; f++)
     {
-        cal_tx_dc_offset(rf_chain, rf_rx_freq[rf_chain], dac_gain[0], mix_gain[0], rf_radio_type[rf_chain], f, 0, 0, full_log, true, 0, 0);
+        cal_tx_dc_offset(TEST_FREQ_SCAN, rf_chain, rf_rx_freq[rf_chain], rf_dac_gain[0], rf_mix_gain[0], rf_radio_type[rf_chain], f, 0, 0, full_log, use_agc, 0, 0);
 
         if ((quit_sig == 1) || (exit_sig == 1)) {
             break;
@@ -377,7 +391,7 @@ int test_iq_offset(uint8_t rf_chain, uint8_t f_offset, bool full_log, bool use_a
         {
             for (m = 0; m < 30; m+=1)
             {
-                cal_tx_dc_offset(rf_chain, rf_rx_freq[rf_chain], dac_gain[j], mix_gain[j], rf_radio_type[rf_chain], f_offset, l, m, full_log, use_agc, 0, 0);
+                cal_tx_dc_offset(TEST_OFFSET_IQ, rf_chain, rf_rx_freq[rf_chain], rf_dac_gain[j], rf_mix_gain[j], rf_radio_type[rf_chain], f_offset, l, m, full_log, use_agc, 0, 0);
                 if ((quit_sig == 1) || (exit_sig == 1)) {
                     return 0;
                 }
@@ -396,7 +410,7 @@ int test_amp_phi(uint8_t rf_chain, uint8_t f_offset, bool full_log, bool use_agc
     {
         for (phi = 0; phi < 64; phi++)
         {
-            cal_tx_dc_offset(rf_chain, rf_rx_freq[rf_chain], dac_gain[0], mix_gain[0], rf_radio_type[rf_chain], f_offset, 0, 0, full_log, use_agc, amp, phi);
+            cal_tx_dc_offset(TEST_AMP_PHI, rf_chain, rf_rx_freq[rf_chain], rf_dac_gain[0], rf_mix_gain[0], rf_radio_type[rf_chain], f_offset, 0, 0, full_log, use_agc, amp, phi);
             if ((quit_sig == 1) || (exit_sig == 1)) {
                 return 0;
             }
@@ -607,9 +621,14 @@ int main(int argc, char **argv)
     wait_ms(1000);
 
     /* testing */
-    test_freq_scan(rf_chain, true);
-    //test_iq_offset(rf_chain, 16, true, true);
-    //test_amp_phi(rf_chain, 240, true, true);
+    printf("testing: rf_chain:%u, dec_gain:%u, sig_ana_duration:%u\n", rf_chain, CAL_DEC_GAIN, CAL_SIG_ANA_DURATION);
+
+    test_freq_scan(rf_chain, false, false); /* rf_chain, full_log, use_agc */
+    /* gnuplot> plot 'log.txt' with lines */
+
+    //test_iq_offset(rf_chain, 16, false, true); /* rf_chain, f_offset, full_log, use_agc */
+
+    //test_amp_phi(rf_chain, 240, true, true); /* rf_chain, f_offset, full_log, use_agc */
 
     /* disconnect the gateway */
     x = lgw_disconnect();
