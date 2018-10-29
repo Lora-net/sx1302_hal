@@ -604,7 +604,7 @@ int lgw_start(void) {
 
     /* configure FSK modem */
     if (if_enable[9] == true) {
-        sx1302_fsk_configure(if_rf_chain, if_freq, fsk_sync_word, fsk_sync_word_size);
+        sx1302_fsk_configure(if_rf_chain, if_freq, fsk_sync_word, fsk_sync_word_size, fsk_rx_dr);
     }
 
     /* configure syncword */
@@ -873,6 +873,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_reg, fdev_reg;
     uint32_t freq_dev;
     uint32_t fsk_br_reg;
+    uint64_t fsk_sync_word_reg;
     uint16_t tx_start_delay;
     uint16_t reg;
     uint16_t mem_addr;
@@ -1219,7 +1220,40 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_SIZE,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_SIZE);
-            lgw_reg_w(reg, 3); /* TODO */
+            lgw_reg_w(reg, fsk_sync_word_size);
+
+            fsk_sync_word_reg = fsk_sync_word << (8 * (8 - fsk_sync_word_size));
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 0));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 8));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 16));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE3_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE3_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 24));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE4_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE4_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 32));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE5_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE5_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 40));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 48));
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN,
+                                                SX1302_REG_TX_TOP_B_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN);
+            lgw_reg_w(reg, (uint8_t)(fsk_sync_word_reg >> 56));
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_PREAMBLE_SEQ);
@@ -1269,11 +1303,14 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                         SX1302_REG_TX_TOP_B_TX_CTRL_WRITE_BUFFER);
     lgw_reg_w(reg, 0x01);
     mem_addr = REG_SELECT(pkt_data.rf_chain, 0x5300, 0x5500);
+    if (pkt_data.modulation == MOD_FSK) {
+        lgw_mem_wb(mem_addr, (uint8_t *)(&(pkt_data.size)), 1); /* insert payload size in the packet for FSK variable mode (1 byte) */
+    }
     lgw_mem_wb(mem_addr, &(pkt_data.payload[0]), pkt_data.size);
     lgw_reg_w(reg, 0x00);
 
     /* Trigger transmit */
-    printf("Start Tx: Freq:%u SF%u size:%u\n", pkt_data.freq_hz, pkt_data.datarate, pkt_data.size);
+    printf("Start Tx: Freq:%u %s%u size:%u preamb:%u\n", pkt_data.freq_hz, (pkt_data.modulation == MOD_LORA) ? "SF" : "DR:", pkt_data.datarate, pkt_data.size, pkt_data.preamble);
     switch (pkt_data.tx_mode) {
         case IMMEDIATE:
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE,

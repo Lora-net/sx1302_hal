@@ -88,7 +88,7 @@ int sx1302_lora_service_channelizer_configure(bool * if_rf_chain, int32_t * chan
 int sx1302_lora_service_correlator_configure(uint8_t sf);
 int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw);
 
-int sx1302_fsk_configure(bool * if_rf_chain, int32_t * channel_if, uint64_t sync_word, uint8_t sync_word_size);
+int sx1302_fsk_configure(bool * if_rf_chain, int32_t * channel_if, uint64_t sync_word, uint8_t sync_word_size, uint32_t datarate);
 
 int sx1302_modem_enable();
 
