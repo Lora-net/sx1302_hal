@@ -680,6 +680,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t payload_length;
     uint8_t num_ts_metrics = 0;
 
+    /* rx buffer chunk read */
+    uint16_t sz_todo;
+    uint16_t chunk_size;
+    int chunk_cnt = 0;
+
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint32_t sf, cr = 0;
@@ -701,7 +706,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* read bytes from fifo */
     memset(rx_fifo, 0, sizeof rx_fifo);
-    lgw_mem_rb(0x4000, rx_fifo, sz);
+    sz_todo = sz;
+    while (sz_todo > 0) {
+        chunk_size = (sz_todo > 1024) ? 1024 : sz_todo;
+        lgw_mem_rb(0x4000, &rx_fifo[chunk_cnt * 1024], chunk_size);
+        sz_todo -= chunk_size;
+        chunk_cnt += 1;
+    }
     for (i = 0; i < sz; i++) {
         printf("%02X ", rx_fifo[i]);
     }
