@@ -731,9 +731,27 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         payload_length = SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index);
 
+        /* TODO: num_ts_metrics not yet known !!! */
         if((buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics) > sz) {
             printf("WARNING: aborting truncated message (size=%u), got %u messages\n", sz, nb_pkt_found);
             break;
+        }
+
+        /* checksum */
+        uint8_t checksum_calc = 0;
+        uint8_t checksum = rx_fifo[buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1];
+        printf("checkum:0x%02X\n", checksum);
+        for (i = 0; i < (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1); i++) {
+            checksum_calc += rx_fifo[buffer_index + i];
+        }
+        printf("checkum_calc:0x%02X\n", checksum_calc);
+        if (checksum != checksum_calc) {
+            printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
+            //assert(0);
+            break;
+        } else {
+            /* TODO: readback to validate the SPI transaction */
+            //lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
         }
 
 #if 1
