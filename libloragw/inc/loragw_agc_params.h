@@ -55,7 +55,7 @@ const struct agc_gain_params_s agc_params_sx1250 = {
     .chan_attn_max = 14,
     .chan_thresh_l = 52,
     .chan_thresh_h = 132,
-    .deviceSel = 1,
+    .deviceSel = 0,
     .hpMax = 0,
     .paDutyCycle = 4
 };
