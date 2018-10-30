@@ -183,6 +183,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
 
+static uint32_t nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -786,6 +787,7 @@ int main(void)
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     int i; /* loop variable and temporary variable for return value */
     int x;
+    int l, m;
 
     /* configuration file related */
     char *global_cfg_path= "global_conf.json"; /* contain global (typ. network-wide) configuration */
@@ -976,6 +978,12 @@ int main(void)
 
     /* Board reset */
     system("./reset_lgw.sh start"); /* TODO: to be removed */
+
+    for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
+        for (m = 0; m < 8; m++) {
+            nb_pkt_log[l][m] = 0;
+        }
+    }
 
     /* starting the concentrator */
     i = lgw_start();
@@ -1230,7 +1238,7 @@ void thread_up(void) {
 
         /* serialize Lora packets metadata and payload */
         pkt_in_dgram = 0;
-        for (i=0; i < nb_pkt; ++i) {
+        for (i = 0; i < nb_pkt; ++i) {
             p = &rxpkt[i];
 
             /* Get mote information from current packet (addr, fcnt) */
@@ -1482,7 +1490,24 @@ void thread_up(void) {
             buff_up[buff_index] = '}';
             ++buff_index;
             ++pkt_in_dgram;
+
+            /* Log nb of packets per channel, per SF */
+            nb_pkt_log[p->if_chain][p->datarate] += 1;
         }
+
+#if 0
+        int l, m;
+        {
+            printf("\n");
+            for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
+                printf("CH%d: ", l);
+                for (m = 0; m < 8; m++) {
+                    printf("\t%d", nb_pkt_log[l][m]);
+                }
+                printf("\n");
+            }
+        }
+#endif
 
         /* restart fetch sequence without sending empty JSON if all packets have been filtered out */
         if (pkt_in_dgram == 0) {
