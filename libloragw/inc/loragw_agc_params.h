@@ -33,6 +33,9 @@ struct agc_gain_params_s {
     uint8_t chan_attn_max;
     uint8_t chan_thresh_l;
     uint8_t chan_thresh_h;
+    uint8_t deviceSel;      /* sx1250 only */
+    uint8_t hpMax;          /* sx1250 only */
+    uint8_t paDutyCycle;    /* sx1250 only */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -52,6 +55,9 @@ const struct agc_gain_params_s agc_params_sx1250 = {
     .chan_attn_max = 14,
     .chan_thresh_l = 52,
     .chan_thresh_h = 132,
+    .deviceSel = 1,
+    .hpMax = 0,
+    .paDutyCycle = 4
 };
 
 const struct agc_gain_params_s agc_params_sx125x = {
@@ -68,6 +74,9 @@ const struct agc_gain_params_s agc_params_sx125x = {
     .chan_attn_max = 14,
     .chan_thresh_l = 52,
     .chan_thresh_h = 132,
+    .deviceSel = 0,
+    .hpMax = 0,
+    .paDutyCycle = 0
 };
 
 #endif

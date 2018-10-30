@@ -1088,8 +1088,43 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
 
     printf("AGC: config of channel atten threshold done\n");
 
-    /* notify AGC that it can resume */
-    sx1302_agc_mailbox_write(3, 0x09);
+    if (radio_type == SX1302_RADIO_TYPE_SX1250) {
+        /* Configure sx1250 SetPAConfig */
+        sx1302_agc_mailbox_write(0, agc_params.deviceSel);
+        sx1302_agc_mailbox_write(1, agc_params.hpMax);
+        sx1302_agc_mailbox_write(2, agc_params.paDutyCycle);
+
+        /* notify AGC that params have been set to mailbox */
+        sx1302_agc_mailbox_write(3, 0x09);
+
+        /* Wait for AGC to acknoledge it has received params */
+        sx1302_agc_wait_status(0x0A);
+
+        /* Check params */
+        sx1302_agc_mailbox_read(0, &val);
+        if (val != agc_params.deviceSel) {
+            printf("ERROR: wrong deviceSel (w:%u r:%u)\n", agc_params.deviceSel, val);
+            return LGW_HAL_ERROR;
+        }
+        sx1302_agc_mailbox_read(1, &val);
+        if (val != agc_params.hpMax) {
+            printf("ERROR: wrong hpMax (w:%u r:%u)\n", agc_params.hpMax, val);
+            return LGW_HAL_ERROR;
+        }
+        sx1302_agc_mailbox_read(2, &val);
+        if (val != agc_params.paDutyCycle) {
+            printf("ERROR: wrong paDutyCycle (w:%u r:%u)\n", agc_params.paDutyCycle, val);
+            return LGW_HAL_ERROR;
+        }
+
+        printf("AGC: config of sx1250 PA optimal settings done\n");
+
+        /* notify AGC that it can resume */
+        sx1302_agc_mailbox_write(3, 0x0A);
+    } else {
+        /* notify AGC that it can resume */
+        sx1302_agc_mailbox_write(3, 0x09);
+    }
 
     printf("AGC: started (hopefully)\n");
 
