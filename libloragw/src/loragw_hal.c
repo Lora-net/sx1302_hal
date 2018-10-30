@@ -489,25 +489,6 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_calibrate(void) {
-    if (rf_radio_type[rf_clkout] != LGW_RADIO_TYPE_SX1257) {
-        /* No calibration needed */
-        return 0;
-    }
-
-    printf("Loading CAL fw for sx125x\n");
-    if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
-        return LGW_HAL_ERROR;
-    }
-    if (sx1302_cal_start(FW_VERSION_CAL, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
-        return LGW_HAL_ERROR;
-    }
-
-    return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int lgw_start(void) {
     int i;
     uint32_t val, val2;
@@ -794,7 +775,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->size = payload_length;
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
         p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
-        p->rssi = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
+        p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
+        p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         /* TODO: RSSI correction */
 
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
@@ -864,12 +846,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             timestamp_correction = 0; /* TODO */
 
             /* RSSI correction */
-            p->rssi = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssi + RSSI_FSK_POLY_2 * pow(p->rssi, 2);
+            p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2);
+            p->rssis = -128.0;
         } else {
             DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
             p->status = STAT_UNDEFINED;
             p->modulation = MOD_UNDEFINED;
-            p->rssi = -128.0;
+            p->rssic = -128.0;
+            p->rssis = -128.0;
             p->snr = -128.0;
             p->snr_min = -128.0;
             p->snr_max = -128.0;

@@ -1277,7 +1277,7 @@ void thread_up(void) {
                     }
                     break;
                 default:
-                    MSG("WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)\n", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssi);
+                    MSG("WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)\n", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssic);
                     pthread_mutex_unlock(&mx_meas_up);
                     continue; /* skip that packet */
                     // exit(EXIT_FAILURE);
@@ -1439,6 +1439,15 @@ void thread_up(void) {
                         exit(EXIT_FAILURE);
                 }
 
+                /* Signal RSSI, payload size, 18-23 useful chars */
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssis\":%.0f", p->rssis);
+                if (j > 0) {
+                    buff_index += j;
+                } else {
+                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    exit(EXIT_FAILURE);
+                }
+
                 /* Lora SNR, 11-13 useful chars */
                 j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%.1f", p->snr);
                 if (j > 0) {
@@ -1464,8 +1473,8 @@ void thread_up(void) {
                 exit(EXIT_FAILURE);
             }
 
-            /* Packet RSSI, payload size, 18-23 useful chars */
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssi\":%.0f,\"size\":%u", p->rssi, p->size);
+            /* Channel RSSI, payload size, 18-23 useful chars */
+            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssic\":%.0f,\"size\":%u", p->rssic, p->size);
             if (j > 0) {
                 buff_index += j;
             } else {

@@ -263,7 +263,8 @@ int main(int argc, char **argv)
                 printf("  rf_chain  %u\n", rxpkt[i].rf_chain);
                 printf("  freq_hz   %u\n", rxpkt[i].freq_hz);
                 printf("  snr_avg:  %.1f\n", rxpkt[i].snr);
-                printf("  rssi_chan:%.1f\n", rxpkt[i].rssi);
+                printf("  rssi_chan:%.1f\n", rxpkt[i].rssic);
+                printf("  rssi_sig :%.1f\n", rxpkt[i].rssis);
                 printf("  crc:      0x%04X\n", rxpkt[i].crc);
                 for (j = 0; j < rxpkt[i].size; j++) {
                     printf("%02X ", rxpkt[i].payload[j]);

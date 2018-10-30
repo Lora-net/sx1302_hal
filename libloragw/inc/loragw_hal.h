@@ -214,7 +214,8 @@ struct lgw_pkt_rx_s {
     uint8_t     bandwidth;      /*!> modulation bandwidth (LoRa only) */
     uint32_t    datarate;       /*!> RX datarate of the packet (SF for LoRa) */
     uint8_t     coderate;       /*!> error-correcting code of the packet (LoRa only) */
-    float       rssi;           /*!> average packet RSSI in dB */
+    float       rssic;          /*!> average RSSI of the channel in dB */
+    float       rssis;          /*!> average RSSI of the signal in dB */
     float       snr;            /*!> average packet SNR, in dB (LoRa only) */
     float       snr_min;        /*!> minimum packet SNR, in dB (LoRa only) */
     float       snr_max;        /*!> maximum packet SNR, in dB (LoRa only) */
