@@ -281,6 +281,8 @@ int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_
         //lgw_reg_r(SX1302_REG_RADIO_FE_DEC_FILTER_RD_RADIO_A_DEC_FILTER_GAIN, &val);
         //dec_gain = (uint8_t)val;
 
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_FORCE_HAL_CTRL, 1);
+
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_FREQ_FREQ, f_offset);
 
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_DURATION, CAL_SIG_ANA_DURATION);
@@ -304,6 +306,8 @@ int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_
         }
         gettimeofday (&stop, NULL);
         //printf("processing time: %ld us\n", ((stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec) - start.tv_usec);
+
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_FORCE_HAL_CTRL, 0);
     }
 
     if (full_log == true) {
@@ -591,6 +595,7 @@ int main(int argc, char **argv)
 
     sx1302_radio_reset(rf_chain, SX1302_RADIO_TYPE_SX125X);
     sx1302_radio_clock_select(clocksource, true);
+    sx1302_radio_set_mode(rf_chain, SX1302_RADIO_TYPE_SX125X);
 
     printf("Loading CAL fw for sx125x\n");
     if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {

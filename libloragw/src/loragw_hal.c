@@ -512,6 +512,7 @@ int lgw_start(void) {
             if (rf_enable[i] == true) {
                 radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
                 sx1302_radio_reset(i, radio_type);
+                sx1302_radio_set_mode(i, radio_type);
             }
         }
 
