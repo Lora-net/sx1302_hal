@@ -3,26 +3,27 @@
 ARCH ?=
 CROSS_COMPILE ?=
 BUILD_MODE := release
+OBJDIR = obj
 
 ### ----- AVOID MODIFICATIONS BELLOW ------ AVOID MODIFICATIONS BELLOW ----- ###
 
 ifeq '$(BUILD_MODE)' 'alpha'
   $(warning /\/\/\/ Building in 'alpha' mode \/\/\/\)
-  WARN_CFLAGS   := 
+  WARN_CFLAGS   :=
   OPT_CFLAGS    := -O0
   DEBUG_CFLAGS  := -g
-  LDFLAGS       := 
+  LDFLAGS       :=
 else ifeq '$(BUILD_MODE)' 'debug'
   $(warning /\/\/\/  Building in 'debug' mode \/\/\/\)
   WARN_CFLAGS   := -Wall -Wextra
   OPT_CFLAGS    := -O2
   DEBUG_CFLAGS  := -g
-  LDFLAGS       := 
+  LDFLAGS       :=
 else ifeq  '$(BUILD_MODE)' 'release'
   $(warning /\/\/\/  Building in 'release' mode \/\/\/\)
   WARN_CFLAGS   := -Wall -Wextra
   OPT_CFLAGS    := -O2 -ffunction-sections -fdata-sections
-  DEBUG_CFLAGS  := 
+  DEBUG_CFLAGS  :=
   LDFLAGS       := -Wl,--gc-sections
 else
   $(error BUILD_MODE must be set to either 'alpha', 'debug' or 'release')
@@ -50,16 +51,19 @@ clean:
 	rm -f obj/$(APP_NAME).o
 	rm -f $(APP_NAME)
 
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
 ### Compile submodules of the main program
-$(MOD_OBJ): obj/%.o: src/%.c inc/%.h
+$(MOD_OBJ): $(OBJDIR)/%.o: src/%.c inc/%.h  | $(OBJDIR)
 	$(CC) -c $< -o $@ $(CFLAGS) -Iinc
 
 ### Compile main program
-obj/$(APP_NAME).o: src/$(APP_NAME).c $(MOD_INC)
+$(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(MOD_INC)  | $(OBJDIR)
 	$(CC) -c $< -o $@ $(CFLAGS) -Iinc
 
 ### Link everything together
-$(APP_NAME): obj/$(APP_NAME).o $(MOD_OBJ)
+$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(MOD_OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS) $(APP_LIBS)
 
 ### EOF
