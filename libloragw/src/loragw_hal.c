@@ -1419,7 +1419,7 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
             *code = TX_OFF;
         } else if (read_value == 0x80) {
             *code = TX_FREE;
-        } else if ((read_value == 0x30) || (read_value == 0x50) || (read_value == 0x70)) {
+        } else if ((read_value == 0x30) || (read_value == 0x50) || (read_value == 0x60) || (read_value == 0x70)) {
             *code = TX_EMITTING;
         } else if ((read_value == 0x91) || (read_value == 0x92)) {
             *code = TX_SCHEDULED;
