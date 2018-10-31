@@ -1500,8 +1500,10 @@ void thread_up(void) {
             ++buff_index;
             ++pkt_in_dgram;
 
-            /* Log nb of packets per channel, per SF */
-            nb_pkt_log[p->if_chain][p->datarate - 5] += 1;
+            if (p->modulation == MOD_LORA) {
+                /* Log nb of packets per channel, per SF */
+                nb_pkt_log[p->if_chain][p->datarate - 5] += 1;
+            }
         }
 
 #if 0
