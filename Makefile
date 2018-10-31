@@ -9,9 +9,11 @@ export
 all:
 	$(MAKE) all -e -C libloragw
 	$(MAKE) all -e -C packet_forwarder
+	$(MAKE) all -e -C util_net_downlink
 
 clean:
 	$(MAKE) clean -e -C libloragw
 	$(MAKE) clean -e -C packet_forwarder
+	$(MAKE) clean -e -C util_net_downlink
 
 ### EOF
