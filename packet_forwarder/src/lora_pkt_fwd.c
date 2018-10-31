@@ -2086,7 +2086,7 @@ void thread_jit(void) {
                 if (jit_result == JIT_ERROR_OK) {
                     /* check if concentrator is free for sending new packet */
                     pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
-                    result = lgw_status(0, TX_STATUS, &tx_status);
+                    result = lgw_status(pkt.rf_chain, TX_STATUS, &tx_status);
                     pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
                     if (result == LGW_HAL_ERROR) {
                         MSG("WARNING: [jit] lgw_status failed\n");
