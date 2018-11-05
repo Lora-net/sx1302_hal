@@ -153,6 +153,38 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
+    uint8_t buff[16];
+
+    if ((freq_hz > 430E6) && (freq_hz < 440E6)) {
+        buff[0] = 0x6B;
+        buff[1] = 0x6F;
+    } else if ((freq_hz > 470E6) && (freq_hz < 510E6)) {
+        buff[0] = 0x75;
+        buff[1] = 0x81;
+    } else if ((freq_hz > 779E6) && (freq_hz < 787E6)) {
+        buff[0] = 0xC1;
+        buff[1] = 0xC5;
+    } else if ((freq_hz > 863E6) && (freq_hz < 870E6)) {
+        buff[0] = 0xD7;
+        buff[1] = 0xDB;
+    } else if ((freq_hz > 902E6) && (freq_hz < 928E6)) {
+        buff[0] = 0xE1;
+        buff[1] = 0xE9;
+    } else {
+        printf("ERROR: failed to calibrate sx1250 radio, frequency range not supported (%u)\n", freq_hz);
+        return -1;
+    }
+    sx1250_write_command(rf_chain, CALIBRATE_IMAGE, buff, 2);
+
+    /* Wait for calibration to complete */
+    wait_ms(5);
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
     int32_t freq_reg;
     uint8_t buff[16];

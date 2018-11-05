@@ -505,21 +505,19 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* Radio calibration - only for sx1257/1255*/
-    if ((rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1257) || (rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1255)) {
-        /* Reset radios */
-        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-            if (rf_enable[i] == true) {
-                radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
-                sx1302_radio_reset(i, radio_type);
-                sx1302_radio_set_mode(i, radio_type);
-            }
+    /* Radio calibration */
+    /* -- Reset radios */
+    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+        if (rf_enable[i] == true) {
+            radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
+            sx1302_radio_reset(i, radio_type);
+            sx1302_radio_set_mode(i, radio_type);
         }
-
-        /* Select the radio which provides the clock to the sx1302 */
-        sx1302_radio_clock_select(rf_clkout, false);
-
-        /* Start calibration */
+    }
+    /* -- Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(rf_clkout, false);
+    /* -- Start calibration */
+    if ((rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1257) || (rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1255)) {
         printf("Loading CAL fw for sx125x\n");
         if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
             return LGW_HAL_ERROR;
@@ -527,6 +525,16 @@ int lgw_start(void) {
         if (sx1302_cal_start(FW_VERSION_CAL, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
             printf("ERROR: radio calibration failed\n");
             return LGW_HAL_ERROR;
+        }
+    } else {
+        printf("Calibrating sx1250 radios\n");
+        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+            if (rf_enable[i] == true) {
+                if (sx1250_calibrate(i, rf_rx_freq[i])) {
+                    printf("ERROR: radio calibration failed\n");
+                    return LGW_HAL_ERROR;
+                }
+            }
         }
     }
 
