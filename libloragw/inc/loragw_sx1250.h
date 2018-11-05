@@ -57,7 +57,8 @@ typedef enum {
     SET_TXCONTINUOUSPREAMBLE= 0xD2,
     GET_STATUS              = 0xC0,
     SET_REGULATORMODE       = 0x96,
-    SET_FS                  = 0xC1
+    SET_FS                  = 0xC1,
+    GET_DEVICE_ERRORS       = 0x17
 } sx1250_op_code_t;
 
 typedef enum {

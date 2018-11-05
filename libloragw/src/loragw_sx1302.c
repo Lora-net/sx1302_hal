@@ -140,6 +140,7 @@ int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
             break;
         case SX1302_RADIO_TYPE_SX1250:
             lgw_reg_w(reg_radio_rst, 0x01);
+            wait_ms(10); /* wait for auto calibration to complete */
             DEBUG_PRINTF("INFO: reset sx1250 (RADIO_%s) done\n", REG_SELECT(rf_chain, "A", "B"));
             break;
         default:

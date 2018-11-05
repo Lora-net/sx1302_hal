@@ -156,6 +156,11 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
 int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
     uint8_t buff[16];
 
+    buff[0] = 0x00;
+    sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
+    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
+
+    /* Run calibration */
     if ((freq_hz > 430E6) && (freq_hz < 440E6)) {
         buff[0] = 0x6B;
         buff[1] = 0x6F;
@@ -178,7 +183,17 @@ int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
     sx1250_write_command(rf_chain, CALIBRATE_IMAGE, buff, 2);
 
     /* Wait for calibration to complete */
-    wait_ms(5);
+    wait_ms(10);
+
+    buff[0] = 0x00;
+    buff[1] = 0x00;
+    buff[2] = 0x00;
+    sx1250_read_command(rf_chain, GET_DEVICE_ERRORS, buff, 3);
+    printf("%s: get_device_errors: 0x%02X 0x%02X 0x%02X\n", __FUNCTION__, buff[0], buff[1], buff[2]);
+    if (TAKE_N_BITS_FROM(buff[2], 4, 1) != 0) {
+        printf("ERROR: sx1250 Image Calibration Error\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -192,6 +207,8 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
     /* Set Radio in Standby mode */
     buff[0] = (uint8_t)STDBY_XOSC;
     sx1250_write_command(rf_chain, SET_STANDBY, buff, 1);
+    wait_ms(10);
+
     buff[0] = 0x00;
     sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
     printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
