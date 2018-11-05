@@ -736,7 +736,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             //lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
         }
 
-#if 1
         printf("-----------------\n");
         printf("  modem:    %u\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index));
         printf("  chan:     %u\n", SX1302_PKT_CHANNEL(rx_fifo, buffer_index));
@@ -748,7 +747,53 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("  codr:     %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
         printf("  datr:     %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
         printf("-----------------\n");
+
+        /* Sanity checks */
+        sanity_check = SX1302_PKT_MODEM_ID(rx_fifo, buffer_index);
+        if (sanity_check > 17) {
+            printf("ERROR: modem_id is out of range - %u\n", sanity_check);
+            rx_buffer_error = true;
+        }
+        if (sanity_check < SX1302_FSK_MODEM_ID) {
+            sanity_check = SX1302_PKT_CHANNEL(rx_fifo, buffer_index);
+            if (sanity_check > 9) {
+                printf("ERROR: channel is out of range - %u\n", sanity_check);
+                rx_buffer_error = true;
+            }
+
+            sanity_check = SX1302_PKT_DATARATE(rx_fifo, buffer_index);
+            if ((sanity_check < 5) || (sanity_check > 12)) {
+                printf("ERROR: SF is out of range - %u\n", sanity_check);
+                rx_buffer_error = true;
+            }
+        }
+
+        if (rx_buffer_error == true) {
+#if 1
+            uint16_t mem_addr;
+
+            /* Read the whole rx buffer for debug */
+            lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
+            memset(rx_fifo, 0, sizeof rx_fifo);
+            sz_todo = 4096;
+            chunk_cnt = 0;
+            mem_addr = 0x4000;
+            while (sz_todo > 0) {
+                chunk_size = (sz_todo > 1024) ? 1024 : sz_todo;
+                printf("reading %d bytes\n", chunk_size);
+                mem_addr += chunk_size;
+                lgw_mem_rb(mem_addr, &rx_fifo[chunk_cnt * 1024], chunk_size);
+                sz_todo -= chunk_size;
+                chunk_cnt += 1;
+            }
+            lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 0);
+            for (i = 0; i < 4096; i++) {
+                printf("%02X ", rx_fifo[i]);
+            }
+            printf("\n");
+            assert(0);
 #endif
+        }
 
         /* point to the proper struct in the struct array */
         p = &pkt_data[nb_pkt_found];
