@@ -173,7 +173,7 @@ static char status_report[STATUS_SIZE]; /* status report as a JSON object */
 static uint32_t autoquit_threshold = 0; /* enable auto-quit after a number of non-acknowledged PULL_DATA (0 = disabled)*/
 
 /* Just In Time TX scheduling */
-static struct jit_queue_s jit_queue;
+static struct jit_queue_s jit_queue[LGW_RF_CHAIN_NB];
 
 /* Gateway specificities */
 static int8_t antenna_gain = 0;
@@ -1125,8 +1125,10 @@ int main(void)
             printf("# SX1301 time (PPS): unknown\n");
         } else {
             printf("# SX1301 time (PPS): %u\n", trig_tstamp);
-        }
-        jit_print_queue (&jit_queue, false, DEBUG_LOG);
+
+        jit_print_queue (&jit_queue[0], false, DEBUG_LOG);}
+        printf("#--------\n");
+        jit_print_queue (&jit_queue[1], false, DEBUG_LOG);
         printf("##### END #####\n");
 
         /* generate a JSON report (will be sent to server by upstream thread) */
@@ -1690,7 +1692,8 @@ void thread_down(void) {
     *(uint32_t *)(buff_req + 8) = net_mac_l;
 
     /* JIT queue initialization */
-    jit_queue_init(&jit_queue);
+    jit_queue_init(&jit_queue[0]);
+    jit_queue_init(&jit_queue[1]);
 
     while (!exit_sig && !quit_sig) {
 
@@ -2022,7 +2025,7 @@ void thread_down(void) {
                 pthread_mutex_lock(&mx_concent);
                 lgw_get_instcnt(&current_concentrator_time);
                 pthread_mutex_unlock(&mx_concent);
-                jit_result = jit_enqueue(&jit_queue, current_concentrator_time, &txpkt, downlink_type);
+                jit_result = jit_enqueue(&jit_queue[txpkt.rf_chain], current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {
                     printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
                 } else {
@@ -2073,62 +2076,65 @@ void thread_jit(void) {
     enum jit_error_e jit_result;
     enum jit_pkt_type_e pkt_type;
     uint8_t tx_status;
+    int i;
 
     while (!exit_sig && !quit_sig) {
         wait_ms(10);
 
-        /* transfer data and metadata to the concentrator, and schedule TX */
-        pthread_mutex_lock(&mx_concent);
-        lgw_get_instcnt(&current_concentrator_time);
-        pthread_mutex_unlock(&mx_concent);
-        jit_result = jit_peek(&jit_queue, current_concentrator_time, &pkt_index);
-        if (jit_result == JIT_ERROR_OK) {
-            if (pkt_index > -1) {
-                jit_result = jit_dequeue(&jit_queue, pkt_index, &pkt, &pkt_type);
-                if (jit_result == JIT_ERROR_OK) {
-                    /* check if concentrator is free for sending new packet */
-                    pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
-                    result = lgw_status(pkt.rf_chain, TX_STATUS, &tx_status);
-                    pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
-                    if (result == LGW_HAL_ERROR) {
-                        MSG("WARNING: [jit] lgw_status failed\n");
-                    } else {
-                        if (tx_status == TX_EMITTING) {
-                            MSG("ERROR: concentrator is currently emitting\n");
-                            print_tx_status(tx_status);
-                            continue;
-                        } else if (tx_status == TX_SCHEDULED) {
-                            MSG("WARNING: a downlink was already scheduled, overwritting it...\n");
-                            print_tx_status(tx_status);
+        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+            /* transfer data and metadata to the concentrator, and schedule TX */
+            pthread_mutex_lock(&mx_concent);
+            lgw_get_instcnt(&current_concentrator_time);
+            pthread_mutex_unlock(&mx_concent);
+            jit_result = jit_peek(&jit_queue[i], current_concentrator_time, &pkt_index);
+            if (jit_result == JIT_ERROR_OK) {
+                if (pkt_index > -1) {
+                    jit_result = jit_dequeue(&jit_queue[i], pkt_index, &pkt, &pkt_type);
+                    if (jit_result == JIT_ERROR_OK) {
+                        /* check if concentrator is free for sending new packet */
+                        pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
+                        result = lgw_status(pkt.rf_chain, TX_STATUS, &tx_status);
+                        pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
+                        if (result == LGW_HAL_ERROR) {
+                            MSG("WARNING: [jit%d] lgw_status failed\n", i);
                         } else {
-                            /* Nothing to do */
+                            if (tx_status == TX_EMITTING) {
+                                MSG("ERROR: concentrator is currently emitting on rf_chain %d\n", i);
+                                print_tx_status(tx_status);
+                                continue;
+                            } else if (tx_status == TX_SCHEDULED) {
+                                MSG("WARNING: a downlink was already scheduled on rf_chain %d, overwritting it...\n", i);
+                                print_tx_status(tx_status);
+                            } else {
+                                /* Nothing to do */
+                            }
                         }
-                    }
 
-                    /* send packet to concentrator */
-                    pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
-                    result = lgw_send(pkt);
-                    pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
-                    if (result == LGW_HAL_ERROR) {
-                        pthread_mutex_lock(&mx_meas_dw);
-                        meas_nb_tx_fail += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
-                        MSG("WARNING: [jit] lgw_send failed\n");
-                        continue;
+                        /* send packet to concentrator */
+                        pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
+                        result = lgw_send(pkt);
+                        pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
+                        if (result == LGW_HAL_ERROR) {
+                            pthread_mutex_lock(&mx_meas_dw);
+                            meas_nb_tx_fail += 1;
+                            pthread_mutex_unlock(&mx_meas_dw);
+                            MSG("WARNING: [jit] lgw_send failed on rf_chain %d\n", i);
+                            continue;
+                        } else {
+                            pthread_mutex_lock(&mx_meas_dw);
+                            meas_nb_tx_ok += 1;
+                            pthread_mutex_unlock(&mx_meas_dw);
+                            MSG_DEBUG(DEBUG_PKT_FWD, "lgw_send done on rf_chain %d: count_us=%u\n", i, pkt.count_us);
+                        }
                     } else {
-                        pthread_mutex_lock(&mx_meas_dw);
-                        meas_nb_tx_ok += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
-                        MSG_DEBUG(DEBUG_PKT_FWD, "lgw_send done: count_us=%u\n", pkt.count_us);
+                        MSG("ERROR: jit_dequeue failed on rf_chain %d with %d\n", i, jit_result);
                     }
-                } else {
-                    MSG("ERROR: jit_dequeue failed with %d\n", jit_result);
                 }
+            } else if (jit_result == JIT_ERROR_EMPTY) {
+                /* Do nothing, it can happen */
+            } else {
+                MSG("ERROR: jit_peek failed on rf_chain %d with %d\n", i, jit_result);
             }
-        } else if (jit_result == JIT_ERROR_EMPTY) {
-            /* Do nothing, it can happen */
-        } else {
-            MSG("ERROR: jit_peek failed with %d\n", jit_result);
         }
     }
 }
