@@ -1356,7 +1356,17 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* Set TX start delay */
-    tx_start_delay = 1500 * 32; /* us */ /* TODO: which value should we put?? */
+    switch (rf_radio_type[pkt_data.rf_chain]) {
+        case LGW_RADIO_TYPE_SX1250:
+            tx_start_delay = 1466 * 32 - 9; /* us */
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            tx_start_delay = 1463 * 32 + 3; /* us */
+            break;
+        default:
+            DEBUG_MSG("ERROR: radio type not supported\n");
+            return LGW_HAL_ERROR;
+    }
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY,
                                         SX1302_REG_TX_TOP_B_TX_START_DELAY_MSB_TX_START_DELAY);
     lgw_reg_w(reg, (uint8_t)(tx_start_delay >> 8));
