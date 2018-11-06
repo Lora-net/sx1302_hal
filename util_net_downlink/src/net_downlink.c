@@ -128,6 +128,7 @@ static pthread_mutex_t mx_sockaddr = PTHREAD_MUTEX_INITIALIZER; /* control acces
 static void sig_handler( int sigio );
 static void usage( void );
 static void * thread_down( const void * arg );
+static void log_csv(FILE * file, uint8_t * buf);
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
@@ -142,6 +143,11 @@ int main( int argc, char **argv )
     int arg_i = 0;
     char arg_s[8];
     bool parse_err = false;
+
+    /* Logging file variables */
+    const char * log_fname = NULL; /* pointer to a string we won't touch */
+    FILE * log_file = NULL;
+    bool is_first = true;
 
     /* Server socket creation */
     int sock; /* socket file descriptor */
@@ -194,13 +200,17 @@ int main( int argc, char **argv )
     pthread_t thrid_down;
 
     /* Parse command line options */
-    while( ( i = getopt( argc, argv, "hP:A:F:t:x:b:s:f:c:p:r:z:a:i" ) ) != -1 )
+    while( ( i = getopt( argc, argv, "hP:A:F:t:x:b:s:f:c:p:r:z:a:il:" ) ) != -1 )
     {
         switch( i )
         {
             case 'h':
                 usage( );
                 return EXIT_SUCCESS;
+                break;
+
+            case 'l':
+                log_fname = optarg;
                 break;
 
             case 'P':
@@ -503,6 +513,17 @@ int main( int argc, char **argv )
     printf( "INFO: util_net_downlink listening on port %s\n", port_arg );
     freeaddrinfo( result );
 
+    /* Open log file */
+    if( log_fname )
+    {
+        log_file = fopen( log_fname, "w+" ); /* create log file, overwrite if file already exist */
+        if( log_file == NULL )
+        {
+            printf( "ERROR: impossible to create log file %s\n", log_fname );
+            return EXIT_FAILURE;
+        }
+    }
+
     /* Configure signal handling */
     sigemptyset( &sigact.sa_mask );
     sigact.sa_flags = 0;
@@ -625,12 +646,257 @@ int main( int argc, char **argv )
                 printf( ", %i bytes sent for ACK\n", byte_nb );
             }
         }
+
+        /* Log uplinks to file */
+        if( databuf_up[3] == PKT_PUSH_DATA )
+        {
+            if( log_fname != NULL )
+            {
+                if( is_first == true )
+                {
+                    fprintf(log_file, "tmst,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data\n");
+                    is_first = false;
+                }
+                log_csv( log_file, &databuf_up[12] );
+            }
+        }
     }
 
     /* Wait for downstream thread to finish */
     pthread_join( thrid_down, NULL );
 
     printf( "INFO: Exiting uplink logger\n" );
+
+    /* Close log file */
+    if( (log_fname != NULL) && (log_file != NULL) )
+    {
+        fclose( log_file );
+        log_file = NULL;
+    }
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+static void log_csv(FILE * file, uint8_t * buf)
+{
+    JSON_Object * rxpk = NULL;
+    JSON_Object * root = NULL;
+    JSON_Array * rxpk_array = NULL;
+    JSON_Value * root_val = NULL;
+    JSON_Value * val = NULL;
+    int i, j, rxpk_nb, x;
+    const char * str; /* pointer to sub-strings in the JSON data */
+    short x0, x1;
+    uint8_t payload[255];
+    uint8_t size;
+
+    if( file == NULL )
+    {
+        printf("ERROR: no file opened\n");
+        return;
+    }
+
+    /* Parse JSON string */
+    root_val = json_parse_string( (const char *)buf ); /* JSON offset */
+    root = json_value_get_object( root_val );
+    if( root == NULL )
+    {
+        printf( "ERROR: not a valid JSON string\n" );
+        json_value_free( root_val );
+        return;
+    }
+
+    /* Get all packets from array */
+    rxpk_array = json_object_get_array( root, "rxpk" );
+    if( rxpk_array != NULL)
+    {
+        rxpk_nb = (int)json_array_get_count( rxpk_array );
+        for( i = 0; i < rxpk_nb; i++ )
+        {
+            rxpk = json_array_get_object( rxpk_array, i );
+            if( rxpk == NULL)
+            {
+                printf("ERROR: failed to get rxpk object\n");
+                json_value_free( root_val );
+                return;
+            }
+
+            /* Parse rxpk fields */
+            val = json_object_get_value( rxpk, "tmst" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for tmst\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, "%u", (uint32_t)json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "chan" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for chan\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%u", (uint8_t)json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "rfch" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for rfch\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%u", (uint8_t)json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "freq" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for rfch\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%f", json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "mid" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for mid\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%u", (uint8_t)json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "stat" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for stat\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%d", (int8_t)json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "modu" );
+            if( json_value_get_type( val ) != JSONString )
+            {
+                printf( "ERROR: wrong type for stat\n" );
+                json_value_free( root_val );
+                return;
+            }
+            str = json_value_get_string( val );
+            fprintf(file, ",%s", str );
+            if( strcmp( str, "LORA" ) == 0 )
+            {
+                val = json_object_get_value( rxpk, "datr" );
+                if( json_value_get_type( val ) != JSONString )
+                {
+                    printf( "ERROR: wrong type for datr\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                str = json_value_get_string( val );
+                x = sscanf( str, "SF%2hdBW%3hd", &x0, &x1 );
+                if( x != 2 )
+                {
+                    printf( "ERROR: format error in \"rxpk.datr\"\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%d,%d", x0, x1 );
+            }
+            else if( strcmp( str, "FSK" ) == 0 )
+            {
+                val = json_object_get_value( rxpk, "datr" );
+                if( json_value_get_type( val ) != JSONNumber )
+                {
+                    printf( "ERROR: wrong type for datr\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%d,", (uint32_t)json_value_get_number( val ) );
+            }
+            else
+            {
+                printf("ERROR: unknown modulation %s\n", str);
+                json_value_free( root_val );
+                return;
+            }
+
+            val = json_object_get_value( rxpk, "codr" );
+            if( json_value_get_type( val ) != JSONString )
+            {
+                printf( "ERROR: wrong type for codr\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%s", json_value_get_string( val ) );
+
+            val = json_object_get_value( rxpk, "rssic" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for rssic\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%.1f", json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "rssis" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for rssis\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%.1f", json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "lsnr" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for lsnr\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, ",%.1f", json_value_get_number( val ) );
+
+            val = json_object_get_value( rxpk, "size" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for size\n" );
+                json_value_free( root_val );
+                return;
+            }
+            size = (uint8_t)json_value_get_number( val );
+            fprintf(file, ",%u", size );
+
+            val = json_object_get_value( rxpk, "data" );
+            if( json_value_get_type( val ) != JSONString )
+            {
+                printf( "ERROR: wrong type for data\n" );
+                json_value_free( root_val );
+                return;
+            }
+            str = json_value_get_string( val );
+            x = b64_to_bin( str, strlen( str ), payload, sizeof payload );
+            if( x != size )
+            {
+                printf( "ERROR: mismatch between .size and .data size once converter to binary\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, "," );
+            for( j = 0; j < size; j++ )
+            {
+                fprintf(file, "%02x", payload[j] );
+            }
+
+            /* End line */
+            fprintf(file, "\n" );
+        }
+    }
+
+    json_value_free( root_val );
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -658,6 +924,7 @@ static void usage( void )
     printf( " -P <udp port>     UDP port of the Packet Forwarder\n" );
     printf( " -A <ip address>   IP address to be used for uplink forwarding (optional)\n" );
     printf( " -F <udp port>     UDP port to be used for uplink forwarding (optional)\n" );
+    printf( " -l <filename>     CSV Log filename (optional)\n" );
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
 }
 
@@ -751,14 +1018,22 @@ static void * thread_down( const void * arg )
                 freq = params->freq_mhz + ((i % params->freq_nb) * params->freq_step);
                 printf("***** freq = %lf\n", freq);
                 json_object_set_boolean( obj, "imme", true );
-                json_object_set_number( obj, "freq", freq );
                 if( params->rf_chain_alternate == false )
                 {
                     json_object_set_number( obj, "rfch", params->rf_chain );
+                    json_object_set_number( obj, "freq", freq );
                 }
                 else
                 {
                     json_object_set_number( obj, "rfch", rf_chain_select%2 ); /* alternate 0,1 */
+                    if( rf_chain_select%2 )
+                    {
+                        json_object_set_number( obj, "freq", freq );
+                    }
+                    else
+                    {
+                        json_object_set_number( obj, "freq", freq + 0.5 );
+                    }
                     rf_chain_select += 1;
                 }
                 json_object_set_number( obj, "powe", params->rf_power );
