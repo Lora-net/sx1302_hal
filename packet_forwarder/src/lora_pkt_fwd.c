@@ -1508,7 +1508,7 @@ void thread_up(void) {
             }
         }
 
-#if 0
+#if 1
         int l, m;
         {
             printf("\n");
