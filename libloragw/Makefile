@@ -21,7 +21,7 @@ LIBS := -lloragw -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal
+all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram
 
 clean:
 	rm -f libloragw.a
@@ -78,6 +78,9 @@ test_loragw_hal_tx: tst/test_loragw_hal_tx.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 test_loragw_hal_rx: tst/test_loragw_hal_rx.c libloragw.a
+	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+
+test_loragw_capture_ram: tst/test_loragw_capture_ram.c libloragw.a
 	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 test_loragw_cal: tst/test_loragw_cal.c libloragw.a
