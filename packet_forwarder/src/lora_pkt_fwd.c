@@ -356,6 +356,9 @@ static int parse_SX1301_configuration(const char * conf_file) {
                     txlut.lut[i].mix_gain = 0;
                 }
             } else {
+                /* TODO: rework this, should not be needed for sx1250 */
+                txlut.lut[i].mix_gain = 5;
+
                 /* power index */
                 val = json_object_dotget_value(conf_txgain_obj, "pwr_idx");
                 if (json_value_get_type(val) == JSONNumber) {

@@ -80,7 +80,7 @@ void usage(void) {
     printf(" --pa   <uint> PA gain [0..3]\n");
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
     printf(" --dac  <uint> sx1257 DAC gain [0..3]\n");
-    printf(" --mix  <uint> sx1257 MIX gain [0..15]\n");
+    printf(" --mix  <uint> sx1257 MIX gain [5..15]\n");
     printf(" --pwid <uint> sx1250 power index [0..63]\n");
 }
 
@@ -336,6 +336,7 @@ int main(int argc, char **argv)
                         return EXIT_FAILURE;
                     } else {
                         txlut.size = 1;
+                        txlut.lut[0].mix_gain = 5; /* TODO: rework this, should not be needed for sx1250 */
                         txlut.lut[0].pwr_idx = (uint8_t)arg_u;
                     }
                 } else {
