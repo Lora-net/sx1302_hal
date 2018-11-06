@@ -456,8 +456,8 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1257 DAC gains must not exceed 3\n");
             return LGW_HAL_ERROR;
         }
-        if (conf->lut[i].mix_gain > 15) {
-            DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15\n");
+        if ((conf->lut[i].mix_gain < 5) || (conf->lut[i].mix_gain > 15)) {
+            DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must be betwen [5..15]\n");
             return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pa_gain > 3) {
