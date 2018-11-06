@@ -670,6 +670,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t nb_pkt_dropped = 0;
     uint16_t payload_length;
     uint8_t num_ts_metrics = 0;
+    uint8_t sanity_check;
+    bool rx_buffer_error = false;
+    int32_t val;
 
     /* rx buffer chunk read */
     uint16_t sz_todo;
