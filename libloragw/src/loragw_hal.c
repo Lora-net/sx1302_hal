@@ -75,9 +75,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define STD_FSK_PREAMBLE    5
 
 #define RSSI_MULTI_BIAS     -35 /* difference between "multi" modem RSSI offset and "stand-alone" modem RSSI offset */
-#define RSSI_FSK_POLY_0     60 /* polynomiam coefficients to linearize FSK RSSI */
-#define RSSI_FSK_POLY_1     1.5351
-#define RSSI_FSK_POLY_2     0.003
+#define RSSI_FSK_POLY_0     86 /* polynomiam coefficients to linearize FSK RSSI */
+#define RSSI_FSK_POLY_1     1
+#define RSSI_FSK_POLY_2     0
 
 /* Useful bandwidth of SX125x radios to consider depending on channel bandwidth */
 /* Note: the below values come from lab measurements. For any question, please contact Semtech support */
