@@ -1132,11 +1132,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* Set AGC bandwidth and modulation type*/
     switch (pkt_data.modulation) {
         case MOD_LORA:
-            mod_bw = (0x00 << 7) | pkt_data.bandwidth;
+            mod_bw = pkt_data.bandwidth;
             break;
         case MOD_FSK:
             mod_bw = (0x01 << 7) | pkt_data.bandwidth;
-            mod_bw = pkt_data.bandwidth;
             break;
         default:
             printf("ERROR: Modulation not supported\n");
