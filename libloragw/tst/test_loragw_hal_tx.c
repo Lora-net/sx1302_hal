@@ -74,7 +74,7 @@ void usage(void) {
     printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -n <uint> Number of packets to be sent\n");
     printf(" -z <uint> size of packets to be sent 0:random, [9..255]\n");
-    printf(" -t <uint> TX mode timestamped with delay in ms\n");
+    printf(" -t <uint> TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger\n");
     printf(" -p <int>  RF power in dBm\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain [0..3]\n");
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
-            case 'l': /* <uint> LoRa preamble length */
+            case 'l': /* <uint> LoRa/FSK preamble length */
                 i = sscanf(optarg, "%u", &arg_u);
                 if ((i != 1) || (arg_u > 65535)) {
                     printf("ERROR: argument parsing of -l argument. Use -h to print help\n");
@@ -418,7 +418,11 @@ int main(int argc, char **argv)
     if (trig_delay == false) {
         pkt.tx_mode = IMMEDIATE;
     } else {
-        pkt.tx_mode = TIMESTAMPED;
+        if (trig_delay_us == 0) {
+            pkt.tx_mode = ON_GPS;
+        } else {
+            pkt.tx_mode = TIMESTAMPED;
+        }
     }
     if( strcmp( mod, "FSK" ) == 0 ) {
         pkt.modulation = MOD_FSK;
@@ -448,10 +452,14 @@ int main(int argc, char **argv)
 
     for (i = 0; i < (int)nb_pkt; i++) {
         if (trig_delay == true) {
-            lgw_get_instcnt(&count_us);
-            printf("count_us:%u\n", count_us);
-            pkt.count_us = count_us + trig_delay_us;
-            printf("programming TX for %u\n", pkt.count_us);
+            if (trig_delay_us > 0) {
+                lgw_get_instcnt(&count_us);
+                printf("count_us:%u\n", count_us);
+                pkt.count_us = count_us + trig_delay_us;
+                printf("programming TX for %u\n", pkt.count_us);
+            } else {
+                printf("programming TX for next PPS (GPS)\n");
+            }
         }
 
         if( strcmp( mod, "LORA" ) == 0 ) {
