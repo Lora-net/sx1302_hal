@@ -679,6 +679,17 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint32_t sf, cr = 0;
     uint32_t timestamp_correction; /* correction to account for processing delay */
 
+    /* Check that AGC/ARB firmwares are not corrupted */
+    lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
+    if (val != 0) {
+        printf("ERROR: Parity error check failed on AGC firmware\n");
+        return LGW_HAL_ERROR;
+    }
+    lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
+    if (val != 0) {
+        printf("ERROR: Parity error check failed on ARB firmware\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* Check if there is data in the FIFO */
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
