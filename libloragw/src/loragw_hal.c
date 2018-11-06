@@ -105,7 +105,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 #include "src/text_agc_sx1250_30_Oct_3.var"
 #include "src/text_agc_sx1257_15_Oct_5.var"
 #include "src/text_cal_sx1257_26_Oct_7.var"
-#include "src/text_arb_sx1302_30_Oct_19.var"
+#include "src/text_arb_sx1302_06_Nov_2.var"
 
 /*
 The following static variables are the configuration set that the user can
