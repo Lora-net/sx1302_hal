@@ -105,6 +105,7 @@ typedef struct
     uint16_t    preamb_size;
     uint8_t     pl_size;
     bool        ipol;
+    bool        tx_bypass;
 } thread_params_t;
 
 /* -------------------------------------------------------------------------- */
@@ -193,14 +194,15 @@ int main( int argc, char **argv )
         .rf_chain = 0,
         .rf_chain_alternate = false,
         .freq_nb = 1,
-        .ipol = false
+        .ipol = false,
+        .tx_bypass = false
     };
 
     /* Threads ID */
     pthread_t thrid_down;
 
     /* Parse command line options */
-    while( ( i = getopt( argc, argv, "hP:A:F:t:x:b:s:f:c:p:r:z:a:il:" ) ) != -1 )
+    while( ( i = getopt( argc, argv, "hP:A:F:Bt:x:b:s:f:c:p:r:z:a:il:" ) ) != -1 )
     {
         switch( i )
         {
@@ -220,6 +222,10 @@ int main( int argc, char **argv )
             case 'A':
                 fwd_uplink = true;
                 strncpy( serv_addr, optarg, strlen( optarg ));
+                break;
+
+            case 'B':
+                thread_params.tx_bypass = true;
                 break;
 
             case 'F':
@@ -924,7 +930,8 @@ static void usage( void )
     printf( " -P <udp port>     UDP port of the Packet Forwarder\n" );
     printf( " -A <ip address>   IP address to be used for uplink forwarding (optional)\n" );
     printf( " -F <udp port>     UDP port to be used for uplink forwarding (optional)\n" );
-    printf( " -l <filename>     CSV Log filename (optional)\n" );
+    printf( " -l <filename>     uplink logging CSV filename (optional)\n" );
+    printf( " -B                Bypass downlink, for uplink logging only (optional)\n" );
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
 }
 
@@ -982,7 +989,7 @@ static void * thread_down( const void * arg )
         {
             pthread_mutex_unlock( &mx_sockaddr );
             printf( "Waiting for socket to be ready...\n" );
-            usleep( 500000); /* 500 ms */
+            usleep( 500000 ); /* 500 ms */
             continue;
         }
         pthread_mutex_unlock( &mx_sockaddr );
@@ -993,6 +1000,12 @@ static void * thread_down( const void * arg )
         {
             printf( "ERROR: getnameinfo returned %s \n", gai_strerror( x ) );
             usleep( 10000); /* 10 ms */
+            continue;
+        }
+
+        if( params->tx_bypass == true )
+        {
+            usleep( 500000 ); /* 500 ms */
             continue;
         }
 
