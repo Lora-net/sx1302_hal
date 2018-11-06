@@ -10,7 +10,6 @@ Description:
     LoRa concentrator HAL auxiliary functions
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 

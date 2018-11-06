@@ -10,7 +10,6 @@ Description:
     Base64 encoding & decoding library
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
