@@ -828,6 +828,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         p->size = payload_length;
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
+        p->modem_id = SX1302_PKT_MODEM_ID(rx_fifo, buffer_index);
         p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
         p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];

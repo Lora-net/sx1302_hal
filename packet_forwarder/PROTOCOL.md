@@ -132,12 +132,14 @@ and associated metadata with the following fields:
  freq | number | RX central frequency in MHz (unsigned float, Hz precision)
  chan | number | Concentrator "IF" channel used for RX (unsigned integer)
  rfch | number | Concentrator "RF chain" used for RX (unsigned integer)
+ mid  | number | Concentrator modem ID on which pkt has been received
  stat | number | CRC status: 1 = OK, -1 = fail, 0 = no CRC
  modu | string | Modulation identifier "LORA" or "FSK"
  datr | string | LoRa datarate identifier (eg. SF12BW500)
  datr | number | FSK datarate (unsigned, in bits per second)
  codr | string | LoRa ECC coding rate identifier
- rssi | number | RSSI in dBm (signed integer, 1 dB precision)
+ rssic| number | RSSI of the channel in dBm (signed integer, 1 dB precision)
+ rssis| number | RSSI of the signal in dBm (signed integer, 1 dB precision)
  lsnr | number | Lora SNR ratio in dB (signed float, 0.1 dB precision)
  size | number | RF packet payload size in bytes (unsigned integer)
  data | string | Base64 encoded RF packet payload, padded
