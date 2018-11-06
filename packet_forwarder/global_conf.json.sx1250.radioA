@@ -3,6 +3,7 @@
         "lorawan_public": true,
         "clksrc": 0,
         "antenna_gain": 0, /* antenna gain, in dBi */
+        "full_duplex": false,
         "radio_0": {
             "enable": true,
             "type": "SX1250",

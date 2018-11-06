@@ -140,6 +140,7 @@ static uint64_t fsk_sync_word = 0xC194C1; /* default FSK sync word (ALIGNED RIGH
 
 static bool lorawan_public = false;
 static uint8_t rf_clkout = 0;
+static bool full_duplex = false;
 
 static struct lgw_tx_gain_lut_s txgain_lut = {
     .size = 1,
@@ -231,8 +232,9 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
     /* set internal config according to parameters */
     lorawan_public = conf.lorawan_public;
     rf_clkout = conf.clksrc;
+    full_duplex = conf.full_duplex;
 
-    DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d\n", lorawan_public, rf_clkout);
+    DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d, full_duplex:%d\n", lorawan_public, rf_clkout, full_duplex);
 
     return LGW_HAL_SUCCESS;
 }
@@ -618,7 +620,7 @@ int lgw_start(void) {
             if (sx1302_agc_load_firmware(agc_firmware_sx125x) != LGW_HAL_SUCCESS) {
                 return LGW_HAL_ERROR;
             }
-            if (sx1302_agc_start(FW_VERSION_AGC, SX1302_RADIO_TYPE_SX125X, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, 0) != LGW_HAL_SUCCESS) {
+            if (sx1302_agc_start(FW_VERSION_AGC, SX1302_RADIO_TYPE_SX125X, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
                 return LGW_HAL_ERROR;
             }
             break;

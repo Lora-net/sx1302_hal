@@ -263,7 +263,14 @@ static int parse_SX1301_configuration(const char * conf_file) {
         MSG("WARNING: Data type for clksrc seems wrong, please check\n");
         boardconf.clksrc = 0;
     }
-    MSG("INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
+    val = json_object_get_value(conf_obj, "full_duplex"); /* fetch value (if possible) */
+    if (json_value_get_type(val) == JSONBoolean) {
+        boardconf.full_duplex = (bool)json_value_get_boolean(val);
+    } else {
+        MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
+        boardconf.full_duplex = false;
+    }
+    MSG("INFO: lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");

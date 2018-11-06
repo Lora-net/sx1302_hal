@@ -868,6 +868,7 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
     sx1302_agc_mailbox_write(1, dec_gain);
     if (radio_type == SX1302_RADIO_TYPE_SX125X) {
+        printf("AGC: setting fdd_mode to %u\n", fdd_mode);
         sx1302_agc_mailbox_write(2, fdd_mode);
     }
 

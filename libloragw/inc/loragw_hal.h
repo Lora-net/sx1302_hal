@@ -172,6 +172,7 @@ enum lgw_radio_type_e {
 struct lgw_conf_board_s {
     bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
     uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
+    bool    full_duplex;
 };
 
 /**

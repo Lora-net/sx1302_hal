@@ -195,6 +195,7 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
+    boardconf.full_duplex = false;
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
