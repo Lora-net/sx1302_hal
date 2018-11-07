@@ -72,6 +72,7 @@ void usage(void) {
     printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
     printf( " -a <float> Radio A RX frequency in MHz\n");
     printf( " -b <float> Radio B RX frequency in MHz\n");
+    printf( " -n <uint> number of packet received with CRC OK for each HAL start/stop loop\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,22 +96,35 @@ int main(int argc, char **argv)
     struct lgw_conf_rxif_s ifconf;
     struct lgw_pkt_rx_s rxpkt[16];
 
+    unsigned long nb_pkt_crc_ok = 0, nb_loop = 1, cnt_loop;
     int nb_pkt;
 
     const int32_t channel_if[9] = {
-        100000,
-        100000,
-        100000,
-        100000,
-        100000,
-        100000,
-        100000,
-        100000,
-        100000,
+        -400000,
+        -200000,
+        0,
+        -400000,
+        -200000,
+        0,
+        200000,
+        400000,
+        -200000 /* lora service */
+    };
+
+    const uint8_t channel_rfchain[9] = {
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1  /* lora service */
     };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:k:r:c:")) != -1) {
+    while ((i = getopt (argc, argv, "ha:b:k:r:c:n:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -171,6 +185,15 @@ int main(int argc, char **argv)
                     fb = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
+            case 'n': /* <uint> NUmber of packets to be received before exiting */
+                i = sscanf(optarg, "%u", &arg_u);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -n argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    nb_loop = arg_u;
+                }
+                break;
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -226,7 +249,7 @@ int main(int argc, char **argv)
     memset(&ifconf, 0, sizeof(ifconf));
     for (i = 0; i < 9; i++) {
         ifconf.enable = true;
-        ifconf.rf_chain = rf_chain;
+        ifconf.rf_chain = channel_rfchain[i];
         ifconf.freq_hz = channel_if[i];
         ifconf.datarate = DR_LORA_SF7;
         if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
@@ -235,52 +258,67 @@ int main(int argc, char **argv)
         }
     }
 
-    /* connect, configure and start the LoRa concentrator */
-    x = lgw_start();
-    if (x != 0) {
-        printf("ERROR: failed to start the gateway\n");
-        return EXIT_FAILURE;
-    }
+    /* Loop until user quits */
+    cnt_loop = 0;
+    while( (quit_sig != 1) && (exit_sig != 1) )
+    {
+        cnt_loop += 1;
 
-    /* Receive packets */
-    printf("Waiting for packets...\n");
-    while ((quit_sig != 1) && (exit_sig != 1)) {
-        /* fetch N packets */
-        nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
+        /* connect, configure and start the LoRa concentrator */
+        x = lgw_start();
+        if (x != 0) {
+            printf("ERROR: failed to start the gateway\n");
+            return EXIT_FAILURE;
+        }
 
-        if (nb_pkt == 0) {
-            wait_ms(10);
-        } else {
-            //wait_ms(2000);
-            printf("Received %d packets\n", nb_pkt);
-            for (i = 0; i < nb_pkt; i++) {
-                printf("\n----- %s packet -----\n", (rxpkt[i].modulation == MOD_LORA) ? "LoRa" : "FSK");
-                printf("  count_us: %u\n", rxpkt[i].count_us);
-                printf("  size:     %u\n", rxpkt[i].size);
-                printf("  chan:     %u\n", rxpkt[i].if_chain);
-                printf("  status:   0x%02X\n", rxpkt[i].status);
-                printf("  datr:     %u\n", rxpkt[i].datarate);
-                printf("  codr:     %u\n", rxpkt[i].coderate);
-                printf("  rf_chain  %u\n", rxpkt[i].rf_chain);
-                printf("  freq_hz   %u\n", rxpkt[i].freq_hz);
-                printf("  snr_avg:  %.1f\n", rxpkt[i].snr);
-                printf("  rssi_chan:%.1f\n", rxpkt[i].rssic);
-                printf("  rssi_sig :%.1f\n", rxpkt[i].rssis);
-                printf("  crc:      0x%04X\n", rxpkt[i].crc);
-                for (j = 0; j < rxpkt[i].size; j++) {
-                    printf("%02X ", rxpkt[i].payload[j]);
+        /* Loop until we have enough packets with CRC OK */
+        printf("Waiting for packets...\n");
+        nb_pkt_crc_ok = 0;
+        while ((nb_pkt_crc_ok < nb_loop) && (quit_sig != 1) && (exit_sig != 1)) {
+            /* fetch N packets */
+            nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
+
+            if (nb_pkt == 0) {
+                wait_ms(10);
+            } else {
+                printf("Received %d packets\n", nb_pkt);
+                for (i = 0; i < nb_pkt; i++) {
+                    if (rxpkt[i].status == STAT_CRC_OK) {
+                        nb_pkt_crc_ok += 1;
+                    }
+                    printf("\n----- %s packet -----\n", (rxpkt[i].modulation == MOD_LORA) ? "LoRa" : "FSK");
+                    printf("  count_us: %u\n", rxpkt[i].count_us);
+                    printf("  size:     %u\n", rxpkt[i].size);
+                    printf("  chan:     %u\n", rxpkt[i].if_chain);
+                    printf("  status:   0x%02X\n", rxpkt[i].status);
+                    printf("  datr:     %u\n", rxpkt[i].datarate);
+                    printf("  codr:     %u\n", rxpkt[i].coderate);
+                    printf("  rf_chain  %u\n", rxpkt[i].rf_chain);
+                    printf("  freq_hz   %u\n", rxpkt[i].freq_hz);
+                    printf("  snr_avg:  %.1f\n", rxpkt[i].snr);
+                    printf("  rssi_chan:%.1f\n", rxpkt[i].rssic);
+                    printf("  rssi_sig :%.1f\n", rxpkt[i].rssis);
+                    printf("  crc:      0x%04X\n", rxpkt[i].crc);
+                    for (j = 0; j < rxpkt[i].size; j++) {
+                        printf("%02X ", rxpkt[i].payload[j]);
+                    }
+                    printf("\n");
                 }
-                printf("\n");
             }
         }
+
+        printf( "\nNb valid packets received: %lu CRC OK (%lu)\n", nb_pkt_crc_ok, cnt_loop );
+
+        /* Stop the gateway */
+        x = lgw_stop();
+        if (x != 0) {
+            printf("ERROR: failed to stop the gateway\n");
+            return EXIT_FAILURE;
+        }
+
+        system("./reset_lgw.sh start");
     }
 
-    /* Stop the gateway */
-    x = lgw_stop();
-    if (x != 0) {
-        printf("ERROR: failed to stop the gateway\n");
-        return EXIT_FAILURE;
-    }
     printf("=========== Test End ===========\n");
 
     return 0;
