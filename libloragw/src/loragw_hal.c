@@ -517,6 +517,10 @@ int lgw_start(void) {
     }
     /* -- Select the radio which provides the clock to the sx1302 */
     sx1302_radio_clock_select(rf_clkout, false);
+    /* -- Ensure PA/LNA are disabled */
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 1);
+    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_PA_EN, 0);
+    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_LNA_EN, 0);
     /* -- Start calibration */
     if ((rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1257) || (rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1255)) {
         printf("Loading CAL fw for sx125x\n");
@@ -541,6 +545,8 @@ int lgw_start(void) {
             }
         }
     }
+    /* -- Release control over FE */
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
