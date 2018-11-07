@@ -106,7 +106,7 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
     /* notify CAL that it can resume */
     sx1302_agc_mailbox_write(3, 0xFF);
 
-    /* Wait for ARB to acknoledge */
+    /* Wait for AGC to acknoledge */
     sx1302_agc_wait_status(0x00);
 
     printf("CAL: started\n");
