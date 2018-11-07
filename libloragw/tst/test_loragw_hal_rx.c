@@ -68,7 +68,7 @@ void usage(void) {
     printf( "Available options:\n");
     printf( " -h print this help\n");
     printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf( " -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
+    printf( " -c <uint> RF chain to be used for TX (Radio A or Radio B or both) [0,1,2]\n");
     printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
     printf( " -a <float> Radio A RX frequency in MHz\n");
     printf( " -b <float> Radio B RX frequency in MHz\n");
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
                 break;
             case 'c': /* <uint> RF chain */
                 i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
+                if ((i != 1) || (arg_u > 2)) {
                     printf("ERROR: argument parsing of -c argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 
     /* set configuration for RF chains */
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = ((rf_chain == 0) ? true : false);
+    rfconf.enable = ((rf_chain == 1) ? false : true); /* enabled for 0 or 2 */
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
     }
 
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = ((rf_chain == 1) ? true : false);
+    rfconf.enable = ((rf_chain == 0) ? false : true); /* enabled for 1 or 2 */
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
