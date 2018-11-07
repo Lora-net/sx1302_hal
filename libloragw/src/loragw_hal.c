@@ -521,10 +521,13 @@ int lgw_start(void) {
     if ((rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1257) || (rf_radio_type[rf_clkout] == LGW_RADIO_TYPE_SX1255)) {
         printf("Loading CAL fw for sx125x\n");
         if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
+            printf("ERROR: Failed to load calibration fw\n");
             return LGW_HAL_ERROR;
         }
         if (sx1302_cal_start(FW_VERSION_CAL, rf_enable, rf_rx_freq, rf_radio_type, &txgain_lut, rf_tx_enable) != LGW_HAL_SUCCESS) {
             printf("ERROR: radio calibration failed\n");
+            sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX125X);
+            sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
             return LGW_HAL_ERROR;
         }
     } else {
