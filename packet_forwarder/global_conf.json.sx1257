@@ -31,7 +31,7 @@
         "chan_multiSF_6": {"enable": true, "radio": 0, "if":  200000},
         "chan_multiSF_7": {"enable": true, "radio": 0, "if":  400000},
         "chan_Lora_std":  {"enable": true, "radio": 1, "if": -200000, "bandwidth": 250000, "spread_factor": 7},
-        "chan_FSK":       {"enable": false,"radio": 1, "if":  300000, "bandwidth": 125000, "datarate": 50000},
+        "chan_FSK":       {"enable": true, "radio": 1, "if":  300000, "bandwidth": 125000, "datarate": 50000},
         "tx_gain_lut":[
             {"rf_power": -6, "pa_gain": 0, "dac_gain": 3, "mix_gain":  8, "dig_gain": 0},
             {"rf_power": -3, "pa_gain": 0, "dac_gain": 3, "mix_gain": 10, "dig_gain": 0},
