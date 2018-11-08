@@ -304,7 +304,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
 @param pointer to structure defining the LUT
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf);
+int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf);
 
 /**
 @brief Connect to the LoRa concentrator, reset it and configure it according to previously set parameters

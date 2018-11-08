@@ -400,7 +400,7 @@ int main(int argc, char **argv)
     }
 
     if (txlut.size > 0) {
-        if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
+        if (lgw_txgain_setconf(rf_chain, &txlut) != LGW_HAL_SUCCESS) {
             printf("ERROR: failed to configure txgain lut\n");
             return EXIT_FAILURE;
         }

@@ -84,11 +84,11 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
     bool cal_status = false;
     uint8_t x_max;
     int x_max_idx;
-    uint8_t dac_gain[TX_GAIN_LUT_SIZE_MAX];
-    uint8_t mix_gain[TX_GAIN_LUT_SIZE_MAX];
-    int8_t offset_i[TX_GAIN_LUT_SIZE_MAX];
-    int8_t offset_q[TX_GAIN_LUT_SIZE_MAX];
-    uint8_t nb_gains;
+    uint8_t dac_gain[LGW_RF_CHAIN_NB][TX_GAIN_LUT_SIZE_MAX];
+    uint8_t mix_gain[LGW_RF_CHAIN_NB][TX_GAIN_LUT_SIZE_MAX];
+    int8_t offset_i[LGW_RF_CHAIN_NB][TX_GAIN_LUT_SIZE_MAX];
+    int8_t offset_q[LGW_RF_CHAIN_NB][TX_GAIN_LUT_SIZE_MAX];
+    uint8_t nb_gains[LGW_RF_CHAIN_NB];
     bool unique_gains;
     struct lgw_sx125x_cal_rx_result_s cal_rx[CAL_ITER], cal_rx_min, cal_rx_max;
     struct lgw_sx125x_cal_tx_result_s cal_tx[CAL_ITER], cal_tx_min, cal_tx_max;
@@ -168,35 +168,37 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
 
 
     /* Get List of unique combinations of DAC and mixer gains */
-    nb_gains = 0;
-    for (i = 0; i < txgain_lut->size; i++) {
-        unique_gains = true;
-        for (j = 0; j < nb_gains; j++) {
-            if ((txgain_lut->lut[i].dac_gain == dac_gain[j]) && (txgain_lut->lut[i].mix_gain == mix_gain[j])) {
-                unique_gains = false;
+    for (k = 0; k < LGW_RF_CHAIN_NB; k++) {
+        nb_gains[k] = 0;
+        for (i = 0; i < txgain_lut[k].size; i++) {
+            unique_gains = true;
+            for (j = 0; j < nb_gains[k]; j++) {
+                if ((txgain_lut[k].lut[i].dac_gain == dac_gain[k][j]) && (txgain_lut[k].lut[i].mix_gain == mix_gain[k][j])) {
+                    unique_gains = false;
+                }
             }
-        }
-        if (unique_gains) {
-            dac_gain[nb_gains] = txgain_lut->lut[i].dac_gain;
-            mix_gain[nb_gains] = txgain_lut->lut[i].mix_gain;
-            nb_gains++;
+            if (unique_gains) {
+                dac_gain[k][nb_gains[k]] = txgain_lut[k].lut[i].dac_gain;
+                mix_gain[k][nb_gains[k]] = txgain_lut[k].lut[i].mix_gain;
+                nb_gains[k] += 1;
+            }
         }
     }
 
     /* Run Tx image calibration */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (rf_tx_enable[i]) {
-            for (j = 0; j < nb_gains; j++) {
+            for (j = 0; j < nb_gains[i]; j++) {
                 cal_tx_result_init(&cal_tx_min, &cal_tx_max);
                 for (k = 0; k < CAL_ITER; k++){
-                    sx125x_cal_tx_dc_offset(i, rf_rx_freq[i], dac_gain[j], mix_gain[j], rf_radio_type[i], &cal_tx[k]);
+                    sx125x_cal_tx_dc_offset(i, rf_rx_freq[i], dac_gain[i][j], mix_gain[i][j], rf_radio_type[i], &cal_tx[k]);
                     cal_tx_result_sort(&cal_tx[k], &cal_tx_min, &cal_tx_max);
                 }
                 cal_status = cal_tx_result_assert(&cal_tx_min, &cal_tx_max);
 
                 if (cal_status == false) {
                     DEBUG_MSG("*********************************************\n");
-                    DEBUG_PRINTF("ERROR: Tx DC offset calibration of radio %d for DAC gain %d and mixer gain %2d failed\n", i, dac_gain[j], mix_gain[j]);
+                    DEBUG_PRINTF("ERROR: Tx DC offset calibration of radio %d for DAC gain %d and mixer gain %2d failed\n", i, dac_gain[i][j], mix_gain[i][j]);
                     DEBUG_MSG("*********************************************\n");
                     return LGW_HAL_ERROR;
                 }
@@ -210,32 +212,36 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
                         x_max_idx = k;
                     }
                 }
-                offset_i[j] = cal_tx[x_max_idx].offset_i;
-                offset_q[j] = cal_tx[x_max_idx].offset_q;
+                offset_i[i][j] = cal_tx[x_max_idx].offset_i;
+                offset_q[i][j] = cal_tx[x_max_idx].offset_q;
 
-                DEBUG_PRINTF("INFO: Tx DC offset calibration of radio %d for DAC gain %d and mixer gain %2d succeeded. Improved DC rejection by %2d dB (I:%4d Q:%4d)\n", i, dac_gain[j], mix_gain[j], cal_tx[x_max_idx].rej, cal_tx[x_max_idx].offset_i, cal_tx[x_max_idx].offset_q);
+                DEBUG_PRINTF("INFO: Tx DC offset calibration of radio %d for DAC gain %d and mixer gain %2d succeeded. Improved DC rejection by %2d dB (I:%4d Q:%4d)\n", i, dac_gain[i][j], mix_gain[i][j], cal_tx[x_max_idx].rej, cal_tx[x_max_idx].offset_i, cal_tx[x_max_idx].offset_q);
             }
         }
     }
 
     /* Fill DC offsets in Tx LUT */
-    for (i = 0; i < txgain_lut->size; i++) {
-        for (j = 0; j < nb_gains; j++) {
-            if ((txgain_lut->lut[i].dac_gain == dac_gain[j]) && (txgain_lut->lut[i].mix_gain == mix_gain[j])) {
-                break;
+    for (k = 0; k < LGW_RF_CHAIN_NB; k++) {
+        for (i = 0; i < txgain_lut[k].size; i++) {
+            for (j = 0; j < nb_gains[k]; j++) {
+                if ((txgain_lut[k].lut[i].dac_gain == dac_gain[k][j]) && (txgain_lut[k].lut[i].mix_gain == mix_gain[k][j])) {
+                    break;
+                }
             }
+            txgain_lut[k].lut[i].offset_i = offset_i[k][j];
+            txgain_lut[k].lut[i].offset_q = offset_q[k][j];
         }
-        txgain_lut->lut[i].offset_i = offset_i[j];
-        txgain_lut->lut[i].offset_q = offset_q[j];
     }
 
     printf("-------------------------------------------------------------------\n");
     printf("Radio calibration completed:\n");
     printf("  RadioA: amp:%d phi:%d\n", rf_rx_image_amp[0], rf_rx_image_phi[0]);
     printf("  RadioB: amp:%d phi:%d\n", rf_rx_image_amp[1], rf_rx_image_phi[1]);
-    printf("  TX calibration params:\n");
-    for (i = 0; i < txgain_lut->size; i++) {
-        printf("  -- power:%d\tdac:%u\tmix:%u\toffset_i:%d\toffset_q:%d\n", txgain_lut->lut[i].rf_power, txgain_lut->lut[i].dac_gain, txgain_lut->lut[i].mix_gain, txgain_lut->lut[i].offset_i, txgain_lut->lut[i].offset_q);
+    for (k = 0; k < LGW_RF_CHAIN_NB; k++) {
+        printf("  TX calibration params for rf_chain %d:\n", k);
+        for (i = 0; i < txgain_lut[k].size; i++) {
+            printf("  -- power:%d\tdac:%u\tmix:%u\toffset_i:%d\toffset_q:%d\n", txgain_lut[k].lut[i].rf_power, txgain_lut[k].lut[i].dac_gain, txgain_lut[k].lut[i].mix_gain, txgain_lut[k].lut[i].offset_i, txgain_lut[k].lut[i].offset_q);
+        }
     }
     printf("-------------------------------------------------------------------\n");
 
