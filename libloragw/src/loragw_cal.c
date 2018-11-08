@@ -39,7 +39,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_REG == 1
+#if DEBUG_CAL == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_SPI_ERROR;}
@@ -256,11 +256,9 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     uint32_t rx_freq_int, rx_freq_frac;
     uint32_t tx_freq_int, tx_freq_frac;
     uint8_t rx_pll_locked, tx_pll_locked;
-    uint8_t val;
     uint8_t rx_threshold = 8; /* Used by AGC to set decimation gain to increase signal and its image: value is MSB => x * 256 */
 
-    DEBUG_MSG("\n");
-    DEBUG_PRINTF("rf_chain:%u, freq_hz:%u, loopback:%d, radio_type:%d\n", rf_chain, freq_hz, use_loopback, radio_type);
+    printf("\n%s: rf_chain:%u, freq_hz:%u, loopback:%d, radio_type:%d\n", __FUNCTION__, rf_chain, freq_hz, use_loopback, radio_type);
 
     /* Indentify which radio is transmitting the test tone */
     rx = rf_chain;
@@ -269,9 +267,6 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     } else {
         tx = 1-rf_chain;
     }
-
-    lgw_sx125x_reg_r(SX125x_REG_VERSION, &val, rx);
-    printf("CAL: radio version 0x%02X\n", val);
 
     /* Set PLL frequencies */
     rx_freq_hz = freq_hz;
@@ -332,7 +327,6 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     }
 
     /* Trig calibration */
-    DEBUG_PRINTF("CAL: start RX calibration of rf_chain %u\n", rf_chain);
 
     /* Select radio to be connected to the Signal Analyzer (warning: RadioA:1, RadioB:0) */
     lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_RADIO_SEL, (rf_chain == 0) ? 1 : 0);
@@ -364,7 +358,7 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     sx1302_agc_mailbox_read(2, &cal_dec_gain);
     sx1302_agc_mailbox_read(1, &rx_sig_1);
     sx1302_agc_mailbox_read(0, &rx_sig_0);
-    printf("threshold:%u, cal_dec_gain:%u, rx_sig:%u\n", threshold * 256, cal_dec_gain, rx_sig_1 * 256 + rx_sig_0);
+    DEBUG_PRINTF("threshold:%u, cal_dec_gain:%u, rx_sig:%u\n", threshold * 256, cal_dec_gain, rx_sig_1 * 256 + rx_sig_0);
     sx1302_agc_mailbox_write(3, 0x06);
 
     sx1302_agc_wait_status(0x07);
@@ -373,7 +367,7 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     sx1302_agc_mailbox_read(2, &rx_img_init_0);
     sx1302_agc_mailbox_read(1, &amp);
     sx1302_agc_mailbox_read(0, &phi);
-    printf("rx_img_init_0:%u, rx_img_init_1:%u, amp:%d, phi:%d\n", rx_img_init_0, rx_img_init_1, (int8_t)amp, (int8_t)phi);
+    DEBUG_PRINTF("rx_img_init_0:%u, rx_img_init_1:%u, amp:%d, phi:%d\n", rx_img_init_0, rx_img_init_1, (int8_t)amp, (int8_t)phi);
     sx1302_agc_mailbox_write(3, 0x07);
 
     sx1302_agc_wait_status(0x08);
@@ -383,12 +377,12 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     sx1302_agc_mailbox_read(2, &rx_img_0);
     sx1302_agc_mailbox_read(1, &rx_noise_raw_1);
     sx1302_agc_mailbox_read(0, &rx_noise_raw_0);
-    printf("rx_img_1:%u, rx_img_0:%u, rx_noise_raw_1:%u, rx_noise_raw_0:%u\n", rx_img_1, rx_img_0, rx_noise_raw_1, rx_noise_raw_0);
+    DEBUG_PRINTF("rx_img_1:%u, rx_img_0:%u, rx_noise_raw_1:%u, rx_noise_raw_0:%u\n", rx_img_1, rx_img_0, rx_noise_raw_1, rx_noise_raw_0);
     rx_sig = (float)rx_sig_1 * 256 + (float)rx_sig_0;
     rx_noise_raw = (float)rx_noise_raw_1 * 256 + (float)rx_noise_raw_0;
     rx_img_init = (float)rx_img_init_1 * 256 + (float)rx_img_init_0;
     rx_img = (float)rx_img_1 * 256 + (float)rx_img_0;
-    printf("rx_img:%u, rx_noise_raw:%u\n", (uint16_t)rx_img, (uint16_t)rx_noise_raw);
+    DEBUG_PRINTF("rx_img:%u, rx_noise_raw:%u\n", (uint16_t)rx_img, (uint16_t)rx_noise_raw);
     sx1302_agc_mailbox_write(3, 0x08);
 
     res->amp = (int8_t)amp;
@@ -396,14 +390,14 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     res->snr = (uint16_t)(20 * log10(rx_sig/rx_noise_raw));
     res->rej_init = (uint16_t)(20 * log10(rx_sig/rx_img_init));
     res->rej = (uint16_t)(20 * log10(rx_sig/rx_img));
-    printf("snr:%u, rej:%u, rej_init:%u\n", res->snr, res->rej, res->rej_init);
+    DEBUG_PRINTF("snr:%u, rej:%u, rej_init:%u\n", res->snr, res->rej, res->rej_init);
 
     /* Wait for calibration to be completed */
     DEBUG_MSG("  CAL: waiting for RX calibration to complete...\n");
     sx1302_agc_wait_status((rf_chain == 0) ? 0x11 : 0x22);
     DEBUG_MSG("CAL: RX Calibration Done\n");
 
-    printf("  CAL: rf_chain:%u amp:%d phi:%d\n", rf_chain, res->amp, res->phi);
+    printf("%s, RESULT: rf_chain:%u amp:%d phi:%d\n", __FUNCTION__, rf_chain, res->amp, res->phi);
 
     return LGW_HAL_SUCCESS;
 }
@@ -419,8 +413,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     uint16_t reg;
     uint8_t tx_threshold = 4;
 
-    DEBUG_MSG("\n");
-    DEBUG_PRINTF("rf_chain:%u, freq_hz:%u, dac_gain:%u, mix_gain:%u, radio_type:%d\n", rf_chain, freq_hz, dac_gain, mix_gain, radio_type);
+    printf("\n%s: rf_chain:%u, freq_hz:%u, dac_gain:%u, mix_gain:%u, radio_type:%d\n", __FUNCTION__, rf_chain, freq_hz, dac_gain, mix_gain, radio_type);
 
     /* Set PLL frequencies */
     rx_freq_hz = freq_hz - CAL_TX_TONE_FREQ_HZ;
@@ -474,7 +467,6 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     }
 
     /* Trig calibration */
-    DEBUG_PRINTF("CAL: start TX calibration of rf_chain %u\n", rf_chain);
 
     /* Select radio to be connected to the Signal Analyzer (warning: RadioA:1, RadioB:0) */
     lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_RADIO_SEL, (rf_chain == 0) ? 1 : 0);
@@ -525,7 +517,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     sx1302_agc_mailbox_read(2, &cal_dec_gain);
     sx1302_agc_mailbox_read(1, &tx_sig_1);
     sx1302_agc_mailbox_read(0, &tx_sig_0);
-    printf("threshold:%u, cal_dec_gain:%u, tx_sig:%u\n", threshold * 256, cal_dec_gain, tx_sig_0 * 256 + tx_sig_1);
+    DEBUG_PRINTF("threshold:%u, cal_dec_gain:%u, tx_sig:%u\n", threshold * 256, cal_dec_gain, tx_sig_0 * 256 + tx_sig_1);
     sx1302_agc_mailbox_write(3, 0x06);
 
     sx1302_agc_wait_status(0x07);
@@ -542,15 +534,15 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     res->rej = (uint16_t)(20 * log10(tx_sig/tx_dc));
     res->offset_i = (int8_t)offset_i;
     res->offset_q = (int8_t)offset_q;
-    printf("tx_dc:%u, offset_i:%d, offset_q:%d\n", tx_dc_0 * 256 + tx_dc_1, (int8_t)offset_i, (int8_t)offset_q);
+    DEBUG_PRINTF("tx_dc:%u, offset_i:%d, offset_q:%d\n", tx_dc_0 * 256 + tx_dc_1, (int8_t)offset_i, (int8_t)offset_q);
     sx1302_agc_mailbox_write(3, 0x07);
 
-    printf("  CAL: offset_i:%d offset_q:%d rej:%u\n", res->offset_i, res->offset_q, res->rej);
+    printf("%s: RESULT: offset_i:%d offset_q:%d rej:%u\n", __FUNCTION__, res->offset_i, res->offset_q, res->rej);
 
     /* Wait for calibration to be completed */
-    DEBUG_MSG("  CAL: waiting for TX calibration to complete...\n");
+    DEBUG_MSG("waiting for TX calibration to complete...\n");
     sx1302_agc_wait_status((rf_chain == 0) ? 0x33 : 0x44);
-    DEBUG_MSG("CAL: TX Calibration Done\n");
+    DEBUG_MSG("TX Calibration Done\n");
 
     return LGW_HAL_SUCCESS;
 }
