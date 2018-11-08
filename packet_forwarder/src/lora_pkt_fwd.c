@@ -1517,20 +1517,23 @@ void thread_up(void) {
             if (p->modulation == MOD_LORA) {
                 /* Log nb of packets per channel, per SF */
                 nb_pkt_log[p->if_chain][p->datarate - 5] += 1;
+            } else if (p->modulation == MOD_FSK) {
+                nb_pkt_log[p->if_chain][0] += 1;
             }
         }
 
 #if 1
-        int l, m;
         {
+            int l, m;
             printf("\n");
-            for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
+            for (l = 0; l < (LGW_IF_CHAIN_NB - 1); l++) {
                 printf("CH%d: ", l);
                 for (m = 0; m < 8; m++) {
                     printf("\t%d", nb_pkt_log[l][m]);
                 }
                 printf("\n");
             }
+            printf("FSK: \t%d", nb_pkt_log[9][0]);
         }
 #endif
 
