@@ -1349,4 +1349,38 @@ int sx1302_arb_start(uint8_t version) {
     return LGW_HAL_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void sx1302_dump_rx_buffer(void) {
+    int i;
+    uint16_t mem_addr;
+    uint8_t rx_buffer[4096];
+    uint16_t sz_todo;
+    uint16_t chunk_size;
+    int chunk_cnt = 0;
+
+    memset(rx_buffer, 0, sizeof rx_buffer);
+
+    lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
+
+    sz_todo = 4096;
+    chunk_cnt = 0;
+    mem_addr = 0x4000;
+    while (sz_todo > 0) {
+        chunk_size = (sz_todo > 1024) ? 1024 : sz_todo;
+        printf("reading %d bytes\n", chunk_size);
+        mem_addr += chunk_size;
+        lgw_mem_rb(mem_addr, &rx_buffer[chunk_cnt * 1024], chunk_size);
+        sz_todo -= chunk_size;
+        chunk_cnt += 1;
+    }
+
+    lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 0);
+
+    for (i = 0; i < 4096; i++) {
+        printf("%02X ", rx_buffer[i]);
+    }
+    printf("\n");
+}
+
 /* --- EOF ------------------------------------------------------------------ */

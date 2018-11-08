@@ -776,11 +776,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("checkum_calc:0x%02X\n", checksum_calc);
         if (checksum != checksum_calc) {
             printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
-            //assert(0);
+#if 1
+            sx1302_dump_rx_buffer();
+            assert(0);
+#endif
             break;
-        } else {
-            /* TODO: readback to validate the SPI transaction */
-            //lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
         }
 
         printf("-----------------\n");
@@ -814,32 +814,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 rx_buffer_error = true;
             }
         }
-
         if (rx_buffer_error == true) {
-#if 1
-            uint16_t mem_addr;
-
-            /* Read the whole rx buffer for debug */
-            lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
-            memset(rx_fifo, 0, sizeof rx_fifo);
-            sz_todo = 4096;
-            chunk_cnt = 0;
-            mem_addr = 0x4000;
-            while (sz_todo > 0) {
-                chunk_size = (sz_todo > 1024) ? 1024 : sz_todo;
-                printf("reading %d bytes\n", chunk_size);
-                mem_addr += chunk_size;
-                lgw_mem_rb(mem_addr, &rx_fifo[chunk_cnt * 1024], chunk_size);
-                sz_todo -= chunk_size;
-                chunk_cnt += 1;
-            }
-            lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 0);
-            for (i = 0; i < 4096; i++) {
-                printf("%02X ", rx_fifo[i]);
-            }
-            printf("\n");
+            sx1302_dump_rx_buffer();
             assert(0);
-#endif
         }
 
         /* point to the proper struct in the struct array */

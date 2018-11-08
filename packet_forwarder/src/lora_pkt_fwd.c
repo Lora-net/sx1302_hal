@@ -1534,6 +1534,7 @@ void thread_up(void) {
                 printf("\n");
             }
             printf("FSK: \t%d", nb_pkt_log[9][0]);
+            printf("\n");
         }
 #endif
 
