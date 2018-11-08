@@ -793,6 +793,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("  hdr_err:  %u\n", SX1302_PKT_HEADER_ERROR(rx_fifo, buffer_index + payload_length));
         printf("  codr:     %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
         printf("  datr:     %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
+        printf("  f_offset  %d\n", (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0)));
         printf("-----------------\n");
 
         /* Sanity checks */
@@ -846,6 +847,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
         p->modem_id = SX1302_PKT_MODEM_ID(rx_fifo, buffer_index);
         p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
+        p->freq_offset = (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0));
         p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         /* TODO: RSSI correction */

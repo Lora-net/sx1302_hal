@@ -207,6 +207,7 @@ struct lgw_conf_rxif_s {
 */
 struct lgw_pkt_rx_s {
     uint32_t    freq_hz;        /*!> central frequency of the IF chain */
+    int32_t     freq_offset;
     uint8_t     if_chain;       /*!> by which IF chain was packet received */
     uint8_t     status;         /*!> status of the received packet */
     uint32_t    count_us;       /*!> internal concentrator counter for timestamping, 1 microsecond resolution */
