@@ -93,16 +93,16 @@ typedef struct
     uint32_t    nb_loop;   /* number of downlinks to be sent */
     uint32_t    delay_ms;  /* delay between 2 downlinks */
     int         sock;      /* socket file descriptor */
-    double      freq_mhz;
+    double      freq_mhz[2];
     double      freq_step;
     uint8_t     freq_nb;
     uint8_t     rf_chain;
     bool        rf_chain_alternate;
     uint16_t    bandwidth_khz;
-    uint8_t     spread_factor;
+    uint8_t     spread_factor[2];
     char        coding_rate[8];
-    int8_t      rf_power;
-    uint16_t    preamb_size;
+    int8_t      rf_power[2];
+    uint16_t    preamb_size[2];
     uint8_t     pl_size;
     bool        ipol;
     bool        tx_bypass;
@@ -139,9 +139,12 @@ int main( int argc, char **argv )
     int i, j, x; /* loop variable and temporary variable for return value */
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     unsigned arg_u = 0;
+    unsigned arg_u2 = 0;
     double arg_f = 0.0;
+    double arg_f_step = 0.0;
     double arg_f2 = 0.0;
     int arg_i = 0;
+    int arg_i2 = 0;
     char arg_s[8];
     bool parse_err = false;
 
@@ -185,10 +188,10 @@ int main( int argc, char **argv )
         .nb_loop = 1,
         .delay_ms = 1000,
         .bandwidth_khz = DEFAULT_LORA_BW,
-        .spread_factor = DEFAULT_LORA_SF,
+        .spread_factor = {DEFAULT_LORA_SF, DEFAULT_LORA_SF},
         .coding_rate = DEFAULT_LORA_CR,
-        .rf_power = 27,
-        .preamb_size = DEFAULT_LORA_PREAMBLE_SIZE,
+        .rf_power = {27, 27},
+        .preamb_size = {DEFAULT_LORA_PREAMBLE_SIZE, DEFAULT_LORA_PREAMBLE_SIZE},
         .pl_size = DEFAULT_PAYLOAD_SIZE,
         .freq_step = 0.2,
         .rf_chain = 0,
@@ -202,7 +205,7 @@ int main( int argc, char **argv )
     pthread_t thrid_down;
 
     /* Parse command line options */
-    while( ( i = getopt( argc, argv, "hP:A:F:Bt:x:b:s:f:c:p:r:z:a:il:" ) ) != -1 )
+    while( ( i = getopt( argc, argv, "a:b:c:f:hij:l:p:r:s:t:x:z:A:BF:P:" ) ) != -1 )
     {
         switch( i )
         {
@@ -232,28 +235,18 @@ int main( int argc, char **argv )
                 strncpy( serv_port_fwd, optarg, strlen( optarg ));
                 break;
 
-            case 'f': /* -f <float>  target frequency in MHz */
-                j = sscanf( optarg, "%lf:%u:%lf", &arg_f, &arg_u, &arg_f2 );
+            case 'f': /* -f <float,float>  target frequency in MHz */
+                j = sscanf( optarg, "%lf,%lf", &arg_f, &arg_f2 );
                 switch( j )
                 {
-                    case 3:
-                        if( (arg_f2 < 0.05) || (arg_f2 > 20.0) )
-                        {
-                            parse_err = true;
-                        }
-                        else
-                        {
-                            thread_params.freq_step = arg_f2;
-                        }
-                        /* No break */
                     case 2:
-                        if( (arg_u == 0) || (arg_u > 100) )
+                        if( (arg_f2 < 30.0) || (arg_f2 > 3000.0) )
                         {
                             parse_err = true;
                         }
                         else
                         {
-                            thread_params.freq_nb = arg_u;
+                            thread_params.freq_mhz[1] = arg_f2;
                         }
                         /* No break */
                     case 1:
@@ -263,20 +256,53 @@ int main( int argc, char **argv )
                         }
                         else
                         {
-                            thread_params.freq_mhz = arg_f;
+                            thread_params.freq_mhz[0] = arg_f;
                         }
                         break;
-
                     default:
                         parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -f argument\n" );
+                    usage( );
+                    return EXIT_FAILURE;
+                }
+                break;
 
-                    }
-                    if( parse_err )
-                    {
-                        printf( "ERROR: argument parsing of -f argument\n" );
-                        usage( );
-                        return EXIT_FAILURE;
-                    }
+            case 'j':
+                j = sscanf( optarg, "%u:%lf", &arg_u, &arg_f_step );
+                switch( j )
+                {
+                    case 2:
+                        if( (arg_f_step < 0.05) || (arg_f_step > 20.0) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.freq_step = arg_f_step;
+                        }
+                        /* No break */
+                    case 1:
+                        if( (arg_u == 0) || (arg_u > 100) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.freq_nb = arg_u;
+                        }
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -j argument\n" );
+                    usage( );
+                    return EXIT_FAILURE;
+                }
                 break;
 
             case 'a': /* -a <uint>  RF chain */
@@ -292,6 +318,12 @@ int main( int argc, char **argv )
                     thread_params.rf_chain = (uint8_t)arg_u;
                     if( arg_u == 2 )
                     {
+                        if ( (thread_params.freq_mhz[1] < 30.0) || (thread_params.freq_mhz[1] > 3000.0) )
+                        {
+                            printf( "ERROR: no frequency defined for RF1\n" );
+                            usage( );
+                            return EXIT_FAILURE;
+                        }
                         thread_params.rf_chain_alternate = true;
                     }
                 }
@@ -312,16 +344,37 @@ int main( int argc, char **argv )
                 break;
 
             case 's': /* -s <uint>  LoRa Spreading Factor */
-                j = sscanf( optarg, "%u", &arg_u );
-                if( (j != 1) || (arg_u < 7) || (arg_u > 12) )
+                j = sscanf( optarg, "%u,%u", &arg_u, &arg_u2 );
+                switch( j )
+                {
+                    case 2:
+                        if( (arg_u2 < 5) || (arg_u2 > 12) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.spread_factor[1] = (uint8_t)arg_u2;
+                        }
+                        /* No break */
+                    case 1:
+                        if( (arg_u < 5) || (arg_u > 12) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.spread_factor[0] = (uint8_t)arg_u;
+                        }
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
                 {
                     printf( "ERROR: argument parsing of -s argument\n" );
                     usage( );
                     return EXIT_FAILURE;
-                }
-                else
-                {
-                    thread_params.spread_factor = (uint8_t)arg_u;
                 }
                 break;
 
@@ -340,30 +393,72 @@ int main( int argc, char **argv )
                 break;
 
             case 'p': /* -p <int>  RF power (dBm) */
-                j = sscanf( optarg, "%i", &arg_i );
-                if( (j != 1) || (arg_i < -60) || (arg_i > 60) )
+                j = sscanf( optarg, "%i,%i", &arg_i, &arg_i2 );
+                switch( j )
                 {
-                    printf( "ERROR: argument parsing of -p argument\n" );
+                    case 2:
+                        if( (arg_i2 < -60) || (arg_i2 > 60) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.rf_power[1] = (int8_t)arg_i2;
+                        }
+                        /* No break */
+                    case 1:
+                        if( (arg_i < -60) || (arg_i > 60) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.rf_power[0] = (int8_t)arg_i;
+                        }
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -s argument\n" );
                     usage( );
                     return EXIT_FAILURE;
-                }
-                else
-                {
-                    thread_params.rf_power = (int8_t)arg_i;
                 }
                 break;
 
             case 'r': /* -r <uint>  preamble size */
-                j = sscanf( optarg, "%u", &arg_u );
-                if( (j != 1) || (arg_u < 6) || (arg_u > 65535) )
+                j = sscanf( optarg, "%u,%u", &arg_u, &arg_u2 );
+                switch( j )
                 {
-                    printf( "ERROR: argument parsing of -r argument\n" );
+                    case 2:
+                        if( (arg_u2 < 6) || (arg_u2 > 65535) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.preamb_size[1] = (uint16_t)arg_u2;
+                        }
+                        /* No break */
+                    case 1:
+                        if( (arg_u < 6) || (arg_u > 65535) )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.preamb_size[0] = (uint16_t)arg_u;
+                        }
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -s argument\n" );
                     usage( );
                     return EXIT_FAILURE;
-                }
-                else
-                {
-                    thread_params.preamb_size = (uint16_t)arg_u;
                 }
                 break;
 
@@ -911,18 +1006,17 @@ static void usage( void )
 {
     printf( "~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf( " -h  print this help\n" );
-    printf( " -f <float>        target frequency in MHz\n" );
-    printf( " -f <>:<unsigned>  previous + number of channels to jump\n" );
-    printf( " -f <>:<>:<float>  previous + explicit offset in MHz between channels\n" );
+    printf( " -f <float,float>  Target frequency in MHz for RF0,RF1\n" );
+    printf( " -j <uint>:<float> Number of channels to jump + explicit offset in MHz between channels\n" );
     printf( " -a <uint>         RF chain [0, 1, 2]\n" );
     printf( "                       0: RF chain A\n" );
     printf( "                       1: RF chain B\n" );
     printf( "                       2: alternate between RF chains A & B\n" );
     printf( " -b <uint>         LoRa bandwidth in kHz [125, 250, 500]\n" );
-    printf( " -s <uint>         LoRa Spreading Factor [7-12]\n" );
+    printf( " -s <uint,uint>    LoRa Spreading Factor [5-12] for RF0,RF1\n" );
     printf( " -c <string>       LoRa Coding Rate [\"4/5\", \"4/6\", ...]\n" );
-    printf( " -p <int>          RF power (dBm)\n" );
-    printf( " -r <uint>         Preamble size (symbols, [6..65535])\n" );
+    printf( " -p <int,int>      RF power (dBm) for RF0,RF1\n" );
+    printf( " -r <uint,uint>    Preamble size (symbols, [6..65535]) for RF0,RF1\n" );
     printf( " -z <uint>         Payload size (bytes, [4..255])\n" );
     printf( " -i                Set inverted polarity true\n" );
     printf( " -t <msec>         Number of milliseconds between two downlinks\n" );
@@ -974,6 +1068,9 @@ static void * thread_down( const void * arg )
     uint8_t payload[255];
     uint8_t payload_b64[341];
     double freq;
+    uint8_t sf;
+    int8_t rf_pwr;
+    uint16_t pream_sz;
     uint8_t rf_chain_select = 0;
 
     memset( datarate_string, 0, sizeof datarate_string );
@@ -1028,30 +1125,40 @@ static void * thread_down( const void * arg )
                 obj = json_object_get_object( root_obj, "txpk" );
 
                 /* Set downlink parameters */
-                freq = params->freq_mhz + ((i % params->freq_nb) * params->freq_step);
-                printf("***** freq = %lf\n", freq);
                 json_object_set_boolean( obj, "imme", true );
                 if( params->rf_chain_alternate == false )
                 {
+                    freq = params->freq_mhz[0] + ((i % params->freq_nb) * params->freq_step);
                     json_object_set_number( obj, "rfch", params->rf_chain );
                     json_object_set_number( obj, "freq", freq );
+                    sf = params->spread_factor[0];
+                    rf_pwr = params->rf_power[0];
+                    pream_sz = params->preamb_size[0];
                 }
                 else
                 {
                     json_object_set_number( obj, "rfch", rf_chain_select%2 ); /* alternate 0,1 */
-                    if( rf_chain_select%2 )
+                    if( rf_chain_select%2 ) /* RF1 */
                     {
-                        json_object_set_number( obj, "freq", freq );
+                        freq = params->freq_mhz[1] + (((i/2) % params->freq_nb) * params->freq_step);
+                        sf = params->spread_factor[1];
+                        rf_pwr = params->rf_power[1];
+                        pream_sz = params->preamb_size[1];
                     }
-                    else
+                    else /* RF0 */
                     {
-                        json_object_set_number( obj, "freq", freq + 0.5 );
+                        freq = params->freq_mhz[0] + (((i/2) % params->freq_nb) * params->freq_step);
+                        sf = params->spread_factor[0];
+                        rf_pwr = params->rf_power[0];
+                        pream_sz = params->preamb_size[0];
                     }
+                    json_object_set_number( obj, "freq", freq );
+                    printf("i:%d, rf_chain:%u, freq:%lf\n", i, rf_chain_select%2, freq);
                     rf_chain_select += 1;
                 }
-                json_object_set_number( obj, "powe", params->rf_power );
+                json_object_set_number( obj, "powe", rf_pwr );
                 json_object_set_string( obj, "modu", "LORA" );
-                sprintf( datarate_string, "SF%uBW%u", params->spread_factor, params->bandwidth_khz);
+                sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
                 json_object_set_string( obj, "datr", datarate_string );
                 json_object_set_string( obj, "codr", params->coding_rate );
                 if( params->ipol == true )
@@ -1062,7 +1169,7 @@ static void * thread_down( const void * arg )
                 {
                     json_object_set_boolean( obj, "ipol", false );
                 }
-                json_object_set_number( obj, "prea", params->preamb_size );
+                json_object_set_number( obj, "prea", pream_sz );
                 json_object_set_boolean( obj, "ncrc", true );
                 json_object_set_number( obj, "size", params->pl_size );
 
