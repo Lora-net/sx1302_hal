@@ -90,7 +90,7 @@ typedef enum
 
 typedef struct
 {
-    uint32_t    nb_loop;   /* number of downlinks to be sent */
+    uint32_t    nb_loop[2];   /* number of downlinks to be sent on each RF chain */
     uint32_t    delay_ms;  /* delay between 2 downlinks */
     int         sock;      /* socket file descriptor */
     double      freq_mhz[2];
@@ -185,7 +185,7 @@ int main( int argc, char **argv )
 
     /* Downlink variables */
     thread_params_t thread_params = {
-        .nb_loop = 1,
+        .nb_loop = {1, 1},
         .delay_ms = 1000,
         .bandwidth_khz = DEFAULT_LORA_BW,
         .spread_factor = {DEFAULT_LORA_SF, DEFAULT_LORA_SF},
@@ -421,7 +421,7 @@ int main( int argc, char **argv )
                 }
                 if( parse_err )
                 {
-                    printf( "ERROR: argument parsing of -s argument\n" );
+                    printf( "ERROR: argument parsing of -p argument\n" );
                     usage( );
                     return EXIT_FAILURE;
                 }
@@ -456,7 +456,7 @@ int main( int argc, char **argv )
                 }
                 if( parse_err )
                 {
-                    printf( "ERROR: argument parsing of -s argument\n" );
+                    printf( "ERROR: argument parsing of -r argument\n" );
                     usage( );
                     return EXIT_FAILURE;
                 }
@@ -485,7 +485,24 @@ int main( int argc, char **argv )
                 break;
 
             case 'x':
-                thread_params.nb_loop = atoi( optarg );
+                j = sscanf( optarg, "%u,%u", &arg_u, &arg_u2 );
+                switch( j )
+                {
+                    case 2:
+                        thread_params.nb_loop[1] = (uint32_t)arg_u2;
+                        /* No break */
+                    case 1:
+                        thread_params.nb_loop[0] = (uint32_t)arg_u;
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -x argument\n" );
+                    usage( );
+                    return EXIT_FAILURE;
+                }
                 break;
 
             default:
@@ -1020,7 +1037,7 @@ static void usage( void )
     printf( " -z <uint>         Payload size (bytes, [4..255])\n" );
     printf( " -i                Set inverted polarity true\n" );
     printf( " -t <msec>         Number of milliseconds between two downlinks\n" );
-    printf( " -x <num>          Number of downlinks to be sent\n" );
+    printf( " -x <uint,uint>    Number of downlinks to be sent for RF0,RF1\n" );
     printf( " -P <udp port>     UDP port of the Packet Forwarder\n" );
     printf( " -A <ip address>   IP address to be used for uplink forwarding (optional)\n" );
     printf( " -F <udp port>     UDP port to be used for uplink forwarding (optional)\n" );
@@ -1047,7 +1064,7 @@ static void sig_handler( int sigio )
 
 static void * thread_down( const void * arg )
 {
-    int i, j, x;
+    int j, x;
     int byte_nb;
     const thread_params_t *params = ( (thread_params_t*)arg );
 
@@ -1072,13 +1089,21 @@ static void * thread_down( const void * arg )
     int8_t rf_pwr;
     uint16_t pream_sz;
     uint8_t rf_chain_select = 0;
+    uint32_t nb_loop;
+    uint32_t pkt_sent[2] = {0,0};
+    uint8_t rf_max;
 
     memset( datarate_string, 0, sizeof datarate_string );
     memset( payload, 0, sizeof payload );
     memset( payload_b64, 0, sizeof payload_b64 );
 
-    i = 0;
-    while( !exit_sig && !quit_sig && ( i < (int)( params->nb_loop ) ) )
+    /* Global loop is the max loop defined */
+    rf_max = ((params->nb_loop[0] >= params->nb_loop[1]) ? 0 : 1);
+    nb_loop = params->nb_loop[rf_max];
+    printf("nb_loop max = %u, rf_max:%u\n", nb_loop, rf_max);
+
+    //i = 0;
+    while( !exit_sig && !quit_sig && ( pkt_sent[rf_max] < nb_loop ) )
     {
         /* Wait for socket address to be valid */
         pthread_mutex_lock( &mx_sockaddr );
@@ -1128,33 +1153,34 @@ static void * thread_down( const void * arg )
                 json_object_set_boolean( obj, "imme", true );
                 if( params->rf_chain_alternate == false )
                 {
-                    freq = params->freq_mhz[0] + ((i % params->freq_nb) * params->freq_step);
+                    freq = params->freq_mhz[0] + ((pkt_sent[0] % params->freq_nb) * params->freq_step);
                     json_object_set_number( obj, "rfch", params->rf_chain );
                     json_object_set_number( obj, "freq", freq );
                     sf = params->spread_factor[0];
                     rf_pwr = params->rf_power[0];
                     pream_sz = params->preamb_size[0];
+                    printf("rf_chain:%u, freq:%lf, pkt_sent:%d\n", params->rf_chain, freq, pkt_sent[0]);
                 }
                 else
                 {
                     json_object_set_number( obj, "rfch", rf_chain_select%2 ); /* alternate 0,1 */
-                    if( rf_chain_select%2 ) /* RF1 */
+
+                    /* Update downlink params for the current rf chain */
+                    freq = params->freq_mhz[rf_chain_select%2] + ((pkt_sent[rf_chain_select%2] % params->freq_nb) * params->freq_step);
+                    sf = params->spread_factor[rf_chain_select%2];
+                    rf_pwr = params->rf_power[rf_chain_select%2];
+                    pream_sz = params->preamb_size[rf_chain_select%2];
+                    if (pkt_sent[rf_chain_select%2] >= params->nb_loop[rf_chain_select%2])
                     {
-                        freq = params->freq_mhz[1] + (((i/2) % params->freq_nb) * params->freq_step);
-                        sf = params->spread_factor[1];
-                        rf_pwr = params->rf_power[1];
-                        pream_sz = params->preamb_size[1];
+                        /* skip downlink if already sent max number for this rf chain*/
+                        printf("skip %u\n", rf_chain_select%2);
+                        rf_chain_select += 1;
+                        usleep( params->delay_ms * 1E3 );
+                        continue;
                     }
-                    else /* RF0 */
-                    {
-                        freq = params->freq_mhz[0] + (((i/2) % params->freq_nb) * params->freq_step);
-                        sf = params->spread_factor[0];
-                        rf_pwr = params->rf_power[0];
-                        pream_sz = params->preamb_size[0];
-                    }
+
                     json_object_set_number( obj, "freq", freq );
-                    printf("i:%d, rf_chain:%u, freq:%lf\n", i, rf_chain_select%2, freq);
-                    rf_chain_select += 1;
+                    printf("rf_chain:%u, freq:%lf, pkt_sent:%d\n", rf_chain_select%2, freq, pkt_sent[rf_chain_select%2]);
                 }
                 json_object_set_number( obj, "powe", rf_pwr );
                 json_object_set_string( obj, "modu", "LORA" );
@@ -1176,7 +1202,7 @@ static void * thread_down( const void * arg )
                 /* Fill last bytes of payload with downlink counter (32 bits) */
                 for( j = 0; j < params->pl_size; j++ )
                 {
-                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (i >> (j * 8)) & 0xFF );
+                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (pkt_sent[rf_chain_select%2] >> (j * 8)) & 0xFF );
                 }
                 /* Convert payload to base64 */
                 j = bin_to_b64( payload, params->pl_size, (char *)(payload_b64), 341 ); /* 255 bytes = 340 chars in b64 + null char */
@@ -1207,7 +1233,7 @@ static void * thread_down( const void * arg )
                 }
                 else
                 {
-                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, i );
+                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent[rf_chain_select%2] );
                 }
 
                 /* free JSON memory */
@@ -1218,10 +1244,20 @@ static void * thread_down( const void * arg )
         }
 
         /* One more downlink sent */
-        i += 1;
+        pkt_sent[rf_chain_select%2] += 1;
+        if( params->rf_chain_alternate == true )
+        {
+            rf_chain_select += 1;
+            /* Wait before sending next downlink */
+            usleep( params->delay_ms * 1E3 / 2 );
+        }
+        else
+        {
+            /* Wait before sending next downlink */
+            usleep( params->delay_ms * 1E3 );
+        }
 
-        /* Wait before sending next downlink */
-        usleep( params->delay_ms * 1E3 );
+
     }
 
     /* Exit */
