@@ -1102,7 +1102,6 @@ static void * thread_down( const void * arg )
     nb_loop = params->nb_loop[rf_max];
     printf("nb_loop max = %u, rf_max:%u\n", nb_loop, rf_max);
 
-    //i = 0;
     while( !exit_sig && !quit_sig && ( pkt_sent[rf_max] < nb_loop ) )
     {
         /* Wait for socket address to be valid */
