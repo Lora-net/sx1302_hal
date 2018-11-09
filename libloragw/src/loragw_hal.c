@@ -1145,7 +1145,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             return LGW_HAL_ERROR;
     }
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW,
-                                        SX1302_REG_TX_TOP_A_AGC_TX_BW_AGC_TX_BW);
+                                        SX1302_REG_TX_TOP_B_AGC_TX_BW_AGC_TX_BW);
     lgw_reg_w(reg, mod_bw);
 
     /* Configure modem */
