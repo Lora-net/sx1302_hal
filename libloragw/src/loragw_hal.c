@@ -705,7 +705,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
-    uint32_t sf, cr = 0;
+    uint32_t sf, cr, bw_pow, crc_en, ppm; /* used to calculate timestamp correction */
+    uint32_t delay_x, delay_y, delay_z; /* temporary variable for timestamp offset calculation */
     uint32_t timestamp_correction; /* correction to account for processing delay */
 
     /* Check that AGC/ARB firmwares are not corrupted */
@@ -859,12 +860,15 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 /* CRC enabled */
                 if (SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + p->size)) {
                     p->status = STAT_CRC_BAD;
+                    crc_en = 1;
                 } else {
                     p->status = STAT_CRC_OK;
+                    crc_en = 1;
                 }
             } else {
                 /* CRC disabled */
                 p->status = STAT_NO_CRC;
+                crc_en = 0;
             }
             p->modulation = MOD_LORA;
             p->snr = ((int8_t)SX1302_PKT_SNR_AVG(rx_fifo, buffer_index + p->size)) / 4;
@@ -894,7 +898,57 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 default: p->coderate = CR_UNDEFINED;
             }
             num_ts_metrics = SX1302_PKT_NUM_TS_METRICS(rx_fifo, buffer_index + p->size);
-            timestamp_correction = 0; /* TODO */
+
+            /* determine if 'PPM mode' is on, needed for timestamp correction */
+            if (SET_PPM_ON(p->bandwidth, p->datarate)) {
+                ppm = 1;
+            } else {
+                ppm = 0;
+            }
+
+            /* timestamp correction code, base delay */
+            if (ifmod == IF_LORA_STD) { /* if packet was received on the stand-alone LoRa modem */
+                switch (lora_rx_bw) {
+                    case BW_125KHZ:
+                        delay_x = 64;
+                        bw_pow = 1;
+                        break;
+                    case BW_250KHZ:
+                        delay_x = 32;
+                        bw_pow = 2;
+                        break;
+                    case BW_500KHZ:
+                        delay_x = 16;
+                        bw_pow = 4;
+                        break;
+                    default:
+                        DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", p->bandwidth);
+                        delay_x = 0;
+                        bw_pow = 0;
+                }
+            } else { /* packet was received on one of the sensor channels = 125kHz */
+                delay_x = 114;
+                bw_pow = 1;
+            }
+
+            /* timestamp correction code, variable delay */
+            /* TODO: sf5 */
+            if ((sf >= 6) && (sf <= 12) && (bw_pow > 0)) {
+                if ((2*(sz + 2*crc_en) - (sf-7)) <= 0) { /* payload fits entirely in first 8 symbols */
+                    delay_y = ( ((1<<(sf-1)) * (sf+1)) + (3 * (1<<(sf-4))) ) / bw_pow;
+                    delay_z = 32 * (2*(sz+2*crc_en) + 5) / bw_pow;
+                } else {
+                    delay_y = ( ((1<<(sf-1)) * (sf+1)) + ((4 - ppm) * (1<<(sf-4))) ) / bw_pow;
+                    delay_z = (16 + 4*cr) * (((2*(sz+2*crc_en)-sf+6) % (sf - 2*ppm)) + 1) / bw_pow;
+                }
+                timestamp_correction = delay_x + delay_y + delay_z;
+            } else {
+                timestamp_correction = 0;
+                DEBUG_MSG("WARNING: invalid packet, no timestamp correction\n");
+            }
+
+            /* RSSI correction */
+            /* TODO ? */
         } else if (ifmod == IF_FSK_STD) {
             DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index), p->if_chain);
             if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index)) {
@@ -915,8 +969,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             p->bandwidth = fsk_rx_bw;
             p->datarate = fsk_rx_dr;
             p->coderate = CR_UNDEFINED;
-
-            timestamp_correction = 0; /* TODO */
+            timestamp_correction = ((uint32_t)680000 / fsk_rx_dr) - 20;
 
             /* RSSI correction */
             p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2);
@@ -933,6 +986,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             p->bandwidth = BW_UNDEFINED;
             p->datarate = DR_UNDEFINED;
             p->coderate = CR_UNDEFINED;
+            timestamp_correction = 0;
         }
 
         p->count_us  = (uint32_t)((SX1302_PKT_TIMESTAMP_7_0(rx_fifo, buffer_index + p->size) <<  0) & 0x000000FF);
@@ -940,7 +994,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(rx_fifo, buffer_index + p->size) << 16) & 0x00FF0000);
         p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(rx_fifo, buffer_index + p->size) << 24) & 0xFF000000);
         p->count_us /= 32;
-        p->count_us -= timestamp_correction; /* TODO */
+        p->count_us -= timestamp_correction;
 
         p->crc = (uint16_t)(SX1302_PKT_CRC_PAYLOAD_7_0(rx_fifo, buffer_index + p->size)) + ((uint16_t)(SX1302_PKT_CRC_PAYLOAD_15_8(rx_fifo, buffer_index + p->size)) << 8);
 
