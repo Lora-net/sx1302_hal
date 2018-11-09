@@ -411,7 +411,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     uint32_t tx_freq_int, tx_freq_frac;
     uint8_t rx_pll_locked, tx_pll_locked;
     uint16_t reg;
-    uint8_t tx_threshold = 4;
+    uint8_t tx_threshold = 64;
 
     printf("\n%s: rf_chain:%u, freq_hz:%u, dac_gain:%u, mix_gain:%u, radio_type:%d\n", __FUNCTION__, rf_chain, freq_hz, dac_gain, mix_gain, radio_type);
 
