@@ -1,0 +1,65 @@
+#!/usr/bin/expect -f
+
+#set multiPrompt {[#>$] }
+set multiPrompt "@raspberry"
+
+set hostname [lindex $argv 0]
+set login_usr [lindex $argv 1]
+set login_pwd [lindex $argv 2]
+set nb_loop [lindex $argv 3]
+set bin_path [lindex $argv 4]
+set timeout 60
+set count 0
+
+if {[llength $argv] < 5} {
+  send_user "missing parameter - IP address, user, pwd, nb loops, bin path\n"
+  exit 1
+}
+
+#
+# log on target
+#
+spawn ssh $login_usr@$hostname
+expect {
+    timeout { send_user "\nERROR: Failed to get pwd prompt\n"; exit 1 }
+    "*assword:" {
+        send "$login_pwd\r"
+    }
+    $multiPrompt
+}
+
+#
+# enter installation directory
+#
+expect {
+    timeout { send_user "\nERROR: Failed to get prompt\n"; exit 1 }
+    $multiPrompt { send "cd $bin_path\r" }
+}
+
+#
+# run boot loop
+#
+while {$count < $nb_loop} {
+    send_user "\n\n loop $count\n\n"
+    incr count
+    expect {
+        timeout { send_user "\nERROR: Failed to get prompt\n"; exit 1 }
+        $multiPrompt { send "./lora_pkt_fwd\r" }
+    }
+
+    expect {
+        timeout { send_user "\nERROR: Failed to start\n"; exit 1 }
+        "concentrator started, packet can now be received" { send \x03 }
+        "Unspecified error" { exit 1 }
+    }
+}
+
+#
+# exit
+#
+expect {
+    timeout { send_user "\nERROR: Failed to get prompt\n"; exit 1 }
+    $multiPrompt { send_user "\nINFO: PASSED\n"; send "exit\r" }
+}
+
+expect eof
