@@ -1179,6 +1179,8 @@ int main(void)
 void thread_up(void) {
     int i, j; /* loop variables */
     unsigned pkt_in_dgram; /* nb on Lora packet in the current datagram */
+    char stat_timestamp[24];
+    time_t t;
 
     /* allocate memory for packet fetching and processing */
     struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX]; /* array containing inbound packets + metadata */
@@ -1238,6 +1240,11 @@ void thread_up(void) {
             wait_ms(FETCH_SLEEP_MS);
             continue;
         }
+
+        /* get timestamp for statistics */
+        t = time(NULL);
+        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+        printf("\nCurrent time: %s \n", stat_timestamp);
 
         /* start composing datagram with the header */
         token_h = (uint8_t)rand(); /* random token */
