@@ -34,6 +34,7 @@ struct lgw_reg_s {
     bool     sign;        /*!< 1 indicates the register is signed (2 complem.) */
     uint8_t  leng;        /*!< number of bits in the register */
     bool     rdon;        /*!< 1 indicates a read-only register */
+    bool     chck;        /*!< register can be checked or not: (pulse, w0clr, w1clr) */
     int32_t  dflt;        /*!< register default value */
 };
 

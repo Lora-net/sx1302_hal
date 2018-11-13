@@ -42,7 +42,7 @@ int main()
     int32_t val;
     bool error_found = false;
     uint8_t rand_values[LGW_TOTALREGS];
-    bool reg_ignored[LGW_TOTALREGS]; /* store register to be ignored (pulse, w0clr, w1clr) */
+    bool reg_ignored[LGW_TOTALREGS]; /* store register to be ignored */
     uint8_t reg_val;
     uint8_t reg_max;
 
@@ -58,25 +58,6 @@ int main()
     /* The following registers cannot be tested this way */
     memset(reg_ignored, 0, sizeof reg_ignored);
     reg_ignored[SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL] = true; /* all test fails if we set this one to 1 */
-    reg_ignored[SX1302_REG_TX_TOP_A_TX_TRIG_TX_FSM_CLR] = true;
-    reg_ignored[SX1302_REG_TX_TOP_A_TX_FLAG_TX_TIMEOUT] = true;
-    reg_ignored[SX1302_REG_TX_TOP_A_TX_FLAG_PKT_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_A_LORA_TX_FLAG_FRAME_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_A_LORA_TX_FLAG_CONT_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_A_LORA_TX_FLAG_PLD_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_B_TX_TRIG_TX_FSM_CLR] = true;
-    reg_ignored[SX1302_REG_TX_TOP_B_TX_FLAG_TX_TIMEOUT] = true;
-    reg_ignored[SX1302_REG_TX_TOP_B_TX_FLAG_PKT_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_B_LORA_TX_FLAG_FRAME_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_B_LORA_TX_FLAG_CONT_DONE] = true;
-    reg_ignored[SX1302_REG_TX_TOP_B_LORA_TX_FLAG_PLD_DONE] = true;
-    reg_ignored[SX1302_REG_GPIO_HOST_IRQ_TX_TIMEOUT_B] = true;
-    reg_ignored[SX1302_REG_GPIO_HOST_IRQ_TX_TIMEOUT_A] = true;
-    reg_ignored[SX1302_REG_GPIO_HOST_IRQ_TX_DONE_B] = true;
-    reg_ignored[SX1302_REG_GPIO_HOST_IRQ_TX_DONE_A] = true;
-    reg_ignored[SX1302_REG_GPIO_HOST_IRQ_TIMESTAMP] = true;
-    reg_ignored[SX1302_REG_GPIO_HOST_IRQ_RX_BUFFER_WATERMARK] = true;
-    reg_ignored[SX1302_REG_RX_TOP_TXRX_CFG2_MODEM_START] = true;
 
     /* Test 1: read all registers and check default value for non-read-only registers */
     printf("## TEST#1: read all registers and check default value for non-read-only registers\n");
@@ -130,7 +111,7 @@ int main()
     }
     /* Read all registers and check if we got proper random value back */
     for (i = 0; i < LGW_TOTALREGS; i++) {
-        if ((loregs[i].rdon == 0) && (reg_ignored[i] == false)) {
+        if ((loregs[i].rdon == 0) && (loregs[i].chck == 1) && (reg_ignored[i] == false)) {
             x = lgw_reg_r(i, &val);
             if (x != LGW_REG_SUCCESS) {
                 printf("ERROR: failed to read register at index %d\n", i);
