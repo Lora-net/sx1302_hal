@@ -308,7 +308,6 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
         DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
     }
 
-#if 0 // TODO: disabled until there is a TCXO on the board
     switch (rf_radio_type) {
         case LGW_RADIO_TYPE_SX1255:
             lgw_sx125x_reg_w(SX125x_REG_SX1255_XOSC_TEST__GM_STARTUP, SX125x_XOSC_GM_STARTUP, rf_chain);
@@ -322,7 +321,6 @@ int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type);
             break;
     }
-#endif
 
     if (rf_enable == true) {
         /* Tx gain and trim */
