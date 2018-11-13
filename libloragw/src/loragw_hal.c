@@ -105,7 +105,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 #include "src/text_agc_sx1250_30_Oct_3.var"
 #include "src/text_agc_sx1257_09_Nov_2.var"
 #include "src/text_cal_sx1257_26_Oct_7.var"
-#include "src/text_arb_sx1302_06_Nov_2.var"
+#include "src/text_arb_sx1302_07_Nov_3_support_double_detects_SF9_12.var"
 
 /*
 The following static variables are the configuration set that the user can
@@ -785,16 +785,17 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         }
 
         printf("-----------------\n");
-        printf("  modem:    %u\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index));
-        printf("  chan:     %u\n", SX1302_PKT_CHANNEL(rx_fifo, buffer_index));
-        printf("  size:     %u\n", SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index));
-        printf("  crc_en:   %u\n", SX1302_PKT_CRC_EN(rx_fifo, buffer_index));
-        printf("  crc_err:  %u\n", SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + payload_length));
-        printf("  sync_err: %u\n", SX1302_PKT_SYNC_ERROR(rx_fifo, buffer_index + payload_length));
-        printf("  hdr_err:  %u\n", SX1302_PKT_HEADER_ERROR(rx_fifo, buffer_index + payload_length));
-        printf("  codr:     %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
-        printf("  datr:     %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
-        printf("  f_offset  %d\n", (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0)));
+        printf("  modem:      %u\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index));
+        printf("  chan:       %u\n", SX1302_PKT_CHANNEL(rx_fifo, buffer_index));
+        printf("  size:       %u\n", SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index));
+        printf("  crc_en:     %u\n", SX1302_PKT_CRC_EN(rx_fifo, buffer_index));
+        printf("  crc_err:    %u\n", SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + payload_length));
+        printf("  sync_err:   %u\n", SX1302_PKT_SYNC_ERROR(rx_fifo, buffer_index + payload_length));
+        printf("  hdr_err:    %u\n", SX1302_PKT_HEADER_ERROR(rx_fifo, buffer_index + payload_length));
+        printf("  timing_set: %u\n", SX1302_PKT_TIMING_SET(rx_fifo, buffer_index + payload_length));
+        printf("  codr:       %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
+        printf("  datr:       %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
+        printf("  f_offset    %d\n", (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0)));
         printf("-----------------\n");
 
         /* Sanity checks */
