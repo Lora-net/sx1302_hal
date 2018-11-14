@@ -211,7 +211,9 @@ int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_
     lgw_reg_w(reg, 1);
     lgw_reg_w(reg, 0);
 
-    lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN, 1);
+    reg = REG_SELECT(rf_chain,  SX1302_REG_RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN,
+                                SX1302_REG_RADIO_FE_CTRL0_RADIO_B_DC_NOTCH_EN);
+    lgw_reg_w(reg, 1);
 
     /* Measuring */
     if (use_agc == true) {
@@ -271,15 +273,25 @@ int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_
         int32_t abs_lsb, abs_msb;
         float abs_iq;
 
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET, (int8_t)q_offset);
-        lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET, (int8_t)i_offset);
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+        lgw_reg_w(reg, (int8_t)q_offset);
 
-        lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN, 1);
-        lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_FORCE_HOST_FILTER_GAIN, 0x01);
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+        lgw_reg_w(reg, (int8_t)i_offset);
 
-        lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_A_HOST_FILTER_GAIN, CAL_DEC_GAIN);
-        //lgw_reg_r(SX1302_REG_RADIO_FE_DEC_FILTER_RD_RADIO_A_DEC_FILTER_GAIN, &val);
-        //dec_gain = (uint8_t)val;
+        reg = REG_SELECT(rf_chain,  SX1302_REG_RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN,
+                                    SX1302_REG_RADIO_FE_CTRL0_RADIO_B_DC_NOTCH_EN);
+        lgw_reg_w(reg, 1);
+
+        reg = REG_SELECT(rf_chain,  SX1302_REG_RADIO_FE_CTRL0_RADIO_A_FORCE_HOST_FILTER_GAIN,
+                                    SX1302_REG_RADIO_FE_CTRL0_RADIO_B_FORCE_HOST_FILTER_GAIN);
+        lgw_reg_w(reg, 0x01);
+
+        reg = REG_SELECT(rf_chain,  SX1302_REG_RADIO_FE_CTRL0_RADIO_A_HOST_FILTER_GAIN,
+                                    SX1302_REG_RADIO_FE_CTRL0_RADIO_B_HOST_FILTER_GAIN);
+        lgw_reg_w(reg, CAL_DEC_GAIN);
 
         lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_FORCE_HAL_CTRL, 1);
 
@@ -615,6 +627,10 @@ int main(int argc, char **argv)
     //test_iq_offset(rf_chain, 16, false, true); /* rf_chain, f_offset, full_log, use_agc */
 
     //test_amp_phi(rf_chain, 240, true, true); /* rf_chain, f_offset, full_log, use_agc */
+
+
+    sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX125X);
+    sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
 
     /* disconnect the gateway */
     x = lgw_disconnect();
