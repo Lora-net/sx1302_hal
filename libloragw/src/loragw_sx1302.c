@@ -1403,8 +1403,8 @@ void sx1302_dump_rx_buffer(void) {
     while (sz_todo > 0) {
         chunk_size = (sz_todo > 1024) ? 1024 : sz_todo;
         printf("reading %d bytes\n", chunk_size);
-        mem_addr += chunk_size;
         lgw_mem_rb(mem_addr, &rx_buffer[chunk_cnt * 1024], chunk_size);
+        mem_addr += chunk_size;
         sz_todo -= chunk_size;
         chunk_cnt += 1;
     }
