@@ -531,7 +531,8 @@ int lgw_start(void) {
         }
     }
     /* -- Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout, false);
+    sx1302_radio_clock_select(rf_clkout, true);
+
     /* -- Ensure PA/LNA are disabled */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 1);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_PA_EN, 0);
@@ -562,6 +563,8 @@ int lgw_start(void) {
     }
     /* -- Release control over FE */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
+
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x00); /* Needed for radio reset */
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
