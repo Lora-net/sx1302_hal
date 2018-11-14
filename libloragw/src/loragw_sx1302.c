@@ -53,6 +53,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define BYPASS_FW_INIT          0
+
 #define AGC_RADIO_A_INIT_DONE   0x80
 #define AGC_RADIO_B_INIT_DONE   0x20
 
@@ -845,6 +847,11 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     uint8_t val;
     struct agc_gain_params_s agc_params;
 
+#if BYPASS_FW_INIT
+    printf("Disable AGC init protocol\n");
+    sx1302_agc_mailbox_write(2, 0xF7);
+#endif
+
     /* Wait for AGC fw to be started, and VERSION available in mailbox */
     sx1302_agc_wait_status(0x01); /* fw has started, VERSION is ready in mailbox */
 
@@ -854,6 +861,11 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
         return LGW_HAL_ERROR;
     }
     printf("AGC FW VERSION: %d\n", val);
+
+#if BYPASS_FW_INIT
+    printf("Bypass AGC init protocol\n");
+    return 0;
+#endif
 
     /* Configure Radio A gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
@@ -1321,6 +1333,11 @@ void sx1302_arb_print_debug_stats(bool full) {
 int sx1302_arb_start(uint8_t version) {
     uint8_t val;
 
+#if BYPASS_FW_INIT
+    printf("Disable ARB init protocol\n");
+    sx1302_arb_debug_write(2, 0xF7);
+#endif
+
     /* Wait for ARB fw to be started, and VERSION available in debug registers */
     sx1302_arb_wait_status(0x01);
 
@@ -1331,6 +1348,11 @@ int sx1302_arb_start(uint8_t version) {
         return LGW_HAL_ERROR;
     }
     printf("ARB FW VERSION: %d\n", val);
+
+#if BYPASS_FW_INIT
+    printf("Bypass ARB init protocol\n");
+    return 0;
+#endif
 
     /* Enable/disable ARB detect/modem alloc stats for the specified SF */
     sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
