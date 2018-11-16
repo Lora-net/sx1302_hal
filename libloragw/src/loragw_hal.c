@@ -823,11 +823,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
             if (log_file != NULL) {
                 fprintf(log_file, "\nWARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
-                fprintf(log_file, "last_addr_read_before: %u\n", last_addr_read_before);
-                fprintf(log_file, "last_addr_write_before: %u\n", last_addr_write_before);
                 DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
-                fprintf(log_file, "last_addr_read_after: %u\n", last_addr_read_after);
-                fprintf(log_file, "last_addr_write_after: %u\n", last_addr_write_after);
             }
             sx1302_dump_rx_buffer(log_file);
             //assert(0);
