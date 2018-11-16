@@ -768,6 +768,11 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
         return -1;
     }
 
+#if BYPASS_FW_INIT
+    printf("Disable AGC init protocol\n");
+    sx1302_agc_mailbox_write(2, 0xF7);
+#endif
+
     /* Release control over AGC MCU */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x00);
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
@@ -857,11 +862,6 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
 int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
     uint8_t val;
     struct agc_gain_params_s agc_params;
-
-#if BYPASS_FW_INIT
-    printf("Disable AGC init protocol\n");
-    sx1302_agc_mailbox_write(2, 0xF7);
-#endif
 
     /* Wait for AGC fw to be started, and VERSION available in mailbox */
     sx1302_agc_wait_status(0x01); /* fw has started, VERSION is ready in mailbox */
@@ -1184,6 +1184,11 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
         return -1;
     }
 
+#if BYPASS_FW_INIT
+    printf("Disable ARB init protocol\n");
+    sx1302_arb_debug_write(2, 0xF7);
+#endif
+
     /* Release control over ARB MCU */
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_HOST_PROG, 0x00);
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x00);
@@ -1343,11 +1348,6 @@ void sx1302_arb_print_debug_stats(bool full) {
 
 int sx1302_arb_start(uint8_t version) {
     uint8_t val;
-
-#if BYPASS_FW_INIT
-    printf("Disable ARB init protocol\n");
-    sx1302_arb_debug_write(2, 0xF7);
-#endif
 
     /* Wait for ARB fw to be started, and VERSION available in debug registers */
     sx1302_arb_wait_status(0x01);
