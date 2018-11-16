@@ -367,7 +367,7 @@ int sx1302_fsk_configure(bool * if_rf_chain, int32_t * channel_if, uint64_t sync
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_lora_correlator_configure() {
-    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_2_SAME_PEAKS, 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_2_SAME_PEAKS, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_AUTO_RESCALE, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_COEFF, 2);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG1_ACC_PEAK_POS_SEL, 1);
@@ -376,13 +376,13 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG2_ACC_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_PEAK_NB, 5);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG7_MSP2_PEAK_NB, 5);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_2_SAME_PEAKS, 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_2_SAME_PEAKS, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_AUTO_RESCALE, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_COEFF, 2);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG1_ACC_PEAK_POS_SEL, 1);
@@ -391,10 +391,10 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG4_MSP_PNR, 32);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_PEAK_NB, 4);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG2_ACC_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG4_MSP_PNR, 24);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG5_MSP2_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG7_MSP2_PEAK_NB, 5);
 
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG1_ACC_2_SAME_PEAKS, 1);
@@ -406,10 +406,10 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG2_ACC_PNR, 55);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG2_ACC_PNR, 52);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG6_MSP_PEAK_NB, 3);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF7_CFG7_MSP2_PEAK_NB, 4);
 
     lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG1_ACC_2_SAME_PEAKS, 1);
@@ -421,10 +421,10 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG2_ACC_PNR, 52);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG6_MSP_PEAK_NB, 3);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF8_CFG7_MSP2_PEAK_NB, 5);
 
     lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG1_ACC_2_SAME_PEAKS, 1);
@@ -436,10 +436,10 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG2_ACC_PNR, 52);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG6_MSP_PEAK_NB, 3);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF9_CFG7_MSP2_PEAK_NB, 5);
 
     lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG1_ACC_2_SAME_PEAKS, 1);
@@ -451,10 +451,10 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG2_ACC_PNR, 52);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG6_MSP_PEAK_NB, 3);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF10_CFG7_MSP2_PEAK_NB, 5);
 
     lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG1_ACC_2_SAME_PEAKS, 1);
@@ -466,10 +466,10 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG2_ACC_PNR, 52);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG6_MSP_PEAK_NB, 3);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF11_CFG7_MSP2_PEAK_NB, 5);
 
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG1_ACC_2_SAME_PEAKS, 1);
@@ -481,16 +481,16 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_POS_SEL, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_NOISE_COEFF, 2);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG2_ACC_PNR, 64);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG4_MSP_PNR, 32);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG2_ACC_PNR, 52);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG4_MSP_PNR, 24);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG5_MSP2_PNR, 48);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 3);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_MSP2_PEAK_NB, 5);
 
     lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_ENABLE_CLK_EN, 0xFF);
 
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE, 0xFF);
-    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0x00);
+    lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0xFF);
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFF); /* 12 11 10 9 8 7 6 5 */
     lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0xFF); /* 1 correlator per channel */
 
@@ -624,8 +624,6 @@ int sx1302_lora_modem_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF12, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF11, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF12, 1);
-    lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_A_1_GAIN_P_PREAMB, 7);
-    lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_1_GAIN_P_PREAMB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4);
 
     /* Latch end-of-packet timestamp (sx1301 compatibility) */
