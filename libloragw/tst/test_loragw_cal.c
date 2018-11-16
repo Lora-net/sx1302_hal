@@ -54,8 +54,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
 
-#define DEFAULT_DAC_GAIN    2
-#define DEFAULT_MIX_GAIN    14
+#define DEFAULT_DAC_GAIN    3
+#define DEFAULT_MIX_GAIN    15
 
 #define CAL_TX_TONE_FREQ_HZ     250000
 #define CAL_DEC_GAIN            8
@@ -86,7 +86,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
-#include "src/text_cal_sx1257_26_Oct_7.var"
+#include "src/text_cal_sx1257_16_Nov_1.var"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -435,6 +435,23 @@ int test_amp_phi(uint8_t rf_chain, uint8_t f_offset, bool full_log, bool use_agc
     return 0;
 }
 
+int test_capture_ram(uint8_t rf_chain) {
+    uint16_t reg;
+
+    setup_tx_dc_offset(rf_chain, rf_rx_freq[rf_chain], txlut.lut[0].dac_gain, txlut.lut[0].mix_gain, rf_radio_type[rf_chain]);
+
+    reg = REG_SELECT(rf_chain,  SX1302_REG_RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN,
+                                SX1302_REG_RADIO_FE_CTRL0_RADIO_B_DC_NOTCH_EN);
+    lgw_reg_w(reg, 1);
+
+    printf("Waiting...\n");
+    while ((quit_sig != 1) && (exit_sig != 1)) {
+        wait_ms(1000);
+    }
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     int i, x;
@@ -624,10 +641,11 @@ int main(int argc, char **argv)
     test_freq_scan(rf_chain, false, false); /* rf_chain, full_log, use_agc */
     /* gnuplot> plot 'log.txt' with lines */
 
-    //test_iq_offset(rf_chain, 16, false, true); /* rf_chain, f_offset, full_log, use_agc */
+    //test_iq_offset(rf_chain, 16, false, false); /* rf_chain, f_offset, full_log, use_agc */
 
     //test_amp_phi(rf_chain, 240, true, true); /* rf_chain, f_offset, full_log, use_agc */
 
+    //test_capture_ram(rf_chain);
 
     sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX125X);
     sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);

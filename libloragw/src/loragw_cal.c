@@ -36,6 +36,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_cal.h"
 
 /* -------------------------------------------------------------------------- */
+/* --- DEBUG FLAGS ---------------------------------------------------------- */
+
+#define TX_CALIB_DONE_BY_HAL    0
+
+/* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -54,13 +59,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define CAL_TX_TONE_FREQ_HZ     250000
 #define CAL_ITER                3 /* Number of calibration iterations */
+#define CAL_TX_CORR_DURATION    0 /* 0:1ms, 1:2ms, 2:4ms, 3:8ms */
 
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
 /* Record Rx IQ mismatch corrections from calibration */
-static int8_t rf_rx_image_amp[LGW_RF_CHAIN_NB];
-static int8_t rf_rx_image_phi[LGW_RF_CHAIN_NB];
+static int8_t rf_rx_image_amp[LGW_RF_CHAIN_NB] = {0, 0};
+static int8_t rf_rx_image_phi[LGW_RF_CHAIN_NB] = {0, 0};
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -112,7 +118,7 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
     printf("CAL: started\n");
 
     /* Run Rx image calibration */
-    for (i = 0; i < LGW_RF_CHAIN_NB; i++) { /* TODO: loop on rf_chain */
+    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (rf_enable[i]) {
             /* Calibration using the other radio for Tx */
             if (rf_radio_type[0] == rf_radio_type[1]) {
@@ -165,7 +171,6 @@ int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, e
     lgw_reg_w(SX1302_REG_RADIO_FE_IQ_COMP_PHI_COEFF_RADIO_A_PHI_COEFF, (int32_t)rf_rx_image_phi[0]);
     lgw_reg_w(SX1302_REG_RADIO_FE_IQ_COMP_AMP_COEFF_RADIO_B_AMP_COEFF, (int32_t)rf_rx_image_amp[1]);
     lgw_reg_w(SX1302_REG_RADIO_FE_IQ_COMP_PHI_COEFF_RADIO_B_PHI_COEFF, (int32_t)rf_rx_image_phi[1]);
-
 
     /* Get List of unique combinations of DAC and mixer gains */
     for (k = 0; k < LGW_RF_CHAIN_NB; k++) {
@@ -334,7 +339,7 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     /* Set calibration parameters */
     sx1302_agc_mailbox_write(2, rf_chain); /* Set RX test config: radioA:0 radioB:1 */
     sx1302_agc_mailbox_write(1, CAL_TX_TONE_FREQ_HZ * 64e-6); /* Set frequency */
-    sx1302_agc_mailbox_write(0, 0); /* correlation duration: 0:1ms, 1:2ms, 2:4ms, 3:8ms) */
+    sx1302_agc_mailbox_write(0, CAL_TX_CORR_DURATION);
 
     sx1302_agc_mailbox_write(3, 0x00);
     sx1302_agc_mailbox_write(3, 0x01);
@@ -412,6 +417,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     uint8_t rx_pll_locked, tx_pll_locked;
     uint16_t reg;
     uint8_t tx_threshold = 64;
+    int i;
 
     printf("\n%s: rf_chain:%u, freq_hz:%u, dac_gain:%u, mix_gain:%u, radio_type:%d\n", __FUNCTION__, rf_chain, freq_hz, dac_gain, mix_gain, radio_type);
 
@@ -484,31 +490,39 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
                                 SX1302_REG_RADIO_FE_CTRL0_RADIO_B_DC_NOTCH_EN);
     lgw_reg_w(reg, 1);
 
+#if TX_CALIB_DONE_BY_HAL /* For debug */
+
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_FORCE_HAL_CTRL, 1);
+    agc_cal_tx_dc_offset(rf_chain, CAL_TX_TONE_FREQ_HZ * 64e-6, rf_rx_image_amp[rf_chain], rf_rx_image_phi[rf_chain], tx_threshold, 0, &(res->offset_i), &(res->offset_q), &(res->rej));
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_FORCE_HAL_CTRL, 0);
+
+#else
+
     /* Set calibration parameters */
     sx1302_agc_mailbox_write(2, rf_chain + 2); /* Set TX test config: radioA:2 radioB:3 */
     sx1302_agc_mailbox_write(1, CAL_TX_TONE_FREQ_HZ * 64e-6); /* Set frequency */
     sx1302_agc_mailbox_write(0, 0); /* correlation duration: 0:1ms, 1:2ms, 2:4ms, 3:8ms) */
 
-    sx1302_agc_mailbox_write(3, 0x00);
-    sx1302_agc_mailbox_write(3, 0x01);
+    sx1302_agc_mailbox_write(3, 0x00); /* sync */
+    sx1302_agc_mailbox_write(3, 0x01); /* sync */
     sx1302_agc_wait_status(0x01);
 
     sx1302_agc_mailbox_write(2, rf_rx_image_amp[rf_chain]); /* amp */
     sx1302_agc_mailbox_write(1, rf_rx_image_phi[rf_chain]); /* phi */
 
-    sx1302_agc_mailbox_write(3, 0x02);
+    sx1302_agc_mailbox_write(3, 0x02); /* sync */
     sx1302_agc_wait_status(0x02);
 
     sx1302_agc_mailbox_write(2, 0); /* i offset init */
     sx1302_agc_mailbox_write(1, 0); /* q offset init */
 
-    sx1302_agc_mailbox_write(3, 0x03);
+    sx1302_agc_mailbox_write(3, 0x03); /* sync */
     sx1302_agc_wait_status(0x03);
 
     sx1302_agc_mailbox_write(2, 0);
     sx1302_agc_mailbox_write(1, tx_threshold);
 
-    sx1302_agc_mailbox_write(3, 0x04);
+    sx1302_agc_mailbox_write(3, 0x04); /* sync */
 
     /* Get calibration results */
     sx1302_agc_wait_status(0x06);
@@ -518,7 +532,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     sx1302_agc_mailbox_read(1, &tx_sig_1);
     sx1302_agc_mailbox_read(0, &tx_sig_0);
     DEBUG_PRINTF("threshold:%u, cal_dec_gain:%u, tx_sig:%u\n", threshold * 256, cal_dec_gain, tx_sig_0 * 256 + tx_sig_1);
-    sx1302_agc_mailbox_write(3, 0x06);
+    sx1302_agc_mailbox_write(3, 0x06); /* sync */
 
     sx1302_agc_wait_status(0x07);
     uint8_t tx_dc_0, tx_dc_1, offset_i, offset_q;
@@ -527,21 +541,107 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     sx1302_agc_mailbox_read(2, &tx_dc_0);
     sx1302_agc_mailbox_read(1, &offset_i);
     sx1302_agc_mailbox_read(0, &offset_q);
-    //res->sig = tx_sig;
-    //rej = 20 * log10(tx_sig/dc)
     tx_sig = (float)tx_sig_1 * 256 + (float)tx_sig_0;
     tx_dc = (float)tx_dc_1 * 256 + (float)tx_dc_0;
     res->rej = (uint16_t)(20 * log10(tx_sig/tx_dc));
     res->offset_i = (int8_t)offset_i;
     res->offset_q = (int8_t)offset_q;
     DEBUG_PRINTF("tx_dc:%u, offset_i:%d, offset_q:%d\n", tx_dc_0 * 256 + tx_dc_1, (int8_t)offset_i, (int8_t)offset_q);
-    sx1302_agc_mailbox_write(3, 0x07);
+    sx1302_agc_mailbox_write(3, 0x07); /* sync */
+
+    /* -----------------------------------------------*/
+    /* DEBUG: Get IQ offsets selected for iterations */
+    uint8_t index[12];
+
+    sx1302_agc_wait_status(0x08);
+    sx1302_agc_mailbox_read(3, &index[0]);
+    sx1302_agc_mailbox_read(2, &index[1]);
+    sx1302_agc_mailbox_read(1, &index[2]);
+    sx1302_agc_mailbox_read(0, &index[3]);
+    sx1302_agc_mailbox_write(3, 0x08); /* sync */
+
+    sx1302_agc_wait_status(0x09);
+    sx1302_agc_mailbox_read(3, &index[4]);
+    sx1302_agc_mailbox_read(2, &index[5]);
+    sx1302_agc_mailbox_read(1, &index[6]);
+    sx1302_agc_mailbox_read(0, &index[7]);
+    sx1302_agc_mailbox_write(3, 0x09); /* sync */
+
+    sx1302_agc_wait_status(0x0a);
+    sx1302_agc_mailbox_read(3, &index[8]);
+    sx1302_agc_mailbox_read(2, &index[9]);
+    sx1302_agc_mailbox_read(1, &index[10]);
+    sx1302_agc_mailbox_read(0, &index[11]);
+    sx1302_agc_mailbox_write(3, 0x0a); /* sync */
+
+#if DEBUG_CAL == 1
+    int16_t lut_calib[9] = {64, 43, 28, 19, 13, 8, 6, 4, 2};
+    int16_t offset_i_tmp = 0;
+    int16_t offset_q_tmp = 0;
+
+    printf("IQ sequence:");
+    for (i = 0; i < 9; i++) {
+        if (index[i] == 0) {
+            offset_i_tmp = offset_i_tmp + 0;
+            offset_q_tmp = offset_q_tmp + 0;
+
+        }else if(index[i] == 1) {
+            offset_i_tmp = offset_i_tmp + lut_calib[i];
+            offset_q_tmp = offset_q_tmp + lut_calib[i];
+        }else if(index[i] == 2) {
+            offset_i_tmp = offset_i_tmp + lut_calib[i];
+            offset_q_tmp = offset_q_tmp - lut_calib[i];
+        }else if(index[i] == 3) {
+            offset_i_tmp = offset_i_tmp - lut_calib[i];
+            offset_q_tmp = offset_q_tmp + lut_calib[i];
+        }else if(index[i] == 4) {
+            offset_i_tmp = offset_i_tmp - lut_calib[i];
+            offset_q_tmp = offset_q_tmp - lut_calib[i];
+        }
+        printf("i:%d q:%d\n", offset_i_tmp, offset_q_tmp);
+    }
+    printf("\n");
+
+#endif /* DEBUG_CAL */
+    /* -----------------------------------------------*/
+
+    /* -----------------------------------------------*/
+    /* DEBUG: Get TX_SIG returned by siognal analyzer */
+    uint8_t msb[40];
+    uint8_t lsb[40];
+
+    for (i = 0; i < 20; i++) {
+        sx1302_agc_wait_status(0x0c + i);
+        sx1302_agc_mailbox_read(3, &msb[2*i]);
+        sx1302_agc_mailbox_read(2, &lsb[2*i]);
+        sx1302_agc_mailbox_read(1, &msb[2*i+1]);
+        sx1302_agc_mailbox_read(0, &lsb[2*i+1]);
+        sx1302_agc_mailbox_write(3, 0x0c + i); /* sync */
+    }
+    sx1302_agc_wait_status(0x0c + 20);
+
+#if DEBUG_CAL == 1
+    printf("TX_SIG values returned by signal analyzer:\n");
+    for (i = 0; i < 40; i++) {
+        if (i%5 == 0) {
+            printf("\n");
+        }
+        printf("%u ", msb[i] * 256 + lsb[i]);
+    }
+    printf("\n");
+#endif /* DEBUG_CAL */
+
+    sx1302_agc_mailbox_write(3, 0x0c + 20); /* sync */
+    /* -----------------------------------------------*/
 
     printf("%s: RESULT: offset_i:%d offset_q:%d rej:%u\n", __FUNCTION__, res->offset_i, res->offset_q, res->rej);
 
     /* Wait for calibration to be completed */
     DEBUG_MSG("waiting for TX calibration to complete...\n");
     sx1302_agc_wait_status((rf_chain == 0) ? 0x33 : 0x44);
+
+#endif /* TX_CALIB_DONE_BY_HAL */
+
     DEBUG_MSG("TX Calibration Done\n");
 
     return LGW_HAL_SUCCESS;
@@ -638,12 +738,307 @@ void cal_tx_result_sort(struct lgw_sx125x_cal_tx_result_s *res_tx, struct lgw_sx
 }
 
 bool cal_tx_result_assert(struct lgw_sx125x_cal_tx_result_s *res_tx_min, struct lgw_sx125x_cal_tx_result_s *res_tx_max) {
-    if (    ((res_tx_max->offset_i - res_tx_min->offset_i) > 4)
+    if (   ((res_tx_max->offset_i - res_tx_min->offset_i) > 4)
         || ((res_tx_max->offset_q - res_tx_min->offset_q) > 4)
         || (res_tx_min->rej < 10) )
         return false;
     else
         return true;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+#if TX_CALIB_DONE_BY_HAL
+
+int8_t clip_8b(int8_t val1, int8_t val2) {
+    int16_t a, b;
+
+    a = (int16_t)val1;
+    b = (int16_t)val2;
+
+    if ( (a + b) > 127 ) {
+        return 127;
+    } else if ( (a+b) < -128 ) {
+        return -128;
+    } else {
+        return (int8_t)(a+b);
+    }
+}
+
+/* This functions implements what is being done by CAL fw for TX calibration */
+void agc_cal_tx_dc_offset(uint8_t rf_chain, signed char freq, char amp_hal, char phi_hal, char level_reqired, char precision, int8_t * offset_i_res, int8_t * offset_q_res, uint16_t * rej) {
+    signed char offset_i_set[9];
+    signed char offset_q_set[9];
+    signed char offset_i;
+    signed char offset_q;
+    const signed char span[] = {64, 43, 28, 19, 13, 8, 6, 4, 2};
+    char dec_gain;
+    char i, j; // loop variables
+    char idx; // max/min variables
+    uint16_t reg;
+    int32_t abs_corr_max_i16;
+    int32_t abs_corr_min_i16;
+    int32_t abs_corr_i16;
+    int32_t tx_sig_i16;
+    int32_t tx_dc_i16;
+    int DEC_GAIN_MAX = 11;
+    int DEC_GAIN_MIN = 7;
+    int32_t val;
+    int32_t abs_lsb, abs_msb;
+
+    reg = REG_SELECT(rf_chain, SX1302_REG_RADIO_FE_IQ_COMP_AMP_COEFF_RADIO_A_AMP_COEFF,
+                                SX1302_REG_RADIO_FE_IQ_COMP_AMP_COEFF_RADIO_B_AMP_COEFF);
+    lgw_reg_w(reg, amp_hal);
+
+    reg = REG_SELECT(rf_chain, SX1302_REG_RADIO_FE_IQ_COMP_PHI_COEFF_RADIO_A_PHI_COEFF,
+                                SX1302_REG_RADIO_FE_IQ_COMP_PHI_COEFF_RADIO_B_PHI_COEFF);
+    lgw_reg_w(reg, phi_hal);
+
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_FREQ_FREQ, freq);
+
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_DURATION, precision);
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_EN, 1);
+
+    // Set dec gain and signal analyser according to potential maximum DC level
+    offset_i_set[0] = 0;
+    offset_q_set[0] = 0;
+    offset_i_set[1] = -span[0];
+    offset_q_set[1] = -span[0];
+    offset_i_set[2] = -span[0];
+    offset_q_set[2] = span[0];
+    offset_i_set[3] = span[0];
+    offset_q_set[3] = -span[0];
+    offset_i_set[4] = span[0];
+    offset_q_set[4] = span[0];
+    for (i = DEC_GAIN_MAX; i >= DEC_GAIN_MIN; i--) {
+        dec_gain = i;
+        /* ------------ */
+        reg = REG_SELECT(rf_chain,  SX1302_REG_RADIO_FE_CTRL0_RADIO_A_HOST_FILTER_GAIN,
+                                    SX1302_REG_RADIO_FE_CTRL0_RADIO_B_HOST_FILTER_GAIN);
+        lgw_reg_w(reg, dec_gain);
+
+        /* ------------ */
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+        lgw_reg_w(reg, (int8_t)offset_i_set[0]);
+
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+        lgw_reg_w(reg, (int8_t)offset_q_set[0]);
+
+        /* ------------ */
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
+
+        do {
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+            wait_ms(1);
+        } while (val == 0);
+
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+        /* ------------ */
+
+        abs_corr_max_i16 = abs_msb * 256 + abs_lsb;
+
+        idx = 0;
+        for (j = 1; j < 5; j++) {
+            reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+            lgw_reg_w(reg, (int8_t)offset_i_set[j]);
+
+            reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+            lgw_reg_w(reg, (int8_t)offset_q_set[j]);
+
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
+
+            do {
+                lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+                wait_ms(1);
+            } while (val == 0);
+
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+
+            abs_corr_i16 = abs_msb * 256 + abs_lsb;
+
+            if (abs_corr_i16 > abs_corr_max_i16) {
+                abs_corr_max_i16 = abs_corr_i16;
+                idx = j;
+            }
+        }
+
+        if (abs_corr_max_i16 > (level_reqired * 256)) {
+            break;
+        }
+    }
+
+    printf("dec_gain:%d\n", dec_gain);
+
+    // store the max results
+    tx_sig_i16 = abs_corr_max_i16;
+    printf("tx_sig:%d\n", tx_sig_i16);
+
+    // Calbration algorithm
+    offset_i = 0;
+    offset_q = 0;
+    for (i = 0; i<sizeof (span); i++) {
+
+        offset_i_set[0] = offset_i;
+        offset_q_set[0] = offset_q;
+        offset_i_set[1] = clip_8b(offset_i, span[i]);
+        offset_q_set[1] = clip_8b(offset_q, span[i]);
+        offset_i_set[2] = clip_8b(offset_i, span[i]);
+        offset_q_set[2] = clip_8b(offset_q, -span[i]);
+        offset_i_set[3] = clip_8b(offset_i, -span[i]);
+        offset_q_set[3] = clip_8b(offset_q, span[i]);
+        offset_i_set[4] = clip_8b(offset_i, -span[i]);
+        offset_q_set[4] = clip_8b(offset_q, -span[i]);
+
+        //center point
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+        lgw_reg_w(reg, (int8_t)offset_i_set[0]);
+
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+        lgw_reg_w(reg, (int8_t)offset_q_set[0]);
+
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
+
+        do {
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+            wait_ms(1);
+        } while (val == 0);
+
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+
+        abs_corr_min_i16 = abs_msb * 256 + abs_lsb;
+        printf("abs_corr_min_i16:%d ", abs_corr_min_i16);
+
+        idx = 0;
+
+        //four points around
+        for (j = 1; j < 5; j++) {
+            reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+            lgw_reg_w(reg, (int8_t)offset_i_set[j]);
+
+            reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+            lgw_reg_w(reg, (int8_t)offset_q_set[j]);
+
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
+            lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
+
+            do {
+                lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+                wait_ms(1);
+            } while (val == 0);
+
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+
+            abs_corr_i16 = abs_msb * 256 + abs_lsb;
+            printf("abs_corr_i16:%d ", abs_corr_i16);
+
+            if (abs_corr_i16 < abs_corr_min_i16) {
+                abs_corr_min_i16 = abs_corr_i16;
+                idx = j;
+            }
+        }
+
+        printf("\n");
+        offset_i = offset_i_set[idx];
+        offset_q = offset_q_set[idx];
+    }
+
+    offset_i_set[0] = clip_8b(offset_i, -1);
+    offset_q_set[0] = clip_8b(offset_q, -1);
+    offset_i_set[1] = clip_8b(offset_i, -1);
+    offset_q_set[1] = offset_q;
+    offset_i_set[2] = clip_8b(offset_i, -1);
+    offset_q_set[2] = clip_8b(offset_q, 1);
+    offset_i_set[3] = offset_i;
+    offset_q_set[3] = clip_8b(offset_q, -1);
+    offset_i_set[4] = offset_i;
+    offset_q_set[4] = offset_q;
+    offset_i_set[5] = offset_i;
+    offset_q_set[5] = clip_8b(offset_q, 1);
+    offset_i_set[6] = clip_8b(offset_i, 1);
+    offset_q_set[6] = clip_8b(offset_q, -1);
+    offset_i_set[7] = clip_8b(offset_i, 1);
+    offset_q_set[7] = offset_q;
+    offset_i_set[8] = clip_8b(offset_i, 1);
+    offset_q_set[8] = clip_8b(offset_q, 1);
+
+    //center point
+    idx = 0;
+    reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+    lgw_reg_w(reg, (int8_t)offset_i_set[0]);
+
+    reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+    lgw_reg_w(reg, (int8_t)offset_q_set[0]);
+
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
+    lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
+
+    do {
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+        wait_ms(1);
+    } while (val == 0);
+
+    lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+    lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+
+    abs_corr_min_i16 = abs_msb * 256 + abs_lsb;
+
+    //8 points around
+    for (j = 1; j < 9; j++) {
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET);
+        lgw_reg_w(reg, (int8_t)offset_i_set[j]);
+
+        reg = REG_SELECT(rf_chain,  SX1302_REG_TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET,
+                                    SX1302_REG_TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET);
+        lgw_reg_w(reg, (int8_t)offset_q_set[j]);
+
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 0);
+        lgw_reg_w(SX1302_REG_RADIO_FE_SIG_ANA_CFG_START, 1);
+
+        do {
+            lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
+            wait_ms(1);
+        } while (val == 0);
+
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
+        lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT, &abs_msb);
+
+        abs_corr_i16 = abs_msb * 256 + abs_lsb;
+        if (abs_corr_i16 < abs_corr_min_i16) {
+            abs_corr_min_i16 = abs_corr_i16;
+            idx = j;
+        }
+    }
+    offset_i = offset_i_set[idx];
+    offset_q = offset_q_set[idx];
+
+    tx_dc_i16 = abs_corr_min_i16;
+    printf("tx_dc:%d\n", tx_dc_i16);
+
+    // Return results of calibration
+    *rej = 20 * log10(tx_sig_i16/(tx_dc_i16 + 1));
+    *offset_i_res = (int8_t)offset_i;
+    *offset_q_res = (int8_t)offset_q;
+    printf("offset_i:%d offset_q:%d rej:%u\n", offset_i, offset_q, *rej);
+}
+
+#endif /* TX_CALIB_DONE_BY_HAL */
 
 /* --- EOF ------------------------------------------------------------------ */

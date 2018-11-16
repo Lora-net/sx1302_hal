@@ -125,6 +125,9 @@ int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
         return LGW_REG_ERROR;
     }
 
+    /* Switch to SPI clock before reseting the radio */
+    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x00);
+
     /* Enable the radio */
     reg_radio_en = REG_SELECT(rf_chain, SX1302_REG_AGC_MCU_RF_EN_A_RADIO_EN, SX1302_REG_AGC_MCU_RF_EN_B_RADIO_EN);
     lgw_reg_w(reg_radio_en, 0x01);

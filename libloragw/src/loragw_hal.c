@@ -104,7 +104,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_13_Nov_5.var"
 #include "src/text_agc_sx1257_13_Nov_5.var"
-#include "src/text_cal_sx1257_26_Oct_7.var"
+#include "src/text_cal_sx1257_16_Nov_1.var"
 #include "src/text_arb_sx1302_13_Nov_3.var"
 
 /*
@@ -563,8 +563,6 @@ int lgw_start(void) {
     }
     /* -- Release control over FE */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
-
-    lgw_reg_w(SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL, 0x00); /* Needed for radio reset */
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
