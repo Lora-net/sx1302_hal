@@ -213,6 +213,7 @@ int lgw_sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
     uint8_t mask;
     uint8_t r;
     uint8_t w;
+    uint8_t val_check;
 
     /* checking input parameters */
     if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -235,6 +236,13 @@ int lgw_sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
         mask = ((1 << reg.leng) - 1) << reg.offs;
         w = (r & ~mask) | ((data << reg.offs) & mask);
         spi_stat |= sx125x_reg_w(lgw_spi_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, w);
+    }
+
+    /* Check that we can read what we have written */
+    lgw_sx125x_reg_r(idx, &val_check, rf_chain);
+    if (val_check != data) {
+        printf("ERROR: sx125x register %d write failed (w:%u r:%u)!!\n", idx, data, val_check);
+        spi_stat = LGW_SPI_ERROR;
     }
 
     if (spi_stat != LGW_SPI_SUCCESS) {
