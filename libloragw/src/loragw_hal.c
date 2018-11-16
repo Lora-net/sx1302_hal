@@ -505,8 +505,8 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
             DEBUG_MSG("ERROR: TX gain LUT: External PA gain must not exceed 3\n");
             return LGW_HAL_ERROR;
         }
-        if (conf->lut[i].pwr_idx > 15) {
-            DEBUG_MSG("ERROR: TX gain LUT: SX1250 power iundex must not exceed 63\n");
+        if (conf->lut[i].pwr_idx > 31) {
+            DEBUG_MSG("ERROR: TX gain LUT: SX1250 power iundex must not exceed 31\n");
             return LGW_HAL_ERROR;
         }
 

@@ -81,7 +81,7 @@ void usage(void) {
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
     printf(" --dac  <uint> sx1257 DAC gain [0..3]\n");
     printf(" --mix  <uint> sx1257 MIX gain [5..15]\n");
-    printf(" --pwid <uint> sx1250 power index [0..63]\n");
+    printf(" --pwid <uint> sx1250 power index [0..31]\n");
 }
 
 /* handle signals */
@@ -331,7 +331,7 @@ int main(int argc, char **argv)
                     }
                 } else if (strcmp(long_options[option_index].name, "pwid") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 63)) {
+                    if ((i != 1) || (arg_u > 31)) {
                         printf("ERROR: argument parsing of --pwid argument. Use -h to print help\n");
                         return EXIT_FAILURE;
                     } else {
