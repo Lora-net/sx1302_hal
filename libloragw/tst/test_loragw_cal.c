@@ -403,9 +403,9 @@ int test_iq_offset(uint8_t rf_chain, uint8_t f_offset, bool full_log, bool use_a
     int i, q;
 
     printf("-------------------------------------\n");
-    for (i = 0; i < 40; i++)
+    for (i = -128; i < 127; i+=8)
     {
-        for (q = 0; q < 30; q++)
+        for (q = -128; q < 127; q+=8)
         {
             cal_tx_dc_offset(TEST_OFFSET_IQ, rf_chain, rf_rx_freq[rf_chain], txlut.lut[0].dac_gain, txlut.lut[0].mix_gain, rf_radio_type[rf_chain], f_offset, i, q, full_log, use_agc, 0, 0);
             if ((quit_sig == 1) || (exit_sig == 1)) {
