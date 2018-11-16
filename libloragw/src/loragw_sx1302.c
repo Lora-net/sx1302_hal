@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 #include <inttypes.h>
+#include <time.h>
 
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
@@ -1386,7 +1387,7 @@ int sx1302_arb_start(uint8_t version) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void sx1302_dump_rx_buffer(void) {
+void sx1302_dump_rx_buffer(FILE * file) {
     int i;
     uint16_t mem_addr;
     uint8_t rx_buffer[4096];
@@ -1413,9 +1414,50 @@ void sx1302_dump_rx_buffer(void) {
     lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 0);
 
     for (i = 0; i < 4096; i++) {
-        printf("%02X ", rx_buffer[i]);
+        if (file == NULL) {
+            printf("%02X ", rx_buffer[i]);
+        } else {
+            fprintf(file, "%02X ", rx_buffer[i]);
+        }
     }
-    printf("\n");
+    if (file == NULL) {
+        printf("\n");
+    } else {
+        fprintf(file, "\n");
+    }
+}
+
+void lora_crc16(const char data, int *crc) {
+    int next = 0;
+    next  =  (((data>>0)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1)                 )      ;
+    next += ((((data>>1)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<1 ) ;
+    next += ((((data>>2)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<2 ) ;
+    next += ((((data>>3)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<3 ) ;
+    next += ((((data>>4)&1) ^ ((*crc>>12)&1)                                  )<<4 ) ;
+    next += ((((data>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<5 ) ;
+    next += ((((data>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1))<<6 ) ;
+    next += ((((data>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1))<<7 ) ;
+    next += ((((*crc>>0)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<8 ) ;
+    next += ((((*crc>>1)&1) ^ ((*crc>>12)&1)                                  )<<9 ) ;
+    next += ((((*crc>>2)&1) ^ ((*crc>>13)&1)                                  )<<10) ;
+    next += ((((*crc>>3)&1) ^ ((*crc>>14)&1)                                  )<<11) ;
+    next += ((((*crc>>4)&1) ^ ((*crc>>15)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<12) ;
+    next += ((((*crc>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<13) ;
+    next += ((((*crc>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<14) ;
+    next += ((((*crc>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<15) ;
+    (*crc) = next;
+}
+
+uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size) {
+    int i;
+    int crc = 0;
+
+    for (i = 0; i < size; i++) {
+        lora_crc16(data[i], &crc);
+    }
+
+    //printf("CRC16: 0x%02X 0x%02X (%X)\n", (uint8_t)(crc >> 8), (uint8_t)crc, crc);
+    return (uint16_t)crc;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

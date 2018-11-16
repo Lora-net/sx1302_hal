@@ -102,6 +102,7 @@ int sx1302_fsk_configure(bool * if_rf_chain, int32_t * channel_if, uint64_t sync
 int sx1302_modem_enable();
 
 int sx1302_lora_syncword(bool public);
+uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
 int sx1302_get_cnt(bool pps, uint32_t* cnt_us);
 
@@ -123,7 +124,7 @@ uint8_t sx1302_arb_get_debug_stats_detect(uint8_t channel);
 uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel);
 void sx1302_arb_print_debug_stats(bool full);
 
-void sx1302_dump_rx_buffer(void);
+void sx1302_dump_rx_buffer(FILE * file);
 
 #endif
 

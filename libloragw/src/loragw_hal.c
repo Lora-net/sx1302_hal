@@ -22,6 +22,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
 #include <assert.h>
+#include <time.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -31,6 +32,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 #include "loragw_cal.h"
+
+/* -------------------------------------------------------------------------- */
+/* --- DEBUG CONSTANTS ------------------------------------------------------ */
+
+#define HAL_DEBUG_FILE_LOG  1
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -172,6 +178,8 @@ struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
 
 static uint8_t rx_fifo[4096];
 
+static FILE * log_file = NULL;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -180,6 +188,22 @@ int32_t lgw_bw_getval(int x);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+void DEBUG_log_buffer_to_file(FILE * file, uint8_t * buffer, uint16_t size) {
+    int i;
+    char stat_timestamp[24];
+    time_t t;
+
+    t = time(NULL);
+    strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+    fprintf(file, "---------(%s)------------\n", stat_timestamp);
+    for (i = 0; i < size; i++) {
+        fprintf(file, "%02X ", buffer[i]);
+    }
+    fprintf(file, "\n");
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void led(uint8_t val) {
     int32_t gpio_sel = 0x00; /* SPI */
@@ -663,6 +687,15 @@ int lgw_start(void) {
     /* enable demodulators */
     sx1302_modem_enable();
 
+    /* For debug logging */
+#if HAL_DEBUG_FILE_LOG
+    log_file = fopen( "loragw_hal.log", "w+" ); /* create log file, overwrite if file already exist */
+    if (log_file == NULL) {
+        printf("ERROR: impossible to create log file %s\n", "loragw_hal.log");
+        return LGW_HAL_ERROR;
+    }
+#endif
+
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;
 }
@@ -675,6 +708,12 @@ int lgw_stop(void) {
     DEBUG_MSG("INFO: aborting TX\n");
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         lgw_abort_tx(i);
+    }
+
+    /* Close log file */
+    if (log_file != NULL) {
+        fclose(log_file);
+        log_file = NULL;
     }
 
     DEBUG_MSG("INFO: Disconnecting\n");
@@ -694,6 +733,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_dropped = 0;
     uint16_t payload_length;
+    uint16_t payload_crc16_calc;
+    uint16_t payload_crc16_read;
     uint8_t num_ts_metrics = 0;
     uint8_t sanity_check;
     bool rx_buffer_error = false;
@@ -703,6 +744,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t sz_todo;
     uint16_t chunk_size;
     int chunk_cnt = 0;
+    uint16_t CHUNK_SIZE = 1024;
 
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
@@ -739,8 +781,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     memset(rx_fifo, 0, sizeof rx_fifo);
     sz_todo = sz;
     while (sz_todo > 0) {
-        chunk_size = (sz_todo > 1024) ? 1024 : sz_todo;
-        lgw_mem_rb(0x4000, &rx_fifo[chunk_cnt * 1024], chunk_size);
+        chunk_size = (sz_todo > CHUNK_SIZE) ? CHUNK_SIZE : sz_todo;
+        lgw_mem_rb(0x4000, &rx_fifo[chunk_cnt * CHUNK_SIZE], chunk_size);
         sz_todo -= chunk_size;
         chunk_cnt += 1;
     }
@@ -775,14 +817,21 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         for (i = 0; i < (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1); i++) {
             checksum_calc += rx_fifo[buffer_index + i];
         }
+
         printf("checkum_calc:0x%02X\n", checksum_calc);
         if (checksum != checksum_calc) {
             printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
-#if 1
-            sx1302_dump_rx_buffer();
-            assert(0);
-#endif
-            break;
+            if (log_file != NULL) {
+                fprintf(log_file, "\nWARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
+                fprintf(log_file, "last_addr_read_before: %u\n", last_addr_read_before);
+                fprintf(log_file, "last_addr_write_before: %u\n", last_addr_write_before);
+                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                fprintf(log_file, "last_addr_read_after: %u\n", last_addr_read_after);
+                fprintf(log_file, "last_addr_write_after: %u\n", last_addr_write_after);
+            }
+            sx1302_dump_rx_buffer(log_file);
+            //assert(0);
+            return 0;
         }
 
         printf("-----------------\n");
@@ -819,8 +868,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             }
         }
         if (rx_buffer_error == true) {
-            sx1302_dump_rx_buffer();
-            assert(0);
+            if (log_file != NULL) {
+                fprintf(log_file, "ERROR: METADATA ERROR (%u)\n", nb_pkt_found);
+                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+
+            }
+            sx1302_dump_rx_buffer(log_file);
+            //assert(0);
+            return 0;
         }
 
         /* point to the proper struct in the struct array */
@@ -866,6 +921,22 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 } else {
                     p->status = STAT_CRC_OK;
                     crc_en = 1;
+
+                    /* check payload CRC */
+                    if (p->size > 0) {
+                        payload_crc16_calc = sx1302_lora_payload_crc(p->payload, p->size);
+                        payload_crc16_read  = (uint16_t)((SX1302_PKT_CRC_PAYLOAD_7_0(rx_fifo, buffer_index + p->size) <<  0) & 0x00FF);
+                        payload_crc16_read |= (uint16_t)((SX1302_PKT_CRC_PAYLOAD_15_8(rx_fifo, buffer_index + p->size) <<  8) & 0xFF00);
+                        if (payload_crc16_calc != payload_crc16_read) {
+                            printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", payload_crc16_read, payload_crc16_calc);
+                            if (log_file != NULL) {
+                                fprintf(log_file, "ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X) (pkt:%u)\n", payload_crc16_read, payload_crc16_calc, nb_pkt_found-1);
+                                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                            }
+                        } else {
+                            printf("Payload CRC check OK (0x%04X)\n", payload_crc16_read);
+                        }
+                    }
                 }
             } else {
                 /* CRC disabled */
