@@ -19,7 +19,7 @@ int main(int argc, char ** argv)
     uint8_t payload[255];
     uint8_t payload_size;
     uint16_t crc;
-    char hexstr[512];
+    char hexstr[1024];
 
     if (argc < 2) {
         usage();
