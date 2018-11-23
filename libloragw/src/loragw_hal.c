@@ -1404,15 +1404,15 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_EN,
                                                 SX1302_REG_TX_TOP_B_FSK_CFG_0_CRC_EN);
-            lgw_reg_w(reg, 1);
+            lgw_reg_w(reg, (pkt_data.no_crc) ? 0 : 1);
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_CRC_IBM,
                                                 SX1302_REG_TX_TOP_B_FSK_CFG_0_CRC_IBM);
-            lgw_reg_w(reg, 0);
+            lgw_reg_w(reg, 0); /* CCITT CRC */
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_CFG_0_DCFREE_ENC,
                                                 SX1302_REG_TX_TOP_B_FSK_CFG_0_DCFREE_ENC);
-            lgw_reg_w(reg, 2);
+            lgw_reg_w(reg, 2); /* Whitening Encoding */
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_GAUSSIAN_EN);
@@ -1428,7 +1428,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_SIZE,
                                                 SX1302_REG_TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_SIZE);
-            lgw_reg_w(reg, fsk_sync_word_size);
+            lgw_reg_w(reg, fsk_sync_word_size - 1);
 
             fsk_sync_word_reg = fsk_sync_word << (8 * (8 - fsk_sync_word_size));
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN,
@@ -1523,8 +1523,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     mem_addr = REG_SELECT(pkt_data.rf_chain, 0x5300, 0x5500);
     if (pkt_data.modulation == MOD_FSK) {
         lgw_mem_wb(mem_addr, (uint8_t *)(&(pkt_data.size)), 1); /* insert payload size in the packet for FSK variable mode (1 byte) */
+        lgw_mem_wb(mem_addr+1, &(pkt_data.payload[0]), pkt_data.size);
+    } else {
+        lgw_mem_wb(mem_addr, &(pkt_data.payload[0]), pkt_data.size);
     }
-    lgw_mem_wb(mem_addr, &(pkt_data.payload[0]), pkt_data.size);
     lgw_reg_w(reg, 0x00);
 
     /* Trigger transmit */
