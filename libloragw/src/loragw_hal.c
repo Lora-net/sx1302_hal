@@ -1351,6 +1351,21 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH,
                                                 SX1302_REG_TX_TOP_B_TXRX_CFG0_3_PAYLOAD_LENGTH);
             lgw_reg_w(reg, pkt_data.size);
+
+            /* Set PPM offset (low datarate optimization) */
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_1_PPM_OFFSET_HDR_CTRL,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_1_PPM_OFFSET_HDR_CTRL);
+            lgw_reg_w(reg, 0);
+
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_1_PPM_OFFSET,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_1_PPM_OFFSET);
+            if ((pkt_data.datarate == DR_LORA_SF11) || (pkt_data.datarate == DR_LORA_SF12)) {
+                printf("Low datarate optimization ENABLED\n");
+                lgw_reg_w(reg, 1);
+            } else {
+                printf("Low datarate optimization DISABLED\n");
+                lgw_reg_w(reg, 0);
+            }
             break;
         case MOD_FSK:
             /*
