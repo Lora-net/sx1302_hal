@@ -770,7 +770,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
 
 #if BYPASS_FW_INIT
     printf("Disable AGC init protocol\n");
-    sx1302_agc_mailbox_write(2, 0xF7);
+    sx1302_agc_mailbox_write(2, 0xF7);  /* To be done before fw starts */
 #endif
 
     /* Release control over AGC MCU */
@@ -1186,7 +1186,7 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
 
 #if BYPASS_FW_INIT
     printf("Disable ARB init protocol\n");
-    sx1302_arb_debug_write(2, 0xF7);
+    sx1302_arb_debug_write(2, 0xF7); /* To be done before fw starts */
 #endif
 
     /* Release control over ARB MCU */
