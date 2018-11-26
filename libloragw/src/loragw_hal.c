@@ -1277,9 +1277,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             /* Set bandwidth */
             printf("Bandwidth %dkHz\n", (int)(lgw_bw_getval(pkt_data.bandwidth) / 1E3));
             freq_dev = lgw_bw_getval(pkt_data.bandwidth) / 2;
-            if (rf_radio_type[pkt_data.rf_chain] != LGW_RADIO_TYPE_SX1250) {
-                freq_dev /= 2; /* TODO: temporary workaround */
-            }
             fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV,
                                                 SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV);
@@ -1400,9 +1397,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             /* Set frequency deviation */
             printf("f_dev %dkHz\n", (int)(pkt_data.f_dev));
             freq_dev = pkt_data.f_dev * 1e3;
-            if (rf_radio_type[pkt_data.rf_chain] != LGW_RADIO_TYPE_SX1250) {
-                freq_dev /= 2; /* TODO: temporary workaround */
-            }
             fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV,
                                                 SX1302_REG_TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV);
