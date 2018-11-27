@@ -648,7 +648,7 @@ int lgw_start(void) {
     }
 
     /* configure syncword */
-    sx1302_lora_syncword(lorawan_public);
+    sx1302_lora_syncword(lorawan_public, lora_rx_sf);
 
     /* give radio control to AGC MCU */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
