@@ -1306,7 +1306,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS,
                                                 SX1302_REG_TX_TOP_B_TX_CFG0_0_CHIRP_LOWPASS);
-            lgw_reg_w(reg, 7);
+            lgw_reg_w(reg, 6);
 
             /* Start LoRa modem */
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_MODEM_EN,
