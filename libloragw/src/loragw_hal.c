@@ -1339,13 +1339,33 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(reg, (pkt_data.no_crc) ? 0 : 1);
 
             /* Syncword */
-            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS,
-                                                SX1302_REG_TX_TOP_B_FRAME_SYNCH_0_PEAK1_POS);
-            lgw_reg_w(reg, 6); /* public */
+            if ((lorawan_public == false) || (pkt_data.datarate == DR_LORA_SF5) || (pkt_data.datarate == DR_LORA_SF6)) {
+                printf("Setting LoRa syncword 0x12\n");
+                reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS,
+                                                    SX1302_REG_TX_TOP_B_FRAME_SYNCH_0_PEAK1_POS);
+                lgw_reg_w(reg, 2);
 
-            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS,
-                                                SX1302_REG_TX_TOP_B_FRAME_SYNCH_1_PEAK2_POS);
-            lgw_reg_w(reg, 8); /* public */
+                reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS,
+                                                    SX1302_REG_TX_TOP_B_FRAME_SYNCH_1_PEAK2_POS);
+                lgw_reg_w(reg, 4);
+            } else {
+                printf("Setting LoRa syncword 0x34\n");
+                reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS,
+                                                    SX1302_REG_TX_TOP_B_FRAME_SYNCH_0_PEAK1_POS);
+                lgw_reg_w(reg, 6);
+
+                reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS,
+                                                    SX1302_REG_TX_TOP_B_FRAME_SYNCH_1_PEAK2_POS);
+                lgw_reg_w(reg, 8);
+            }
+
+            /* Set Fine Sync for SF5/SF6 */
+            if ((pkt_data.datarate == DR_LORA_SF5) || (pkt_data.datarate == DR_LORA_SF6)) {
+                printf("Enable Fine Sync\n");
+                reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_FINE_SYNCH_EN,
+                                                    SX1302_REG_TX_TOP_B_TXRX_CFG0_2_FINE_SYNCH_EN);
+                lgw_reg_w(reg, 1);
+            }
 
             /* Set Payload length */
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH,
