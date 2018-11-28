@@ -96,6 +96,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_RX_FREQ_MIN          100E6
 #define LGW_RF_RX_FREQ_MAX          1E9
 
+#define FREQ_OFFSET_LSB_125KHZ      0.11920929f     /* 125000 * 32 / 2^6 / 2^19 */
+#define FREQ_OFFSET_LSB_250KHZ      0.238418579f    /* 250000 * 32 / 2^6 / 2^19 */
+#define FREQ_OFFSET_LSB_500KHZ      0.476837158f    /* 500000 * 32 / 2^6 / 2^19 */
+
 /* constant arrays defining hardware capability */
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
@@ -841,7 +845,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("  timing_set: %u\n", SX1302_PKT_TIMING_SET(rx_fifo, buffer_index + payload_length));
         printf("  codr:       %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
         printf("  datr:       %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
-        printf("  f_offset    %d\n", (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0)));
         printf("-----------------\n");
 
         /* Sanity checks */
@@ -901,7 +904,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
         p->modem_id = SX1302_PKT_MODEM_ID(rx_fifo, buffer_index);
         p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
-        p->freq_offset = (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0));
         p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         /* TODO: RSSI correction */
@@ -966,6 +968,33 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 4: p->coderate = CR_LORA_4_8; break;
                 default: p->coderate = CR_UNDEFINED;
             }
+
+            /* Get raw frequency offset as reported */
+            freq_offset_raw = (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_fifo, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_fifo, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_fifo, buffer_index) << 0));
+            /* Handle signed value on 20bits */
+            if (freq_offset_raw >= (1<<19)) {
+                freq_offset_raw = (freq_offset_raw - (1<<20));
+            }
+            /* Get frequency offset in Hz depending on bandwidth */
+            switch (p->bandwidth) {
+                case BW_125KHZ:
+                    freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_125KHZ );
+                    break;
+                case BW_250KHZ:
+                    freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_250KHZ );
+                    break;
+                case BW_500KHZ:
+                    freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_500KHZ );
+                    break;
+                default:
+                    freq_offset = 0;
+                    printf("Invalid frequency offset\n");
+                    break;
+            }
+            DEBUG_PRINTF("f_offset: %d Hz\n", freq_offset);
+            p->freq_offset = freq_offset;
+
+            /* Get fine timestamp metrics */
             num_ts_metrics = SX1302_PKT_NUM_TS_METRICS(rx_fifo, buffer_index + p->size);
 
             /* determine if 'PPM mode' is on, needed for timestamp correction */
