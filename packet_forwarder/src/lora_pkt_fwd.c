@@ -1460,7 +1460,7 @@ void thread_up(void) {
                         exit(EXIT_FAILURE);
                 }
 
-                /* Signal RSSI, payload size, 18-23 useful chars */
+                /* Signal RSSI, payload size */
                 j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssis\":%.0f", p->rssis);
                 if (j > 0) {
                     buff_index += j;
@@ -1469,8 +1469,17 @@ void thread_up(void) {
                     exit(EXIT_FAILURE);
                 }
 
-                /* Lora SNR, 11-13 useful chars */
+                /* Lora SNR */
                 j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%.1f", p->snr);
+                if (j > 0) {
+                    buff_index += j;
+                } else {
+                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    exit(EXIT_FAILURE);
+                }
+
+                /* Lora frequency offset */
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"foff\":%d", p->freq_offset);
                 if (j > 0) {
                     buff_index += j;
                 } else {
