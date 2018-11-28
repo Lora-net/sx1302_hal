@@ -1032,7 +1032,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             }
 
             /* timestamp correction code, variable delay */
-            /* TODO: sf5 */
             if ((sf >= 6) && (sf <= 12) && (bw_pow > 0)) {
                 if ((2*(sz + 2*crc_en) - (sf-7)) <= 0) { /* payload fits entirely in first 8 symbols */
                     delay_y = ( ((1<<(sf-1)) * (sf+1)) + (3 * (1<<(sf-4))) ) / bw_pow;
@@ -1042,6 +1041,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                     delay_z = (16 + 4*cr) * (((2*(sz+2*crc_en)-sf+6) % (sf - 2*ppm)) + 1) / bw_pow;
                 }
                 timestamp_correction = delay_x + delay_y + delay_z;
+            } else if (sf == 5) {
+                timestamp_correction = 0;
+                DEBUG_MSG("WARNING: TODO: timestamp correction for SF5\n");
             } else {
                 timestamp_correction = 0;
                 DEBUG_MSG("WARNING: invalid packet, no timestamp correction\n");
