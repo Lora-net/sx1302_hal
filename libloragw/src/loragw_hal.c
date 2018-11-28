@@ -739,6 +739,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t payload_length;
     uint16_t payload_crc16_calc;
     uint16_t payload_crc16_read;
+    int32_t freq_offset_raw, freq_offset;
     uint8_t num_ts_metrics = 0;
     uint8_t sanity_check;
     bool rx_buffer_error = false;
