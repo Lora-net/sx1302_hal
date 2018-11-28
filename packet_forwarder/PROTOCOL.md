@@ -141,6 +141,7 @@ and associated metadata with the following fields:
  rssic| number | RSSI of the channel in dBm (signed integer, 1 dB precision)
  rssis| number | RSSI of the signal in dBm (signed integer, 1 dB precision)
  lsnr | number | Lora SNR ratio in dB (signed float, 0.1 dB precision)
+ foff | number | LoRa frequency offset in Hz (signed interger)
  size | number | RF packet payload size in bytes (unsigned integer)
  data | string | Base64 encoded RF packet payload, padded
 
