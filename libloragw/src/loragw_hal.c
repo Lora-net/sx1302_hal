@@ -112,7 +112,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_13_Nov_5.var"
+#include "src/text_agc_sx1250_27_Nov_1.var"
 #include "src/text_agc_sx1257_13_Nov_5.var"
 #include "src/text_cal_sx1257_16_Nov_1.var"
 #include "src/text_arb_sx1302_13_Nov_3.var"
@@ -1181,10 +1181,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
         return LGW_HAL_ERROR;
     }
 
-    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL,
-                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_PLL_DIV_CTRL);
-    lgw_reg_w(reg, 0x00); /* VCO divider by 2 */
+    /* Let AGC control PLL DIV (sx1250 only) */
+    reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL2_PLL_DIV_CTRL_AGC,
+                                        SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL2_PLL_DIV_CTRL_AGC);
+    lgw_reg_w(reg, 1);
 
+    /* Set radio type */
     reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST,
                                         SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_DST);
     switch (rf_radio_type[pkt_data.rf_chain]) {
