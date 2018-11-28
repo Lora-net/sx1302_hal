@@ -549,7 +549,7 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* Radio calibration */
+    /* Radio calibration - START */
     /* -- Reset radios */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (rf_enable[i] == true) {
@@ -591,6 +591,7 @@ int lgw_start(void) {
     }
     /* -- Release control over FE */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
+    /* Radio calibration - END */
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
