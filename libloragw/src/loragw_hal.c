@@ -1404,6 +1404,11 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                 reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_FINE_SYNCH_EN,
                                                     SX1302_REG_TX_TOP_B_TXRX_CFG0_2_FINE_SYNCH_EN);
                 lgw_reg_w(reg, 1);
+            } else {
+                printf("Disable Fine Sync\n");
+                reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_2_FINE_SYNCH_EN,
+                                                    SX1302_REG_TX_TOP_B_TXRX_CFG0_2_FINE_SYNCH_EN);
+                lgw_reg_w(reg, 0);
             }
 
             /* Set Payload length */
