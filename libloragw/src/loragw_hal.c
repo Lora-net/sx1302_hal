@@ -819,12 +819,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         /* checksum */
         uint8_t checksum_calc = 0;
         uint8_t checksum = rx_fifo[buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1];
-        printf("checkum:0x%02X\n", checksum);
         for (i = 0; i < (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1); i++) {
             checksum_calc += rx_fifo[buffer_index + i];
         }
 
-        printf("checkum_calc:0x%02X\n", checksum_calc);
         if (checksum != checksum_calc) {
             printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
             if (log_file != NULL) {
@@ -832,8 +830,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
             }
             sx1302_dump_rx_buffer(log_file);
-            //assert(0);
             return 0;
+        } else {
+            printf("Packet checksum OK (0x%02X)\n", checksum);
         }
 
         printf("-----------------\n");
@@ -993,7 +992,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                     printf("Invalid frequency offset\n");
                     break;
             }
-            DEBUG_PRINTF("f_offset: %d Hz\n", freq_offset);
+            printf("  f_offset: %d Hz\n", freq_offset);
             p->freq_offset = freq_offset;
 
             /* Get fine timestamp metrics */
