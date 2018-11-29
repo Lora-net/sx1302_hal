@@ -54,8 +54,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define BYPASS_FW_INIT          0
-
 #define AGC_RADIO_A_INIT_DONE   0x80
 #define AGC_RADIO_B_INIT_DONE   0x20
 
@@ -589,14 +587,17 @@ int sx1302_lora_modem_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_DAGC_CFG_GAIN_DROP_COMP, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_DAGC_CFG_TARGET_LVL, 0x01);
 
-    //lgw_reg_w(SX1302_REG_RX_TOP_MODEM_SYNC_DELTA_LSB_MODEM_SYNC_DELTA, 65);
-    //lgw_reg_w(SX1302_REG_RX_TOP_MODEM_SYNC_DELTA_MSB_MODEM_SYNC_DELTA, 0);
-
     /* Enable full modems */
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_0_MODEM_EN, 0xFF);
 
     /* Enable limited modems */
+#if FPGA_BOARD_16_CH
+    printf("Configuring 8 limited-SF modems\n");
+    lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0xFF);
+#else
+    printf("Configuring 4 limited-SF modems\n");
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0x0F);
+#endif
 
     /* Configure Channel sync offset */
     lgw_reg_w(SX1302_REG_ARB_MCU_CHANNEL_SYNC_OFFSET_01_CHANNEL_0_OFFSET, 5);
@@ -726,9 +727,6 @@ int sx1302_modem_enable() {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf) {
-
-    /* TODO: LoRa service SF5/SF6 */
-
     /* Multi-SF modem configuration */
     printf("INFO: configuring LoRa (Multi-SF) SF5->SF6 with syncword PRIVATE (0x12)\n");
     lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF5_PEAK1_POS_SF5, 2);

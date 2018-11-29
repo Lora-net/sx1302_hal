@@ -851,7 +851,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         /* Sanity checks */
         sanity_check = SX1302_PKT_MODEM_ID(rx_fifo, buffer_index);
-        if (sanity_check > 17) {
+        if (sanity_check > SX1302_FSK_MODEM_ID) {
             printf("ERROR: modem_id is out of range - %u\n", sanity_check);
             rx_buffer_error = true;
         }
