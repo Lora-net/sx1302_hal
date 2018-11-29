@@ -588,6 +588,7 @@ int sx1302_lora_modem_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_DAGC_CFG_TARGET_LVL, 0x01);
 
     /* Enable full modems */
+    printf("Configuring 8 full-SF modems\n");
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_0_MODEM_EN, 0xFF);
 
     /* Enable limited modems */
