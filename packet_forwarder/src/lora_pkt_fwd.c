@@ -184,6 +184,8 @@ static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by T
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
 
 static uint32_t nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
+static uint32_t nb_pkt_received_lora = 0;
+static uint32_t nb_pkt_received_fsk = 0;
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -1533,8 +1535,10 @@ void thread_up(void) {
             if (p->modulation == MOD_LORA) {
                 /* Log nb of packets per channel, per SF */
                 nb_pkt_log[p->if_chain][p->datarate - 5] += 1;
+                nb_pkt_received_lora += 1;
             } else if (p->modulation == MOD_FSK) {
                 nb_pkt_log[p->if_chain][0] += 1;
+                nb_pkt_received_fsk += 1;
             }
         }
 
@@ -1551,6 +1555,8 @@ void thread_up(void) {
             }
             printf("FSK: \t%d", nb_pkt_log[9][0]);
             printf("\n");
+            printf("Total number of LoRa packet received: %u\n", nb_pkt_received_lora);
+            printf("Total number of FSK packet received: %u\n", nb_pkt_received_fsk);
         }
 #endif
 
