@@ -71,6 +71,8 @@
 #define DEFAULT_LORA_BW             125     /* LoRa modulation bandwidth, kHz */
 #define DEFAULT_LORA_SF             7       /* LoRa SF */
 #define DEFAULT_LORA_CR             "4/5"   /* LoRa CR */
+#define DEFAULT_FSK_FDEV            25      /* FSK frequency deviation */
+#define DEFAULT_FSK_BR              50      /* FSK bitrate */
 #define DEFAULT_LORA_PREAMBLE_SIZE  8       /* LoRa preamble size */
 #define DEFAULT_PAYLOAD_SIZE        4       /* payload size, bytes */
 #define PUSH_TIMEOUT_MS             100
@@ -99,8 +101,11 @@ typedef struct
     uint8_t     rf_chain;
     bool        rf_chain_alternate;
     uint16_t    bandwidth_khz;
+    char        modulation[8];
     uint8_t     spread_factor[2];
     char        coding_rate[8];
+    float       br_kbps;
+    uint8_t     fdev_khz;
     int8_t      rf_power[2];
     uint16_t    preamb_size[2];
     uint8_t     pl_size;
@@ -189,7 +194,10 @@ int main( int argc, char **argv )
         .delay_ms = 1000,
         .bandwidth_khz = DEFAULT_LORA_BW,
         .spread_factor = {DEFAULT_LORA_SF, DEFAULT_LORA_SF},
+        .modulation = "LORA",
         .coding_rate = DEFAULT_LORA_CR,
+        .br_kbps = DEFAULT_FSK_BR,
+        .fdev_khz = DEFAULT_FSK_FDEV,
         .rf_power = {27, 27},
         .preamb_size = {DEFAULT_LORA_PREAMBLE_SIZE, DEFAULT_LORA_PREAMBLE_SIZE},
         .pl_size = DEFAULT_PAYLOAD_SIZE,
@@ -205,7 +213,7 @@ int main( int argc, char **argv )
     pthread_t thrid_down;
 
     /* Parse command line options */
-    while( ( i = getopt( argc, argv, "a:b:c:f:hij:l:p:r:s:t:x:z:A:BF:P:" ) ) != -1 )
+    while( ( i = getopt( argc, argv, "a:b:c:f:hij:l:p:r:s:t:x:z:A:BF:P:m:d:q:" ) ) != -1 )
     {
         switch( i )
         {
@@ -392,6 +400,42 @@ int main( int argc, char **argv )
                 }
                 break;
 
+            case 'm': /* -m <string> Modulation */
+                j = sscanf( optarg, "%s", arg_s );
+                if( j != 1 )
+                {
+                    printf( "ERROR: argument parsing of -c argument\n" );
+                    usage( );
+                    return EXIT_FAILURE;
+                }
+                else
+                {
+                    strncpy( thread_params.modulation, arg_s, strlen(arg_s));
+                }
+                break;
+
+            case 'd': /* <uint> FSK frequency deviation */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
+                    printf("ERROR: invalid FSK frequency deviation\n");
+                    usage( );
+                    return EXIT_FAILURE;
+                } else {
+                    thread_params.fdev_khz = (uint8_t)arg_u;
+                }
+                break;
+
+            case 'q': /* <float> FSK bitrate */
+                i = sscanf(optarg, "%lf", &arg_f);
+                if ((i != 1) || (arg_f < 0.5) || (arg_f > 250)) {
+                    printf("ERROR: invalid FSK bitrate\n");
+                    usage( );
+                    return EXIT_FAILURE;
+                } else {
+                    thread_params.br_kbps = arg_f;
+                }
+                break;
+
             case 'p': /* -p <int>  RF power (dBm) */
                 j = sscanf( optarg, "%i,%i", &arg_i, &arg_i2 );
                 switch( j )
@@ -432,7 +476,7 @@ int main( int argc, char **argv )
                 switch( j )
                 {
                     case 2:
-                        if( (arg_u2 < 6) || (arg_u2 > 65535) )
+                        if( (arg_u2 < 5) || (arg_u2 > 65535) )
                         {
                             parse_err = true;
                         }
@@ -442,7 +486,7 @@ int main( int argc, char **argv )
                         }
                         /* No break */
                     case 1:
-                        if( (arg_u < 6) || (arg_u > 65535) )
+                        if( (arg_u < 5) || (arg_u > 65535) )
                         {
                             parse_err = true;
                         }
@@ -1029,9 +1073,12 @@ static void usage( void )
     printf( "                       0: RF chain A\n" );
     printf( "                       1: RF chain B\n" );
     printf( "                       2: alternate between RF chains A & B\n" );
+    printf( " -m <string>       Modulation [\"LORA\", \"FSK\"]\n" );
     printf( " -b <uint>         LoRa bandwidth in kHz [125, 250, 500]\n" );
     printf( " -s <uint,uint>    LoRa Spreading Factor [5-12] for RF0,RF1\n" );
     printf( " -c <string>       LoRa Coding Rate [\"4/5\", \"4/6\", ...]\n" );
+    printf( " -d <uint>         FSK frequency deviation in kHz [1:250]\n");
+    printf( " -q <float>        FSK bitrate in kbps [0.5:250]\n");
     printf( " -p <int,int>      RF power (dBm) for RF0,RF1\n" );
     printf( " -r <uint,uint>    Preamble size (symbols, [6..65535]) for RF0,RF1\n" );
     printf( " -z <uint>         Payload size (bytes, [4..255])\n" );
@@ -1182,18 +1229,20 @@ static void * thread_down( const void * arg )
                     printf("rf_chain:%u, freq:%lf, pkt_sent:%d\n", rf_chain_select%2, freq, pkt_sent[rf_chain_select%2]);
                 }
                 json_object_set_number( obj, "powe", rf_pwr );
-                json_object_set_string( obj, "modu", "LORA" );
-                sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
-                json_object_set_string( obj, "datr", datarate_string );
-                json_object_set_string( obj, "codr", params->coding_rate );
-                if( params->ipol == true )
+                if( strncmp( params->modulation, "LORA", 4 ) == 0 )
                 {
-                    json_object_set_boolean( obj, "ipol", true );
+                    json_object_set_string( obj, "modu", "LORA" );
+                    sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
+                    json_object_set_string( obj, "datr", datarate_string );
+                    json_object_set_string( obj, "codr", params->coding_rate );
+                } else if( strncmp( params->modulation, "FSK", 3 ) == 0 ) {
+                    json_object_set_string( obj, "modu", "FSK" );
+                    json_object_set_number( obj, "datr", params->br_kbps * 1E3 );
+                    json_object_set_number( obj, "fdev", params->fdev_khz * 1E3 );
+                } else {
+                    printf( "ERROR: wrong modulation\n" );
                 }
-                else
-                {
-                    json_object_set_boolean( obj, "ipol", false );
-                }
+                json_object_set_boolean( obj, "ipol", params->ipol );
                 json_object_set_number( obj, "prea", pream_sz );
                 json_object_set_boolean( obj, "ncrc", true );
                 json_object_set_number( obj, "size", params->pl_size );
