@@ -16,7 +16,7 @@ void remove_spaces(char *str);
 
 int main(int argc, char ** argv)
 {
-    int i, j;
+    int j;
     uint8_t dev_id[4];
     uint8_t payload[255];
     uint8_t payload_size;
