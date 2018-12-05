@@ -1452,4 +1452,3427 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size) {
         return LGW_REG_SUCCESS;
     }
 }
+
+/* -------------------------------------------------------------------------- */
+/* --- REGISTER DESCRIPTIONS ------------------------------------------------
+
+COMMON_PAGE_PAGE:
+Current page
+
+COMMON_CTRL0_CLK32_RIF_CTRL:
+1: RIF clock = CLK 32M, 0: RIF clock = SPI clock
+
+COMMON_CTRL0_HOST_RADIO_CTRL:
+SPI Radio access
+0  Radio A/B SPI.s are accessed by internal AGC
+1  Radio A/B SP.s are accessed by HST SPI (API)
+
+COMMON_CTRL0_RADIO_MISC_EN:
+Enable Radio C mode (serialized I/Q)
+
+COMMON_CTRL0_SX1261_MODE_RADIO_B:
+Radio Type Selection for Radio A
+0  sx1257 radio
+1  sx1250 radio
+
+COMMON_CTRL0_SX1261_MODE_RADIO_A:
+Enable Radio C mode (serialized I/Q)
+0  sx1257 radio
+1  sx1250 radio
+
+COMMON_CTRL1_SWAP_IQ_RADIO_B:
+Radio B Swap IQ. 0: does not swap, 1: swap
+
+COMMON_CTRL1_SAMPLING_EDGE_RADIO_B:
+Radio B IQ sampling edge selection. 0: rising, 1: falling
+
+COMMON_CTRL1_SWAP_IQ_RADIO_A:
+Radio A Swap IQ. 0: does not swap, 1: swap
+
+COMMON_CTRL1_SAMPLING_EDGE_RADIO_A:
+Radio A IQ sampling edge selection. 0: rising, 1: falling
+
+COMMON_SPI_DIV_RATIO_SPI_HALF_PERIOD:
+SPI half-period
+
+COMMON_RADIO_SELECT_RADIO_SELECT:
+selects radio source for each channel : LSB = channel 0 , MSB = channel7 :  bit = 0: source is RADIO A ,  1: RADIO B'}
+
+COMMON_GEN_GLOBAL_EN:
+RX global enable
+
+COMMON_GEN_FSK_MODEM_ENABLE:
+RX GFSK modem enable
+
+COMMON_GEN_CONCENTRATOR_MODEM_ENABLE:
+RX concentrator enable
+
+COMMON_GEN_MBWSSF_MODEM_ENABLE:
+TBD
+
+COMMON_VERSION_VERSION:
+Current chip version
+
+COMMON_DUMMY_DUMMY:
+Prevent RIF error on spurious read
+
+AGC_MCU_CTRL_CLK_EN:
+Enable AGC MCU clock enable
+
+AGC_MCU_CTRL_FORCE_HOST_FE_CTRL:
+Force control of Front-End
+
+AGC_MCU_CTRL_MCU_CLEAR:
+MCU synchroous clear
+
+AGC_MCU_CTRL_HOST_PROG:
+Program memory form host
+
+AGC_MCU_CTRL_PARITY_ERROR:
+PArity checker
+
+AGC_MCU_MCU_AGC_STATUS_MCU_AGC_STATUS:
+AGC MCU status
+
+AGC_MCU_PA_GAIN_PA_B_GAIN:
+Manual PA B gain
+
+AGC_MCU_PA_GAIN_PA_A_GAIN:
+Manual PA A gain
+
+AGC_MCU_RF_EN_A_RADIO_RST:
+Radio A Reset
+
+AGC_MCU_RF_EN_A_RADIO_EN:
+Enable of Radio A
+
+AGC_MCU_RF_EN_A_PA_EN:
+Enable Power Amplifier Radio A
+
+AGC_MCU_RF_EN_A_LNA_EN:
+Enable LNA Radio A
+
+AGC_MCU_RF_EN_B_RADIO_RST:
+Radio A Reset
+
+AGC_MCU_RF_EN_B_RADIO_EN:
+Enable of Radio A
+
+AGC_MCU_RF_EN_B_PA_EN:
+Enable Power Amplifier Radio A
+
+AGC_MCU_RF_EN_B_LNA_EN:
+Enable LNA Radio A
+
+AGC_MCU_LUT_TABLE_A_PA_LUT:
+Look-up table for PA
+
+AGC_MCU_LUT_TABLE_A_LNA_LUT:
+Look-up table for LNA
+
+AGC_MCU_LUT_TABLE_B_PA_LUT:
+Look-up table for PA
+
+AGC_MCU_LUT_TABLE_B_LNA_LUT:
+Look-up table for LNA
+
+AGC_MCU_UART_CFG_MSBF:
+MSB First
+
+AGC_MCU_UART_CFG_PAR_EN:
+Enable Parity
+
+AGC_MCU_UART_CFG_PAR_MODE:
+Parity Mode Even or Odd
+
+AGC_MCU_UART_CFG_START_LEN:
+START bit length 1 or 2
+
+AGC_MCU_UART_CFG_STOP_LEN:
+STOP bit length 1 or 2
+
+AGC_MCU_UART_CFG_WORD_LEN:
+0 => 7 bits ## 1 => 8 bits
+
+AGC_MCU_UART_CFG2_BIT_RATE:
+define UART bitrate = 2e6/(bit_rate+1)
+
+AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE3_MCU_MAIL_BOX_WR_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE2_MCU_MAIL_BOX_WR_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE1_MCU_MAIL_BOX_WR_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE0_MCU_MAIL_BOX_WR_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_RD_DATA_BYTE3_MCU_MAIL_BOX_RD_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_RD_DATA_BYTE2_MCU_MAIL_BOX_RD_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_RD_DATA_BYTE1_MCU_MAIL_BOX_RD_DATA:
+TBD
+
+AGC_MCU_MCU_MAIL_BOX_RD_DATA_BYTE0_MCU_MAIL_BOX_RD_DATA:
+TBD
+
+AGC_MCU_DUMMY_DUMMY3:
+Prevent RIF error on spurious read
+
+CLK_CTRL_CLK_SEL_CLKDIV_EN:
+Enable clock divider
+
+CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL:
+Clock enable for radio B
+
+CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL:
+Clock enable for radio A
+
+CLK_CTRL_DUMMY_DUMMY:
+Prevent RIF error on spurious read
+
+TX_TOP_A_TX_TRIG_TX_FSM_CLR:
+A 1 written on this register Returns FSM to IDLE status
+
+TX_TOP_A_TX_TRIG_TX_TRIG_GPS:
+A 1 written on this register trigs a transmission on the next rising edge of the GPS PPS signal
+
+TX_TOP_A_TX_TRIG_TX_TRIG_DELAYED:
+A 1 written on this register trigs a time triggered transmission
+
+TX_TOP_A_TX_TRIG_TX_TRIG_IMMEDIATE:
+A 1 written on this register trigs an immediate transmission
+
+TX_TOP_A_TIMER_TRIG_BYTE3_TIMER_DELAYED_TRIG:
+Timestamp  value [31:24]
+
+TX_TOP_A_TIMER_TRIG_BYTE2_TIMER_DELAYED_TRIG:
+Timestamp  value [23:16]
+
+TX_TOP_A_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG:
+Timestamp  value [15:8]
+
+TX_TOP_A_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG:
+Timestamp  value [7:0]
+
+TX_TOP_A_TX_START_DELAY_MSB_TX_START_DELAY:
+Reserved: programmable delay between TX trig and effective first symbol out , allows radio startup (LSB)
+
+TX_TOP_A_TX_START_DELAY_LSB_TX_START_DELAY:
+Reserved: programmable delay between TX trig and effective first symbol out , allows radio startup (LSB)
+
+TX_TOP_A_TX_CTRL_WRITE_BUFFER:
+Write buffer selection
+1 write payload from API
+0 read paylaod form modem during transmission
+
+TX_TOP_A_TX_RAMP_DURATION_TX_RAMP_DURATION:
+Select digital ramp up/down duration
+Formula is 511/32e6(2^TX_RAMP_DURATION + 1)
+  0 =~  32 us
+  1 =~  48 us
+  2 =~   80 us
+  3 =~ 144 us
+  4 =~ 271 us
+  5 =~ 526 us
+  6 =~ 1.04 ms
+  7 =~ 2.06ms
+
+TX_TOP_A_GEN_CFG_0_MODULATION_TYPE:
+Modem selection
+   0 : LoRa
+   1 : GFSK
+
+TX_TOP_A_TEST_0_TX_ACTIVE_CTRL:
+Control of TX active  (in test mode)
+   0 : TX inactive
+   1 : TX active
+
+TX_TOP_A_TEST_0_TX_ACTIVE_SEL:
+Seleciotn of TX active control
+   0 : AGC (functional mode)
+   1 : Register (test mode)
+
+TX_TOP_A_TX_FLAG_TX_TIMEOUT:
+TX timeout flag
+
+TX_TOP_A_TX_FLAG_PKT_DONE:
+Packet done flag
+
+TX_TOP_A_AGC_TX_BW_AGC_TX_BW:
+AGC TX Bandwith value passed to AGC
+
+TX_TOP_A_AGC_TX_PWR_AGC_TX_PWR:
+AGC TX power value passed to AGC
+
+TX_TOP_A_TIMEOUT_CNT_BYTE_2_TIMEOUT_CNT:
+Timeout
+
+TX_TOP_A_TIMEOUT_CNT_BYTE_1_TIMEOUT_CNT:
+Timeout
+
+TX_TOP_A_TIMEOUT_CNT_BYTE_0_TIMEOUT_CNT:
+Timeout
+
+TX_TOP_A_TX_FSM_STATUS_TX_STATUS:
+FSM status
+ IDLE                                  = 0x80
+ TRIG_ARMED_TIMER       = 0x91
+ TRIG_ARMED_GPS          = 0x92
+ RADIO_RAMP_UP             = 0x30
+ MODEM_RUN                  = 0x50
+ DIG_RAMP_DOWN                  = 0x60
+ RADIO_RAMP_DOWN                  = 0x70
+
+TX_TOP_A_DUMMY_CONTROL_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_A_TX_RFFE_IF_CTRL_PLL_DIV_CTRL:
+SX126x PLL divider ratio
+000 : VCO Divider by 2
+001 : VCO Divider by 4
+010 : VCO Divider by 8
+011 : VCO Divider by 16
+100 : VCO Divider by 32
+101 : Reserved
+110 : Reserved
+111 : Reserved
+
+TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE:
+Output data clock edge
+0 : Data on rising edge
+1 : Data on falling edge
+
+TX_TOP_A_TX_RFFE_IF_CTRL_TX_MODE:
+Mode of operation
+0 : Frequency synthesis
+1 : Modulation
+
+TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST:
+Interface destination
+0 : SX1255/7 Tx RFFE
+1 : SX1250 Tx RFFE
+
+TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_SRC:
+Interface source
+00 : Signal generator
+01 : LoRa modulator
+10 : GFSK modulator
+11 : Reserved
+
+TX_TOP_A_TX_RFFE_IF_CTRL2_SX125X_IQ_INVERT:
+1 to swap IQ (only used for SX1255/57)
+
+TX_TOP_A_TX_RFFE_IF_CTRL2_PLL_DIV_CTRL_AGC:
+1: AGC set the pll_div_ctrl value\n0: HOST set the pll_div_ctrl with tx_rffe_if_ctrl.pll_div_ctrl register
+
+TX_TOP_A_TX_RFFE_IF_IQ_GAIN_IQ_GAIN:
+IQ gain correction
+00 : No scaling
+01 : Scale by 7/8
+10 : Scale by 3/4
+11 : Scale by 1/2
+
+TX_TOP_A_TX_RFFE_IF_I_OFFSET_I_OFFSET:
+I offset correction
+
+TX_TOP_A_TX_RFFE_IF_Q_OFFSET_Q_OFFSET:
+Q offset correction
+
+TX_TOP_A_TX_RFFE_IF_FREQ_RF_H_FREQ_RF:
+RF frequency value bits (23:18
+Frequency step = 32e6 / 2^18 =~ 122Hz
+
+TX_TOP_A_TX_RFFE_IF_FREQ_RF_M_FREQ_RF:
+RF frequency value
+Frequency step = 32e6 / 2^18 =~ 122Hz
+
+TX_TOP_A_TX_RFFE_IF_FREQ_RF_L_FREQ_RF:
+RF frequency value
+Frequency step = 32e6 / 2^18 =~ 122Hz
+
+TX_TOP_A_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV:
+Frequency deviation value
+Frequency step = 32e6 / 2^18 =~ 122Hz; For LoRa should be set to BW/2
+
+TX_TOP_A_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV:
+Frequency deviation value
+Frequency step = 32e6 / 2^18 =~ 122Hz; For LoRa should be set to BW/2
+
+TX_TOP_A_TX_RFFE_IF_TEST_MOD_FREQ:
+Frequency modulation used for checking interface
+
+TX_TOP_A_DUMMY_MODULATOR_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_A_FSK_PKT_LEN_PKT_LENGTH:
+Packet length
+
+TX_TOP_A_FSK_CFG_0_TX_CONT:
+TX continuous mode
+
+TX_TOP_A_FSK_CFG_0_CRC_IBM:
+IBM CRC
+
+TX_TOP_A_FSK_CFG_0_DCFREE_ENC:
+DC Free encoding
+
+TX_TOP_A_FSK_CFG_0_CRC_EN:
+CRC enable
+
+TX_TOP_A_FSK_CFG_0_PKT_MODE:
+Packet mode
+0 =  "Fixed length"
+1 =  "Variable length"
+
+TX_TOP_A_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE:
+Preamble size
+
+TX_TOP_A_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE:
+Preamble size
+
+TX_TOP_A_FSK_BIT_RATE_MSB_BIT_RATE:
+Bit Rate
+
+TX_TOP_A_FSK_BIT_RATE_LSB_BIT_RATE:
+Bit Rate
+
+TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_SIZE:
+Size of reference pattern in bytes
+number of bytes is FSK_REF_PATTERN_SIZE+1
+
+TX_TOP_A_FSK_MOD_FSK_PREAMBLE_SEQ:
+Preamble sequence
+0  = "Send 0xaa value"
+1 =   "Send 0x55 value"
+
+TX_TOP_A_FSK_MOD_FSK_REF_PATTERN_EN:
+Enable reference  pattern generation
+
+TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_SELECT_BT:
+Modulation shaping
+00 = Reserved
+01 = Gaussian filter BT = 1.0
+10 = Gaussian filter BT = 0.5
+11 = Gaussian filter BT = 0.3
+
+TX_TOP_A_FSK_MOD_FSK_GAUSSIAN_EN:
+Enable Gaussian shaping
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE5_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE4_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE3_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_A_DUMMY_GSFK_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_A_TXRX_CFG0_0_MODEM_BW:
+Modem bandwidth index
+6=500kHz
+5=250kHz
+4=125kHz
+Other values : reserved
+
+TX_TOP_A_TXRX_CFG0_0_MODEM_SF:
+Spreading factor, valid range is [5:12]
+
+TX_TOP_A_TXRX_CFG0_1_PPM_OFFSET_HDR_CTRL:
+PPM offset value when ppm_offset_sig is set inside header
+
+TX_TOP_A_TXRX_CFG0_1_PPM_OFFSET:
+1 Reduced PPM offset
+0 means no PPM offset, use full range of modulation.
+1 means 1 bin every 4.
+2 means 1 bin every 8.
+
+TX_TOP_A_TXRX_CFG0_1_POST_PREAMBLE_GAP_LONG:
+High for long gap post preamble
+
+TX_TOP_A_TXRX_CFG0_1_CODING_RATE:
+Coding rate index. Used by RX in implicit header.
+0 = Coding rate 1,   short interleaving
+1 = Coding rate 4/5, short interleaving
+2 = Coding rate 2/3, short interleaving
+3 = Coding rate 4/7, short interleaving
+4 = Coding rate 1/2, short interleaving
+5 = Coding rate 1,   long interleaving
+6 = Coding rate 2/3, long interleaving
+7 = Coding rate 1/2, long interleaving
+
+TX_TOP_A_TXRX_CFG0_2_FINE_SYNCH_EN:
+Enable fine synchronization on SF5 and and SF6
+
+TX_TOP_A_TXRX_CFG0_2_MODEM_EN:
+High to enable modem
+
+TX_TOP_A_TXRX_CFG0_2_CADRXTX:
+Operating mode  (to be left at default 2 = TX)
+
+TX_TOP_A_TXRX_CFG0_2_IMPLICIT_HEADER:
+Implicit header enable , First 8 symbols are still in reduced PPM
+
+TX_TOP_A_TXRX_CFG0_2_CRC_EN:
+CRC Enable control
+
+TX_TOP_A_TXRX_CFG0_3_PAYLOAD_LENGTH:
+Number of bytes to transmit. Also used by RX in implicit header
+
+TX_TOP_A_TXRX_CFG1_0_INT_STEP_ORIDE_EN:
+Override long interleaver step
+
+TX_TOP_A_TXRX_CFG1_0_INT_STEP_ORIDE:
+Step of long interleaver if oride_en is set
+
+TX_TOP_A_TXRX_CFG1_1_MODEM_START:
+Write 1 to start operation
+
+TX_TOP_A_TXRX_CFG1_1_HEADER_DIFF_MODE:
+High when header is using differential modulation
+
+TX_TOP_A_TXRX_CFG1_1_ZERO_PAD:
+Silence between payload symbols, in number of chips
+
+TX_TOP_A_TXRX_CFG1_2_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble
+
+TX_TOP_A_TXRX_CFG1_3_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble
+
+TX_TOP_A_TXRX_CFG1_4_AUTO_ACK_INT_DELAY:
+Delay end of frame interrupts after ack (if auto ack also set)
+
+TX_TOP_A_TXRX_CFG1_4_AUTO_ACK_RX:
+Following a payload transmit, listen automatically to a potential short ACK
+
+TX_TOP_A_TXRX_CFG1_4_AUTO_ACK_TX:
+Following a valid payload receive, initiate a short ACK automatically
+
+TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS:
+Low pass to reduce OOB emission caused by frequency jump. more filtering increases delay => adjust tx_rx_delays_cal
+
+TX_TOP_A_TX_CFG0_0_PPM_OFFSET_SIG:
+High to signal PPM offset
+
+TX_TOP_A_TX_CFG0_0_CONTCHIRP:
+Continue chirp modulation during gap between Frame Sync and Header (or fine fiming symbols
+
+TX_TOP_A_TX_CFG0_0_CHIRP_INVERT:
+Invert chirp direction in transmit
+
+TX_TOP_A_TX_CFG0_0_CONTINUOUS:
+High for continuous
+
+TX_TOP_A_TX_CFG0_1_POWER_RANGING:
+Transmit power for ranging frame
+
+TX_TOP_A_TX_CFG1_0_FRAME_NB:
+Number of frame in continuous mode or number of ranging request. 0 means forever (tests, spectral measurement
+
+TX_TOP_A_TX_CFG1_1_HOP_CTRL:
+selects which symbol starts are signalled through START_TX_SYMBOL_HOP_OUT
+
+TX_TOP_A_TX_CFG1_1_IFS:
+Interfame spacing in number of symbols
+
+TX_TOP_A_FRAME_SYNCH_0_AUTO_SCALE:
+Use FFT gain to scale peak before looking for frame synch
+
+TX_TOP_A_FRAME_SYNCH_0_DROP_ON_SYNCH:
+High to allow drop detection to abort even if synchronization is detected (legacy mode)
+
+TX_TOP_A_FRAME_SYNCH_0_GAIN:
+Activate gain of 1.5 in peak comparison
+
+TX_TOP_A_FRAME_SYNCH_0_PEAK1_POS:
+Frame sync second symbol position. Use to isolate two networks. Mod value is multiplied by 4
+
+TX_TOP_A_FRAME_SYNCH_1_FINETIME_ON_LAST:
+Enable Finetiming adjustement on last symbol of synchro
+
+TX_TOP_A_FRAME_SYNCH_1_TIMEOUT_OPT:
+Option for timeout
+
+TX_TOP_A_FRAME_SYNCH_1_PEAK2_POS:
+Frame sync third symbol position (Must be different from peak 0&1). Use to isolate two networks. Mod value is multiplied by 4
+
+TX_TOP_A_LORA_TX_STATE_STATUS:
+TBD
+
+TX_TOP_A_LORA_TX_FLAG_FRAME_DONE:
+Frame done flag
+
+TX_TOP_A_LORA_TX_FLAG_CONT_DONE:
+Continouus done flag
+
+TX_TOP_A_LORA_TX_FLAG_PLD_DONE:
+Pyload done flag
+
+TX_TOP_A_DUMMY_LORA_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_B_TX_TRIG_TX_FSM_CLR:
+A 1 written on this register Returns FSM to IDLE status
+
+TX_TOP_B_TX_TRIG_TX_TRIG_GPS:
+A 1 written on this register trigs a transmission on the next rising edge of the GPS PPS signal
+
+TX_TOP_B_TX_TRIG_TX_TRIG_DELAYED:
+A 1 written on this register trigs a time triggered transmission
+
+TX_TOP_B_TX_TRIG_TX_TRIG_IMMEDIATE:
+A 1 written on this register trigs an immediate transmission
+
+TX_TOP_B_TIMER_TRIG_BYTE3_TIMER_DELAYED_TRIG:
+Timestamp  value [31:24]
+
+TX_TOP_B_TIMER_TRIG_BYTE2_TIMER_DELAYED_TRIG:
+Timestamp  value [23:16]
+
+TX_TOP_B_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG:
+Timestamp  value [15:8]
+
+TX_TOP_B_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG:
+Timestamp  value [7:0]
+
+TX_TOP_B_TX_START_DELAY_MSB_TX_START_DELAY:
+Reserved: programmable delay between TX trig and effective first symbol out , allows radio startup (LSB)
+
+TX_TOP_B_TX_START_DELAY_LSB_TX_START_DELAY:
+Reserved: programmable delay between TX trig and effective first symbol out , allows radio startup (LSB)
+
+TX_TOP_B_TX_CTRL_WRITE_BUFFER:
+Write buffer selection
+1 write payload from API
+0 read paylaod form modem during transmission
+
+TX_TOP_B_TX_RAMP_DURATION_TX_RAMP_DURATION:
+Select digital ramp up/down duration
+Formula is 511/32e6(2^TX_RAMP_DURATION + 1)
+  0 =~  32 us
+  1 =~  48 us
+  2 =~   80 us
+  3 =~ 144 us
+  4 =~ 271 us
+  5 =~ 526 us
+  6 =~ 1.04 ms
+  7 =~ 2.06ms
+
+TX_TOP_B_GEN_CFG_0_MODULATION_TYPE:
+Modem selection
+   0 : LoRa
+   1 : GFSK
+
+TX_TOP_B_TEST_0_TX_ACTIVE_CTRL:
+Control of TX active  (in test mode)
+   0 : TX inactive
+   1 : TX active
+
+TX_TOP_B_TEST_0_TX_ACTIVE_SEL:
+Seleciotn of TX active control
+   0 : AGC (functional mode)
+   1 : Register (test mode)
+
+TX_TOP_B_TX_FLAG_TX_TIMEOUT:
+TX timeout flag
+
+TX_TOP_B_TX_FLAG_PKT_DONE:
+Packet done flag
+
+TX_TOP_B_AGC_TX_BW_AGC_TX_BW:
+AGC TX Bandwith value passed to AGC
+
+TX_TOP_B_AGC_TX_PWR_AGC_TX_PWR:
+AGC TX power value passed to AGC
+
+TX_TOP_B_TIMEOUT_CNT_BYTE_2_TIMEOUT_CNT:
+Timeout
+
+TX_TOP_B_TIMEOUT_CNT_BYTE_1_TIMEOUT_CNT:
+Timeout
+
+TX_TOP_B_TIMEOUT_CNT_BYTE_0_TIMEOUT_CNT:
+Timeout
+
+TX_TOP_B_TX_FSM_STATUS_TX_STATUS:
+FSM status
+ IDLE                                  = 0x80
+ TRIG_ARMED_TIMER       = 0x91
+ TRIG_ARMED_GPS          = 0x92
+ RADIO_RAMP_UP             = 0x30
+ MODEM_RUN                  = 0x50
+ DIG_RAMP_DOWN                  = 0x60
+ RADIO_RAMP_DOWN                  = 0x70
+
+TX_TOP_B_DUMMY_CONTROL_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_B_TX_RFFE_IF_CTRL_PLL_DIV_CTRL:
+SX126x PLL divider ratio
+000 : VCO Divider by 2
+001 : VCO Divider by 4
+010 : VCO Divider by 8
+011 : VCO Divider by 16
+100 : VCO Divider by 32
+101 : Reserved
+110 : Reserved
+111 : Reserved
+
+TX_TOP_B_TX_RFFE_IF_CTRL_TX_CLK_EDGE:
+Output data clock edge
+0 : Data on rising edge
+1 : Data on falling edge
+
+TX_TOP_B_TX_RFFE_IF_CTRL_TX_MODE:
+Mode of operation
+0 : Frequency synthesis
+1 : Modulation
+
+TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_DST:
+Interface destination
+0 : SX1255/7 Tx RFFE
+1 : SX1250 Tx RFFE
+
+TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_SRC:
+Interface source
+00 : Signal generator
+01 : LoRa modulator
+10 : GFSK modulator
+11 : Reserved
+
+TX_TOP_B_TX_RFFE_IF_CTRL2_SX125X_IQ_INVERT:
+1 to swap IQ (only used for SX1255/57)
+
+TX_TOP_B_TX_RFFE_IF_CTRL2_PLL_DIV_CTRL_AGC:
+1: AGC set the pll_div_ctrl value\n0: HOST set the pll_div_ctrl with tx_rffe_if_ctrl.pll_div_ctrl register
+
+TX_TOP_B_TX_RFFE_IF_IQ_GAIN_IQ_GAIN:
+IQ gain correction
+00 : No scaling
+01 : Scale by 7/8
+10 : Scale by 3/4
+11 : Scale by 1/2
+
+TX_TOP_B_TX_RFFE_IF_I_OFFSET_I_OFFSET:
+I offset correction
+
+TX_TOP_B_TX_RFFE_IF_Q_OFFSET_Q_OFFSET:
+Q offset correction
+
+TX_TOP_B_TX_RFFE_IF_FREQ_RF_H_FREQ_RF:
+RF frequency value bits (23:18
+Frequency step = 32e6 / 2^18 =~ 122Hz
+
+TX_TOP_B_TX_RFFE_IF_FREQ_RF_M_FREQ_RF:
+RF frequency value
+Frequency step = 32e6 / 2^18 =~ 122Hz
+
+TX_TOP_B_TX_RFFE_IF_FREQ_RF_L_FREQ_RF:
+RF frequency value
+Frequency step = 32e6 / 2^18 =~ 122Hz
+
+TX_TOP_B_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV:
+Frequency deviation value
+Frequency step = 32e6 / 2^18 =~ 122Hz; For LoRa should be set to BW/2
+
+TX_TOP_B_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV:
+Frequency deviation value
+Frequency step = 32e6 / 2^18 =~ 122Hz; For LoRa should be set to BW/2
+
+TX_TOP_B_TX_RFFE_IF_TEST_MOD_FREQ:
+Frequency modulation used for checking interface
+
+TX_TOP_B_DUMMY_MODULATOR_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_B_FSK_PKT_LEN_PKT_LENGTH:
+Packet length
+
+TX_TOP_B_FSK_CFG_0_TX_CONT:
+TX continuous mode
+
+TX_TOP_B_FSK_CFG_0_CRC_IBM:
+IBM CRC
+
+TX_TOP_B_FSK_CFG_0_DCFREE_ENC:
+DC Free encoding
+
+TX_TOP_B_FSK_CFG_0_CRC_EN:
+CRC enable
+
+TX_TOP_B_FSK_CFG_0_PKT_MODE:
+Packet mode
+0 =  "Fixed length"
+1 =  "Variable length"
+
+TX_TOP_B_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE:
+Preamble size
+
+TX_TOP_B_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE:
+Preamble size
+
+TX_TOP_B_FSK_BIT_RATE_MSB_BIT_RATE:
+Bit Rate
+
+TX_TOP_B_FSK_BIT_RATE_LSB_BIT_RATE:
+Bit Rate
+
+TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_SIZE:
+Size of reference pattern in bytes
+number of bytes is FSK_REF_PATTERN_SIZE+1
+
+TX_TOP_B_FSK_MOD_FSK_PREAMBLE_SEQ:
+Preamble sequence
+0  = "Send 0xaa value"
+1 =   "Send 0x55 value"
+
+TX_TOP_B_FSK_MOD_FSK_REF_PATTERN_EN:
+Enable reference  pattern generation
+
+TX_TOP_B_FSK_MOD_FSK_GAUSSIAN_SELECT_BT:
+Modulation shaping
+00 = Reserved
+01 = Gaussian filter BT = 1.0
+10 = Gaussian filter BT = 0.5
+11 = Gaussian filter BT = 0.3
+
+TX_TOP_B_FSK_MOD_FSK_GAUSSIAN_EN:
+Enable Gaussian shaping
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE5_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE4_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE3_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN:
+Reference pattern
+
+TX_TOP_B_DUMMY_GSFK_DUMMY:
+Prevent RIF error on speculative read
+
+TX_TOP_B_TXRX_CFG0_0_MODEM_BW:
+Modem bandwidth index
+6=500kHz
+5=250kHz
+4=125kHz
+Other values : reserved
+
+TX_TOP_B_TXRX_CFG0_0_MODEM_SF:
+Spreading factor, valid range is [5:12]
+
+TX_TOP_B_TXRX_CFG0_1_PPM_OFFSET_HDR_CTRL:
+PPM offset value when ppm_offset_sig is set inside header
+
+TX_TOP_B_TXRX_CFG0_1_PPM_OFFSET:
+1 Reduced PPM offset
+0 means no PPM offset, use full range of modulation.
+1 means 1 bin every 4.
+2 means 1 bin every 8.
+
+TX_TOP_B_TXRX_CFG0_1_POST_PREAMBLE_GAP_LONG:
+High for long gap post preamble
+
+TX_TOP_B_TXRX_CFG0_1_CODING_RATE:
+Coding rate index. Used by RX in implicit header.
+0 = Coding rate 1,   short interleaving
+1 = Coding rate 4/5, short interleaving
+2 = Coding rate 2/3, short interleaving
+3 = Coding rate 4/7, short interleaving
+4 = Coding rate 1/2, short interleaving
+5 = Coding rate 1,   long interleaving
+6 = Coding rate 2/3, long interleaving
+7 = Coding rate 1/2, long interleaving
+
+TX_TOP_B_TXRX_CFG0_2_FINE_SYNCH_EN:
+Enable fine synchronization on SF5 and and SF6
+
+TX_TOP_B_TXRX_CFG0_2_MODEM_EN:
+High to enable modem
+
+TX_TOP_B_TXRX_CFG0_2_CADRXTX:
+Operating mode  (to be left at default 2 = TX)
+
+TX_TOP_B_TXRX_CFG0_2_IMPLICIT_HEADER:
+Implicit header enable , First 8 symbols are still in reduced PPM
+
+TX_TOP_B_TXRX_CFG0_2_CRC_EN:
+CRC Enable control
+
+TX_TOP_B_TXRX_CFG0_3_PAYLOAD_LENGTH:
+Number of bytes to transmit. Also used by RX in implicit header
+
+TX_TOP_B_TXRX_CFG1_0_INT_STEP_ORIDE_EN:
+Override long interleaver step
+
+TX_TOP_B_TXRX_CFG1_0_INT_STEP_ORIDE:
+Step of long interleaver if oride_en is set
+
+TX_TOP_B_TXRX_CFG1_1_MODEM_START:
+Write 1 to start operation
+
+TX_TOP_B_TXRX_CFG1_1_HEADER_DIFF_MODE:
+High when header is using differential modulation
+
+TX_TOP_B_TXRX_CFG1_1_ZERO_PAD:
+Silence between payload symbols, in number of chips
+
+TX_TOP_B_TXRX_CFG1_2_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble
+
+TX_TOP_B_TXRX_CFG1_3_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble
+
+TX_TOP_B_TXRX_CFG1_4_AUTO_ACK_INT_DELAY:
+Delay end of frame interrupts after ack (if auto ack also set)
+
+TX_TOP_B_TXRX_CFG1_4_AUTO_ACK_RX:
+Following a payload transmit, listen automatically to a potential short ACK
+
+TX_TOP_B_TXRX_CFG1_4_AUTO_ACK_TX:
+Following a valid payload receive, initiate a short ACK automatically
+
+TX_TOP_B_TX_CFG0_0_CHIRP_LOWPASS:
+Low pass to reduce OOB emission caused by frequency jump. more filtering increases delay => adjust tx_rx_delays_cal
+
+TX_TOP_B_TX_CFG0_0_PPM_OFFSET_SIG:
+High to signal PPM offset
+
+TX_TOP_B_TX_CFG0_0_CONTCHIRP:
+Continue chirp modulation during gap between Frame Sync and Header (or fine fiming symbols
+
+TX_TOP_B_TX_CFG0_0_CHIRP_INVERT:
+Invert chirp direction in transmit
+
+TX_TOP_B_TX_CFG0_0_CONTINUOUS:
+High for continuous
+
+TX_TOP_B_TX_CFG0_1_POWER_RANGING:
+Transmit power for ranging frame
+
+TX_TOP_B_TX_CFG1_0_FRAME_NB:
+Number of frame in continuous mode or number of ranging request. 0 means forever (tests, spectral measurement
+
+TX_TOP_B_TX_CFG1_1_HOP_CTRL:
+selects which symbol starts are signalled through START_TX_SYMBOL_HOP_OUT
+
+TX_TOP_B_TX_CFG1_1_IFS:
+Interfame spacing in number of symbols
+
+TX_TOP_B_FRAME_SYNCH_0_AUTO_SCALE:
+Use FFT gain to scale peak before looking for frame synch
+
+TX_TOP_B_FRAME_SYNCH_0_DROP_ON_SYNCH:
+High to allow drop detection to abort even if synchronization is detected (legacy mode)
+
+TX_TOP_B_FRAME_SYNCH_0_GAIN:
+Activate gain of 1.5 in peak comparison
+
+TX_TOP_B_FRAME_SYNCH_0_PEAK1_POS:
+Frame sync second symbol position. Use to isolate two networks. Mod value is multiplied by 4
+
+TX_TOP_B_FRAME_SYNCH_1_FINETIME_ON_LAST:
+Enable Finetiming adjustement on last symbol of synchro
+
+TX_TOP_B_FRAME_SYNCH_1_TIMEOUT_OPT:
+Option for timeout
+
+TX_TOP_B_FRAME_SYNCH_1_PEAK2_POS:
+Frame sync third symbol position (Must be different from peak 0&1). Use to isolate two networks. Mod value is multiplied by 4
+
+TX_TOP_B_LORA_TX_STATE_STATUS:
+TBD
+
+TX_TOP_B_LORA_TX_FLAG_FRAME_DONE:
+Frame done flag
+
+TX_TOP_B_LORA_TX_FLAG_CONT_DONE:
+Continouus done flag
+
+TX_TOP_B_LORA_TX_FLAG_PLD_DONE:
+Pyload done flag
+
+TX_TOP_B_DUMMY_LORA_DUMMY:
+Prevent RIF error on speculative read
+
+GPIO_GPIO_DIR_H_DIRECTION:
+Direction : 0 = Input, 1 = output
+
+GPIO_GPIO_DIR_L_DIRECTION:
+Direction : 0 = Input, 1 = output
+
+GPIO_GPIO_OUT_H_OUT_VALUE:
+GPIO output value to register
+
+GPIO_GPIO_OUT_L_OUT_VALUE:
+GPIO output value to register
+
+GPIO_GPIO_IN_H_IN_VALUE:
+GPIO input value to register
+
+GPIO_GPIO_IN_L_IN_VALUE:
+GPIO input value to register
+
+GPIO_GPIO_PD_H_PD_VALUE:
+Pull-down value (1 active)
+
+GPIO_GPIO_PD_L_PD_VALUE:
+Pull-down value (1 active)
+
+GPIO_GPIO_SEL_0_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_1_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_2_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_3_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_4_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_5_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_6_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_7_SELECTION:
+Selection for  GPIO bit n
+
+GPIO_GPIO_SEL_8_11_GPIO_11_9_SEL:
+Currently unused
+
+GPIO_GPIO_SEL_8_11_GPIO_8_SEL:
+0 : Register; 1 : Host IRQ
+
+GPIO_HOST_IRQ_TX_TIMEOUT_B:
+TX radio B timeout during packet transmission
+
+GPIO_HOST_IRQ_TX_TIMEOUT_A:
+TX radio A timeout during packet transmission
+
+GPIO_HOST_IRQ_TX_DONE_B:
+TX radio B packet completion
+
+GPIO_HOST_IRQ_TX_DONE_A:
+TX radio A packet completion
+
+GPIO_HOST_IRQ_TIMESTAMP:
+Timestamp reached
+
+GPIO_HOST_IRQ_RX_BUFFER_WATERMARK:
+RX buffer above threshold
+
+GPIO_HOST_IRQ_EN_TX_TIMEOUT_B:
+TX radio B timeout during packet transmission
+
+GPIO_HOST_IRQ_EN_TX_TIMEOUT_A:
+TX radio A timeout during packet transmission
+
+GPIO_HOST_IRQ_EN_TX_DONE_B:
+TX radio B packet completion
+
+GPIO_HOST_IRQ_EN_TX_DONE_A:
+TX radio A packet completion
+
+GPIO_HOST_IRQ_EN_TIMESTAMP:
+Timestamp reached
+
+GPIO_HOST_IRQ_EN_RX_BUFFER_WATERMARK:
+RX buffer above threshold
+
+GPIO_DUMMY_DUMMY:
+Prevent RIF error on spurious read
+
+TIMESTAMP_GPS_CTRL_GPS_POL:
+0 : falling edge detection; 1: rising edge detection
+
+TIMESTAMP_GPS_CTRL_GPS_EN:
+
+
+TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS:
+Timestamp counter [31:24] latched by GPS 1PPS (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_PPS_MSB1_TIMESTAMP_PPS:
+Timestamp counter [23:16] latched by GPS 1PPS (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_PPS_LSB2_TIMESTAMP_PPS:
+Timestamp counter [15:8] latched by GPS 1PPS (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_PPS_LSB1_TIMESTAMP_PPS:
+Timestamp counter [7:0] latched by GPS 1PPS (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP:
+Timestamp counter [31:24] latched when MSB is read (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_MSB1_TIMESTAMP:
+Timestamp counter [23:16] latched when MSB is read (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_LSB2_TIMESTAMP:
+Timestamp counter [15:8] latched when MSB is read (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_LSB1_TIMESTAMP:
+Timestamp counter [7:0] latched when MSB is read (32MHz increment)
+
+TIMESTAMP_TIMESTAMP_SET3_TIMESTAMP:
+Bits [31:24] of new value for timestamp counter, latched on write to LSB, mainly for testing
+
+TIMESTAMP_TIMESTAMP_SET2_TIMESTAMP:
+Bits [23:16] of new value for timestamp counter
+
+TIMESTAMP_TIMESTAMP_SET1_TIMESTAMP:
+Bits [15:8] of new value for timestamp counter
+
+TIMESTAMP_TIMESTAMP_SET0_TIMESTAMP:
+Bits [7:0] of new value for timestamp counter
+
+TIMESTAMP_TIMESTAMP_IRQ_3_TIMESTAMP:
+Bits [31:24] of value at which to generate IRQ
+
+TIMESTAMP_TIMESTAMP_IRQ_2_TIMESTAMP:
+Bits [23:16] of value at which to generate IRQ
+
+TIMESTAMP_TIMESTAMP_IRQ_1_TIMESTAMP:
+Bits [15:8] of value at which to generate IRQ
+
+TIMESTAMP_TIMESTAMP_IRQ_0_TIMESTAMP:
+Bits [7:0] of value at which to generate IRQ
+
+TIMESTAMP_DUMMY_DUMMY:
+Prevent RIF error on spurious read
+
+RX_TOP_FREQ_0_MSB_IF_FREQ_0:
+(MSB), IF Frequency of 1st channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq0Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_0_LSB_IF_FREQ_0:
+(LSB)
+
+RX_TOP_FREQ_1_MSB_IF_FREQ_1:
+(MSB), IF Frequency of 2nd channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq1Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_1_LSB_IF_FREQ_1:
+(LSB)
+
+RX_TOP_FREQ_2_MSB_IF_FREQ_2:
+(MSB), IF Frequency of 3rd channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq2Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_2_LSB_IF_FREQ_2:
+(LSB)
+
+RX_TOP_FREQ_3_MSB_IF_FREQ_3:
+(MSB), IF Frequency of 4th channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq3Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_3_LSB_IF_FREQ_3:
+(LSB)
+
+RX_TOP_FREQ_4_MSB_IF_FREQ_4:
+(MSB), IF Frequency of 5th channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq4Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_4_LSB_IF_FREQ_4:
+(LSB)
+
+RX_TOP_FREQ_5_MSB_IF_FREQ_5:
+(MSB), IF Frequency of 6th channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq5Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_5_LSB_IF_FREQ_5:
+(LSB)
+
+RX_TOP_FREQ_6_MSB_IF_FREQ_6:
+(MSB), IF Frequency of 7th channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq6Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_6_LSB_IF_FREQ_6:
+(LSB)
+
+RX_TOP_FREQ_7_MSB_IF_FREQ_7:
+(MSB), IF Frequency of 8th channel.  This is the MS 5 bits of a 13 bit signed number, LSBs in Freq7Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_FREQ_7_LSB_IF_FREQ_7:
+(LSB)
+
+RX_TOP_RADIO_SELECT_RADIO_SELECT:
+select for each channel on which radio it is connected 0 => radio A; 1 => radio B
+
+RX_TOP_RSSI_CONTROL_RSSI_FILTER_ALPHA:
+Low pass filtering corner for RSSI indicator. 15=max averaging
+
+RX_TOP_RSSI_CONTROL_SELECT_RSSI:
+Select the channel RSSI to monitor. Values 0 to 7
+
+RX_TOP_RSSI_DEF_VALUE_CHAN_RSSI_DEF_VALUE:
+Sets the channelizer RSSI reset value each time the AGC changes a gain
+
+RX_TOP_CHANN_DAGC_CFG1_CHAN_DAGC_THRESHOLD_HIGH:
+Sets the channelizer DAGC THRESHOLD HIGH if RSSI is greater, the atten will be increased
+
+RX_TOP_CHANN_DAGC_CFG2_CHAN_DAGC_THRESHOLD_LOW:
+Sets the channelizer DAGC THRESHOLD LOW if RSSI is lower, the atten will be decreased
+
+RX_TOP_CHANN_DAGC_CFG3_CHAN_DAGC_MAX_ATTEN:
+Sets the channelizer DAGC maximum allowed attenuation (1 LSB = 6 dB)
+
+RX_TOP_CHANN_DAGC_CFG3_CHAN_DAGC_MIN_ATTEN:
+Sets the channelizer DAGC minimum allowed attenuation (1 LSB = 6 dB)
+
+RX_TOP_CHANN_DAGC_CFG4_CHAN_DAGC_STEP:
+Sets the channelizer DAGC step  (1 LSB = 6 dB)
+
+RX_TOP_CHANN_DAGC_CFG5_CHAN_DAGC_MODE:
+Sets the channelizer DAGC mode
+
+RX_TOP_RSSI_VALUE_CHAN_RSSI:
+Instant RSSI measured in the channelizer. Channel is selected with the rssi_control.select_rssi register
+
+RX_TOP_GAIN_CONTROL_CHAN_GAIN_VALID:
+
+
+RX_TOP_GAIN_CONTROL_CHAN_GAIN:
+Channelizer gain when host has control. The same gain will be applied to all channels. 0 : max gain, 15 : min gain. Each step equals a -6dB attenuation
+
+RX_TOP_CLK_CONTROL_CHAN_CLK_EN:
+Enable channelizer clock
+
+RX_TOP_DUMMY0_DUMMY0:
+Prevent RIF error on spurious read
+
+RX_TOP_CORR_CLOCK_ENABLE_CLK_EN:
+Clock enable override for correlators - 1 bit per correlator
+
+RX_TOP_CORRELATOR_EN_CORR_EN:
+Enable correlators (one bit per correlator)
+
+RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN:
+bit 7=SF12, 6=SF11, 5=SF10, 4=SF9, 3=SF8, 2=SF7, 1=SF6, 0=SF5
+
+RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE:
+bit 7=SF12, 6=SF11, 5=SF10, 4=SF9, 3=SF8, 2=SF7, 1=SF6, 0=SF5
+
+RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR:
+bit 7=SF12, 6=SF11, 5=SF10, 4=SF9, 3=SF8, 2=SF7, 1=SF6, 0=SF5
+
+RX_TOP_SF5_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF5_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF5_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF5_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF5_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF5_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF5_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF5_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF5_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF5_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF5_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF5_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF5_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF5_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF5_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF5_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF6_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF6_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF6_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF6_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF6_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF6_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF6_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF6_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF6_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF6_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF6_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF6_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF6_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF6_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF6_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF6_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF7_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF7_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF7_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF7_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF7_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF7_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF7_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF7_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF7_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF7_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF7_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF7_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF7_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF7_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF7_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF7_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF8_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF8_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF8_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF8_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF8_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF8_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF8_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF8_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF8_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF8_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF8_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF8_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF8_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF8_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF8_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF8_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF9_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF9_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF9_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF9_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF9_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF9_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF9_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF9_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF9_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF9_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF9_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF9_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF9_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF9_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF9_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF9_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF10_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF10_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF10_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF10_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF10_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF10_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF10_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF10_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF10_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF10_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF10_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF10_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF10_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF10_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF10_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF10_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF11_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF11_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF11_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF11_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF11_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF11_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF11_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF11_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF11_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF11_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF11_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF11_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF11_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF11_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF11_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF11_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_SF12_CFG1_ACC_WIN_LEN:
+Length of window (in symbol + 2) to search for same peaks
+
+RX_TOP_SF12_CFG1_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_SF12_CFG1_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_SF12_CFG1_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_SF12_CFG1_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_SF12_CFG1_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_SF12_CFG2_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_SF12_CFG2_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+
+RX_TOP_SF12_CFG3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_SF12_CFG4_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_SF12_CFG5_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_SF12_CFG6_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF12_CFG6_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_SF12_CFG6_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_SF12_CFG7_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_SF12_CFG7_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_DUMMY1_DUMMY1:
+Prevent RIF error on spurious read
+
+RX_TOP_DC_NOTCH_CFG1_BW_START:
+bandwidth till first lora symbol end
+
+RX_TOP_DC_NOTCH_CFG1_AUTO_BW_RED:
+Auto observation window = 1 symbol
+
+RX_TOP_DC_NOTCH_CFG1_NO_FAST_START:
+Disable fast start
+
+RX_TOP_DC_NOTCH_CFG1_BYPASS:
+Bypass DC Notch filter
+
+RX_TOP_DC_NOTCH_CFG1_ENABLE:
+Enable DC Notch. 0 highly recommended
+
+RX_TOP_DC_NOTCH_CFG2_BW_LOCKED:
+Bandwidth when locked
+
+RX_TOP_DC_NOTCH_CFG2_BW:
+bandwidth during preamble search
+
+RX_TOP_DC_NOTCH_CFG3_BW_RED:
+Longer observation window
+
+RX_TOP_DC_NOTCH_CFG4_IIR_DCC_TIME:
+IIR DCC convergence time in number of count at data_valid_ds rate
+
+RX_TOP_RX_DFE_FIR1_0_FIR1_COEFF_0:
+First stage filter coefficient applied to x[n-7] and x[n+7]
+
+RX_TOP_RX_DFE_FIR1_1_FIR1_COEFF_1:
+First stage filter coefficient applied to x[n-6] and x[n+6]
+
+RX_TOP_RX_DFE_FIR1_2_FIR1_COEFF_2:
+First stage filter coefficient applied to x[n-5] and x[n+5]
+
+RX_TOP_RX_DFE_FIR1_3_FIR1_COEFF_3:
+First stage filter coefficient applied to x[n-4] and x[n+4]
+
+RX_TOP_RX_DFE_FIR1_4_FIR1_COEFF_4:
+First stage filter coefficient applied to x[n-3] and x[n+3]
+
+RX_TOP_RX_DFE_FIR1_5_FIR1_COEFF_5:
+First stage filter coefficient applied to x[n-2] and x[n+2]
+
+RX_TOP_RX_DFE_FIR1_6_FIR1_COEFF_6:
+First stage filter coefficient applied to x[n-1] and x[n+1]
+
+RX_TOP_RX_DFE_FIR1_7_FIR1_COEFF_7:
+First stage filter coefficient applied to x[n] (x2)
+
+RX_TOP_RX_DFE_FIR2_0_FIR2_COEFF_0:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_1_FIR2_COEFF_1:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_2_FIR2_COEFF_2:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_3_FIR2_COEFF_3:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_4_FIR2_COEFF_4:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_5_FIR2_COEFF_5:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_6_FIR2_COEFF_6:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_FIR2_7_FIR2_COEFF_7:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_RX_DFE_AGC0_RADIO_GAIN_RED_SEL:
+Select input to radio gain reduction (0=top pin, 1=register)
+
+RX_TOP_RX_DFE_AGC0_RADIO_GAIN_RED_DB:
+AGC gain reduction
+
+RX_TOP_RX_DFE_AGC1_DC_COMP_EN:
+High to enable DC compensation (0 recommended)
+
+RX_TOP_RX_DFE_AGC1_FORCE_DEFAULT_FIR:
+Force FIR1 & 2 to default value (strong filter)
+
+RX_TOP_RX_DFE_AGC1_RSSI_EARLY_LATCH:
+Latch RSSI early in the packet
+
+RX_TOP_RX_DFE_AGC1_FREEZE_ON_SYNC:
+Freeze DAGC FIR once a signal has been detected
+0 means the DAGC is continously running : this could affect negatively the PER !
+1 means the DAGC freezes after the detect state
+3 means the DAGC freezes after the frame synch state
+
+RX_TOP_RX_DFE_AGC2_DAGC_IN_COMP:
+Compensate DAGC Input gain change in DAGC FIR.
+
+RX_TOP_RX_DFE_AGC2_DAGC_FIR_HYST:
+Enable small hysteresis in DAGC FIR
+
+RX_TOP_RX_DFE_AGC2_RSSI_MAX_SAMPLE:
+Max number of sample during detect in SF/2^x -> SF, SF/2, SF/4 or SF/8
+
+RX_TOP_RX_DFE_AGC2_RSSI_MIN_SAMPLE:
+Min Number of sample during detect in 2^(x+2), x in [0:5] -> 4 to 128
+
+RX_TOP_RX_DFE_GAIN0_DAGC_FIR_FAST:
+For SF5 to 7, reduce energy estimation window to half symbol instead of a complete symbol
+
+RX_TOP_RX_DFE_GAIN0_FORCE_GAIN_FIR:
+High to override digital gain (FIR 1&2)
+
+RX_TOP_RX_DFE_GAIN0_GAIN_FIR1:
+FIR 1 Gain (decimation by 8)
+
+RX_TOP_RX_DFE_GAIN0_GAIN_FIR2:
+FIR 2 Gain (decimation by 4)
+
+RX_TOP_DAGC_CFG_TARGET_LVL:
+Target output level. For pure tone, 0-> amp=1000, 1->500, 2->250 and 3->125
+
+RX_TOP_DAGC_CFG_GAIN_INCR_STEP:
+Step when gain is increased at the end of a symbol: 0=6dB, 1=12dB
+
+RX_TOP_DAGC_CFG_GAIN_DROP_COMP:
+High to compensate the gain drop from analog part
+
+RX_TOP_DAGC_CFG_COMB_FILTER_EN:
+Enable Comb. Filter
+
+RX_TOP_DAGC_CFG_NO_FREEZE_START:
+Low to freeze DAGC during first symbol (to let AGC converge)
+
+RX_TOP_DAGC_CFG_FREEZE_ON_SYNC:
+Freeze DAGC In (23b to 12b) once a signal has been detected
+0 means the DAGC is continously running : this could affect negatively the PER !
+1 means the DAGC freezes after the detect state
+3 means the DAGC freezes after the frame synch state
+
+RX_TOP_DAGC_CNT0_SAMPLE:
+Number of sample in a window
+
+RX_TOP_DAGC_CNT1_THR_M6:
+Threshold for -6dB step
+
+RX_TOP_DAGC_CNT2_THR_M12:
+Threshold for -12dB step
+
+RX_TOP_DAGC_CNT3_THR_M18:
+Threshold for -18dB step
+
+RX_TOP_DAGC_CNT4_GAIN:
+DAGC gain value when forced (6dB step) and at start
+
+RX_TOP_DAGC_CNT4_FORCE_GAIN:
+Force DAGC gain to register value
+
+RX_TOP_TXRX_CFG1_PPM_OFFSET_HDR_CTRL:
+PPM offset value when ppm_offset_sig is set inside header
+
+RX_TOP_TXRX_CFG1_PPM_OFFSET:
+1 to use reduced PPM on payload. Used by RX in implicit header
+
+RX_TOP_TXRX_CFG1_MODEM_EN:
+Enable modem
+
+RX_TOP_TXRX_CFG1_CODING_RATE:
+Coding rate and interleaving index. Used by RX in implicit header.
+
+RX_TOP_TXRX_CFG2_MODEM_START:
+Write 1 to start operation
+
+RX_TOP_TXRX_CFG2_CADRXTX:
+Operating mode
+
+RX_TOP_TXRX_CFG2_IMPLICIT_HEADER:
+High for implicit header, First 8 symbols are still in reduced PPM
+
+RX_TOP_TXRX_CFG2_CRC_EN:
+High to enable CRC. Used by RX in implicit header.
+
+RX_TOP_TXRX_CFG3_PAYLOAD_LENGTH:
+Number of bytes to transmit. Also used by RX in implicit header
+
+RX_TOP_TXRX_CFG4_INT_STEP_ORIDE_EN:
+Override long interleaver step
+
+RX_TOP_TXRX_CFG4_INT_STEP_ORIDE:
+Step of long interleaver if oride_en is set
+
+RX_TOP_TXRX_CFG5_HEADER_DIFF_MODE:
+High when header is using differential modulation
+
+RX_TOP_TXRX_CFG5_ZERO_PAD:
+Silence between payload symbols, in number of chips
+
+RX_TOP_TXRX_CFG6_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble LSB
+
+RX_TOP_TXRX_CFG7_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble MSB
+
+RX_TOP_TXRX_CFG8_AUTO_ACK_INT_DELAY:
+Delay end of frame interrupts after ack (if auto ack also set)
+
+RX_TOP_TXRX_CFG8_AUTO_ACK_RX:
+Following a payload transmit, listen automatically to a potential short ACK
+
+RX_TOP_TXRX_CFG8_AUTO_ACK_TX:
+Following a valid payload receive, initiate a short ACK automatically
+
+RX_TOP_TXRX_CFG8_POST_PREAMBLE_GAP_LONG:
+High for long gap post preamble
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF12:
+Fine sync enable for SF12
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF11:
+Fine sync enable for SF11
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF10:
+Fine sync enable for SF10
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF9:
+Fine sync enable for SF9
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF8:
+Fine sync enable for SF8
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF7:
+Fine sync enable for SF7
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF6:
+Fine sync enable for SF6
+
+RX_TOP_TXRX_CFG9_FINE_SYNCH_EN_SF5:
+Fine sync enable for SF5
+
+RX_TOP_RX_CFG0_DFT_PEAK_EN:
+Half DFT mode to improve tracking & demod when drift is present.
+around peak to improve tracking and demodulation performances."
+
+RX_TOP_RX_CFG0_CHIRP_INVERT:
+Invert chirp direction in receive
+
+RX_TOP_RX_CFG0_SWAP_IQ:
+Swap I&Q channel
+
+RX_TOP_RX_CFG0_CONTINUOUS:
+High for continuous receive, 0 for single RX on modem_en edge
+
+RX_TOP_RX_CFG1_DETECT_TIMEOUT:
+Max number of symbol before detection timeout
+Format is in mantisse/exponent: [7:3] << (2*[2:0]+1).
+A mantisse to 0 is used to disable this timeout feature.
+After timeout an interrupt is raised, the counter detect_timeout increased and the modem go back to IDLE.
+If continuous mode is enabled a new detection start.
+
+RX_TOP_RX_CFG2_CLK_EN_RESYNC_DIN:
+High to resynchronize the clock enable generation on RX sample valid
+
+RX_TOP_RX_CFG2_LLR_SCALE:
+Gain on soft bits (higher gain, harder demodulation
+
+RX_TOP_FRAME_SYNCH0_SF5_PEAK1_POS_SF5:
+Frame sync second symbol position for SF5. Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_FRAME_SYNCH1_SF5_PEAK2_POS_SF5:
+Frame sync third symbol position for SF5 (Must be different from peak 0&1). Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_FRAME_SYNCH0_SF6_PEAK1_POS_SF6:
+Frame sync second symbol position for SF6. Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_FRAME_SYNCH1_SF6_PEAK2_POS_SF6:
+Frame sync third symbol position for SF6 (Must be different from peak 0&1). Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_FRAME_SYNCH0_SF7TO12_PEAK1_POS_SF7TO12:
+Frame sync second symbol position for SF7 to 12. Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_FRAME_SYNCH1_SF7TO12_PEAK2_POS_SF7TO12:
+Frame sync third symbol position for SF7 to 12 (Must be different from peak 0&1). Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_FRAME_SYNCH2_FINETIME_ON_LAST:
+Enable Finetiming adjustement on last symbol of synchro
+
+RX_TOP_FRAME_SYNCH2_AUTO_SCALE:
+Use FFT gain to scale peak before looking for frame synch
+
+RX_TOP_FRAME_SYNCH2_DROP_ON_SYNCH:
+High to allow drop detection to abort even if synchronization is detected (legacy mode)
+
+RX_TOP_FRAME_SYNCH2_GAIN:
+Activate gain of 1.5 in peak comparison
+
+RX_TOP_FRAME_SYNCH2_TIMEOUT_OPT:
+Option for timeout
+
+RX_TOP_FINE_TIMING_A_0_GAIN_P_HDR_RED:
+High to reduce proportional gain during header compare to preamble.
+
+RX_TOP_FINE_TIMING_A_0_ROUNDING:
+Enable rounding for the fine timing delta output
+
+RX_TOP_FINE_TIMING_A_0_POS_LIMIT:
+Limit the number of peak position used for tracking
+0 means no limit and then it limits to 1/2^(n-1) around the 0
+
+RX_TOP_FINE_TIMING_A_0_SUM_SIZE:
+Number of symbol to sum together before fine timing update
+
+RX_TOP_FINE_TIMING_A_0_MODE:
+Algo select
+
+RX_TOP_FINE_TIMING_A_1_GAIN_P_AUTO:
+Auto increase proportionnal gain when SNR is high
+The value decides the division factor of SNR margin: 3=6dB, 2=9dB, 1=12dB and 0 disable the feature.
+The gain use for fine timing is then gain_payload-SNR_MARGIN/(6|9|12)
+
+RX_TOP_FINE_TIMING_A_1_GAIN_P_PAYLOAD:
+Tracking loop gain for proportional path during payload: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_A_1_GAIN_P_PREAMB:
+Tracking loop gain for proportional path during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_A_2_GAIN_I_AUTO:
+Auto increase integral gain when SNR is high
+
+RX_TOP_FINE_TIMING_A_2_GAIN_I_PAYLOAD:
+Tracking loop gain for integral path during payload (0 means disabled)
+
+RX_TOP_FINE_TIMING_A_2_GAIN_I_PREAMB:
+Tracking loop gain for integral path during preamble/header (0 means disabled)
+
+RX_TOP_FINE_TIMING_A_3_FINESYNCH_SUM:
+Sum the two symbol of fine synchro
+
+RX_TOP_FINE_TIMING_A_3_FINESYNCH_GAIN:
+Tracking loop gain in fine synch
+
+RX_TOP_FINE_TIMING_A_4_GAIN_I_EN_SF8:
+Integral path gain enable for SF8
+
+RX_TOP_FINE_TIMING_A_4_GAIN_I_EN_SF7:
+Integral path gain enable for SF7
+
+RX_TOP_FINE_TIMING_A_4_GAIN_I_EN_SF6:
+Integral path gain enable for SF6
+
+RX_TOP_FINE_TIMING_A_4_GAIN_I_EN_SF5:
+Integral path gain enable for SF5
+
+RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF12:
+Integral path gain enable for SF12
+
+RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF11:
+Integral path gain enable for SF11
+
+RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF10:
+Integral path gain enable for SF10
+
+RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF9:
+Integral path gain enable for SF9
+
+RX_TOP_FINE_TIMING_A_6_GAIN_P_PREAMB_SF12:
+Tracking loop gain for proportional path in SF12 during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_A_6_GAIN_P_PREAMB_SF5_6:
+Tracking loop gain for proportional path in SF5/6 during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_7_GAIN_I_AUTO_MAX:
+Max gain I increase: 0 meaning no limitation.
+
+RX_TOP_FINE_TIMING_7_GAIN_P_AUTO_MAX:
+Max gain P increase: 0 meaning no limitation.
+
+RX_TOP_FINE_TIMING_B_0_GAIN_P_HDR_RED:
+High to reduce proportional gain during header compare to preamble.
+
+RX_TOP_FINE_TIMING_B_0_ROUNDING:
+Enable rounding for the fine timing delta output
+
+RX_TOP_FINE_TIMING_B_0_POS_LIMIT:
+Limit the number of peak position used for tracking
+0 means no limit and then it limits to 1/2^(n-1) around the 0
+
+RX_TOP_FINE_TIMING_B_0_SUM_SIZE:
+Number of symbol to sum together before fine timing update
+
+RX_TOP_FINE_TIMING_B_0_MODE:
+Algo select
+
+RX_TOP_FINE_TIMING_B_1_GAIN_P_AUTO:
+Auto increase proportionnal gain when SNR is high
+The value decides the division factor of SNR margin: 3=6dB, 2=9dB, 1=12dB and 0 disable the feature.
+The gain use for fine timing is then gain_payload-SNR_MARGIN/(6|9|12)
+
+RX_TOP_FINE_TIMING_B_1_GAIN_P_PAYLOAD:
+Tracking loop gain for proportional path during payload: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_B_1_GAIN_P_PREAMB:
+Tracking loop gain for proportional path during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_B_2_GAIN_I_AUTO:
+Auto increase integral gain when SNR is high
+
+RX_TOP_FINE_TIMING_B_2_GAIN_I_PAYLOAD:
+Tracking loop gain for integral path during payload (0 means disabled)
+
+RX_TOP_FINE_TIMING_B_2_GAIN_I_PREAMB:
+Tracking loop gain for integral path during preamble/header (0 means disabled)
+
+RX_TOP_FINE_TIMING_B_3_FINESYNCH_SUM:
+Sum the two symbol of fine synchro
+
+RX_TOP_FINE_TIMING_B_3_FINESYNCH_GAIN:
+Tracking loop gain in fine synch
+
+RX_TOP_FINE_TIMING_B_4_GAIN_I_EN_SF8:
+Integral path gain enable for SF8
+
+RX_TOP_FINE_TIMING_B_4_GAIN_I_EN_SF7:
+Integral path gain enable for SF7
+
+RX_TOP_FINE_TIMING_B_4_GAIN_I_EN_SF6:
+Integral path gain enable for SF6
+
+RX_TOP_FINE_TIMING_B_4_GAIN_I_EN_SF5:
+Integral path gain enable for SF5
+
+RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF12:
+Integral path gain enable for SF12
+
+RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF11:
+Integral path gain enable for SF11
+
+RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF10:
+Integral path gain enable for SF10
+
+RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF9:
+Integral path gain enable for SF9
+
+RX_TOP_FINE_TIMING_B_6_GAIN_P_PREAMB_SF12:
+Tracking loop gain for proportional path in SF12 during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FINE_TIMING_B_6_GAIN_P_PREAMB_SF5_6:
+Tracking loop gain for proportional path in SF5/6 during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_FREQ_TO_TIME0_FREQ_TO_TIME_DRIFT_MANT:
+Mantissa of the accurate representation of frequency to time drift
+BW/Fo*2^20 = Mantissa>>Exp (Default correspond to BW=125Khz and Fo=434Mhz)
+
+RX_TOP_FREQ_TO_TIME1_FREQ_TO_TIME_DRIFT_MANT:
+Mantissa of the accurate representation of frequency to time drift
+BW/Fo*2^20 = Mantissa>>Exp (Default correspond to BW=125Khz and Fo=434Mhz)
+
+RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP:
+Exponent of accurate representation of freq. to time drift
+BW/Fo*2^20 = Mantissa>>Exp (Default correspond to BW=125Khz and Fo=434Mhz)
+
+RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_FREQ_DELTA:
+Change sign of frequency delta compensation (debug only)
+
+RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_FINE_DELTA:
+Change sign of finetiming delta compensaation (debug only)
+
+RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_FREQ_ERROR:
+Change sign of frequency error compensation (debug only)
+
+RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB:
+Change sign of timing error per symbol compensation (debug only)
+
+RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_OFFSET:
+Change sign of time offset compensation after frequency estimation (debug only)
+
+RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_DETECT:
+Change sign of detection offset compensation (debug only)
+
+RX_TOP_FREQ_TO_TIME4_FREQ_TO_TIME_INVERT_RNG:
+Control some freq_to_time processing for ranging operation (debug only)
+
+RX_TOP_FREQ_TRACK_A_0_FREQ_TRACK_EN_SF8:
+Frequency tracking enable for SF8
+
+RX_TOP_FREQ_TRACK_A_0_FREQ_TRACK_EN_SF7:
+Frequency tracking enable for SF7
+
+RX_TOP_FREQ_TRACK_A_0_FREQ_TRACK_EN_SF6:
+Frequency tracking enable for SF6
+
+RX_TOP_FREQ_TRACK_A_0_FREQ_TRACK_EN_SF5:
+Frequency tracking enable for SF5
+
+RX_TOP_FREQ_TRACK_A_1_FREQ_TRACK_EN_SF12:
+Frequency tracking enable for SF12
+
+RX_TOP_FREQ_TRACK_A_1_FREQ_TRACK_EN_SF11:
+Frequency tracking enable for SF11
+
+RX_TOP_FREQ_TRACK_A_1_FREQ_TRACK_EN_SF10:
+Frequency tracking enable for SF10
+
+RX_TOP_FREQ_TRACK_A_1_FREQ_TRACK_EN_SF9:
+Frequency tracking enable for SF9
+
+RX_TOP_FREQ_TRACK_B_0_FREQ_TRACK_EN_SF8:
+Frequency tracking enable for SF8
+
+RX_TOP_FREQ_TRACK_B_0_FREQ_TRACK_EN_SF7:
+Frequency tracking enable for SF7
+
+RX_TOP_FREQ_TRACK_B_0_FREQ_TRACK_EN_SF6:
+Frequency tracking enable for SF6
+
+RX_TOP_FREQ_TRACK_B_0_FREQ_TRACK_EN_SF5:
+Frequency tracking enable for SF5
+
+RX_TOP_FREQ_TRACK_B_1_FREQ_TRACK_EN_SF12:
+Frequency tracking enable for SF12
+
+RX_TOP_FREQ_TRACK_B_1_FREQ_TRACK_EN_SF11:
+Frequency tracking enable for SF11
+
+RX_TOP_FREQ_TRACK_B_1_FREQ_TRACK_EN_SF10:
+Frequency tracking enable for SF10
+
+RX_TOP_FREQ_TRACK_B_1_FREQ_TRACK_EN_SF9:
+Frequency tracking enable for SF9
+
+RX_TOP_FREQ_TRACK2_FREQ_TRACK_FINE:
+Use full precision delta from FineTiming Block.
+
+RX_TOP_FREQ_TRACK2_FREQ_TRACK_HDR_SKIP:
+Number of header symbol (2x) to ignore for frequency tracking
+
+RX_TOP_FREQ_TRACK3_FREQ_SYNCH_GAIN:
+Gain used to compensate timing drift due to the frequency error before it is estimated.
+
+RX_TOP_FREQ_TRACK3_FREQ_TRACK_AUTO_THR:
+SNR margin Threshold for auto-enabling freq_trck (in 0.5 dB)
+
+RX_TOP_FREQ_TRACK4_SNR_MIN_WINDOW:
+ Window length (in symbol+1) to get the min SNR
+
+RX_TOP_FREQ_TRACK4_GAIN_AUTO_SNR_MIN:
+High to use SNR min to drive auto gain instead of SNR average
+
+RX_TOP_FREQ_TRACK4_FREQ_SYNCH_THR:
+Threshold for 1bin correction
+
+RX_TOP_DETECT_MSP0_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_DETECT_MSP1_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_DETECT_MSP2_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_DETECT_MSP2_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_DETECT_MSP3_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_DETECT_MSP3_ACC_WIN_LEN:
+Length of the window (in symbol + 2) to search for same peak in ACC
+
+RX_TOP_DETECT_MSP3_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_DETECT_MSP3_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_DETECT_ACC1_USE_GAIN_SYMB:
+When doing auto-scale use the full gain symbol (Radio, two DAGC and FFT gain). Otherwise uses only the FIR DAGC + FFT.
+
+RX_TOP_DETECT_ACC1_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+Applied on amplitude, linear representation, 7.4 format.
+Value 127 disable this detect path.
+
+RX_TOP_DETECT_ACC2_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_DETECT_ACC2_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_DETECT_ACC2_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_DETECT_ACC2_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_DETECT_ACC2_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_DETECT_ACC2_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_DETECT_ACC3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_TIMESTAMP_SEL_SNR_MIN:
+Select SNR Margin Min instead of Standard deviation
+
+RX_TOP_TIMESTAMP_ENABLE:
+Enable statistic block
+
+RX_TOP_TIMESTAMP_NB_SYMB:
+Number of symbol to process timestamp statistics
+The unit is a power of 2 number of symbol (2^(x+1))
+with 7 reserved to indicate that the whole frame is used to process stats.
+When 0 is used avg and stddev are replaced by the raw input of each symbol
+i.e delta[0] and delta[1] respectively
+
+RX_TOP_MODEM_BUSY_MSB_RX_MODEM_BUSY:
+
+
+RX_TOP_MODEM_BUSY_LSB_RX_MODEM_BUSY:
+
+
+RX_TOP_MODEM_STATE_RX_MODEM_STS_SPARE:
+
+
+RX_TOP_MODEM_STATE_RX_MODEM_STATE:
+
+
+RX_TOP_MODEM_SYNC_DELTA_MSB_PEAK_POS_FINE_GAIN_H:
+Gain used to control fine peak position (0->0, 1->0.5, 2->0.75, 3->1)
+
+RX_TOP_MODEM_SYNC_DELTA_MSB_PEAK_POS_FINE_GAIN_L:
+Gain used to control fine peak position (0->0, 1->0.5, 2->0.75, 3->1)
+
+RX_TOP_MODEM_SYNC_DELTA_MSB_PEAK_POS_FINE_SIGN:
+Sign used to process the fine peak position
+
+RX_TOP_MODEM_SYNC_DELTA_MSB_MODEM_SYNC_DELTA:
+
+
+RX_TOP_MODEM_SYNC_DELTA_LSB_MODEM_SYNC_DELTA:
+Delay compensation between Detect Correlator and Modem, in 1/16th sample.
+
+RX_TOP_MODEM_PPM_OFFSET1_PPM_OFFSET_SF8:
+
+
+RX_TOP_MODEM_PPM_OFFSET1_PPM_OFFSET_SF7:
+
+
+RX_TOP_MODEM_PPM_OFFSET1_PPM_OFFSET_SF6:
+
+
+RX_TOP_MODEM_PPM_OFFSET1_PPM_OFFSET_SF5:
+
+
+RX_TOP_MODEM_PPM_OFFSET2_PPM_OFFSET_SF12:
+
+
+RX_TOP_MODEM_PPM_OFFSET2_PPM_OFFSET_SF11:
+
+
+RX_TOP_MODEM_PPM_OFFSET2_PPM_OFFSET_SF10:
+
+
+RX_TOP_MODEM_PPM_OFFSET2_PPM_OFFSET_SF9:
+
+
+RX_TOP_MODEM_CLOCK_GATE_OVERRIDE_3_CLK_OVERRIDE:
+Clock override for modems 12..15 (2 bits per modem). 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_MODEM_CLOCK_GATE_OVERRIDE_2_CLK_OVERRIDE:
+Clock override for modems 8..11 (2 bits per modem). 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_MODEM_CLOCK_GATE_OVERRIDE_1_CLK_OVERRIDE:
+Clock override for modems 4..7 (2 bits per modem). 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_MODEM_CLOCK_GATE_OVERRIDE_0_CLK_OVERRIDE:
+Clock override for modems 0..3 (2 bits per modem). 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_DUMMY2_DUMMY2:
+Prevent RIF error on spurious read
+
+RX_TOP_RX_BUFFER_DEBUG_MODE:
+Change some meta-data to debug information
+RX CRC is replaced by the fine detect position
+
+RX_TOP_RX_BUFFER_DIRECT_RAM_IF:
+Allow direct random access to the rx_buffer RAM, instead of the FIFO-style
+
+RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP:
+0 : latch end-of-header LoRa timestamps, 1 : Latch end-of-packet timestamp (1301 compatibility)
+
+RX_TOP_RX_BUFFER_STORE_HEADER_ERR_META:
+Store restricted meta-data when header CRC error is detected
+
+RX_TOP_RX_BUFFER_STORE_SYNC_FAIL_META:
+Store restricted meta-data when sync fails
+
+RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS:
+Maximum number of precision timestamp metrics to record in rx buffer
+
+RX_TOP_RX_BUFFER_IRQ_CTRL_MSB_RX_BUFFER_IRQ_THRESHOLD:
+Number of bytes above which the watermark IRQ source will be triggered
+
+RX_TOP_RX_BUFFER_IRQ_CTRL_LSB_RX_BUFFER_IRQ_THRESHOLD:
+
+
+RX_TOP_RX_BUFFER_LAST_ADDR_READ_MSB_LAST_ADDR_READ:
+last address read bits 12:8
+
+RX_TOP_RX_BUFFER_LAST_ADDR_READ_LSB_LAST_ADDR_READ:
+last address read bits 7:0
+
+RX_TOP_RX_BUFFER_LAST_ADDR_WRITE_MSB_LAST_ADDR_WRITE:
+last address write bits 12:8
+
+RX_TOP_RX_BUFFER_LAST_ADDR_WRITE_LSB_LAST_ADDR_WRITE:
+last address write bits 7:0
+
+RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES:
+Number of unread bytes in the Rx buffer (bits 13:8)
+
+RX_TOP_RX_BUFFER_NB_BYTES_LSB_RX_BUFFER_NB_BYTES:
+Number of unread bytes in the Rx buffer (bits 7:0)
+
+RX_TOP_MULTI_SF_SYNC_ERR_PKT_CNT_MULTI_SF_SYNC_ERR_PKTS:
+Number of Multi-SF packets with sync error or header CRC errors
+
+RX_TOP_MULTI_SF_PLD_ERR_PKT_CNT_MULTI_SF_PLD_ERR_PKTS:
+Number of packets with payload CRC errors
+
+RX_TOP_MULTI_SF_GOOD_PKT_CNT_MULTI_SF_GOOD_PKTS:
+Number of packets without errors
+
+RX_TOP_SERV_MODEM_SYNC_ERR_PKT_CNT_SERV_MODEM_SYNC_ERR_PKTS:
+Number of packets with sync error or header CRC errors
+
+RX_TOP_SERV_MODEM_PLD_ERR_PKT_CNT_SERV_MODEM_PLD_ERR_PKTS:
+Number of packets with payload CRC errors
+
+RX_TOP_SERV_MODEM_GOOD_PKT_CNT_SERV_MODEM_GOOD_PKTS:
+Number of packets without errors
+
+RX_TOP_GFSK_MODEM_SYNC_ERR_PKT_CNT_GFSK_MODEM_SYNC_ERR_PKTS:
+Number of packets with sync error or header CRC errors
+
+RX_TOP_GFSK_MODEM_PLD_ERR_PKT_CNT_GFSK_MODEM_PLD_ERR_PKTS:
+Number of packets with payload CRC errors
+
+RX_TOP_GFSK_MODEM_GOOD_PKT_CNT_GFSK_MODEM_GOOD_PKTS:
+Number of packets without errors
+
+RX_TOP_BAD_MODEM_ID_WRITE_0_BAD_MODEM_ID_WRITE:
+Modem 16
+
+RX_TOP_BAD_MODEM_ID_WRITE_1_BAD_MODEM_ID_WRITE:
+Modem 8
+
+RX_TOP_BAD_MODEM_ID_WRITE_2_BAD_MODEM_ID_WRITE:
+Modem 0
+
+RX_TOP_BAD_MODEM_ID_READ_0_BAD_MODEM_ID_READ:
+Modem 16
+
+RX_TOP_BAD_MODEM_ID_READ_1_BAD_MODEM_ID_READ:
+Modem 8
+
+RX_TOP_BAD_MODEM_ID_READ_2_BAD_MODEM_ID_READ:
+Modem 0
+
+RX_TOP_CLOCK_GATE_OVERRIDE_0_CLK_OVERRIDE:
+Clock override. 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_SAMPLE_4_MSPS_LATCHED_125K_SAMPLE_4_MSPS_LATCHED_125K:
+
+
+RX_TOP_DUMMY3_DUMMY3:
+Prevent RIF error on spurious read
+
+ARB_MCU_CTRL_CLK_EN:
+Enable ARB MCU clock enable
+
+ARB_MCU_CTRL_RADIO_RST:
+Radio Reset
+
+ARB_MCU_CTRL_FORCE_HOST_FE_CTRL:
+Force control of Front-End
+
+ARB_MCU_CTRL_MCU_CLEAR:
+MCU synchroous clear
+
+ARB_MCU_CTRL_HOST_PROG:
+Program memory form host
+
+ARB_MCU_CTRL_PARITY_ERROR:
+PArity checker
+
+ARB_MCU_MCU_ARB_STATUS_MCU_ARB_STATUS:
+ARB MCU status
+
+ARB_MCU_UART_CFG_MSBF:
+MSB First
+
+ARB_MCU_UART_CFG_PAR_EN:
+Enable Parity
+
+ARB_MCU_UART_CFG_PAR_MODE:
+Parity Mode Even or Odd
+
+ARB_MCU_UART_CFG_START_LEN:
+START bit length 1 or 2
+
+ARB_MCU_UART_CFG_STOP_LEN:
+STOP bit length 1 or 2
+
+ARB_MCU_UART_CFG_WORD_LEN:
+0 => 7 bits ## 1 => 8 bits
+
+ARB_MCU_UART_CFG2_BIT_RATE:
+define UART bitrate = 2e6/(bit_rate+1)
+
+ARB_MCU_ARB_DEBUG_CFG_0_ARB_DEBUG_CFG_0:
+Arbiter MCU Debug configuration
+
+ARB_MCU_ARB_DEBUG_CFG_1_ARB_DEBUG_CFG_1:
+Arbiter MCU Debug configuration
+
+ARB_MCU_ARB_DEBUG_CFG_2_ARB_DEBUG_CFG_2:
+Arbiter MCU Debug configuration
+
+ARB_MCU_ARB_DEBUG_CFG_3_ARB_DEBUG_CFG_3:
+Arbiter MCU Debug configuration
+
+ARB_MCU_ARB_DEBUG_STS_0_ARB_DEBUG_STS_0:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_1_ARB_DEBUG_STS_1:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_2_ARB_DEBUG_STS_2:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_3_ARB_DEBUG_STS_3:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_4_ARB_DEBUG_STS_4:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_5_ARB_DEBUG_STS_5:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_6_ARB_DEBUG_STS_6:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_7_ARB_DEBUG_STS_7:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_8_ARB_DEBUG_STS_8:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_9_ARB_DEBUG_STS_9:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_10_ARB_DEBUG_STS_10:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_11_ARB_DEBUG_STS_11:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_12_ARB_DEBUG_STS_12:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_13_ARB_DEBUG_STS_13:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_14_ARB_DEBUG_STS_14:
+Arbiter MCU Debug status
+
+ARB_MCU_ARB_DEBUG_STS_15_ARB_DEBUG_STS_15:
+Arbiter MCU Debug status
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_01_CHANNEL_1_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_01_CHANNEL_0_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_23_CHANNEL_3_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_23_CHANNEL_2_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_45_CHANNEL_5_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_45_CHANNEL_4_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_67_CHANNEL_7_OFFSET:
+
+
+ARB_MCU_CHANNEL_SYNC_OFFSET_67_CHANNEL_6_OFFSET:
+
+
+ARB_MCU_DUMMY_DUMMY3:
+Prevent RIF error on spurious read
+
+RADIO_FE_GLBL_CTRL_DECIM_B_CLR:
+Synch. clear
+
+RADIO_FE_GLBL_CTRL_DECIM_A_CLR:
+Synch. clear
+
+RADIO_FE_CTRL0_RADIO_A_DC_NOTCH_EN:
+TBD
+
+RADIO_FE_CTRL0_RADIO_A_FORCE_HOST_FILTER_GAIN:
+TBD
+
+RADIO_FE_CTRL0_RADIO_A_HOST_FILTER_GAIN:
+TBD
+
+RADIO_FE_RSSI_DB_DEF_RADIO_A_RSSI_DB_DEFAULT_VALUE:
+TBD
+
+RADIO_FE_RSSI_DEC_DEF_RADIO_A_RSSI_DEC_DEFAULT_VALUE:
+TBD
+
+RADIO_FE_RSSI_DEC_RD_RADIO_A_RSSI_DEC_OUT:
+TBD
+
+RADIO_FE_RSSI_BB_RD_RADIO_A_RSSI_BB_OUT:
+TBD
+
+RADIO_FE_DEC_FILTER_RD_RADIO_A_DEC_FILTER_GAIN:
+TBD
+
+RADIO_FE_RSSI_BB_FILTER_ALPHA_RADIO_A_RSSI_BB_FILTER_ALPHA:
+TBD
+
+RADIO_FE_RSSI_DEC_FILTER_ALPHA_RADIO_A_RSSI_DEC_FILTER_ALPHA:
+TBD
+
+RADIO_FE_IQ_COMP_AMP_COEFF_RADIO_A_AMP_COEFF:
+TBD
+
+RADIO_FE_IQ_COMP_PHI_COEFF_RADIO_A_PHI_COEFF:
+TBD
+
+RADIO_FE_RADIO_DIO_TEST_MODE_RADIO_A_DIO_TEST_MODE:
+Enable test mode for each bit separately
+0 function mode (direction control by internal logic)
+1 test mode (direction ccontrolled by RADIO_DIO_TEST_DIR)
+
+RADIO_FE_RADIO_DIO_TEST_DIR_RADIO_A_DIO_TEST_DIR:
+Bit direction (each bit controlled separately)
+0 Input
+1 Output
+
+RADIO_FE_RADIO_DIO_DIR_RADIO_A_DIO_DIR:
+Bit direction
+0 Input
+1 Output
+
+RADIO_FE_CTRL0_RADIO_B_DC_NOTCH_EN:
+TBD
+
+RADIO_FE_CTRL0_RADIO_B_FORCE_HOST_FILTER_GAIN:
+TBD
+
+RADIO_FE_CTRL0_RADIO_B_HOST_FILTER_GAIN:
+TBD
+
+RADIO_FE_RSSI_DB_DEF_RADIO_B_RSSI_DB_DEFAULT_VALUE:
+TBD
+
+RADIO_FE_RSSI_DEC_DEF_RADIO_B_RSSI_DEC_DEFAULT_VALUE:
+TBD
+
+RADIO_FE_RSSI_DEC_RD_RADIO_B_RSSI_DEC_OUT:
+TBD
+
+RADIO_FE_RSSI_BB_RD_RADIO_B_RSSI_BB_OUT:
+TBD
+
+RADIO_FE_DEC_FILTER_RD_RADIO_B_DEC_FILTER_GAIN:
+TBD
+
+RADIO_FE_RSSI_BB_FILTER_ALPHA_RADIO_B_RSSI_BB_FILTER_ALPHA:
+TBD
+
+RADIO_FE_RSSI_DEC_FILTER_ALPHA_RADIO_B_RSSI_DEC_FILTER_ALPHA:
+TBD
+
+RADIO_FE_IQ_COMP_AMP_COEFF_RADIO_B_AMP_COEFF:
+TBD
+
+RADIO_FE_IQ_COMP_PHI_COEFF_RADIO_B_PHI_COEFF:
+TBD
+
+RADIO_FE_RADIO_DIO_TEST_MODE_RADIO_B_DIO_TEST_MODE:
+Enable test mode for each bit separately
+0 function mode (direction control by internal logic)
+1 test mode (direction ccontrolled by RADIO_DIO_TEST_DIR)
+
+RADIO_FE_RADIO_DIO_TEST_DIR_RADIO_B_DIO_TEST_DIR:
+Bit direction (each bit controlled separately)
+0 Input
+1 Output
+
+RADIO_FE_RADIO_DIO_DIR_RADIO_B_DIO_DIR:
+Bit direction
+0 Input
+1 Output
+
+RADIO_FE_SIG_ANA_CFG_VALID:
+TBD
+
+RADIO_FE_SIG_ANA_CFG_BUSY:
+TBD
+
+RADIO_FE_SIG_ANA_CFG_DURATION:
+TBD
+
+RADIO_FE_SIG_ANA_CFG_FORCE_HAL_CTRL:
+TBD
+
+RADIO_FE_SIG_ANA_CFG_START:
+TBD
+
+RADIO_FE_SIG_ANA_CFG_RADIO_SEL:
+TBD
+
+RADIO_FE_SIG_ANA_CFG_EN:
+TBD
+
+RADIO_FE_SIG_ANA_FREQ_FREQ:
+TBD
+
+RADIO_FE_SIG_ANA_ABS_MSB_CORR_ABS_OUT:
+(MSB),Signal analyzer abs result
+
+RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT:
+(LSB)
+
+RADIO_FE_DUMMY_DUMMY:
+Prevent RIF error on spurious read
+
+OTP_BYTE_ADDR_ADDR:
+OTP byte address
+User mode : Write address to this register before reading OTP data from RdData
+
+OTP_RD_DATA_RD_DATA:
+OTP Read data 7:0
+User mode : Read OTP data after writing to ByteAddr
+
+OTP_STATUS_CHECKSUM_STATUS:
+Checksum status
+bit 7 : Sector 3 checksum status
+bit 6 : Sector 2 checksum status
+bit 5 : Sector 1 checksum status
+bit 4 : Sector 0 checksum status
+ 0 : Checksum calculated after reset is bad
+ 1 : Checksum calculated after reset is good
+
+OTP_STATUS_FSM_READY:
+FSM ready
+0 : FSM is busy reading the OTP
+1 : FSM is ready. OTP can be read/programmed normally
+
+OTP_CFG_ACCESS_MODE:
+access mode
+0 : USER mode (user can read OTP)
+1 : ATE mode (for programming etc)
+2 : RIF override (debug)
+3 : FSM mode (default on start-up)
+
+OTP_BIT_POS_POS:
+Bit to be programmed in the byte addressed by ByteAddr
+
+OTP_PIN_CTRL_0_TM:
+TM (OTP test mode) pins
+User mode              : no function
+ATE/RIF override mode  : direct setting of OTP control pins
+
+OTP_PIN_CTRL_0_STROBE:
+STROBE pin (not ATE mode)
+
+OTP_PIN_CTRL_0_PGENB:
+PGENB pin
+
+OTP_PIN_CTRL_0_LOAD:
+LOAD pin
+
+OTP_PIN_CTRL_0_CSB:
+CSB pin
+
+OTP_PIN_CTRL_1_FSCK:
+FSCK pin
+User/ATE mode     : no function
+RIF override mode : direct setting of OTP control pins
+
+OTP_PIN_CTRL_1_FSI:
+FSI pin
+
+OTP_PIN_CTRL_1_FRST:
+FRST pin
+
+OTP_PIN_STATUS_FSO:
+FSO pin
+User mode         : no function
+ATE mode          : FSO pin level (also output to GPIO 4)
+RIF override mode : FSO pin level
+
+OTP_MODEM_EN_0_MODEM_EN:
+Enable modems 0..7
+Each bit enables a different modem
+Any bits that have their respective OTP bit set will be ignored
+(an OTP-enabled feature can be disabled, but an OTP-disabled feature can not be enabled)
+
+OTP_MODEM_EN_1_MODEM_EN:
+Enable modems 8..15
+Each bit enables a different modem
+any bits that have their respective OTP bit set will be ignored
+(an OTP-enabled feature can be disabled, but an OTP-disabled feature can not be enabled)
+
+OTP_MODEM_SF_EN_SF_EN:
+Enable individual spreading factors for all modems
+Bit 0 : enable spreading factor for SF5
+Bit 1 : enable spreading factor for SF6
+Bit 2 : enable spreading factor for SF7
+Bit 3 : enable spreading factor for SF6
+Bit 4 : enable spreading factor for SF9
+Bit 5 : enable spreading factor for SF10
+Bit 6 : enable spreading factor for SF11
+Bit 7 : enable spreading factor for SF12
+Any bits that have their respective OTP bit set will be ignored
+(an OTP-enabled feature can be disabled, but an OTP-disabled feature can not be enabled)
+
+OTP_TIMESTAMP_EN_TIMESTAMP_EN:
+Enable timestamp
+Enable timestamping
+Any bits that have their respective OTP bit set will be ignored
+(an OTP-enabled feature can be disabled, but an OTP-disabled feature can not be enabled)
+
+OTP_DUMMY_DUMMY:
+Prevent RIF error on spurious read
+
+RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_FREQ_MSB_IF_FREQ_0:
+
+
+RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_FREQ_LSB_IF_FREQ_0:
+
+
+RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_RADIO_SEL_RADIO_SELECT:
+
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_BW_START:
+bandwidth till first lora symbol end
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_AUTO_BW_RED:
+Auto observation window = 1 symbol
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_NO_FAST_START:
+Disable fast start
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_BYPASS:
+Bypass DC Notch filter
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_ENABLE:
+Enable DC Notch. 0 highly recommended
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG2_BW_LOCKED:
+Bandwidth when locked
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG2_BW:
+bandwidth during preamble search
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG3_BW_RED:
+Longer observation window
+
+RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG4_IIR_DCC_TIME:
+IIR DCC convergence time in number of count at data_valid_ds rate
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_0_FIR1_COEFF_0:
+First stage filter coefficient applied to x[n-7] and x[n+7]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_1_FIR1_COEFF_1:
+First stage filter coefficient applied to x[n-6] and x[n+6]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_2_FIR1_COEFF_2:
+First stage filter coefficient applied to x[n-5] and x[n+57]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_3_FIR1_COEFF_3:
+First stage filter coefficient applied to x[n-4] and x[n+4]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_4_FIR1_COEFF_4:
+First stage filter coefficient applied to x[n-3] and x[n+3]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_5_FIR1_COEFF_5:
+First stage filter coefficient applied to x[n-2] and x[n+2]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_6_FIR1_COEFF_6:
+First stage filter coefficient applied to x[n-1] and x[n+1]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR1_7_FIR1_COEFF_7:
+First stage filter coefficient applied to x[n] (x2)
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_0_FIR2_COEFF_0:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_1_FIR2_COEFF_1:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_2_FIR2_COEFF_2:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_3_FIR2_COEFF_3:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_4_FIR2_COEFF_4:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_5_FIR2_COEFF_5:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_6_FIR2_COEFF_6:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_FIR2_7_FIR2_COEFF_7:
+Second stage filter applied to x[n-$(7-i)] and x[n+$(7-i)]
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC0_RADIO_GAIN_RED_SEL:
+Select input to radio gain reduction (0=top pin, 1=register)
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC0_RADIO_GAIN_RED_DB:
+AGC gain reduction
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_DC_COMP_EN:
+High to enable DC compensation (0 recommended)
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FORCE_DEFAULT_FIR:
+Force FIR1 & 2 to default value (strong filter)
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_RSSI_EARLY_LATCH:
+Latch RSSI early in the packet
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FREEZE_ON_SYNC:
+Freeze DAGC FIR once a signal has been detected
+0 means the DAGC is continously running : this could affect negatively the PER !
+1 means the DAGC freezes after the detect state
+3 means the DAGC freezes after the frame synch state
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC2_DAGC_IN_COMP:
+Compensate DAGC Input gain change in DAGC FIR.
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC2_DAGC_FIR_HYST:
+Enable small hysteresis in DAGC FIR
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC2_RSSI_MAX_SAMPLE:
+Max number of sample during detect in SF/2^x -> SF, SF/2, SF/4 or SF/8
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC2_RSSI_MIN_SAMPLE:
+Min Number of sample during detect in 2^(x+2), x in [0:5] -> 4 to 128
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_GAIN0_DAGC_FIR_FAST:
+For SF5 to 7, reduce energy estimation window to half symbol instead of a complete symbol
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_GAIN0_FORCE_GAIN_FIR:
+High to override digital gain (FIR 1&2)
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_GAIN0_GAIN_FIR1:
+FIR 1 Gain (decimation by 8)
+
+RX_TOP_LORA_SERVICE_FSK_RX_DFE_GAIN0_GAIN_FIR2:
+FIR 2 Gain (decimation by 4)
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_TARGET_LVL:
+Target output level. For pure tone, 0-> amp=1000, 1->500, 2->250 and 3->125
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_GAIN_INCR_STEP:
+Step when gain is increased at the end of a symbol: 0=6dB, 1=12dB
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_GAIN_DROP_COMP:
+High to compensate the gain drop from analog part
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_COMB_FILTER_EN:
+Enable Comb. Filter
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_NO_FREEZE_START:
+Low to freeze DAGC during first symbol (to let AGC converge)
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_FREEZE_ON_SYNC:
+Freeze DAGC FIR once a signal has been detected
+0 means the DAGC is continously running : this could affect negatively the PER !
+1 means the DAGC freezes after the detect state
+3 means the DAGC freezes after the frame synch state
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CNT0_SAMPLE:
+Number of sample in a window
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CNT1_THR_M6:
+Threshold for -6dB step
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CNT2_THR_M12:
+Threshold for -12dB step
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CNT3_THR_M18:
+Threshold for -18dB step
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CNT4_GAIN:
+DAGC gain value when forced (6dB step) and at start
+
+RX_TOP_LORA_SERVICE_FSK_DAGC_CNT4_FORCE_GAIN:
+Force DAGC gain to register value
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_BW:
+Modem bandwidth index. 6=500kHz, 5=250kHz, 4=125kHz (others value Not Applicable)
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_SF:
+Spreading factor, range is [5:12]
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_PPM_OFFSET_HDR_CTRL:
+PPM offset value when ppm_offset_sig is set inside header
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_PPM_OFFSET:
+1 to use reduced PPM on payload. Used by RX in implicit header
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_MODEM_EN:
+Enable modem
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE:
+Coding rate index. Used by RX in implicit header.
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_FINE_SYNCH_EN:
+Enable fine synchronization
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_MODEM_START:
+Write 1 to start operation
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CADRXTX:
+Operating mode
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER:
+High for implicit header, First 8 symbols are still in reduced PPM
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CRC_EN:
+High to enable CRC. Used by RX in implicit header.
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG3_PAYLOAD_LENGTH:
+Number of bytes in payload (implicit header)
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG4_INT_STEP_ORIDE_EN:
+Override long interleaver step
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG4_INT_STEP_ORIDE:
+Step of long interleaver if oride_en is set
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG5_HEADER_DIFF_MODE:
+High when header is using differential modulation
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG5_ZERO_PAD:
+Silence between payload symbols, in number of chips
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble LSB
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB:
+Number of symbol of the preamble MSB
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG8_AUTO_ACK_INT_DELAY:
+Delay end of frame interrupts after ack (if auto ack also set)
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG8_AUTO_ACK_RX:
+Following a payload transmit, listen automatically to a potential short ACK
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG8_AUTO_ACK_TX:
+Following a valid payload receive, initiate a short ACK automatically
+
+RX_TOP_LORA_SERVICE_FSK_TXRX_CFG8_POST_PREAMBLE_GAP_LONG:
+High for long gap post preamble
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG0_DFT_PEAK_EN:
+Half DFT mode to improve tracking & demod when drift is present.
+around peak to improve tracking and demodulation performances."
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG0_CHIRP_INVERT:
+Invert chirp direction in receive
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG0_SWAP_IQ:
+Swap I&Q channel
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG0_CONTINUOUS:
+High for continuous receive, 0 for single TX on modem_en edge
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG1_DETECT_TIMEOUT:
+Max number of symbol before detection timeout
+Format is in mantisse/exponent: [7:3] << (2*[2:0]+1).
+A mantisse to 0 is used to disable this timeout feature.
+After timeout an interrupt is raised, the counter detect_timeout increased and the modem go back to IDLE.
+If continuous mode is enabled a new detection start.
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG2_AUTO_ACK_RANGE:
+Filters valid received ack in auto mode
+0 corresponds to no filter
+1 for peaks within +/-1
+2 for peaks within +/-3
+3 for peaks within +/-8
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG2_AUTO_ACK_DELAY:
+Delay in number of sample for auto ack RX mode
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG3_RESTART_ON_HDR_ERR:
+High to restart synchronization after a header error (considered as false synch)
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG3_CLK_EN_RESYNC_DIN:
+High to resynchronize the clock enable generation on RX sample valid
+
+RX_TOP_LORA_SERVICE_FSK_RX_CFG3_LLR_SCALE:
+Gain on soft bits (higher gain, harder demodulation
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH0_PEAK1_POS:
+Frame sync second symbol position. Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS:
+Frame sync third symbol position (Must be different from peak 0&1). Use to isolate two networks. Mod value is multiplied by 4
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH2_FINETIME_ON_LAST:
+Enable Finetiming adjustement on last symbol of synchro
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH2_AUTO_SCALE:
+Use FFT gain to scale peak before looking for frame synch
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH2_DROP_ON_SYNCH:
+High to allow drop detection to abort even if synchronization is detected (legacy mode)
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH2_GAIN:
+Activate gain of 1.5 in peak comparison
+
+RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH2_TIMEOUT_OPT:
+Option for timeout
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING0_GAIN_P_HDR_RED:
+High to reduce proportional gain during header compare to preamble.
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING0_ROUNDING:
+Enable rounding for the fine timing delta output
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING0_POS_LIMIT:
+Limit the number of peak position used for tracking
+0 means no limit and then it limits to 1/2^(n-1) around the 0
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING0_SUM_SIZE:
+Number of symbol to sum together before fine timing update
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING0_MODE:
+Algo select
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING1_GAIN_P_AUTO:
+Auto increase proportionnal gain when SNR is high
+The value decides the division factor of SNR margin: 3=3.2dB, 2=4.6dB, 1=6.4dB and 0 disable the feature.
+SNR Margin divides by this gain gives the gain increase during header/payload part
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING1_GAIN_P_PAYLOAD:
+Tracking loop gain for proportional path during payload: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING1_GAIN_P_PREAMB:
+Tracking loop gain for proportional path during preamble/header: 0=disabled, 7=highest gain, ~3dB steps.
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING2_GAIN_I_EN:
+Enable integral path
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING2_GAIN_I_PAYLOAD:
+Tracking loop gain for integral path during payload (0 means disabled)
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING2_GAIN_I_PREAMB:
+Tracking loop gain for integral path during preamble/header (0 means disabled)
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING3_FINESYNCH_SUM:
+Sum the two symbol of fine synchro
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING3_FINESYNCH_GAIN:
+Tracking loop gain in fine synch
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING3_GAIN_I_AUTO:
+Auto increase integral gain when SNR is high
+The value decides the division factor of SNR margin: 3=2.3, 2=3.2dB, 1=4.6dB and 0 disable the feature.
+SNR Margin divided by this gain gives the gain increase during header/payload part
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING4_GAIN_I_AUTO_MAX:
+Max gain I increase: 0 meaning no limitation.
+
+RX_TOP_LORA_SERVICE_FSK_FINE_TIMING4_GAIN_P_AUTO_MAX:
+Max gain P increase: 0 meaning no limitation.
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME0_FREQ_TO_TIME_DRIFT_MANT:
+Mantissa of the accurate representation of frequency to time drift
+BW/Fo*2^20 = Mantissa>>Exp (Default correspond to BW=125Khz and Fo=434Mhz)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME1_FREQ_TO_TIME_DRIFT_MANT:
+Mantissa of the accurate representation of frequency to time drift
+BW/Fo*2^20 = Mantissa>>Exp (Default correspond to BW=125Khz and Fo=434Mhz)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP:
+Exponent of accurate representation of freq. to time drift
+BW/Fo*2^20 = Mantissa>>Exp (Default correspond to BW=125Khz and Fo=434Mhz)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_FREQ_DELTA:
+Change sign of frequency delta compensation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_FINE_DELTA:
+Change sign of finetiming delta compensaation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_FREQ_ERROR:
+Change sign of frequency error compensation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB:
+Change sign of timing error per symbol compensation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_OFFSET:
+Change sign of time offset compensation after frequency estimation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_DETECT:
+Change sign of detection offset compensation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME4_FREQ_TO_TIME_INVERT_RNG:
+Control some freq_to_time processing for ranging operation (debug only)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK0_FREQ_TRACK_FINE:
+Use full precision delta from FineTiming Block.
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK0_FREQ_TRACK_HDR_SKIP:
+Number of header symbol (2x) to ignore for frequency tracking
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK0_FREQ_TRACK_EN:
+Frequency tracking Enable (Warning: need higher SNR), 2 for automatic.
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK1_FREQ_SYNCH_GAIN:
+Gain used to compensate timing drift due to the frequency error before it is estimated.
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK1_FREQ_TRACK_AUTO_THR:
+SNR margin Threshold for auto-enabling freq_trck (in 0.5 dB)
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK2_SNR_MIN_WINDOW:
+ Window length (in symbol+1) to get the min SNR
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK2_GAIN_AUTO_SNR_MIN:
+High to use SNR min to drive auto gain instead of SNR average
+
+RX_TOP_LORA_SERVICE_FSK_FREQ_TRACK2_FREQ_SYNCH_THR:
+Threshold for 1bin correction (in 1/16th of samples)
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP0_MSP_PNR:
+Peak to noise ratio (in 7.4b) for MSP based detect path.
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP1_MSP2_PNR:
+Second Peak to noise ratio (in 7.4b) for the second MSP detect output
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP2_MSP2_PEAK_NB:
+Number of identical peaks position for second MSP detect output, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP2_MSP_PEAK_NB:
+Number of identical peaks position, -1 within last 6 symbols that triggers detection. Use 7 to disable this detect path
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP3_ACC_MIN2:
+Set high to detect only if threshold was ok for 2 symbols in a row
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP3_ACC_WIN_LEN:
+Length of the window (in symbol + 2) to search for same peak in ACC
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP3_MSP_POS_SEL:
+High to report a peak position that can be +/-1 of the current symbol peak, based on the last 6 symbols peak position. 0 to report only current symbol peak position
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_MSP3_MSP_CNT_MODE:
+Mode for counting peak between successive symbol
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC1_USE_GAIN_SYMB:
+When doing auto-scale use the full gain symbol (Radio, two DAGC and FFT gain). Otherwise uses only the FIR DAGC + FFT.
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC1_ACC_PNR:
+Accumulated peak to noise ratio for accumulation based detect path.
+Applied on amplitude, linear representation, 7.4 format.
+Value 127 disable this detect path.
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC2_NOISE_COEFF:
+IIR coefficient for noise estimator.
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC2_ACC_COEFF:
+IIR coefficient for data symbol (Accumulation based detect path).
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC2_ACC_2_SAME_PEAKS:
+High to detect only if the same_peaks algo report at least 2
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC2_ACC_AUTO_RESCALE:
+Auto scale down accumulation based on FFT gain
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC2_ACC_PEAK_POS_SEL:
+High to report a peak position corresponding to the accumulated information. 0 to report position based on current symbol only.
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC2_ACC_PEAK_SUM_EN:
+Accumulated peaks are averaged 2 by 2 (adjacent ones) before detection threshold is applied. Improves by 1dB the detection sensitivity, for the same false detect rate
+
+RX_TOP_LORA_SERVICE_FSK_DETECT_ACC3_MIN_SINGLE_PEAK:
+Minimum absolute value for a peak to be considered valid,  8.0 format
+
+RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_SEL_SNR_MIN:
+Select SNR Margin Min instead of Standard deviation
+
+RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_ENABLE:
+Enable statistic block
+
+RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_NB_SYMB:
+Number of symbol to process timestamp statistics
+The unit is a power of 2 number of symbol (2^(x+1))
+with 7 reserved to indicate that the whole frame is used to process stats.
+When 0 is used avg and stddev are replaced by the raw input of each symbol
+i.e delta[0] and delta[1] respectively
+
+RX_TOP_LORA_SERVICE_FSK_CLOCK_GATE_OVERRIDE_FSK_TRANSPOSE_CLK_OVERRIDE:
+Clock override for FSK transpose. 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_LORA_SERVICE_FSK_CLOCK_GATE_OVERRIDE_FSK_MODEM_CLK_OVERRIDE:
+Clock override for FSK modem. 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_LORA_SERVICE_FSK_CLOCK_GATE_OVERRIDE_TRANSPOSE_CLK_OVERRIDE:
+Clock override for service modem transpose. 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_LORA_SERVICE_FSK_CLOCK_GATE_OVERRIDE_MODEM_CLK_OVERRIDE:
+Clock override for service modem wrapper. 00=force off, 01=no override, 10=unused, 11=force on
+
+RX_TOP_LORA_SERVICE_FSK_DUMMY0_DUMMY0:
+Prevent RIF error on spurious read
+
+RX_TOP_LORA_SERVICE_FSK_FSK_FREQ_MSB_IF_FREQ_0:
+(MSB), IF Frequency of IF channel. This is the MS 5 bits of a 13 bit signed number, LSBs in Freq0Lsb. if_freq_Hz = (if_freq_0/2^13)x4MHz
+
+RX_TOP_LORA_SERVICE_FSK_FSK_FREQ_LSB_IF_FREQ_0:
+(LSB)
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_0_CRC_IBM:
+Defines CRC type : 0=CCITT CRC16, 1=IBM CRC as in CC1100
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_0_DCFREE_ENC:
+Encoding mode: 00=DC Free encoding, 01=Manchester, 10=Whitening, 11=forbidden
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_0_CRC_EN:
+CRC enable
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_0_PKT_MODE:
+Packet mode. 0=fixed length packet, length is set by rssi_pkt_length register. 1=packet length is contained in header
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_ADRS_COMP:
+Reserved : not used
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_PSIZE:
+Length of the sync pattern is 1+psize bytes
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_CH_BW_EXPO:
+FSK channel bandwidth SSB = 32MHz/(16 * 2^(2+ch_bw_expo) ,0 forbidden , 1=+/-250kHz , 7=+/-3.9kHz
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_MODEM_INVERT_IQ:
+Invert the 13 bit I/Q of the FSK modem
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_AUTO_AFC:
+Enable automatic frequency offset compenation, active by default
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_RADIO_SELECT:
+select for the FSK channel on which radio it is connected 0 => radio A; 1 => radio B
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_RX_INVERT:
+Inverts FSK modem I/Q samples
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_4_RSSI_LENGTH:
+RSSI average window length.  Window length = 2^(1+fsk_rssi_length)
+
+RX_TOP_LORA_SERVICE_FSK_FSK_CFG_4_ERROR_OSR_TOL:
+Number of tolerated chip errors during preamble correlation
+
+RX_TOP_LORA_SERVICE_FSK_FSK_NODE_ADRS_NODE_ADRS:
+Reserved : not used
+
+RX_TOP_LORA_SERVICE_FSK_FSK_BROADCAST_BROADCAST:
+Reserved : not used
+
+RX_TOP_LORA_SERVICE_FSK_FSK_PKT_LENGTH_PKT_LENGTH:
+Packet length in fixed mode
+
+RX_TOP_LORA_SERVICE_FSK_FSK_TIMEOUT_MSB_TIMEOUT:
+2 MSBs of the fsk_timeout register
+
+RX_TOP_LORA_SERVICE_FSK_FSK_TIMEOUT_LSB_TIMEOUT:
+time out following preamble detection expressed in bits (LSB). If no sync word is found after FSK_PATTERN_TIMEOUT_CFG bit periods , the modem goes back in preamble search & AFC
+
+RX_TOP_LORA_SERVICE_FSK_BIT_RATE_MSB_BIT_RATE:
+8 MSBs of the FSK bit raate register
+
+RX_TOP_LORA_SERVICE_FSK_BIT_RATE_LSB_BIT_RATE:
+defines the FSK bitrate , bitrate = 32MHz/br_ratio (LSB)
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN:
+bits [63:56] of the sync word , if a single byte is used as sync word , it will be matched to this register
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN:
+bits [55:48] of the sync word
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE5_FSK_REF_PATTERN:
+bits [47:40] of the sync word
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE4_FSK_REF_PATTERN:
+bits [39:32] of the sync word
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE3_FSK_REF_PATTERN:
+bits [31:24] of the sync word
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN:
+bits [23:16] of the sync word
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN:
+bits [15:8] of the sync word
+
+RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN:
+bits [7:0] of the programmable sync word , sync word is sent MSB first in the air, should match the transmitter setting
+
+RX_TOP_LORA_SERVICE_FSK_FSK_RSSI_FILTER_ALPHA_FSK_RSSI_FILTER_ALPHA:
+Low pass filtering corner for FSK RSSI indicator. 15=max averaging
+
+RX_TOP_LORA_SERVICE_FSK_DUMMY1_DUMMY1:
+Prevent RIF error on spurious read
+
+CAPTURE_RAM_CAPTURE_CFG_ENABLE:
+Capture Enable
+0 : Disable Capture RAM
+1 : Enable Capture RAM
+
+CAPTURE_RAM_CAPTURE_CFG_CAPTUREWRAP:
+Capture continuously or wrap when end of RAM is reached
+0 : capture once, and stop when memory is full
+1 : Capture continuously until CaptureStart is set back to 0
+
+CAPTURE_RAM_CAPTURE_CFG_CAPTUREFORCETRIGGER:
+Force capture start trigger
+0 : No action
+1 : Enable immediate trigger (capture starts as soon as CaptureStart == 1)
+
+CAPTURE_RAM_CAPTURE_CFG_CAPTURESTART:
+Start capture to debug RAM
+Arms the capture, the capture will start as soon as trigger condition happens
+
+CAPTURE_RAM_CAPTURE_CFG_RAMCONFIG:
+RAM configuration
+0 : 4kx32
+1 : 2kx64
+
+CAPTURE_RAM_CAPTURE_SOURCE_A_SOURCEMUX:
+Capture RAM Source Mux
+Determines which debug sources are sampled into the 32-bit wide capture RAM in 4kx32 mode, or bits [31:0] in 2kx64 mode
+Source selection is described in table in design spec
+
+CAPTURE_RAM_CAPTURE_SOURCE_B_SOURCEMUX:
+Capture RAM Source Mux
+Determines which sources are sampled into bits [63:32] of the capture RAM in 2kx64 mode
+Not used in 4kx32 mode.
+Source selection is described in table in design spec
+
+CAPTURE_RAM_CAPTURE_PERIOD_0_CAPTUREPERIOD:
+LSBs of the capture period
+Capture period = CapturePeriod+1/32e6
+Bits 7:0 of the capture period
+
+CAPTURE_RAM_CAPTURE_PERIOD_1_CAPTUREPERIOD:
+MSBs of the capture period
+Bits 15:8 of the capture period
+
+CAPTURE_RAM_STATUS_CAPCOMPLETE:
+Capture complete
+0 : Capture in progress
+1 : Capture complete
+
+CAPTURE_RAM_LAST_RAM_ADDR_0_LASTRAMADDR:
+LSBs of the last RAM address captured
+Bits 7:0 of the last captured RAM address
+
+CAPTURE_RAM_LAST_RAM_ADDR_1_LASTRAMADDR:
+MSBs of the last RAM address captured
+Bits 11:8 of the last captured RAM address (mainly for continuous capture mode)
+
+CAPTURE_RAM_CLOCK_GATE_OVERRIDE_CLK_OVERRIDE:
+Capture clock override. 00=force off, 01=no override, 10=unused, 11=force on
+
+CAPTURE_RAM_DUMMY0_DUMMY0:
+Prevent RIF error on spurious read
+
+*/
+
 /* --- EOF ------------------------------------------------------------------ */
