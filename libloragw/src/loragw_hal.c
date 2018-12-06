@@ -142,6 +142,10 @@ static uint8_t lora_multi_sfmask[LGW_MULTI_NB]; /* enables SF for LoRa 'multi' m
 
 static uint8_t lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
 static uint8_t lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
+static uint8_t lora_rx_implicit_hdr; /* implicit header setting for LoRa standalone modem */
+static uint8_t lora_rx_implicit_length; /* implicit header payload length setting for LoRa standalone modem */
+static uint8_t lora_rx_implicit_crc_en; /* implicit header payload crc enable  setting for LoRa standalone modem */
+static uint8_t lora_rx_implicit_coderate; /* implicit header payload coderate setting for LoRa standalone modem */
 
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
@@ -410,6 +414,10 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             if_freq[if_chain] = conf.freq_hz;
             lora_rx_bw = conf.bandwidth;
             lora_rx_sf = conf.datarate;
+            lora_rx_implicit_hdr      = conf.implicit_hdr;
+            lora_rx_implicit_length   = conf.implicit_payload_length;
+            lora_rx_implicit_crc_en   = conf.implicit_crc_en;
+            lora_rx_implicit_coderate = conf.implicit_coderate;
 
             DEBUG_PRINTF("Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
             break;
@@ -644,7 +652,7 @@ int lgw_start(void) {
     if (if_enable[8] == true) {
         sx1302_lora_service_channelizer_configure(if_rf_chain, if_freq);
         sx1302_lora_service_correlator_configure(lora_rx_sf);
-        sx1302_lora_service_modem_configure(lora_rx_sf, lora_rx_bw);
+        sx1302_lora_service_modem_configure(lora_rx_sf, lora_rx_bw,lora_rx_implicit_hdr,lora_rx_implicit_length,lora_rx_implicit_crc_en,lora_rx_implicit_coderate);
     }
 
     /* configure FSK modem */
@@ -745,7 +753,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t sanity_check;
     bool rx_buffer_error = false;
     int32_t val;
-
+	int32_t implicit_hdr_crc_en;
     /* rx buffer chunk read */
     uint16_t sz_todo;
     uint16_t chunk_size;
@@ -909,10 +917,20 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + rf_rssi_offset[p->rf_chain];
         /* TODO: RSSI correction */
 
+		implicit_hdr_crc_en = 0;
+		if (ifmod == IF_LORA_STD)
+		{					
+			lgw_reg_r(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER, &val);
+			if (val == 1) {
+				printf("NOTE: implicit header packet\n");
+				lgw_reg_r(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CRC_EN, &val);
+				implicit_hdr_crc_en = val;
+			}
+		}
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
             DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index), p->if_chain);
             /* TODO: handle sync_err and hdr_err, to be reported when enabled (RX_BUFFER_STORE_SYNC_FAIL_META, RX_BUFFER_STORE_HEADER_ERR_META) */
-            if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index)) {
+            if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index) || implicit_hdr_crc_en) {
                 /* CRC enabled */
                 if (SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + p->size)) {
                     p->status = STAT_CRC_BAD;
@@ -961,7 +979,23 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 12: p->datarate = DR_LORA_SF12; break;
                 default: p->datarate = DR_UNDEFINED;
             }
+			if (ifmod == IF_LORA_STD)
+			{					
+				lgw_reg_r(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER, &val);
+				if (val == 1) {
+					printf("NOTE: implicit header packet\n");
+					lgw_reg_r(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE, &val);
+					cr = val;
+				}
+				else
+				{
             cr = SX1302_PKT_CODING_RATE(rx_fifo, buffer_index);
+				}
+			}
+			else
+			{
+				cr = SX1302_PKT_CODING_RATE(rx_fifo, buffer_index);
+			}
             switch (cr) {
                 case 1: p->coderate = CR_LORA_4_5; break;
                 case 2: p->coderate = CR_LORA_4_6; break;
