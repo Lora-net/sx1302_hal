@@ -199,10 +199,10 @@ struct lgw_conf_rxif_s {
     uint32_t    datarate;       /*!> RX datarate, 0 for default */
     uint8_t     sync_word_size; /*!> size of FSK sync word (number of bytes, 0 for default) */
     uint64_t    sync_word;      /*!> FSK sync word (ALIGN RIGHT, eg. 0xC194C1) */
-    uint8_t     implicit_hdr; /*!> LoRa Service implicit header  (0 for default) */
-    uint8_t     implicit_payload_length; /*!>LoRa Service implicit header payload length (number of bytes, 0 for default) */
-    uint8_t     implicit_crc_en; /*!> LoRa Service implicit header CRC enable */
-    uint8_t     implicit_coderate; /*!> LoRa Service implicit header coding rate  */
+    bool        implicit_hdr;               /*!> LoRa Service implicit header */
+    uint8_t     implicit_payload_length;    /*!> LoRa Service implicit header payload length (number of bytes, 0 for default) */
+    bool        implicit_crc_en;            /*!> LoRa Service implicit header CRC enable */
+    uint8_t     implicit_coderate;          /*!> LoRa Service implicit header coding rate  */
 };
 
 /**

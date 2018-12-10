@@ -230,7 +230,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
-    uint32_t sf, bw, fdev,implicit_hdr;
+    uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
 
     /* try to parse JSON */
@@ -515,17 +515,37 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 case 12: ifconf.datarate = DR_LORA_SF12; break;
                 default: ifconf.datarate = DR_UNDEFINED;
             }
-			implicit_hdr = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.implicit_hdr");
-            switch(implicit_hdr) {
-                case  0: ifconf.implicit_hdr = 0;  break;
-                case  1: ifconf.implicit_hdr = 1;  break;
-                default: ifconf.implicit_hdr = 0;
+            val = json_object_dotget_value(conf_obj, "chan_Lora_std.implicit_hdr");
+            if (json_value_get_type(val) == JSONBoolean) {
+                ifconf.implicit_hdr = (bool)json_value_get_boolean(val);
+            } else {
+                ifconf.implicit_hdr = false;
             }
-			ifconf.implicit_payload_length = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.implicit_payload_length");
-			ifconf.implicit_crc_en = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.implicit_crc_en");
-			ifconf.implicit_coderate = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.implicit_coderate");
-            
-            MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
+            if (ifconf.implicit_hdr == true) {
+                val = json_object_dotget_value(conf_obj, "chan_Lora_std.implicit_payload_length");
+                if (json_value_get_type(val) == JSONNumber) {
+                    ifconf.implicit_payload_length = (uint8_t)json_value_get_number(val);
+                } else {
+                    MSG("ERROR: payload length setting is mandatory for implicit header mode\n");
+                    return -1;
+                }
+                val = json_object_dotget_value(conf_obj, "chan_Lora_std.implicit_crc_en");
+                if (json_value_get_type(val) == JSONBoolean) {
+                    ifconf.implicit_crc_en = (bool)json_value_get_boolean(val);
+                } else {
+                    MSG("ERROR: CRC enable setting is mandatory for implicit header mode\n");
+                    return -1;
+                }
+                val = json_object_dotget_value(conf_obj, "chan_Lora_std.implicit_coderate");
+                if (json_value_get_type(val) == JSONNumber) {
+                    ifconf.implicit_coderate = (uint8_t)json_value_get_number(val);
+                } else {
+                    MSG("ERROR: coding rate setting is mandatory for implicit header mode\n");
+                    return -1;
+                }
+            }
+
+            MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u, %s\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf, (ifconf.implicit_hdr == true) ? "Implicit header" : "Explicit header");
         }
         if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for Lora standard channel\n");

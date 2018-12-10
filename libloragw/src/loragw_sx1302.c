@@ -634,7 +634,7 @@ int sx1302_lora_modem_configure() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw, uint8_t implicit_hdr, uint8_t implicit_length, uint8_t implicit_crc_en, uint8_t implicit_coderate) {
+int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw, bool implicit_hdr, uint8_t implicit_length, bool implicit_crc_en, uint8_t implicit_coderate) {
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_ENABLE, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FORCE_DEFAULT_FIR, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_GAIN_DROP_COMP, 0x01);
@@ -678,10 +678,12 @@ int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw, uint8_t implicit
             printf("ERROR: unsupported datarate %u for LoRa Service modem\n", sf);
             break;
     }
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER,implicit_hdr);
-	lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CRC_EN,implicit_crc_en);
-	lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE,implicit_coderate);
-	lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG3_PAYLOAD_LENGTH,implicit_length);
+
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER, (implicit_hdr == true) ? 1 : 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CRC_EN, (implicit_crc_en == true) ? 1 : 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE, implicit_coderate);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG3_PAYLOAD_LENGTH, implicit_length);
+
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_SF, sf);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_BW, bw);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_PPM_OFFSET, SET_PPM_ON(bw, sf));
