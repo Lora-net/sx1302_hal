@@ -33,6 +33,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx1302.h"
 #include "loragw_cal.h"
 
+#include "tinymt32.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- DEBUG CONSTANTS ------------------------------------------------------ */
 
@@ -187,6 +189,11 @@ struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
 static uint8_t rx_fifo[4096];
 
 static FILE * log_file = NULL;
+static uint8_t debug_payload_check_mote1[32] = { 0xCA, 0xFE, 0x12, 0x34 };
+static uint8_t debug_payload_check_mote2[32] = { 0xCA, 0xFE, 0x23, 0x45 };
+static unsigned int debug_payload_prev_cnt_mote1 = 0;
+static unsigned int debug_payload_prev_cnt_mote2 = 0;
+static tinymt32_t tinymt;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -209,6 +216,89 @@ void DEBUG_log_buffer_to_file(FILE * file, uint8_t * buffer, uint16_t size) {
         fprintf(file, "%02X ", buffer[i]);
     }
     fprintf(file, "\n");
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void DEBUG_log_payload_diff_to_file(FILE * file, uint8_t * buffer1, uint8_t * buffer2, uint16_t size) {
+    int i, j;
+    uint16_t nb_bits_diff = 0;
+    uint8_t debug_payload_diff[255];
+
+    fprintf(file, "Diff: ");
+    /* bit comparison of payloads */
+    for (j = 0; j < size; j++) {
+        debug_payload_diff[j] = buffer1[j] ^ buffer2[j];
+        fprintf(file, "%02X ", debug_payload_diff[j]);
+    }
+    fprintf(file, "\n");
+
+    /* count number of bits flipped, and display bit by bit */
+    for (j = 0; j < size; j++) {
+        for (i = 7; i >= 0; i--) {
+            fprintf(file, "%u", TAKE_N_BITS_FROM(debug_payload_diff[j], i, 1));
+            if (TAKE_N_BITS_FROM(debug_payload_diff[j], i, 1) == 1) {
+                nb_bits_diff += 1;
+            }
+        }
+        fprintf(file, " ");
+    }
+    fprintf(file, "\n");
+    fprintf(file, "%u bits flipped\n", nb_bits_diff);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void DEBUG_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, uint8_t size) {
+    int k;
+
+    /* construct payload we should get for this packet counter */
+    tinymt32_init(&tinymt, (int)pkt_cnt);
+    buffer_expected[4] = (uint8_t)(pkt_cnt >> 24);
+    buffer_expected[5] = (uint8_t)(pkt_cnt >> 16);
+    buffer_expected[6] = (uint8_t)(pkt_cnt >> 8);
+    buffer_expected[7] = (uint8_t)(pkt_cnt >> 0);
+    for (k = 8; k < (int)(size); k++) {
+        buffer_expected[k] = (uint8_t)tinymt32_generate_uint32(&tinymt);
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t * payload_expected, uint8_t size, uint32_t * debug_payload_prev_cnt, const char * mote_name) {
+    int k;
+    uint32_t debug_payload_cnt;
+
+    /* If the 4 first bytes of received payload match with the expected ones, go on with comparison */
+    if (memcmp((void*)payload_received, (void*)payload_expected, 4) == 0) {
+        /* get counter to initialize random seed */
+        debug_payload_cnt = (unsigned int)(payload_received[4] << 24) | (unsigned int)(payload_received[5] << 16) | (unsigned int)(payload_received[6] << 8) | (unsigned int)(payload_received[7] << 0);
+
+        /* check if we missed some packets */
+        if (debug_payload_cnt > (*debug_payload_prev_cnt + 1)) {
+            printf("ERROR: %s missed %u pkt before %u\n", mote_name, debug_payload_cnt - *debug_payload_prev_cnt - 1, debug_payload_cnt);
+            if (file != NULL) {
+                fprintf(file, "ERROR: %s missed %u pkt before %u\n", mote_name, debug_payload_cnt - *debug_payload_prev_cnt - 1, debug_payload_cnt);
+            }
+        }
+        *debug_payload_prev_cnt = debug_payload_cnt;
+
+        /* generate the random payload which is expected for this packet count */
+        DEBUG_generate_random_payload(debug_payload_cnt, payload_expected, size);
+        for (k = 0; k < (int)(size); k++) {
+            printf("%02X ", payload_expected[k]);
+        }
+        printf("\n");
+
+        /* compare expected with received */
+        if (memcmp((void *)payload_received, (void *)payload_expected, size) != 0) {
+            return -1;
+        } else {
+            return 1; /* matches */
+        }
+    }
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -709,6 +799,11 @@ int lgw_start(void) {
     }
 #endif
 
+    /* Configure the pseudo-random generator (For Debug) */
+    tinymt.mat1 = 0x8f7011ee;
+    tinymt.mat2 = 0xfc78ff1f;
+    tinymt.tmat = 0x3793fdff;
+
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;
 }
@@ -739,7 +834,7 @@ int lgw_stop(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
-    int i;
+    int i, res;
     uint8_t buff[2];
     uint16_t sz = 0;
     uint16_t buffer_index;
@@ -929,6 +1024,42 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 } else {
                     p->status = STAT_CRC_OK;
                     crc_en = 1;
+
+#if 1
+                    /* FOR DEBUG:
+                        We compare the received payload with predefined ones to ensure that the payload content is what we expect.
+                        4 bytes: ID to identify the payload
+                        4 bytes: packet counter used to initialize the seed for pseudo-random generation
+                        x bytes: pseudo-random payload
+                    */
+                    res = DEBUG_check_payload(log_file, p->payload, debug_payload_check_mote1, p->size, &debug_payload_prev_cnt_mote1, "Mote1");
+                    if (res == -1) {
+                        printf("ERROR: MOTE1 payload error\n");
+                        if (log_file != NULL) {
+                            fprintf(log_file, "ERROR: MOTE1 payload error (pkt:%u)\n", nb_pkt_found-1);
+                            DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                            DEBUG_log_payload_diff_to_file(log_file, p->payload, debug_payload_check_mote1, p->size);
+                        }
+                    } else if (res == 1) {
+                        printf("mote1 payload matches\n");
+                    } else {
+                        /* Do nothing */
+                    }
+
+                    res = DEBUG_check_payload(log_file, p->payload, debug_payload_check_mote2, p->size, &debug_payload_prev_cnt_mote2, "Mote2");
+                    if (res == -1) {
+                        printf("ERROR: MOTE2 payload error\n");
+                        if (log_file != NULL) {
+                            fprintf(log_file, "ERROR: MOTE2 payload error (pkt:%u)\n", nb_pkt_found-1);
+                            DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                            DEBUG_log_payload_diff_to_file(log_file, p->payload, debug_payload_check_mote2, p->size);
+                        }
+                    } else if (res == 1) {
+                        printf("mote2 payload matches\n");
+                    } else {
+                        /* Do nothing */
+                    }
+#endif
 
                     /* check payload CRC */
                     if (p->size > 0) {
