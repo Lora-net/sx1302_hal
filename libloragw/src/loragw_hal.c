@@ -911,18 +911,21 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         }
         printf("INFO: pkt syncword found at index %u\n", buffer_index);
 
+        /* Get payload length */
         payload_length = SX1302_PKT_PAYLOAD_LENGTH(rx_fifo, buffer_index);
 
-        /* TODO: num_ts_metrics not yet known !!! */
-        if((buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics) > sz) {
+        /* Get fine timestamp metrics */
+        num_ts_metrics = SX1302_PKT_NUM_TS_METRICS(rx_fifo, buffer_index + payload_length);
+        if((buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics)) > sz) {
             printf("WARNING: aborting truncated message (size=%u), got %u messages\n", sz, nb_pkt_found);
             break;
         }
 
         /* checksum */
         uint8_t checksum_calc = 0;
-        uint8_t checksum = rx_fifo[buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1];
-        for (i = 0; i < (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + num_ts_metrics - 1); i++) {
+        uint8_t checksum_pos = SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics) - 1;
+        uint8_t checksum = rx_fifo[buffer_index + checksum_pos];
+        for (i = 0; i < (int)checksum_pos; i++) {
             checksum_calc += rx_fifo[buffer_index + i];
         }
 
@@ -949,6 +952,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("  timing_set: %u\n", SX1302_PKT_TIMING_SET(rx_fifo, buffer_index + payload_length));
         printf("  codr:       %u\n", SX1302_PKT_CODING_RATE(rx_fifo, buffer_index));
         printf("  datr:       %u\n", SX1302_PKT_DATARATE(rx_fifo, buffer_index));
+        printf("  num_ts:     %u\n", SX1302_PKT_NUM_TS_METRICS(rx_fifo, buffer_index + payload_length));
         printf("-----------------\n");
 
         /* Sanity checks */
@@ -1145,9 +1149,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             }
             printf("  f_offset: %d Hz\n", freq_offset);
             p->freq_offset = freq_offset;
-
-            /* Get fine timestamp metrics */
-            num_ts_metrics = SX1302_PKT_NUM_TS_METRICS(rx_fifo, buffer_index + p->size);
 
             /* determine if 'PPM mode' is on, needed for timestamp correction */
             if (SET_PPM_ON(p->bandwidth, p->datarate)) {
