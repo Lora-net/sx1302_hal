@@ -374,7 +374,7 @@ int sx1302_lora_correlator_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_CNT_MODE, 0);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG2_ACC_PNR, 55);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG4_MSP_PNR, 24);
-    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG5_MSP2_PNR, 55);
+    lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG5_MSP2_PNR, 48);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG6_MSP_PEAK_NB, 7);
     lgw_reg_w(SX1302_REG_RX_TOP_SF6_CFG7_MSP2_PEAK_NB, 5);
 
@@ -454,7 +454,7 @@ int sx1302_lora_service_correlator_configure(uint8_t sf) {
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP3_MSP_CNT_MODE, 0);
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_ACC1_ACC_PNR, 55);
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP0_MSP_PNR, 24);
-            lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP1_MSP2_PNR, 55);
+            lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP1_MSP2_PNR, 48);
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP2_MSP_PEAK_NB, 7);
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP2_MSP2_PEAK_NB, 5);
             break;
