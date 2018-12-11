@@ -62,26 +62,29 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
-    printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
-    printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
+    printf(" -k <uint>  Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -c <uint>  RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint>  Radio type (1255, 1257, 1250)\n");
     printf(" -f <float> Radio TX frequency in MHz\n");
-    printf(" -m <str>  modulation type ['LORA', 'FSK']\n");
-    printf(" -s <uint> LoRa datarate 0:random, [5..12]\n");
-    printf(" -b <uint> LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
-    printf(" -l <uint> FSK/LoRa preamble length, [0..65535]\n");
+    printf(" -m <str>   modulation type ['LORA', 'FSK']\n");
+    printf(" -s <uint>  LoRa datarate 0:random, [5..12]\n");
+    printf(" -b <uint>  LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
+    printf(" -l <uint>  FSK/LoRa preamble length, [0..65535]\n");
     printf(" -d <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
-    printf(" -n <uint> Number of packets to be sent\n");
-    printf(" -z <uint> size of packets to be sent 0:random, [9..255]\n");
-    printf(" -t <uint> TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger\n");
-    printf(" -p <int>  RF power in dBm\n");
+    printf(" -n <uint>  Number of packets to be sent\n");
+    printf(" -z <uint>  size of packets to be sent 0:random, [9..255]\n");
+    printf(" -t <uint>  TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger\n");
+    printf(" -p <int>   RF power in dBm\n");
+    printf(" -i         Send LoRa packet using inverted modulation polarity\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain [0..3]\n");
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
     printf(" --dac  <uint> sx1257 DAC gain [0..3]\n");
     printf(" --mix  <uint> sx1257 MIX gain [5..15]\n");
     printf(" --pwid <uint> sx1250 power index [0..31]\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --nhdr        Send LoRa packet with implicit header\n");
 }
 
 /* handle signals */
@@ -119,6 +122,8 @@ int main(int argc, char **argv)
     uint8_t rf_chain = 0;
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
     uint16_t preamble = 8;
+    bool invert_pol = false;
+    bool no_header = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -138,20 +143,24 @@ int main(int argc, char **argv)
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
-        {"pa", 1, 0, 0},
-        {"dac", 1, 0, 0},
-        {"dig", 1, 0, 0},
-        {"mix", 1, 0, 0},
-        {"pwid", 1, 0, 0},
+        {"pa",   required_argument, 0, 0},
+        {"dac",  required_argument, 0, 0},
+        {"dig",  required_argument, 0, 0},
+        {"mix",  required_argument, 0, 0},
+        {"pwid", required_argument, 0, 0},
+        {"nhdr", no_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hf:s:b:n:z:p:k:r:c:l:t:m:q:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hif:s:b:n:z:p:k:r:c:l:t:m:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'i': /* Send packet using inverted modulation polarity */
+                invert_pol = true;
                 break;
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
@@ -339,6 +348,8 @@ int main(int argc, char **argv)
                         txlut.lut[0].mix_gain = 5; /* TODO: rework this, should not be needed for sx1250 */
                         txlut.lut[0].pwr_idx = (uint8_t)arg_u;
                     }
+                } else if (strcmp(long_options[option_index].name, "nhdr") == 0) {
+                    no_header = true;
                 } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
                     return EXIT_FAILURE;
@@ -355,7 +366,7 @@ int main(int argc, char **argv)
     if (strcmp(mod, "FSK") == 0) {
         printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, fdev_khz, br_kbps, size, preamble, rf_power);
     } else {
-        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, rf_power);
+        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
     }
 
     /* Configure signal handling */
@@ -436,9 +447,9 @@ int main(int argc, char **argv)
         pkt.coderate = CR_LORA_4_5;
         pkt.no_crc = true;
     }
-    pkt.invert_pol = false;
+    pkt.invert_pol = invert_pol;
     pkt.preamble = preamble;
-    pkt.no_header = false;
+    pkt.no_header = no_header;
     pkt.payload[0] = 0x40; /* Confirmed Data Up */
     pkt.payload[1] = 0xAB;
     pkt.payload[2] = 0xAB;
