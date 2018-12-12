@@ -956,7 +956,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         /* checksum */
         uint8_t checksum_calc = 0;
-        uint8_t checksum_pos = SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics) - 1;
+        uint16_t checksum_pos = SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics) - 1;
         uint8_t checksum = rx_fifo[buffer_index + checksum_pos];
         for (i = 0; i < (int)checksum_pos; i++) {
             checksum_calc += rx_fifo[buffer_index + i];
