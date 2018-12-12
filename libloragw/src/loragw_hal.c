@@ -215,6 +215,8 @@ void DEBUG_log_buffer_to_file(FILE * file, uint8_t * buffer, uint16_t size) {
         fprintf(file, "%02X ", buffer[i]);
     }
     fprintf(file, "\n");
+
+    fflush(file);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -244,6 +246,8 @@ void DEBUG_log_payload_diff_to_file(FILE * file, uint8_t * buffer1, uint8_t * bu
     }
     fprintf(file, "\n");
     fprintf(file, "%u bits flipped\n", nb_bits_diff);
+
+    fflush(file);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -279,6 +283,7 @@ int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t ref_pay
             printf("ERROR: 0x%08X missed %u pkt before %u\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt - DEBUG_context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt);
             if (file != NULL) {
                 fprintf(file, "ERROR: 0x%08X missed %u pkt before %u\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt - DEBUG_context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt);
+                fflush(file);
             }
         }
         DEBUG_context.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
