@@ -66,7 +66,7 @@ Maintainer: Michael Coracin
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #ifndef VERSION_STRING
-  #define VERSION_STRING "undefined"
+    #define VERSION_STRING "undefined"
 #endif
 
 #define DEFAULT_SERVER      127.0.0.1   /* hostname also supported */
@@ -186,6 +186,10 @@ static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by 
 static uint32_t nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
 static uint32_t nb_pkt_received_lora = 0;
 static uint32_t nb_pkt_received_fsk = 0;
+
+static struct lgw_conf_debug_s debugconf;
+static uint32_t nb_pkt_received_ref[16];
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -714,7 +718,6 @@ static int parse_debug_configuration(const char * conf_file) {
     JSON_Array *conf_array = NULL;
     JSON_Object *conf_obj_array = NULL;
     const char *str; /* pointer to sub-strings in the JSON data */
-    struct lgw_conf_debug_s debugconf;
 
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
@@ -754,6 +757,9 @@ static int parse_debug_configuration(const char * conf_file) {
                 MSG("ERROR: reference payload size must be a number\n");
                 exit(EXIT_FAILURE);
             }
+
+            /* global count */
+            nb_pkt_received_ref[i] = 0;
         }
 
         /* all parameters parsed, submitting configuration to the HAL */
@@ -1280,7 +1286,7 @@ int main(void)
 /* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 
 void thread_up(void) {
-    int i, j; /* loop variables */
+    int i, j, k; /* loop variables */
     unsigned pkt_in_dgram; /* nb on Lora packet in the current datagram */
     char stat_timestamp[24];
     time_t t;
@@ -1637,6 +1643,16 @@ void thread_up(void) {
                 /* Log nb of packets per channel, per SF */
                 nb_pkt_log[p->if_chain][p->datarate - 5] += 1;
                 nb_pkt_received_lora += 1;
+
+                /* Log nb of packets for ref_payload (DEBUG) */
+                for (k = 0; k < debugconf.nb_ref_payload; k++) {
+                    if ((p->payload[0] == (uint8_t)(debugconf.ref_payload[k].id >> 24)) &&
+                        (p->payload[1] == (uint8_t)(debugconf.ref_payload[k].id >> 16)) &&
+                        (p->payload[2] == (uint8_t)(debugconf.ref_payload[k].id >> 8))  &&
+                        (p->payload[3] == (uint8_t)(debugconf.ref_payload[k].id >> 0))) {
+                            nb_pkt_received_ref[k] += 1;
+                        }
+                }
             } else if (p->modulation == MOD_FSK) {
                 nb_pkt_log[p->if_chain][0] += 1;
                 nb_pkt_received_fsk += 1;
@@ -1658,6 +1674,9 @@ void thread_up(void) {
             printf("\n");
             printf("Total number of LoRa packet received: %u\n", nb_pkt_received_lora);
             printf("Total number of FSK packet received: %u\n", nb_pkt_received_fsk);
+            for (l = 0; l < debugconf.nb_ref_payload; l++) {
+                printf("Total number of LoRa packet received from 0x%08X: %u\n", debugconf.ref_payload[l].id, nb_pkt_received_ref[l]);
+            }
         }
 #endif
 
