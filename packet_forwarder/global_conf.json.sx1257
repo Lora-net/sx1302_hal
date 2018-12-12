@@ -85,6 +85,14 @@
         "forward_crc_valid": true,
         "forward_crc_error": false,
         "forward_crc_disabled": false
+    },
+
+    "debug_conf": {
+        "ref_payload":[
+            {"id": "0xCAFE1234", "size": 24},
+            {"id": "0xCAFE2345", "size": 32}
+        ],
+        "log_file": "loragw_hal.log"
     }
 }
 

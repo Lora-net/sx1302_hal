@@ -278,6 +278,21 @@ struct lgw_tx_gain_lut_s {
     uint8_t                 size;                       /*!> Number of LUT indexes */
 };
 
+/**
+@struct lgw_conf_debug_s
+@brief Configuration structure for debug
+*/
+struct conf_ref_payload_s {
+    uint32_t id;
+    uint8_t size;
+    uint8_t payload[255];
+    uint32_t prev_cnt;
+};
+struct lgw_conf_debug_s {
+    uint8_t                     nb_ref_payload;
+    struct conf_ref_payload_s   ref_payload[16];
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
@@ -310,6 +325,8 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf);
+
+int lgw_debug_setconf(struct lgw_conf_debug_s *conf);
 
 /**
 @brief Connect to the LoRa concentrator, reset it and configure it according to previously set parameters

@@ -4,7 +4,7 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+  (C)2018 Semtech-Cycleo
 
 Description:
     LoRa concentrator Hardware Abstraction Layer
@@ -158,7 +158,7 @@ static bool lorawan_public = false;
 static uint8_t rf_clkout = 0;
 static bool full_duplex = false;
 
-struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
+static struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
     {
         .size = 1,
         .lut[0] = {
@@ -188,11 +188,10 @@ struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
 
 static uint8_t rx_fifo[4096];
 
+static struct lgw_conf_debug_s DEBUG_context;
+
 static FILE * log_file = NULL;
-static uint8_t debug_payload_check_mote1[32] = { 0xCA, 0xFE, 0x12, 0x34 };
-static uint8_t debug_payload_check_mote2[32] = { 0xCA, 0xFE, 0x23, 0x45 };
-static unsigned int debug_payload_prev_cnt_mote1 = 0;
-static unsigned int debug_payload_prev_cnt_mote2 = 0;
+
 static tinymt32_t tinymt;
 
 /* -------------------------------------------------------------------------- */
@@ -265,33 +264,34 @@ void DEBUG_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t * payload_expected, uint8_t size, uint32_t * debug_payload_prev_cnt, const char * mote_name) {
+int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t ref_payload_idx) {
     int k;
     uint32_t debug_payload_cnt;
 
+
     /* If the 4 first bytes of received payload match with the expected ones, go on with comparison */
-    if (memcmp((void*)payload_received, (void*)payload_expected, 4) == 0) {
+    if (memcmp((void*)payload_received, (void*)(DEBUG_context.ref_payload[ref_payload_idx].payload), 4) == 0) {
         /* get counter to initialize random seed */
         debug_payload_cnt = (unsigned int)(payload_received[4] << 24) | (unsigned int)(payload_received[5] << 16) | (unsigned int)(payload_received[6] << 8) | (unsigned int)(payload_received[7] << 0);
 
         /* check if we missed some packets */
-        if (debug_payload_cnt > (*debug_payload_prev_cnt + 1)) {
-            printf("ERROR: %s missed %u pkt before %u\n", mote_name, debug_payload_cnt - *debug_payload_prev_cnt - 1, debug_payload_cnt);
+        if (debug_payload_cnt > (DEBUG_context.ref_payload[ref_payload_idx].prev_cnt + 1)) {
+            printf("ERROR: 0x%08X missed %u pkt before %u\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt - DEBUG_context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt);
             if (file != NULL) {
-                fprintf(file, "ERROR: %s missed %u pkt before %u\n", mote_name, debug_payload_cnt - *debug_payload_prev_cnt - 1, debug_payload_cnt);
+                fprintf(file, "ERROR: 0x%08X missed %u pkt before %u\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt - DEBUG_context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt);
             }
         }
-        *debug_payload_prev_cnt = debug_payload_cnt;
+        DEBUG_context.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
 
         /* generate the random payload which is expected for this packet count */
-        DEBUG_generate_random_payload(debug_payload_cnt, payload_expected, size);
-        for (k = 0; k < (int)(size); k++) {
-            printf("%02X ", payload_expected[k]);
+        DEBUG_generate_random_payload(debug_payload_cnt, DEBUG_context.ref_payload[ref_payload_idx].payload, DEBUG_context.ref_payload[ref_payload_idx].size);
+        for (k = 0; k < (int)(DEBUG_context.ref_payload[ref_payload_idx].size); k++) {
+            printf("%02X ", DEBUG_context.ref_payload[ref_payload_idx].payload[k]);
         }
         printf("\n");
 
         /* compare expected with received */
-        if (memcmp((void *)payload_received, (void *)payload_expected, size) != 0) {
+        if (memcmp((void *)payload_received, (void *)(DEBUG_context.ref_payload[ref_payload_idx].payload), DEBUG_context.ref_payload[ref_payload_idx].size) != 0) {
             return -1;
         } else {
             return 1; /* matches */
@@ -631,6 +631,26 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
+    int i;
+
+    DEBUG_context.nb_ref_payload = conf->nb_ref_payload;
+    for (i = 0; i < DEBUG_context.nb_ref_payload; i++) {
+        DEBUG_context.ref_payload[i].id = conf->ref_payload[i].id;
+        DEBUG_context.ref_payload[i].size = conf->ref_payload[i].size;
+
+        DEBUG_context.ref_payload[i].prev_cnt = 0;
+        DEBUG_context.ref_payload[i].payload[0] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 24);
+        DEBUG_context.ref_payload[i].payload[1] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 16);
+        DEBUG_context.ref_payload[i].payload[2] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 8);
+        DEBUG_context.ref_payload[i].payload[3] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 0);
+    }
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_start(void) {
     int i;
     uint32_t val, val2;
@@ -834,7 +854,7 @@ int lgw_stop(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
-    int i, res;
+    int i, j, res;
     uint8_t buff[2];
     uint16_t sz = 0;
     uint16_t buffer_index;
@@ -1036,32 +1056,22 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         4 bytes: packet counter used to initialize the seed for pseudo-random generation
                         x bytes: pseudo-random payload
                     */
-                    res = DEBUG_check_payload(log_file, p->payload, debug_payload_check_mote1, p->size, &debug_payload_prev_cnt_mote1, "Mote1");
-                    if (res == -1) {
-                        printf("ERROR: MOTE1 payload error\n");
-                        if (log_file != NULL) {
-                            fprintf(log_file, "ERROR: MOTE1 payload error (pkt:%u)\n", nb_pkt_found-1);
-                            DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
-                            DEBUG_log_payload_diff_to_file(log_file, p->payload, debug_payload_check_mote1, p->size);
+                    for (j = 0; j < DEBUG_context.nb_ref_payload; j++) {
+                        if (p->size == DEBUG_context.ref_payload[j].size) {
+                            res = DEBUG_check_payload(log_file, p->payload, j);
+                            if (res == -1) {
+                                printf("ERROR: 0x%08X payload error\n", DEBUG_context.ref_payload[j].id);
+                                if (log_file != NULL) {
+                                    fprintf(log_file, "ERROR: 0x%08X payload error (pkt:%u)\n", DEBUG_context.ref_payload[j].id, nb_pkt_found-1);
+                                    DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                                    DEBUG_log_payload_diff_to_file(log_file, p->payload, DEBUG_context.ref_payload[j].payload, p->size);
+                                }
+                            } else if (res == 1) {
+                                printf("0x%08X payload matches\n", DEBUG_context.ref_payload[j].id);
+                            } else {
+                                /* Do nothing */
+                            }
                         }
-                    } else if (res == 1) {
-                        printf("mote1 payload matches\n");
-                    } else {
-                        /* Do nothing */
-                    }
-
-                    res = DEBUG_check_payload(log_file, p->payload, debug_payload_check_mote2, p->size, &debug_payload_prev_cnt_mote2, "Mote2");
-                    if (res == -1) {
-                        printf("ERROR: MOTE2 payload error\n");
-                        if (log_file != NULL) {
-                            fprintf(log_file, "ERROR: MOTE2 payload error (pkt:%u)\n", nb_pkt_found-1);
-                            DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
-                            DEBUG_log_payload_diff_to_file(log_file, p->payload, debug_payload_check_mote2, p->size);
-                        }
-                    } else if (res == 1) {
-                        printf("mote2 payload matches\n");
-                    } else {
-                        /* Do nothing */
                     }
 #endif
 

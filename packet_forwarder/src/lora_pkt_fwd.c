@@ -195,6 +195,8 @@ static int parse_SX1301_configuration(const char * conf_file);
 
 static int parse_gateway_configuration(const char * conf_file);
 
+static int parse_debug_configuration(const char * conf_file);
+
 static double difftimespec(struct timespec end, struct timespec beginning);
 
 static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index);
@@ -703,6 +705,71 @@ static int parse_gateway_configuration(const char * conf_file) {
     return 0;
 }
 
+static int parse_debug_configuration(const char * conf_file) {
+    int i;
+    const char conf_obj_name[] = "debug_conf";
+    JSON_Value *root_val;
+    JSON_Object *conf_obj = NULL;
+    JSON_Value *val = NULL; /* needed to detect the absence of some fields */
+    JSON_Array *conf_array = NULL;
+    JSON_Object *conf_obj_array = NULL;
+    const char *str; /* pointer to sub-strings in the JSON data */
+    struct lgw_conf_debug_s debugconf;
+
+    /* try to parse JSON */
+    root_val = json_parse_file_with_comments(conf_file);
+    if (root_val == NULL) {
+        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
+        exit(EXIT_FAILURE);
+    }
+
+    /* point to the gateway configuration object */
+    conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
+    if (conf_obj == NULL) {
+        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        return -1;
+    } else {
+        MSG("INFO: %s does contain a JSON object named %s, parsing debug parameters\n", conf_file, conf_obj_name);
+    }
+
+    conf_array = json_object_get_array (conf_obj, "ref_payload");
+    if (conf_array != NULL) {
+        debugconf.nb_ref_payload = json_array_get_count(conf_array);
+        MSG("INFO: got %u debug reference payload\n", debugconf.nb_ref_payload);
+
+        for (i = 0; i < (int)debugconf.nb_ref_payload; i++) {
+            conf_obj_array = json_array_get_object(conf_array, i);
+            /* id */
+            str = json_object_get_string(conf_obj_array, "id");
+            if (str != NULL) {
+                sscanf(str, "0x%08X", &(debugconf.ref_payload[i].id));
+                MSG("INFO: reference payload ID %d is 0x%08X\n", i, debugconf.ref_payload[i].id);
+            }
+            /* size */
+            val = json_object_get_value(conf_obj_array, "size");
+            if (json_value_get_type(val) == JSONNumber) {
+                debugconf.ref_payload[i].size = (uint8_t)json_value_get_number(val);
+                MSG("INFO: reference payload size %d is %u\n", i, debugconf.ref_payload[i].size);
+            } else {
+                MSG("ERROR: reference payload size must be a number\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        /* all parameters parsed, submitting configuration to the HAL */
+        if (debugconf.nb_ref_payload > 0) {
+            if (lgw_debug_setconf(&debugconf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure debug\n");
+                return -1;
+            }
+        }
+    }
+
+    /* free JSON parsing data structure */
+    json_value_free(root_val);
+    return 0;
+}
+
 static double difftimespec(struct timespec end, struct timespec beginning) {
     double x;
 
@@ -917,6 +984,10 @@ int main(void)
             exit(EXIT_FAILURE);
         }
         x = parse_gateway_configuration(global_cfg_path);
+        if (x != 0) {
+            exit(EXIT_FAILURE);
+        }
+        x = parse_debug_configuration(global_cfg_path);
         if (x != 0) {
             exit(EXIT_FAILURE);
         }
