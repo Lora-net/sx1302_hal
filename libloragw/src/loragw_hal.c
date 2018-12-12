@@ -646,6 +646,12 @@ int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
         DEBUG_context.ref_payload[i].payload[3] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 0);
     }
 
+    if (conf->log_file != NULL) {
+        strncpy(DEBUG_context.log_file, conf->log_file, strlen(conf->log_file));
+    } else {
+        strncpy(DEBUG_context.log_file, "loragw_hal.log", strlen("loragw_hal.log"));
+    }
+
     return LGW_HAL_SUCCESS;
 }
 
@@ -812,10 +818,12 @@ int lgw_start(void) {
 
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
-    log_file = fopen( "loragw_hal.log", "w+" ); /* create log file, overwrite if file already exist */
+    log_file = fopen(DEBUG_context.log_file, "w+"); /* create log file, overwrite if file already exist */
     if (log_file == NULL) {
-        printf("ERROR: impossible to create log file %s\n", "loragw_hal.log");
+        printf("ERROR: impossible to create log file %s\n", DEBUG_context.log_file);
         return LGW_HAL_ERROR;
+    } else {
+        printf("INFO: %s file opened for debug log\n", DEBUG_context.log_file);
     }
 #endif
 

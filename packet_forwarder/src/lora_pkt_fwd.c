@@ -719,6 +719,9 @@ static int parse_debug_configuration(const char * conf_file) {
     JSON_Object *conf_obj_array = NULL;
     const char *str; /* pointer to sub-strings in the JSON data */
 
+    /* Initialize structure */
+    memset(&debugconf, 0, sizeof debugconf);
+
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
@@ -730,11 +733,13 @@ static int parse_debug_configuration(const char * conf_file) {
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
         MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        json_value_free(root_val);
         return -1;
     } else {
         MSG("INFO: %s does contain a JSON object named %s, parsing debug parameters\n", conf_file, conf_obj_name);
     }
 
+    /* Get reference payload configuration */
     conf_array = json_object_get_array (conf_obj, "ref_payload");
     if (conf_array != NULL) {
         debugconf.nb_ref_payload = json_array_get_count(conf_array);
@@ -761,14 +766,20 @@ static int parse_debug_configuration(const char * conf_file) {
             /* global count */
             nb_pkt_received_ref[i] = 0;
         }
+    }
 
-        /* all parameters parsed, submitting configuration to the HAL */
-        if (debugconf.nb_ref_payload > 0) {
-            if (lgw_debug_setconf(&debugconf) != LGW_HAL_SUCCESS) {
-                MSG("ERROR: Failed to configure debug\n");
-                return -1;
-            }
-        }
+    /* Get log file configuration */
+    str = json_object_get_string(conf_obj, "log_file");
+    if (str != NULL) {
+        strncpy(debugconf.log_file, str, strlen(str));
+        MSG("INFO: setting debug log file name to %s\n", debugconf.log_file);
+    }
+
+    /* Commit configuration */
+    if (lgw_debug_setconf(&debugconf) != LGW_HAL_SUCCESS) {
+        MSG("ERROR: Failed to configure debug\n");
+        json_value_free(root_val);
+        return -1;
     }
 
     /* free JSON parsing data structure */

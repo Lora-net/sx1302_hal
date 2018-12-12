@@ -291,6 +291,7 @@ struct conf_ref_payload_s {
 struct lgw_conf_debug_s {
     uint8_t                     nb_ref_payload;
     struct conf_ref_payload_s   ref_payload[16];
+    char log_file[128];
 };
 
 /* -------------------------------------------------------------------------- */
