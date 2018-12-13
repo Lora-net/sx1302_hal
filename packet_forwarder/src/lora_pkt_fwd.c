@@ -1006,7 +1006,7 @@ int main(void)
         }
         x = parse_debug_configuration(global_cfg_path);
         if (x != 0) {
-            exit(EXIT_FAILURE);
+            MSG("INFO: no debug configuration\n");
         }
         if (access(local_cfg_path, R_OK) == 0) {
             MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);

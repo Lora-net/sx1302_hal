@@ -188,7 +188,10 @@ static struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
 
 static uint8_t rx_fifo[4096];
 
-static struct lgw_conf_debug_s DEBUG_context;
+static struct lgw_conf_debug_s DEBUG_context = {
+    .nb_ref_payload = 0,
+    .log_file = "loragw_hal.log"
+};
 
 static FILE * log_file = NULL;
 
@@ -653,8 +656,6 @@ int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
 
     if (conf->log_file != NULL) {
         strncpy(DEBUG_context.log_file, conf->log_file, strlen(conf->log_file));
-    } else {
-        strncpy(DEBUG_context.log_file, "loragw_hal.log", strlen("loragw_hal.log"));
     }
 
     return LGW_HAL_SUCCESS;
