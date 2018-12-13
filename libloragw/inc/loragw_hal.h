@@ -294,6 +294,16 @@ struct lgw_conf_debug_s {
     char log_file[128];
 };
 
+/**
+@struct lgw_conf_debug_s
+@brief Configuration structure for debug
+*/
+struct lgw_conf_timestamp_s {
+    bool enable_precision_ts;
+    uint8_t max_ts_metrics;
+    uint8_t nb_symbols;
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
@@ -327,6 +337,18 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
 */
 int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf);
 
+/**
+@brief Configure the precision timestamp
+@param pointer to structure defining the config to be applied
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf);
+
+/**
+@brief Configure the debug context
+@param pointer to structure defining the config to be applied
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
 int lgw_debug_setconf(struct lgw_conf_debug_s *conf);
 
 /**

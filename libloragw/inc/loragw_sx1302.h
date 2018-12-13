@@ -108,6 +108,7 @@ int sx1302_fsk_configure(bool * if_rf_chain, int32_t * channel_if, uint64_t sync
 int sx1302_modem_enable();
 
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
+int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
 int sx1302_get_cnt(bool pps, uint32_t* cnt_us);

@@ -522,7 +522,7 @@ int sx1302_lora_service_correlator_configure(uint8_t sf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_modem_configure() {
+int sx1302_lora_modem_configure(void) {
     /* TODO: test if channel is enabled */
 
     lgw_reg_w(SX1302_REG_RX_TOP_DC_NOTCH_CFG1_ENABLE, 0x00);
@@ -569,9 +569,6 @@ int sx1302_lora_modem_configure() {
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF11, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF12, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4);
-
-    /* Latch end-of-packet timestamp (sx1301 compatibility) */
-    lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
 
     return LGW_REG_SUCCESS;
 }
@@ -700,6 +697,31 @@ int sx1302_lora_syncword(bool public, uint8_t lora_service_sf) {
         printf("INFO: configuring LoRa (Service) SF%u with syncword PUBLIC (0x34)\n", lora_service_sf);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH0_PEAK1_POS, 6);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS, 8);
+    }
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf) {
+    if (conf->enable_precision_ts == false) {
+        printf("INFO: using legacy timestamp\n");
+        /* Latch end-of-packet timestamp (sx1301 compatibility) */
+        lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
+    } else {
+        printf("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", conf->max_ts_metrics, conf->nb_symbols);
+        /* Latch end-of-preamble timestamp */
+        lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x00);
+        lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS, conf->max_ts_metrics);
+
+        /* LoRa multi-SF modems */
+        lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_ENABLE, 0x01);
+        lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_NB_SYMB, conf->nb_symbols);
+
+        /* LoRa service modem */
+        lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_ENABLE, 0x01);
+        lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_NB_SYMB, conf->nb_symbols);
     }
 
     return LGW_REG_SUCCESS;

@@ -231,11 +231,13 @@ static int parse_SX1301_configuration(const char * conf_file) {
     JSON_Value *val = NULL;
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_txgain_obj;
+    JSON_Object *conf_ts_obj;
     JSON_Array *conf_txlut_array;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
+    struct lgw_conf_timestamp_s tsconf;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
 
@@ -296,6 +298,45 @@ static int parse_SX1301_configuration(const char * conf_file) {
         }
     }
     MSG("INFO: antenna_gain %d dBi\n", antenna_gain);
+
+    /* set timestamp configuration */
+    conf_ts_obj = json_object_get_object(conf_obj, "precision_timestamp");
+    if (conf_ts_obj == NULL) {
+        MSG("INFO: %s does not contain a JSON object for precision timestamp\n", conf_file);
+    } else {
+        val = json_object_get_value(conf_ts_obj, "enable"); /* fetch value (if possible) */
+        if (json_value_get_type(val) == JSONBoolean) {
+            tsconf.enable_precision_ts = (bool)json_value_get_boolean(val);
+        } else {
+            MSG("WARNING: Data type for precision_timestamp.enable seems wrong, please check\n");
+            tsconf.enable_precision_ts = false;
+        }
+        if (tsconf.enable_precision_ts == true) {
+            val = json_object_get_value(conf_ts_obj, "max_ts_metrics"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                tsconf.max_ts_metrics = (uint8_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for precision_timestamp.max_ts_metrics seems wrong, please check\n");
+                tsconf.max_ts_metrics = 0xFF;
+            }
+            val = json_object_get_value(conf_ts_obj, "nb_symbols"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                tsconf.nb_symbols = (uint8_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for precision_timestamp.nb_symbols seems wrong, please check\n");
+                tsconf.nb_symbols = 1;
+            }
+            MSG("INFO: Configuring precision timestamp: max_ts_metrics:%u, nb_symbols:%u\n", tsconf.max_ts_metrics, tsconf.nb_symbols);
+
+            /* all parameters parsed, submitting configuration to the HAL */
+            if (lgw_timestamp_setconf(&tsconf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure precision timestamp\n");
+                return -1;
+            }
+        } else {
+            MSG("INFO: Configuring legacy timestamp\n");
+        }
+    }
 
     /* set configuration for RF chains */
     for (i = 0; i < LGW_RF_CHAIN_NB; ++i) {

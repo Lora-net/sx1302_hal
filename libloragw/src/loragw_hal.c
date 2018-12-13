@@ -158,6 +158,8 @@ static bool lorawan_public = false;
 static uint8_t rf_clkout = 0;
 static bool full_duplex = false;
 
+static uint8_t rx_fifo[4096];
+
 static struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
     {
         .size = 1,
@@ -186,7 +188,11 @@ static struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
     }
 };
 
-static uint8_t rx_fifo[4096];
+static struct lgw_conf_timestamp_s timestamp_conf = {
+    .enable_precision_ts = false,
+    .max_ts_metrics = 0xFF,
+    .nb_symbols = 1
+};
 
 static struct lgw_conf_debug_s DEBUG_context = {
     .nb_ref_payload = 0,
@@ -639,6 +645,16 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf) {
+    timestamp_conf.enable_precision_ts = conf->enable_precision_ts;
+    timestamp_conf.max_ts_metrics = conf->max_ts_metrics;
+    timestamp_conf.nb_symbols = conf->nb_symbols;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
     int i;
 
@@ -784,6 +800,9 @@ int lgw_start(void) {
 
     /* configure syncword */
     sx1302_lora_syncword(lorawan_public, lora_rx_sf);
+
+    /* configure timestamp */
+    sx1302_timestamp_mode(&timestamp_conf);
 
     /* give radio control to AGC MCU */
     lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
