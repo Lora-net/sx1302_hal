@@ -48,6 +48,9 @@ int main()
     int cycle_number = 0;
     int i;
 
+    /* Board reset */
+    system("./reset_lgw.sh start");
+
     printf("Beginning of test for loragw_spi.c\n");
     lgw_spi_open(&spi_target);
 
