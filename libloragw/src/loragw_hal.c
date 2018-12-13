@@ -263,6 +263,7 @@ void DEBUG_log_payload_diff_to_file(FILE * file, uint8_t * buffer1, uint8_t * bu
 
 void DEBUG_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, uint8_t size) {
     int k;
+    uint8_t dummy;
 
     /* construct payload we should get for this packet counter */
     tinymt32_init(&tinymt, (int)pkt_cnt);
@@ -270,14 +271,16 @@ void DEBUG_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, 
     buffer_expected[5] = (uint8_t)(pkt_cnt >> 16);
     buffer_expected[6] = (uint8_t)(pkt_cnt >> 8);
     buffer_expected[7] = (uint8_t)(pkt_cnt >> 0);
-    for (k = 8; k < (int)(size); k++) {
+    dummy = (uint8_t)tinymt32_generate_uint32(&tinymt); /* for sync with random size generation */
+    if (dummy) { /* do nothing */ } /* to avoid compilation warning */
+    for (k = 8; k < (int)size; k++) {
         buffer_expected[k] = (uint8_t)tinymt32_generate_uint32(&tinymt);
     }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t ref_payload_idx) {
+int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t size, uint8_t ref_payload_idx) {
     int k;
     uint32_t debug_payload_cnt;
 
@@ -298,21 +301,27 @@ int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t ref_pay
         DEBUG_context.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
 
         /* generate the random payload which is expected for this packet count */
-        DEBUG_generate_random_payload(debug_payload_cnt, DEBUG_context.ref_payload[ref_payload_idx].payload, DEBUG_context.ref_payload[ref_payload_idx].size);
-        for (k = 0; k < (int)(DEBUG_context.ref_payload[ref_payload_idx].size); k++) {
+        printf("RECEIVED:");
+        for (k = 0; k < (int)size; k++) {
+            printf("%02X ", payload_received[k]);
+        }
+        printf("\n");
+        DEBUG_generate_random_payload(debug_payload_cnt, DEBUG_context.ref_payload[ref_payload_idx].payload, size);
+        printf("EXPECTED:");
+        for (k = 0; k < (int)size; k++) {
             printf("%02X ", DEBUG_context.ref_payload[ref_payload_idx].payload[k]);
         }
         printf("\n");
 
         /* compare expected with received */
-        if (memcmp((void *)payload_received, (void *)(DEBUG_context.ref_payload[ref_payload_idx].payload), DEBUG_context.ref_payload[ref_payload_idx].size) != 0) {
+        if (memcmp((void *)payload_received, (void *)(DEBUG_context.ref_payload[ref_payload_idx].payload), size) != 0) {
             return -1;
         } else {
             return 1; /* matches */
         }
     }
 
-    return 0;
+    return 0; /* ignored */
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -660,9 +669,10 @@ int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
 
     DEBUG_context.nb_ref_payload = conf->nb_ref_payload;
     for (i = 0; i < DEBUG_context.nb_ref_payload; i++) {
+        /* Get user configuration */
         DEBUG_context.ref_payload[i].id = conf->ref_payload[i].id;
-        DEBUG_context.ref_payload[i].size = conf->ref_payload[i].size;
 
+        /* Initialize global context */
         DEBUG_context.ref_payload[i].prev_cnt = 0;
         DEBUG_context.ref_payload[i].payload[0] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 24);
         DEBUG_context.ref_payload[i].payload[1] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 16);
@@ -1090,20 +1100,18 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         x bytes: pseudo-random payload
                     */
                     for (j = 0; j < DEBUG_context.nb_ref_payload; j++) {
-                        if (p->size == DEBUG_context.ref_payload[j].size) {
-                            res = DEBUG_check_payload(log_file, p->payload, j);
-                            if (res == -1) {
-                                printf("ERROR: 0x%08X payload error\n", DEBUG_context.ref_payload[j].id);
-                                if (log_file != NULL) {
-                                    fprintf(log_file, "ERROR: 0x%08X payload error (pkt:%u)\n", DEBUG_context.ref_payload[j].id, nb_pkt_found-1);
-                                    DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
-                                    DEBUG_log_payload_diff_to_file(log_file, p->payload, DEBUG_context.ref_payload[j].payload, p->size);
-                                }
-                            } else if (res == 1) {
-                                printf("0x%08X payload matches\n", DEBUG_context.ref_payload[j].id);
-                            } else {
-                                /* Do nothing */
+                        res = DEBUG_check_payload(log_file, p->payload, p->size, j);
+                        if (res == -1) {
+                            printf("ERROR: 0x%08X payload error\n", DEBUG_context.ref_payload[j].id);
+                            if (log_file != NULL) {
+                                fprintf(log_file, "ERROR: 0x%08X payload error (pkt:%u)\n", DEBUG_context.ref_payload[j].id, nb_pkt_found - 1);
+                                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                                DEBUG_log_payload_diff_to_file(log_file, p->payload, DEBUG_context.ref_payload[j].payload, p->size);
                             }
+                        } else if (res == 1) {
+                            printf("0x%08X payload matches\n", DEBUG_context.ref_payload[j].id);
+                        } else {
+                            /* Do nothing */
                         }
                     }
 #endif

@@ -755,7 +755,6 @@ static int parse_debug_configuration(const char * conf_file) {
     const char conf_obj_name[] = "debug_conf";
     JSON_Value *root_val;
     JSON_Object *conf_obj = NULL;
-    JSON_Value *val = NULL; /* needed to detect the absence of some fields */
     JSON_Array *conf_array = NULL;
     JSON_Object *conf_obj_array = NULL;
     const char *str; /* pointer to sub-strings in the JSON data */
@@ -793,15 +792,6 @@ static int parse_debug_configuration(const char * conf_file) {
             if (str != NULL) {
                 sscanf(str, "0x%08X", &(debugconf.ref_payload[i].id));
                 MSG("INFO: reference payload ID %d is 0x%08X\n", i, debugconf.ref_payload[i].id);
-            }
-            /* size */
-            val = json_object_get_value(conf_obj_array, "size");
-            if (json_value_get_type(val) == JSONNumber) {
-                debugconf.ref_payload[i].size = (uint8_t)json_value_get_number(val);
-                MSG("INFO: reference payload size %d is %u\n", i, debugconf.ref_payload[i].size);
-            } else {
-                MSG("ERROR: reference payload size must be a number\n");
-                exit(EXIT_FAILURE);
             }
 
             /* global count */

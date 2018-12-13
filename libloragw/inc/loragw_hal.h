@@ -284,7 +284,6 @@ struct lgw_tx_gain_lut_s {
 */
 struct conf_ref_payload_s {
     uint32_t id;
-    uint8_t size;
     uint8_t payload[255];
     uint32_t prev_cnt;
 };
