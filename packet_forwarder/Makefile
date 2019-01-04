@@ -1,3 +1,7 @@
+### get external defined data
+
+include ../target.cfg
+
 ### Application-specific constants
 
 APP_NAME := lora_pkt_fwd
@@ -46,6 +50,27 @@ all: $(APP_NAME)
 clean:
 	rm -f $(OBJDIR)/*.o
 	rm -f $(APP_NAME)
+
+ifneq ($(strip $(TARGET_IP)),)
+ ifneq ($(strip $(TARGET_DIR)),)
+  ifneq ($(strip $(TARGET_USR)),)
+install:
+	@echo "---- Copying packet_forwarder files to $(TARGET_IP):$(TARGET_DIR)"
+	@scp lora_pkt_fwd $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+install_conf:
+	@echo "---- Copying packet_forwarder conf files to $(TARGET_IP):$(TARGET_DIR)"
+	@scp local_conf.json $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+	@scp global_conf.json.sx1250 $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+	@scp global_conf.json.sx1257 $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+  else
+	@echo "ERROR: TARGET_USR is not configured in target.cfg"
+  endif
+ else
+	@echo "ERROR: TARGET_DIR is not configured in target.cfg"
+ endif
+else
+	@echo "ERROR: TARGET_IP is not configured in target.cfg"
+endif
 
 ### Sub-modules compilation
 

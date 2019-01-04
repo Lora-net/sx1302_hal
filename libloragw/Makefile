@@ -2,6 +2,7 @@
 
 LIBLORAGW_VERSION := `cat ../VERSION`
 include library.cfg
+include ../target.cfg
 
 ### constant symbols
 
@@ -28,6 +29,23 @@ clean:
 	rm -f test_loragw_*
 	rm -f $(OBJDIR)/*.o
 	rm -f inc/config.h
+
+install:
+ifneq ($(strip $(TARGET_IP)),)
+ ifneq ($(strip $(TARGET_DIR)),)
+  ifneq ($(strip $(TARGET_USR)),)
+	@echo "---- Copying libloragw files to $(TARGET_IP):$(TARGET_DIR)"
+	@scp test_loragw_* $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+	@scp ../tools/reset_lgw.sh $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+  else
+	@echo "ERROR: TARGET_USR is not configured in target.cfg"
+  endif
+ else
+	@echo "ERROR: TARGET_DIR is not configured in target.cfg"
+ endif
+else
+	@echo "ERROR: TARGET_IP is not configured in target.cfg"
+endif
 
 ### transpose library.cfg into a C header file : config.h
 

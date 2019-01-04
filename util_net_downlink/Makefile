@@ -1,3 +1,7 @@
+### get external defined data
+
+include ../target.cfg
+
 ### User defined build options
 
 ARCH ?=
@@ -50,6 +54,22 @@ clean:
 	rm -f $(MOD_OBJ)
 	rm -f obj/$(APP_NAME).o
 	rm -f $(APP_NAME)
+
+install:
+ifneq ($(strip $(TARGET_IP)),)
+ ifneq ($(strip $(TARGET_DIR)),)
+  ifneq ($(strip $(TARGET_USR)),)
+	@echo "---- Copying net_downlink files to $(TARGET_IP):$(TARGET_DIR)"
+	@scp net_downlink $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+  else
+	@echo "ERROR: TARGET_USR is not configured in target.cfg"
+  endif
+ else
+	@echo "ERROR: TARGET_DIR is not configured in target.cfg"
+ endif
+else
+	@echo "ERROR: TARGET_IP is not configured in target.cfg"
+endif
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
