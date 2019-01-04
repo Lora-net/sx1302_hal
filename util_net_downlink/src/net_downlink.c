@@ -110,7 +110,6 @@ typedef struct
     uint16_t    preamb_size[2];
     uint8_t     pl_size;
     bool        ipol;
-    bool        tx_bypass;
 } thread_params_t;
 
 /* -------------------------------------------------------------------------- */
@@ -190,7 +189,7 @@ int main( int argc, char **argv )
 
     /* Downlink variables */
     thread_params_t thread_params = {
-        .nb_loop = {1, 1},
+        .nb_loop = {0, 0},
         .delay_ms = 1000,
         .bandwidth_khz = DEFAULT_LORA_BW,
         .spread_factor = {DEFAULT_LORA_SF, DEFAULT_LORA_SF},
@@ -205,15 +204,14 @@ int main( int argc, char **argv )
         .rf_chain = 0,
         .rf_chain_alternate = false,
         .freq_nb = 1,
-        .ipol = false,
-        .tx_bypass = false
+        .ipol = false
     };
 
     /* Threads ID */
     pthread_t thrid_down;
 
     /* Parse command line options */
-    while( ( i = getopt( argc, argv, "a:b:c:f:hij:l:p:r:s:t:x:z:A:BF:P:m:d:q:" ) ) != -1 )
+    while( ( i = getopt( argc, argv, "a:b:c:f:hij:l:p:r:s:t:x:z:A:F:P:m:d:q:" ) ) != -1 )
     {
         switch( i )
         {
@@ -233,10 +231,6 @@ int main( int argc, char **argv )
             case 'A':
                 fwd_uplink = true;
                 strncpy( serv_addr, optarg, strlen( optarg ));
-                break;
-
-            case 'B':
-                thread_params.tx_bypass = true;
                 break;
 
             case 'F':
@@ -1137,7 +1131,7 @@ static void * thread_down( const void * arg )
     uint16_t pream_sz;
     uint8_t rf_chain_select = 0;
     uint32_t nb_loop;
-    uint32_t pkt_sent[2] = {0,0};
+    uint32_t pkt_sent[2] = {0, 0};
     uint8_t rf_max;
 
     memset( datarate_string, 0, sizeof datarate_string );
@@ -1147,9 +1141,7 @@ static void * thread_down( const void * arg )
     /* Global loop is the max loop defined */
     rf_max = ((params->nb_loop[0] >= params->nb_loop[1]) ? 0 : 1);
     nb_loop = params->nb_loop[rf_max];
-    printf("nb_loop max = %u, rf_max:%u\n", nb_loop, rf_max);
-
-    while( !exit_sig && !quit_sig && ( pkt_sent[rf_max] < nb_loop ) )
+    while( !exit_sig && !quit_sig && (pkt_sent[rf_max] < nb_loop) && (nb_loop > 0) )
     {
         /* Wait for socket address to be valid */
         pthread_mutex_lock( &mx_sockaddr );
@@ -1168,12 +1160,6 @@ static void * thread_down( const void * arg )
         {
             printf( "ERROR: getnameinfo returned %s \n", gai_strerror( x ) );
             usleep( 10000); /* 10 ms */
-            continue;
-        }
-
-        if( params->tx_bypass == true )
-        {
-            usleep( 500000 ); /* 500 ms */
             continue;
         }
 
@@ -1309,9 +1295,6 @@ static void * thread_down( const void * arg )
     }
 
     /* Exit */
-    quit_sig = 1;
-    exit_sig = 1;
-
     printf( "\nINFO: End of downstream thread\n" );
     return NULL;
 }
