@@ -92,14 +92,13 @@ typedef enum
 
 typedef struct
 {
-    uint32_t    nb_loop[2];   /* number of downlinks to be sent on each RF chain */
-    uint32_t    delay_ms;  /* delay between 2 downlinks */
-    int         sock;      /* socket file descriptor */
+    uint32_t    nb_loop[2]; /* number of downlinks to be sent on each RF chain */
+    uint32_t    delay_ms[2]; /* delay between 2 downlinks on each RF chain */
+    int         sock; /* socket file descriptor */
     double      freq_mhz[2];
     double      freq_step;
     uint8_t     freq_nb;
     uint8_t     rf_chain;
-    bool        rf_chain_alternate;
     uint16_t    bandwidth_khz;
     char        modulation[8];
     uint8_t     spread_factor[2];
@@ -132,7 +131,8 @@ static pthread_mutex_t mx_sockaddr = PTHREAD_MUTEX_INITIALIZER; /* control acces
 
 static void sig_handler( int sigio );
 static void usage( void );
-static void * thread_down( const void * arg );
+static void * thread_down_rf0( const void * arg );
+static void * thread_down_rf1( const void * arg );
 static void log_csv(FILE * file, uint8_t * buf);
 
 /* -------------------------------------------------------------------------- */
@@ -190,7 +190,7 @@ int main( int argc, char **argv )
     /* Downlink variables */
     thread_params_t thread_params = {
         .nb_loop = {0, 0},
-        .delay_ms = 1000,
+        .delay_ms = {1000, 1000},
         .bandwidth_khz = DEFAULT_LORA_BW,
         .spread_factor = {DEFAULT_LORA_SF, DEFAULT_LORA_SF},
         .modulation = "LORA",
@@ -201,17 +201,16 @@ int main( int argc, char **argv )
         .preamb_size = {DEFAULT_LORA_PREAMBLE_SIZE, DEFAULT_LORA_PREAMBLE_SIZE},
         .pl_size = DEFAULT_PAYLOAD_SIZE,
         .freq_step = 0.2,
-        .rf_chain = 0,
-        .rf_chain_alternate = false,
         .freq_nb = 1,
         .ipol = false
     };
 
     /* Threads ID */
-    pthread_t thrid_down;
+    pthread_t thrid_down_rf0;
+    pthread_t thrid_down_rf1;
 
     /* Parse command line options */
-    while( ( i = getopt( argc, argv, "a:b:c:f:hij:l:p:r:s:t:x:z:A:F:P:m:d:q:" ) ) != -1 )
+    while( ( i = getopt( argc, argv, "b:c:f:hij:l:p:r:s:t:x:z:A:F:P:m:d:q:" ) ) != -1 )
     {
         switch( i )
         {
@@ -304,30 +303,6 @@ int main( int argc, char **argv )
                     printf( "ERROR: argument parsing of -j argument\n" );
                     usage( );
                     return EXIT_FAILURE;
-                }
-                break;
-
-            case 'a': /* -a <uint>  RF chain */
-                j = sscanf( optarg, "%u", &arg_u );
-                if( (j != 1) || (arg_u > 2) )
-                {
-                    printf( "ERROR: argument parsing of -a argument\n" );
-                    usage( );
-                    return EXIT_FAILURE;
-                }
-                else
-                {
-                    thread_params.rf_chain = (uint8_t)arg_u;
-                    if( arg_u == 2 )
-                    {
-                        if ( (thread_params.freq_mhz[1] < 30.0) || (thread_params.freq_mhz[1] > 3000.0) )
-                        {
-                            printf( "ERROR: no frequency defined for RF1\n" );
-                            usage( );
-                            return EXIT_FAILURE;
-                        }
-                        thread_params.rf_chain_alternate = true;
-                    }
                 }
                 break;
 
@@ -519,7 +494,24 @@ int main( int argc, char **argv )
                 break;
 
             case 't':
-                thread_params.delay_ms = atoi( optarg );
+                j = sscanf( optarg, "%u,%u", &arg_u, &arg_u2 );
+                switch( j )
+                {
+                    case 2:
+                        thread_params.delay_ms[1] = (uint32_t)arg_u2;
+                        /* No break */
+                    case 1:
+                        thread_params.delay_ms[0] = (uint32_t)arg_u;
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -t argument\n" );
+                    usage( );
+                    return EXIT_FAILURE;
+                }
                 break;
 
             case 'x':
@@ -688,10 +680,17 @@ int main( int argc, char **argv )
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
 
-    i = pthread_create( &thrid_down, NULL, (void * (*)( void * ))thread_down, (void*)&thread_params );
+    i = pthread_create( &thrid_down_rf0, NULL, (void * (*)( void * ))thread_down_rf0, (void*)&thread_params );
     if( i != 0 )
     {
         printf( "ERROR: [main] impossible to create downstream thread\n" );
+        return EXIT_FAILURE;
+    }
+
+    i = pthread_create( &thrid_down_rf1, NULL, (void * (*)( void * ))thread_down_rf1, (void*)&thread_params );
+    if( i != 0 )
+    {
+        printf( "ERROR: [main] impossible to create downstream thread for RF1\n" );
         return EXIT_FAILURE;
     }
 
@@ -819,7 +818,8 @@ int main( int argc, char **argv )
     }
 
     /* Wait for downstream thread to finish */
-    pthread_join( thrid_down, NULL );
+    pthread_join( thrid_down_rf0, NULL );
+    pthread_join( thrid_down_rf1, NULL );
 
     printf( "INFO: Exiting uplink logger\n" );
 
@@ -1063,10 +1063,6 @@ static void usage( void )
     printf( " -h  print this help\n" );
     printf( " -f <float,float>  Target frequency in MHz for RF0,RF1\n" );
     printf( " -j <uint>:<float> Number of channels to jump + explicit offset in MHz between channels\n" );
-    printf( " -a <uint>         RF chain [0, 1, 2]\n" );
-    printf( "                       0: RF chain A\n" );
-    printf( "                       1: RF chain B\n" );
-    printf( "                       2: alternate between RF chains A & B\n" );
     printf( " -m <string>       Modulation [\"LORA\", \"FSK\"]\n" );
     printf( " -b <uint>         LoRa bandwidth in kHz [125, 250, 500]\n" );
     printf( " -s <uint,uint>    LoRa Spreading Factor [5-12] for RF0,RF1\n" );
@@ -1077,7 +1073,7 @@ static void usage( void )
     printf( " -r <uint,uint>    Preamble size (symbols, [6..65535]) for RF0,RF1\n" );
     printf( " -z <uint>         Payload size (bytes, [4..255])\n" );
     printf( " -i                Set inverted polarity true\n" );
-    printf( " -t <msec>         Number of milliseconds between two downlinks\n" );
+    printf( " -t <uint,uint>    Number of milliseconds between two downlinks for RF0,RF1\n" );
     printf( " -x <uint,uint>    Number of downlinks to be sent for RF0,RF1\n" );
     printf( " -P <udp port>     UDP port of the Packet Forwarder\n" );
     printf( " -A <ip address>   IP address to be used for uplink forwarding (optional)\n" );
@@ -1085,6 +1081,19 @@ static void usage( void )
     printf( " -l <filename>     uplink logging CSV filename (optional)\n" );
     printf( " -B                Bypass downlink, for uplink logging only (optional)\n" );
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( "~~~ Examples ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( " Log uplinks into a CSV file, no downlink:\n" );
+    printf( "   ./net_downlink -P 1730 -l log.csv\n" );
+    printf( " Send downlinks on RF chain 0 only:\n" );
+    printf( "   ./net_downlink -f 865.1 -s 7 -b 125 -r 8 -t 500 -x 10 -P 1730\n" );
+    printf( " Send downlinks on RF chain 1 only:\n" );
+    printf( "   ./net_downlink -f 865.1,865.3 -s 7,8 -t 1000,1000 -x 0,10 -P 1730\n" );
+    printf( " Send downlinks on both RF chain 0 and 1:\n" );
+    printf( "   ./net_downlink -f 865.1,865.9 -s 10,7 -t 500,1000 -x 5,10 -P 1730\n" );
+    printf( " Trigger continuous TX on both RF chain 0 and 1:\n" );
+    printf( "   ./net_downlink -f 865.1,865.9 -s 11,12 -x 1,1 -r 65535,65535 -P 1730\n" );
+    printf( " Log uplinks into CSV file while continuous TX is running (full_duplex testing):\n" );
+    printf( "   ./net_downlink -f 864.5 -s 12 -x 1 -r 65535 -P 1730 -l log.csv\n" );
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1103,7 +1112,7 @@ static void sig_handler( int sigio )
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-static void * thread_down( const void * arg )
+static void * thread_down_rf0( const void * arg )
 {
     int j, x;
     int byte_nb;
@@ -1129,19 +1138,16 @@ static void * thread_down( const void * arg )
     uint8_t sf;
     int8_t rf_pwr;
     uint16_t pream_sz;
-    uint8_t rf_chain_select = 0;
     uint32_t nb_loop;
-    uint32_t pkt_sent[2] = {0, 0};
-    uint8_t rf_max;
+    uint32_t pkt_sent = 0;
 
     memset( datarate_string, 0, sizeof datarate_string );
     memset( payload, 0, sizeof payload );
     memset( payload_b64, 0, sizeof payload_b64 );
 
     /* Global loop is the max loop defined */
-    rf_max = ((params->nb_loop[0] >= params->nb_loop[1]) ? 0 : 1);
-    nb_loop = params->nb_loop[rf_max];
-    while( !exit_sig && !quit_sig && (pkt_sent[rf_max] < nb_loop) && (nb_loop > 0) )
+    nb_loop = params->nb_loop[0];
+    while( !exit_sig && !quit_sig && (pkt_sent < nb_loop) && (nb_loop > 0) )
     {
         /* Wait for socket address to be valid */
         pthread_mutex_lock( &mx_sockaddr );
@@ -1183,41 +1189,15 @@ static void * thread_down( const void * arg )
 
                 /* Set downlink parameters */
                 json_object_set_boolean( obj, "imme", true );
-                if( params->rf_chain_alternate == false )
-                {
-                    freq = params->freq_mhz[0] + ((pkt_sent[0] % params->freq_nb) * params->freq_step);
-                    json_object_set_number( obj, "rfch", params->rf_chain );
-                    json_object_set_number( obj, "freq", freq );
-                    sf = params->spread_factor[0];
-                    rf_pwr = params->rf_power[0];
-                    pream_sz = params->preamb_size[0];
-                    printf("rf_chain:%u, freq:%lf, pkt_sent:%d\n", params->rf_chain, freq, pkt_sent[0]);
-                }
-                else
-                {
-                    json_object_set_number( obj, "rfch", rf_chain_select%2 ); /* alternate 0,1 */
-
-                    /* Update downlink params for the current rf chain */
-                    freq = params->freq_mhz[rf_chain_select%2] + ((pkt_sent[rf_chain_select%2] % params->freq_nb) * params->freq_step);
-                    sf = params->spread_factor[rf_chain_select%2];
-                    rf_pwr = params->rf_power[rf_chain_select%2];
-                    pream_sz = params->preamb_size[rf_chain_select%2];
-                    if (pkt_sent[rf_chain_select%2] >= params->nb_loop[rf_chain_select%2])
-                    {
-                        /* skip downlink if already sent max number for this rf chain*/
-                        printf("skip %u\n", rf_chain_select%2);
-                        rf_chain_select += 1;
-                        usleep( params->delay_ms * 1E3 );
-                        continue;
-                    }
-
-                    json_object_set_number( obj, "freq", freq );
-                    printf("rf_chain:%u, freq:%lf, pkt_sent:%d\n", rf_chain_select%2, freq, pkt_sent[rf_chain_select%2]);
-                }
+                freq = params->freq_mhz[0] + ((pkt_sent % params->freq_nb) * params->freq_step);
+                json_object_set_number( obj, "freq", freq );
+                json_object_set_number( obj, "rfch", 0 );
+                rf_pwr = params->rf_power[0];
                 json_object_set_number( obj, "powe", rf_pwr );
                 if( strncmp( params->modulation, "LORA", 4 ) == 0 )
                 {
                     json_object_set_string( obj, "modu", "LORA" );
+                    sf = params->spread_factor[0];
                     sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
                     json_object_set_string( obj, "datr", datarate_string );
                     json_object_set_string( obj, "codr", params->coding_rate );
@@ -1229,6 +1209,7 @@ static void * thread_down( const void * arg )
                     printf( "ERROR: wrong modulation\n" );
                 }
                 json_object_set_boolean( obj, "ipol", params->ipol );
+                pream_sz = params->preamb_size[0];
                 json_object_set_number( obj, "prea", pream_sz );
                 json_object_set_boolean( obj, "ncrc", true );
                 json_object_set_number( obj, "size", params->pl_size );
@@ -1236,7 +1217,7 @@ static void * thread_down( const void * arg )
                 /* Fill last bytes of payload with downlink counter (32 bits) */
                 for( j = 0; j < params->pl_size; j++ )
                 {
-                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (pkt_sent[rf_chain_select%2] >> (j * 8)) & 0xFF );
+                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (pkt_sent >> (j * 8)) & 0xFF );
                 }
                 /* Convert payload to base64 */
                 j = bin_to_b64( payload, params->pl_size, (char *)(payload_b64), 341 ); /* 255 bytes = 340 chars in b64 + null char */
@@ -1267,7 +1248,7 @@ static void * thread_down( const void * arg )
                 }
                 else
                 {
-                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent[rf_chain_select%2] );
+                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent );
                 }
 
                 /* free JSON memory */
@@ -1278,24 +1259,170 @@ static void * thread_down( const void * arg )
         }
 
         /* One more downlink sent */
-        pkt_sent[rf_chain_select%2] += 1;
-        if( params->rf_chain_alternate == true )
-        {
-            rf_chain_select += 1;
-            /* Wait before sending next downlink */
-            usleep( params->delay_ms * 1E3 / 2 );
-        }
-        else
-        {
-            /* Wait before sending next downlink */
-            usleep( params->delay_ms * 1E3 );
-        }
-
-
+        pkt_sent += 1;
+        /* Wait before sending next downlink */
+        usleep( params->delay_ms[0] * 1E3 );
     }
 
     /* Exit */
-    printf( "\nINFO: End of downstream thread\n" );
+    printf( "\nINFO: End of downstream thread for RF 0\n" );
+    return NULL;
+}
+
+static void * thread_down_rf1( const void * arg )
+{
+    int j, x;
+    int byte_nb;
+    const thread_params_t *params = ( (thread_params_t*)arg );
+
+    /* Server socket creation */
+    char host_name[64];
+    char port_name[64];
+
+    /* JSON variables */
+    JSON_Value *root_val = NULL;
+    JSON_Value *val = NULL;
+    JSON_Object *root_obj = NULL;
+    JSON_Object *obj = NULL;
+    char *serialized_string = NULL;
+
+    /* Downstream data variables */
+    uint8_t databuf_down[4096];
+    char datarate_string[16];
+    uint8_t payload[255];
+    uint8_t payload_b64[341];
+    double freq;
+    uint8_t sf;
+    int8_t rf_pwr;
+    uint16_t pream_sz;
+    uint32_t nb_loop;
+    uint32_t pkt_sent = 0;
+
+    memset( datarate_string, 0, sizeof datarate_string );
+    memset( payload, 0, sizeof payload );
+    memset( payload_b64, 0, sizeof payload_b64 );
+
+    /* Global loop is the max loop defined */
+    nb_loop = params->nb_loop[1];
+    while( !exit_sig && !quit_sig && (pkt_sent < nb_loop) && (nb_loop > 0) )
+    {
+        /* Wait for socket address to be valid */
+        pthread_mutex_lock( &mx_sockaddr );
+        if( sockaddr_valid == false )
+        {
+            pthread_mutex_unlock( &mx_sockaddr );
+            printf( "Waiting for socket to be ready...\n" );
+            usleep( 500000 ); /* 500 ms */
+            continue;
+        }
+        pthread_mutex_unlock( &mx_sockaddr );
+
+        /* Display info about the sender */
+        x = getnameinfo( (struct sockaddr *)&dist_addr_down, addr_len_down, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST );
+        if( x == -1 )
+        {
+            printf( "ERROR: getnameinfo returned %s \n", gai_strerror( x ) );
+            usleep( 10000); /* 10 ms */
+            continue;
+        }
+
+        /* Prepare JSON object to be sent */
+        root_val = json_value_init_object( );
+        if( root_val == NULL )
+        {
+            printf( "ERROR: failed to initialize JSON root object\n" );
+        }
+        else
+        {
+            root_obj = json_value_get_object( root_val );
+            if( root_obj == NULL )
+            {
+                printf( "ERROR: failed to get JSON root object\n" );
+            }
+            else
+            {
+                json_object_set_value( root_obj, "txpk", json_value_init_object( ) );
+                obj = json_object_get_object( root_obj, "txpk" );
+
+                /* Set downlink parameters */
+                json_object_set_boolean( obj, "imme", true );
+                freq = params->freq_mhz[1] + ((pkt_sent % params->freq_nb) * params->freq_step);
+                json_object_set_number( obj, "freq", freq );
+                json_object_set_number( obj, "rfch", 1 );
+                rf_pwr = params->rf_power[1];
+                json_object_set_number( obj, "powe", rf_pwr );
+                if( strncmp( params->modulation, "LORA", 4 ) == 0 )
+                {
+                    json_object_set_string( obj, "modu", "LORA" );
+                    sf = params->spread_factor[1];
+                    sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
+                    json_object_set_string( obj, "datr", datarate_string );
+                    json_object_set_string( obj, "codr", params->coding_rate );
+                } else if( strncmp( params->modulation, "FSK", 3 ) == 0 ) {
+                    json_object_set_string( obj, "modu", "FSK" );
+                    json_object_set_number( obj, "datr", params->br_kbps * 1E3 );
+                    json_object_set_number( obj, "fdev", params->fdev_khz * 1E3 );
+                } else {
+                    printf( "ERROR: wrong modulation\n" );
+                }
+                json_object_set_boolean( obj, "ipol", params->ipol );
+                pream_sz = params->preamb_size[1];
+                json_object_set_number( obj, "prea", pream_sz );
+                json_object_set_boolean( obj, "ncrc", true );
+                json_object_set_number( obj, "size", params->pl_size );
+
+                /* Fill last bytes of payload with downlink counter (32 bits) */
+                for( j = 0; j < params->pl_size; j++ )
+                {
+                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (pkt_sent >> (j * 8)) & 0xFF );
+                }
+                /* Convert payload to base64 */
+                j = bin_to_b64( payload, params->pl_size, (char *)(payload_b64), 341 ); /* 255 bytes = 340 chars in b64 + null char */
+                if( j >= 0 )
+                {
+                    json_object_set_string( obj, "data", (char *)(payload_b64) );
+                }
+                else
+                {
+                    printf( "ERROR: failed to convert payload to base64 string\n" );
+                }
+
+                /* Convert JSON object to string */
+                serialized_string = json_serialize_to_string( root_val );
+                printf( "%s\n", serialized_string );
+
+                /* Send JSON string to socket */
+                memset( databuf_down, 0, 4096 );
+                databuf_down[0] = PROTOCOL_VERSION;
+                databuf_down[1] = 0;
+                databuf_down[2] = 0;
+                databuf_down[3] = PKT_PULL_RESP;
+                memcpy( &databuf_down[4], (uint8_t*)serialized_string, strlen(serialized_string) );
+                byte_nb = sendto( params->sock, (void *)databuf_down, strlen(serialized_string) + 4, 0, (struct sockaddr *)&dist_addr_down, addr_len_down );
+                if( byte_nb == -1 )
+                {
+                    printf( "ERROR: failed to send downlink to socket - %s\n", strerror( errno ) );
+                }
+                else
+                {
+                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent );
+                }
+
+                /* free JSON memory */
+                json_free_serialized_string( serialized_string );
+                json_value_free( val );
+                json_value_free( root_val );
+            }
+        }
+
+        /* One more downlink sent */
+        pkt_sent += 1;
+        /* Wait before sending next downlink */
+        usleep( params->delay_ms[1] * 1E3 );
+    }
+
+    /* Exit */
+    printf( "\nINFO: End of downstream thread for RF1\n" );
     return NULL;
 }
 
