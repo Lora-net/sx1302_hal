@@ -100,14 +100,15 @@ typedef struct
     uint8_t     freq_nb;
     uint8_t     rf_chain;
     uint16_t    bandwidth_khz;
-    char        modulation[8];
+    char        modulation_rf0[8];
+    char        modulation_rf1[8];
     uint8_t     spread_factor[2];
     char        coding_rate[8];
     float       br_kbps;
     uint8_t     fdev_khz;
     int8_t      rf_power[2];
     uint16_t    preamb_size[2];
-    uint8_t     pl_size;
+    uint8_t     pl_size[2];
     bool        ipol;
 } thread_params_t;
 
@@ -150,6 +151,7 @@ int main( int argc, char **argv )
     int arg_i = 0;
     int arg_i2 = 0;
     char arg_s[8];
+    char arg_s2[8];
     bool parse_err = false;
 
     /* Logging file variables */
@@ -193,13 +195,14 @@ int main( int argc, char **argv )
         .delay_ms = {1000, 1000},
         .bandwidth_khz = DEFAULT_LORA_BW,
         .spread_factor = {DEFAULT_LORA_SF, DEFAULT_LORA_SF},
-        .modulation = "LORA",
+        .modulation_rf0 = {"LORA"},
+        .modulation_rf1 = {"LORA"},
         .coding_rate = DEFAULT_LORA_CR,
         .br_kbps = DEFAULT_FSK_BR,
         .fdev_khz = DEFAULT_FSK_FDEV,
         .rf_power = {27, 27},
         .preamb_size = {DEFAULT_LORA_PREAMBLE_SIZE, DEFAULT_LORA_PREAMBLE_SIZE},
-        .pl_size = DEFAULT_PAYLOAD_SIZE,
+        .pl_size = {DEFAULT_PAYLOAD_SIZE, DEFAULT_PAYLOAD_SIZE},
         .freq_step = 0.2,
         .freq_nb = 1,
         .ipol = false
@@ -370,16 +373,25 @@ int main( int argc, char **argv )
                 break;
 
             case 'm': /* -m <string> Modulation */
-                j = sscanf( optarg, "%s", arg_s );
-                if( j != 1 )
+                j = sscanf( optarg, "%[^,],%[^,]", arg_s, arg_s2 );
+                switch( j )
                 {
-                    printf( "ERROR: argument parsing of -c argument\n" );
+                    case 2:
+                        strncpy( thread_params.modulation_rf1, arg_s2, strlen(arg_s2));
+                        thread_params.modulation_rf1[strlen(arg_s2)] = '\0';
+                        /* No break */
+                    case 1:
+                        strncpy( thread_params.modulation_rf0, arg_s, strlen(arg_s));
+                        thread_params.modulation_rf0[strlen(arg_s)] = '\0';
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
+                {
+                    printf( "ERROR: argument parsing of -m argument\n" );
                     usage( );
                     return EXIT_FAILURE;
-                }
-                else
-                {
-                    strncpy( thread_params.modulation, arg_s, strlen(arg_s));
                 }
                 break;
 
@@ -476,16 +488,37 @@ int main( int argc, char **argv )
                 break;
 
             case 'z': /* -z <uint>  payload length (bytes) */
-                j = sscanf( optarg, "%u", &arg_u );
-                if( (j != 1) || (arg_u < 4) || (arg_u > 255) )
+                j = sscanf( optarg, "%u,%u", &arg_u, &arg_u2 );
+                switch( j )
+                {
+                    case 2:
+                        if( arg_u2 > 255 )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.pl_size[1] = (uint8_t)arg_u2;
+                        }
+                        /* No break */
+                    case 1:
+                        if( arg_u > 255 )
+                        {
+                            parse_err = true;
+                        }
+                        else
+                        {
+                            thread_params.pl_size[0] = (uint8_t)arg_u;
+                        }
+                        break;
+                    default:
+                        parse_err = true;
+                }
+                if( parse_err )
                 {
                     printf( "ERROR: argument parsing of -z argument\n" );
                     usage( );
                     return EXIT_FAILURE;
-                }
-                else
-                {
-                    thread_params.pl_size = (uint8_t)arg_u;
                 }
                 break;
 
@@ -1061,25 +1094,25 @@ static void usage( void )
 {
     printf( "~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf( " -h  print this help\n" );
-    printf( " -f <float,float>  Target frequency in MHz for RF0,RF1\n" );
-    printf( " -j <uint>:<float> Number of channels to jump + explicit offset in MHz between channels\n" );
-    printf( " -m <string>       Modulation [\"LORA\", \"FSK\"]\n" );
-    printf( " -b <uint>         LoRa bandwidth in kHz [125, 250, 500]\n" );
-    printf( " -s <uint,uint>    LoRa Spreading Factor [5-12] for RF0,RF1\n" );
-    printf( " -c <string>       LoRa Coding Rate [\"4/5\", \"4/6\", ...]\n" );
-    printf( " -d <uint>         FSK frequency deviation in kHz [1:250]\n");
-    printf( " -q <float>        FSK bitrate in kbps [0.5:250]\n");
-    printf( " -p <int,int>      RF power (dBm) for RF0,RF1\n" );
-    printf( " -r <uint,uint>    Preamble size (symbols, [6..65535]) for RF0,RF1\n" );
-    printf( " -z <uint>         Payload size (bytes, [4..255])\n" );
-    printf( " -i                Set inverted polarity true\n" );
-    printf( " -t <uint,uint>    Number of milliseconds between two downlinks for RF0,RF1\n" );
-    printf( " -x <uint,uint>    Number of downlinks to be sent for RF0,RF1\n" );
-    printf( " -P <udp port>     UDP port of the Packet Forwarder\n" );
-    printf( " -A <ip address>   IP address to be used for uplink forwarding (optional)\n" );
-    printf( " -F <udp port>     UDP port to be used for uplink forwarding (optional)\n" );
-    printf( " -l <filename>     uplink logging CSV filename (optional)\n" );
-    printf( " -B                Bypass downlink, for uplink logging only (optional)\n" );
+    printf( " -f <float,float>   Target frequency in MHz for RF0,RF1\n" );
+    printf( " -j <uint>:<float>  Number of channels to jump + explicit offset in MHz between channels\n" );
+    printf( " -m <string,string> Modulation [\"LORA\",\"FSK\"] for RF0,RF1\n" );
+    printf( " -b <uint>          LoRa bandwidth in kHz [125, 250, 500]\n" );
+    printf( " -s <uint,uint>     LoRa Spreading Factor [5-12] for RF0,RF1\n" );
+    printf( " -c <string>        LoRa Coding Rate [\"4/5\", \"4/6\", ...]\n" );
+    printf( " -d <uint>          FSK frequency deviation in kHz [1:250]\n");
+    printf( " -q <float>         FSK bitrate in kbps [0.5:250]\n");
+    printf( " -p <int,int>       RF power (dBm) for RF0,RF1\n" );
+    printf( " -r <uint,uint>     Preamble size (symbols, [6..65535]) for RF0,RF1\n" );
+    printf( " -z <uint,uint>     Payload size (bytes, [0..255]) for RF0,RF1\n" );
+    printf( " -i                 Set inverted polarity true\n" );
+    printf( " -t <uint,uint>     Number of milliseconds between two downlinks for RF0,RF1\n" );
+    printf( " -x <uint,uint>     Number of downlinks to be sent for RF0,RF1\n" );
+    printf( " -P <udp port>      UDP port of the Packet Forwarder\n" );
+    printf( " -A <ip address>    IP address to be used for uplink forwarding (optional)\n" );
+    printf( " -F <udp port>      UDP port to be used for uplink forwarding (optional)\n" );
+    printf( " -l <filename>      uplink logging CSV filename (optional)\n" );
+    printf( " -B                 Bypass downlink, for uplink logging only (optional)\n" );
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf( "~~~ Examples ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf( " Log uplinks into a CSV file, no downlink:\n" );
@@ -1112,9 +1145,90 @@ static void sig_handler( int sigio )
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+void prepare_downlink_json( const thread_params_t * params, uint8_t rf_chain, uint32_t pkt_sent, JSON_Value * root_val )
+{
+    int j;
+
+    JSON_Value *val = NULL;
+    JSON_Object *root_obj = NULL;
+    JSON_Object *obj = NULL;
+
+    char datarate_string[16];
+    uint8_t payload[255];
+    uint8_t payload_b64[341];
+    double freq;
+    uint8_t sf;
+    int8_t rf_pwr;
+    uint16_t pream_sz;
+    const char *modulation = (rf_chain == 0) ? params->modulation_rf0 : params->modulation_rf1;
+
+    memset( datarate_string, 0, sizeof datarate_string );
+    memset( payload, 0, sizeof payload );
+    memset( payload_b64, 0, sizeof payload_b64 );
+
+    root_obj = json_value_get_object( root_val );
+    if( root_obj == NULL )
+    {
+        printf( "ERROR: failed to get JSON root object\n" );
+    }
+    else
+    {
+        json_object_set_value( root_obj, "txpk", json_value_init_object( ) );
+        obj = json_object_get_object( root_obj, "txpk" );
+
+        /* Set downlink parameters */
+        json_object_set_boolean( obj, "imme", true );
+        freq = params->freq_mhz[rf_chain] + ((pkt_sent % params->freq_nb) * params->freq_step);
+        json_object_set_number( obj, "freq", freq );
+        json_object_set_number( obj, "rfch", rf_chain );
+        rf_pwr = params->rf_power[rf_chain];
+        json_object_set_number( obj, "powe", rf_pwr );
+        if( strncmp( modulation, "LORA", 4 ) == 0 )
+        {
+            json_object_set_string( obj, "modu", "LORA" );
+            sf = params->spread_factor[rf_chain];
+            sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
+            json_object_set_string( obj, "datr", datarate_string );
+            json_object_set_string( obj, "codr", params->coding_rate );
+        } else if( strncmp( modulation, "FSK", 3 ) == 0 ) {
+            json_object_set_string( obj, "modu", "FSK" );
+            json_object_set_number( obj, "datr", params->br_kbps * 1E3 );
+            json_object_set_number( obj, "fdev", params->fdev_khz * 1E3 );
+        } else {
+            printf( "ERROR: wrong modulation\n" );
+        }
+        json_object_set_boolean( obj, "ipol", params->ipol );
+        pream_sz = params->preamb_size[rf_chain];
+        json_object_set_number( obj, "prea", pream_sz );
+        json_object_set_boolean( obj, "ncrc", true );
+        json_object_set_number( obj, "size", params->pl_size[rf_chain] );
+
+        /* Fill last bytes of payload with downlink counter (32 bits) */
+        for( j = 0; j < params->pl_size[rf_chain]; j++ )
+        {
+            payload[params->pl_size[rf_chain] - ( j + 1 )] = (uint8_t)( (pkt_sent >> (j * 8)) & 0xFF );
+        }
+        /* Convert payload to base64 */
+        j = bin_to_b64( payload, params->pl_size[rf_chain], (char *)(payload_b64), 341 ); /* 255 bytes = 340 chars in b64 + null char */
+        if( j >= 0 )
+        {
+            json_object_set_string( obj, "data", (char *)(payload_b64) );
+        }
+        else
+        {
+            printf( "ERROR: failed to convert payload to base64 string\n" );
+        }
+
+        /* Free memory */
+        json_value_free( val );
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 static void * thread_down_rf0( const void * arg )
 {
-    int j, x;
+    int x;
     int byte_nb;
     const thread_params_t *params = ( (thread_params_t*)arg );
 
@@ -1124,26 +1238,12 @@ static void * thread_down_rf0( const void * arg )
 
     /* JSON variables */
     JSON_Value *root_val = NULL;
-    JSON_Value *val = NULL;
-    JSON_Object *root_obj = NULL;
-    JSON_Object *obj = NULL;
     char *serialized_string = NULL;
 
     /* Downstream data variables */
     uint8_t databuf_down[4096];
-    char datarate_string[16];
-    uint8_t payload[255];
-    uint8_t payload_b64[341];
-    double freq;
-    uint8_t sf;
-    int8_t rf_pwr;
-    uint16_t pream_sz;
     uint32_t nb_loop;
     uint32_t pkt_sent = 0;
-
-    memset( datarate_string, 0, sizeof datarate_string );
-    memset( payload, 0, sizeof payload );
-    memset( payload_b64, 0, sizeof payload_b64 );
 
     /* Global loop is the max loop defined */
     nb_loop = params->nb_loop[0];
@@ -1177,85 +1277,33 @@ static void * thread_down_rf0( const void * arg )
         }
         else
         {
-            root_obj = json_value_get_object( root_val );
-            if( root_obj == NULL )
+            /* Prepare the txpk JSON object */
+            prepare_downlink_json( params, 0, pkt_sent, root_val );
+
+            /* Convert JSON object to string */
+            serialized_string = json_serialize_to_string( root_val );
+            printf( "%s\n", serialized_string );
+
+            /* Send JSON string to socket */
+            memset( databuf_down, 0, 4096 );
+            databuf_down[0] = PROTOCOL_VERSION;
+            databuf_down[1] = 0;
+            databuf_down[2] = 0;
+            databuf_down[3] = PKT_PULL_RESP;
+            memcpy( &databuf_down[4], (uint8_t*)serialized_string, strlen(serialized_string) );
+            byte_nb = sendto( params->sock, (void *)databuf_down, strlen(serialized_string) + 4, 0, (struct sockaddr *)&dist_addr_down, addr_len_down );
+            if( byte_nb == -1 )
             {
-                printf( "ERROR: failed to get JSON root object\n" );
+                printf( "ERROR: failed to send downlink to socket - %s\n", strerror( errno ) );
             }
             else
             {
-                json_object_set_value( root_obj, "txpk", json_value_init_object( ) );
-                obj = json_object_get_object( root_obj, "txpk" );
-
-                /* Set downlink parameters */
-                json_object_set_boolean( obj, "imme", true );
-                freq = params->freq_mhz[0] + ((pkt_sent % params->freq_nb) * params->freq_step);
-                json_object_set_number( obj, "freq", freq );
-                json_object_set_number( obj, "rfch", 0 );
-                rf_pwr = params->rf_power[0];
-                json_object_set_number( obj, "powe", rf_pwr );
-                if( strncmp( params->modulation, "LORA", 4 ) == 0 )
-                {
-                    json_object_set_string( obj, "modu", "LORA" );
-                    sf = params->spread_factor[0];
-                    sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
-                    json_object_set_string( obj, "datr", datarate_string );
-                    json_object_set_string( obj, "codr", params->coding_rate );
-                } else if( strncmp( params->modulation, "FSK", 3 ) == 0 ) {
-                    json_object_set_string( obj, "modu", "FSK" );
-                    json_object_set_number( obj, "datr", params->br_kbps * 1E3 );
-                    json_object_set_number( obj, "fdev", params->fdev_khz * 1E3 );
-                } else {
-                    printf( "ERROR: wrong modulation\n" );
-                }
-                json_object_set_boolean( obj, "ipol", params->ipol );
-                pream_sz = params->preamb_size[0];
-                json_object_set_number( obj, "prea", pream_sz );
-                json_object_set_boolean( obj, "ncrc", true );
-                json_object_set_number( obj, "size", params->pl_size );
-
-                /* Fill last bytes of payload with downlink counter (32 bits) */
-                for( j = 0; j < params->pl_size; j++ )
-                {
-                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (pkt_sent >> (j * 8)) & 0xFF );
-                }
-                /* Convert payload to base64 */
-                j = bin_to_b64( payload, params->pl_size, (char *)(payload_b64), 341 ); /* 255 bytes = 340 chars in b64 + null char */
-                if( j >= 0 )
-                {
-                    json_object_set_string( obj, "data", (char *)(payload_b64) );
-                }
-                else
-                {
-                    printf( "ERROR: failed to convert payload to base64 string\n" );
-                }
-
-                /* Convert JSON object to string */
-                serialized_string = json_serialize_to_string( root_val );
-                printf( "%s\n", serialized_string );
-
-                /* Send JSON string to socket */
-                memset( databuf_down, 0, 4096 );
-                databuf_down[0] = PROTOCOL_VERSION;
-                databuf_down[1] = 0;
-                databuf_down[2] = 0;
-                databuf_down[3] = PKT_PULL_RESP;
-                memcpy( &databuf_down[4], (uint8_t*)serialized_string, strlen(serialized_string) );
-                byte_nb = sendto( params->sock, (void *)databuf_down, strlen(serialized_string) + 4, 0, (struct sockaddr *)&dist_addr_down, addr_len_down );
-                if( byte_nb == -1 )
-                {
-                    printf( "ERROR: failed to send downlink to socket - %s\n", strerror( errno ) );
-                }
-                else
-                {
-                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent );
-                }
-
-                /* free JSON memory */
-                json_free_serialized_string( serialized_string );
-                json_value_free( val );
-                json_value_free( root_val );
+                printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent );
             }
+
+            /* free JSON memory */
+            json_free_serialized_string( serialized_string );
+            json_value_free( root_val );
         }
 
         /* One more downlink sent */
@@ -1269,9 +1317,11 @@ static void * thread_down_rf0( const void * arg )
     return NULL;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 static void * thread_down_rf1( const void * arg )
 {
-    int j, x;
+    int x;
     int byte_nb;
     const thread_params_t *params = ( (thread_params_t*)arg );
 
@@ -1281,26 +1331,12 @@ static void * thread_down_rf1( const void * arg )
 
     /* JSON variables */
     JSON_Value *root_val = NULL;
-    JSON_Value *val = NULL;
-    JSON_Object *root_obj = NULL;
-    JSON_Object *obj = NULL;
     char *serialized_string = NULL;
 
     /* Downstream data variables */
     uint8_t databuf_down[4096];
-    char datarate_string[16];
-    uint8_t payload[255];
-    uint8_t payload_b64[341];
-    double freq;
-    uint8_t sf;
-    int8_t rf_pwr;
-    uint16_t pream_sz;
     uint32_t nb_loop;
     uint32_t pkt_sent = 0;
-
-    memset( datarate_string, 0, sizeof datarate_string );
-    memset( payload, 0, sizeof payload );
-    memset( payload_b64, 0, sizeof payload_b64 );
 
     /* Global loop is the max loop defined */
     nb_loop = params->nb_loop[1];
@@ -1334,85 +1370,33 @@ static void * thread_down_rf1( const void * arg )
         }
         else
         {
-            root_obj = json_value_get_object( root_val );
-            if( root_obj == NULL )
+            /* Prepare the txpk JSON object */
+            prepare_downlink_json( params, 1, pkt_sent, root_val );
+
+            /* Convert JSON object to string */
+            serialized_string = json_serialize_to_string( root_val );
+            printf( "%s\n", serialized_string );
+
+            /* Send JSON string to socket */
+            memset( databuf_down, 0, 4096 );
+            databuf_down[0] = PROTOCOL_VERSION;
+            databuf_down[1] = 0;
+            databuf_down[2] = 0;
+            databuf_down[3] = PKT_PULL_RESP;
+            memcpy( &databuf_down[4], (uint8_t*)serialized_string, strlen(serialized_string) );
+            byte_nb = sendto( params->sock, (void *)databuf_down, strlen(serialized_string) + 4, 0, (struct sockaddr *)&dist_addr_down, addr_len_down );
+            if( byte_nb == -1 )
             {
-                printf( "ERROR: failed to get JSON root object\n" );
+                printf( "ERROR: failed to send downlink to socket - %s\n", strerror( errno ) );
             }
             else
             {
-                json_object_set_value( root_obj, "txpk", json_value_init_object( ) );
-                obj = json_object_get_object( root_obj, "txpk" );
-
-                /* Set downlink parameters */
-                json_object_set_boolean( obj, "imme", true );
-                freq = params->freq_mhz[1] + ((pkt_sent % params->freq_nb) * params->freq_step);
-                json_object_set_number( obj, "freq", freq );
-                json_object_set_number( obj, "rfch", 1 );
-                rf_pwr = params->rf_power[1];
-                json_object_set_number( obj, "powe", rf_pwr );
-                if( strncmp( params->modulation, "LORA", 4 ) == 0 )
-                {
-                    json_object_set_string( obj, "modu", "LORA" );
-                    sf = params->spread_factor[1];
-                    sprintf( datarate_string, "SF%uBW%u", sf, params->bandwidth_khz);
-                    json_object_set_string( obj, "datr", datarate_string );
-                    json_object_set_string( obj, "codr", params->coding_rate );
-                } else if( strncmp( params->modulation, "FSK", 3 ) == 0 ) {
-                    json_object_set_string( obj, "modu", "FSK" );
-                    json_object_set_number( obj, "datr", params->br_kbps * 1E3 );
-                    json_object_set_number( obj, "fdev", params->fdev_khz * 1E3 );
-                } else {
-                    printf( "ERROR: wrong modulation\n" );
-                }
-                json_object_set_boolean( obj, "ipol", params->ipol );
-                pream_sz = params->preamb_size[1];
-                json_object_set_number( obj, "prea", pream_sz );
-                json_object_set_boolean( obj, "ncrc", true );
-                json_object_set_number( obj, "size", params->pl_size );
-
-                /* Fill last bytes of payload with downlink counter (32 bits) */
-                for( j = 0; j < params->pl_size; j++ )
-                {
-                    payload[params->pl_size - ( j + 1 )] = (uint8_t)( (pkt_sent >> (j * 8)) & 0xFF );
-                }
-                /* Convert payload to base64 */
-                j = bin_to_b64( payload, params->pl_size, (char *)(payload_b64), 341 ); /* 255 bytes = 340 chars in b64 + null char */
-                if( j >= 0 )
-                {
-                    json_object_set_string( obj, "data", (char *)(payload_b64) );
-                }
-                else
-                {
-                    printf( "ERROR: failed to convert payload to base64 string\n" );
-                }
-
-                /* Convert JSON object to string */
-                serialized_string = json_serialize_to_string( root_val );
-                printf( "%s\n", serialized_string );
-
-                /* Send JSON string to socket */
-                memset( databuf_down, 0, 4096 );
-                databuf_down[0] = PROTOCOL_VERSION;
-                databuf_down[1] = 0;
-                databuf_down[2] = 0;
-                databuf_down[3] = PKT_PULL_RESP;
-                memcpy( &databuf_down[4], (uint8_t*)serialized_string, strlen(serialized_string) );
-                byte_nb = sendto( params->sock, (void *)databuf_down, strlen(serialized_string) + 4, 0, (struct sockaddr *)&dist_addr_down, addr_len_down );
-                if( byte_nb == -1 )
-                {
-                    printf( "ERROR: failed to send downlink to socket - %s\n", strerror( errno ) );
-                }
-                else
-                {
-                    printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent );
-                }
-
-                /* free JSON memory */
-                json_free_serialized_string( serialized_string );
-                json_value_free( val );
-                json_value_free( root_val );
+                printf( "<-  pkt out, PULL_RESP for host %s (port %s), %i bytes sent for downlink (%d)\n", host_name, port_name, byte_nb, pkt_sent );
             }
+
+            /* free JSON memory */
+            json_free_serialized_string( serialized_string );
+            json_value_free( root_val );
         }
 
         /* One more downlink sent */
