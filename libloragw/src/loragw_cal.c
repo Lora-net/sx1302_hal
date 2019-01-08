@@ -311,7 +311,7 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
     lgw_sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, tx);
     //sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, tx); /* Default: 0 */
     lgw_sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, tx);
-    //sx125x_reg_w(SX125x_CLK_SELECT__DAC_CLK_SELECT, 0, tx); /* Use internal clock, in case no Tx connection from SX1301, Default: 0  */
+    //sx125x_reg_w(SX125x_CLK_SELECT__DAC_CLK_SELECT, 0, tx); /* Use internal clock, in case no Tx connection from SX1302, Default: 0  */
     if (use_loopback == true) {
         lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, 3, tx);
         lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, 10, tx); //8
@@ -459,7 +459,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     lgw_sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, rf_chain);
     //lgw_sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, rf_chain); /* Default: 0 */
     lgw_sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__DAC_CLK_SELECT, 1, rf_chain); /* Use external clock from SX1301 */
+    lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__DAC_CLK_SELECT, 1, rf_chain); /* Use external clock from SX1302 */
     lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, dac_gain, rf_chain);
     lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, mix_gain, rf_chain);
     lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, rf_chain);

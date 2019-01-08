@@ -199,7 +199,7 @@ static void usage(void);
 
 static void sig_handler(int sigio);
 
-static int parse_SX1301_configuration(const char * conf_file);
+static int parse_SX130x_configuration(const char * conf_file);
 
 static int parse_gateway_configuration(const char * conf_file);
 
@@ -236,11 +236,11 @@ static void sig_handler(int sigio) {
     return;
 }
 
-static int parse_SX1301_configuration(const char * conf_file) {
+static int parse_SX130x_configuration(const char * conf_file) {
     int i, j;
     char param_name[32]; /* used to generate variable parameter names */
     const char *str; /* used to store string value from JSON object */
-    const char conf_obj_name[] = "SX1301_conf";
+    const char conf_obj_name[] = "SX130x_conf";
     JSON_Value *root_val = NULL;
     JSON_Value *val = NULL;
     JSON_Object *conf_obj = NULL;
@@ -268,7 +268,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj_name);
+        MSG("INFO: %s does contain a JSON object named %s, parsing SX1302 parameters\n", conf_file, conf_obj_name);
     }
 
     /* set board configuration */
@@ -1001,7 +1001,7 @@ int main(int argc, char ** argv)
     uint32_t cp_nb_tx_rejected_too_late = 0;
     uint32_t cp_nb_tx_rejected_too_early = 0;
 
-    /* SX1301 data variables */
+    /* SX1302 data variables */
     uint32_t trig_tstamp;
 
     /* statistics variable */
@@ -1050,7 +1050,7 @@ int main(int argc, char ** argv)
     /* load configuration files */
     if (access(conf_fname, R_OK) == 0) { /* if there is a global conf, parse it  */
         MSG("INFO: found configuration file %s, parsing it\n", conf_fname);
-        x = parse_SX1301_configuration(conf_fname);
+        x = parse_SX130x_configuration(conf_fname);
         if (x != 0) {
             exit(EXIT_FAILURE);
         }
@@ -1292,9 +1292,9 @@ int main(int argc, char ** argv)
         i = lgw_get_trigcnt(&trig_tstamp);
         pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
-            printf("# SX1301 time (PPS): unknown\n");
+            printf("# SX1302 time (PPS): unknown\n");
         } else {
-            printf("# SX1301 time (PPS): %u\n", trig_tstamp);
+            printf("# SX1302 time (PPS): %u\n", trig_tstamp);
 
         jit_print_queue (&jit_queue[0], false, DEBUG_LOG);}
         printf("#--------\n");

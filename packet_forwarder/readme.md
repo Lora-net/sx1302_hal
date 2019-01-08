@@ -1,12 +1,12 @@
-	 / _____)             _              | |    
-	( (____  _____ ____ _| |_ _____  ____| |__  
-	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \ 
+	 / _____)             _              | |
+	( (____  _____ ____ _| |_ _____  ____| |__
+	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-	  (C)2013 Semtech-Cycleo
+	  (C)2018 Semtech-Cycleo
 
-Lora Gateway packet forwarder
-=============================
+SX1302 Micro Cell packet forwarder
+==================================
 
 1. Introduction
 ----------------
@@ -17,7 +17,7 @@ link, and emits RF packets that are sent by the server. It can also emit a
 network-wide GPS-synchronous beacon signal used for coordinating all nodes of
 the network.
 
-To learn more about the network protocol between the gateway and the server, 
+To learn more about the network protocol between the gateway and the server,
 please read the PROTOCOL.TXT document.
 
 2. System schematic and definitions
@@ -40,18 +40,18 @@ please read the PROTOCOL.TXT document.
 	|            Gateway          |
 	+- - - - - - - - - - - - - - -+
 
-Concentrator: radio RX/TX board, based on Semtech multichannel modems (SX130x), 
+Concentrator: radio RX/TX board, based on Semtech multichannel modems (SX130x),
 transceivers (SX135x) and/or low-power stand-alone modems (SX127x).
 
-Host: embedded computer on which the packet forwarder is run. Drives the 
+Host: embedded computer on which the packet forwarder is run. Drives the
 concentrator through a SPI link.
 
-Gateway: a device composed of at least one radio concentrator, a host, some 
-network connection to the internet or a private network (Ethernet, 3G, Wifi, 
-microwave link), and optionally a GPS receiver for synchronization. 
+Gateway: a device composed of at least one radio concentrator, a host, some
+network connection to the internet or a private network (Ethernet, 3G, Wifi,
+microwave link), and optionally a GPS receiver for synchronization.
 
-Server: an abstract computer that will process the RF packets received and 
-forwarded by the gateway, and issue RF packets in response that the gateway 
+Server: an abstract computer that will process the RF packets received and
+forwarded by the gateway, and issue RF packets in response that the gateway
 will have to emit.
 
 
@@ -63,7 +63,7 @@ Krzysztof Gabis for JSON parsing.
 Many thanks to him for that very practical and well written library.
 
 This program is statically linked with the libloragw Lora concentrator library.
-It was tested with v1.3.0 of the library but should work with any later 
+It was tested with v1.3.0 of the library but should work with any later
 version provided the API is v1 or a later backward-compatible API.
 Data structures of the received packets are accessed by name (ie. not at a
 binary level) so new functionalities can be added to the API without affecting
@@ -71,7 +71,7 @@ that program at all.
 
 This program follows the v1.3 version of the gateway-to-server protocol.
 
-The last dependency is the hardware concentrator (based on FPGA or SX130x 
+The last dependency is the hardware concentrator (based on FPGA or SX130x
 chips) that must be matched with the proper version of the HAL.
 
 4. Usage
@@ -84,65 +84,36 @@ platform, region and feature need.
     ./reset_lgw.sh stop
     ./reset_lgw.sh start
 * Run:
-    ./update_gwid.sh local_conf.json    (OPTIONAL)
+    ./update_gwid.sh global_conf.json    (OPTIONAL)
     ./lora_pkt_fwd
 
 To stop the application, press Ctrl+C.
-Unless it is manually stopped or encounter a critical error, the program will 
+Unless it is manually stopped or encounter a critical error, the program will
 run forever.
 
 There are no command line launch options.
 
 The way the program takes configuration files into account is the following:
- * if there is a debug_conf.json parse it, others are ignored
+ * if a specific configuration file is given as program argument, use the
+  one specified.
  * if there is a global_conf.json parse it, look for the next file
- * if there is a local_conf.json parse it
-If some parameters are defined in both global and local configuration files, 
-the local definition overwrites the global definition. 
 
-The global configuration file should be exactly the same throughout your 
-network, contain all global parameters (parameters for "sensor" radio 
-channels) and preferably default "safe" values for parameters that are 
+The global configuration file should be exactly the same throughout your
+network, contain all global parameters (parameters for "sensor" radio
+channels) and preferably default "safe" values for parameters that are
 specific for each gateway (eg. specify a default MAC address).
 
-As some of the parameters (like 'rssi_offset', 'tx_lut_*') are board dependant,
-several flavours of the global_conf.json file are provided in the cfg/
-directory.
-* global_conf.json.PCB_E286.EU868.*: to be used for Semtech reference design
-  board with PCB name PCB_E286 (also called Gateway Board v1.0 (no FPGA)).
-  Configured for Europe 868MHz channels.
-* global_conf.json.PCB_E336.EU868.*:to be used for Semtech reference design
-  board with PCB name PCB_E336 (also called Gateway Board v1.5 (with FPGA)).
-  Configured for Europe 868MHz channels.
-* global_conf.json.US902.*: to be used for Semtech reference design v1.0 or
-  v1.5. (No calibration done for RSSI offset and TX gains yet).
-  Configured for US 902MHz channels.
-
-Beside board related flavours, there are "features" flavours named "basic",
-"gps", "beacon".
-* global_conf.json.*.basic: to be used for basic packet forwarder usage, with
-no GPS.
-* global_conf.json.*.gps: to be used when the platform has a GPS receiver.
-* global_conf.json.*.beacon: to be used when the platform has a GPS receiver
-and we want the packet forwarder to emit beacons for synchronized networks.
-
-Rename the one you need to global_conf.json before launching the packet
-forwarder.
-
-The local configuration file should contain parameters that are specific to 
-each gateway (eg. MAC address, frequency for backhaul radio channels).
-
-In each configuration file, the program looks for a JSON object named 
-"SX1301_conf" that should contain the parameters for the Lora concentrator 
-board (RF channels definition, modem parameters, etc) and another JSON object 
-called "gateway_conf" that should contain the gateway parameters (gateway MAC 
+In each configuration file, the program looks for a JSON object named
+"SX130x_conf" that should contain the parameters for the Lora concentrator
+board (RF channels definition, modem parameters, etc) and another JSON object
+called "gateway_conf" that should contain the gateway parameters (gateway MAC
 address, IP address of the server, keep-alive time, etc).
 
-To learn more about the JSON configuration format, read the provided JSON 
+To learn more about the JSON configuration format, read the provided JSON
 files and the libloragw API documentation.
 
-Every X seconds (parameter settable in the configuration files) the program 
-display statistics on the RF packets received and sent, and the network 
+Every X seconds (parameter settable in the configuration files) the program
+display statistics on the RF packets received and sent, and the network
 datagrams received and sent.
 The program also send some statistics to the server in JSON format.
 
@@ -188,23 +159,11 @@ In order for the host to know if an incoming downlink packet can or cannot be
 queued in JiT queue for later transmission, it has to check if the timestamp of
 the packet designates a time later than the current concentrator counter or if
 it is already too late to be passed to the concentrator.
-In order to get current concentrator time, we can use the lgw_get_trigcnt() HAL
-function. The problem is that the sample register used to read this value can be
-configured in 2 different ways:
-    - Real time mode: when GPS is disabled, the value read in sample register is
-      the actual concentrator counter value.
-    - PPS mode: when GPS is enabled, the value read in sample register is the
-      value that the concentrator counter had when last GPS’s PPS occurred. So
-      this changes every second only.
-As in our case GPS is enabled (LGW_GPS_EN==1), we need to have a way to get the
-actual concentrator current time, at any time.
 For this, a new thread has been added to the packet forwarder (thread_timersync)
 which will regularly:
-    - Disable GPS mode of SX1301 counter sampler
     - Get current Unix time
-    - Get current SX1301 counter
-    - Compute the offset between Unix and SX1301 clocks and store it
-    - Re-enable GPS mode of SX1301 counter sampler
+    - Get current SX1302 counter
+    - Compute the offset between Unix and SX1302 clocks and store it
 Then a new function has been added to estimate the current concentrator counter
 at any time based on the current Unix time and offset computed by the timersync
 thread.
@@ -232,7 +191,7 @@ counter:
       packet has to be peeked or not, based on its concentrator counter, we need
       to have the beacon packet counter set (see next chapter for more details
       on JiT scheduling).
-We also need to convert a SX1301 counter value to GPS UTC time when we receive
+We also need to convert a SX1302 counter value to GPS UTC time when we receive
 an uplink, in order to fill the “time” field of JSON “rxpk” structure.
 
 5.3. TX scheduling

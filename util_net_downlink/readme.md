@@ -16,7 +16,7 @@ Utility: Downlink server
 This utility allows to send regular downlink requests to the packet forwarder
 running on the gateway.
 
-The downlinks are sent in 'immediate' mode, meaning that the SX1301 will send
+The downlinks are sent in 'immediate' mode, meaning that the SX1302 will send
 the incoming packet over the air as soon as it receives it.
 
 So, the net_downlink utility will construct a JSON 'txpk' object based on given

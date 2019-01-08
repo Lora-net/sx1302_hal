@@ -260,8 +260,8 @@ struct lgw_pkt_tx_s {
 */
 struct lgw_tx_gain_s {
     int8_t  rf_power;   /*!> measured TX power at the board connector, in dBm */
-    uint8_t dig_gain;   /*!> 2 bits, (sx125x) control of the digital gain of SX1301 */
-    uint8_t pa_gain;    /*!> 2 bits, (sx125x) control of the external PA (SX1301 I/O) */
+    uint8_t dig_gain;   /*!> 2 bits, (sx125x) control of the digital gain of SX1302 */
+    uint8_t pa_gain;    /*!> 2 bits, (sx125x) control of the external PA (SX1302 I/O) */
     uint8_t dac_gain;   /*!> 2 bits, (sx125x) control of the radio DAC */
     uint8_t mix_gain;   /*!> 4 bits, (sx125x) control of the radio mixer */
     int8_t offset_i;    /*!> (sx125x) calibrated I offset */

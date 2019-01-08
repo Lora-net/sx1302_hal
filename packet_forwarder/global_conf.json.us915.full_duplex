@@ -1,5 +1,5 @@
 {
-    "SX1301_conf": {
+    "SX130x_conf": {
         "lorawan_public": true,
         "clksrc": 1,
         "antenna_gain": 0, /* antenna gain, in dBi */
@@ -75,7 +75,7 @@
 
     "gateway_conf": {
         "gateway_ID": "AA555A0000000000",
-        /* change with default server address/ports, or overwrite in local_conf.json */
+        /* change with default server address/ports */
         "server_address": "localhost",
         "serv_port_up": 1750,
         "serv_port_down": 1750,

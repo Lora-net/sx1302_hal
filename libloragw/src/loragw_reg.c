@@ -1213,7 +1213,7 @@ int lgw_connect(void) {
         return LGW_REG_ERROR;
     }
 
-    /* check SX1301 version */
+    /* check SX1302 version */
     spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, loregs[SX1302_REG_COMMON_VERSION_VERSION].addr, &u);
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");

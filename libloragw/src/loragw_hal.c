@@ -627,7 +627,7 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
     for (i = 0; i < txgain_lut[rf_chain].size; i++) {
         /* Check gain range */
         if (conf->lut[i].dig_gain > 3) {
-            DEBUG_MSG("ERROR: TX gain LUT: SX1301 digital gain must be between 0 and 3\n");
+            DEBUG_MSG("ERROR: TX gain LUT: SX1302 digital gain must be between 0 and 3\n");
             return LGW_HAL_ERROR;
         }
         if (conf->lut[i].dac_gain > 3) {
