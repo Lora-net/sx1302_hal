@@ -273,6 +273,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
+    str = json_object_get_string(conf_obj, "spidev_path");
+    if (str != NULL) {
+        strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
+    } else {
+        MSG("ERROR: spidev path must be configured in %s\n", conf_file);
+        return -1;
+    }
+
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
@@ -294,7 +302,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: spidev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.spidev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");

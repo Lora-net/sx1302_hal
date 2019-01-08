@@ -154,6 +154,7 @@ static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
 static uint64_t fsk_sync_word = 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
 
+static char spidev_path[64];
 static bool lorawan_public = false;
 static uint8_t rf_clkout = 0;
 static bool full_duplex = false;
@@ -405,8 +406,9 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
     lorawan_public = conf.lorawan_public;
     rf_clkout = conf.clksrc;
     full_duplex = conf.full_duplex;
+    strncpy(spidev_path, conf.spidev_path, sizeof spidev_path);
 
-    DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d, full_duplex:%d\n", lorawan_public, rf_clkout, full_duplex);
+    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n", spidev_path, lorawan_public, rf_clkout, full_duplex);
 
     return LGW_HAL_SUCCESS;
 }
@@ -711,7 +713,7 @@ int lgw_start(void) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect();
+    reg_stat = lgw_connect(spidev_path);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;

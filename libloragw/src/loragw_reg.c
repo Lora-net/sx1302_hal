@@ -1196,18 +1196,22 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(void) {
+int lgw_connect(char * spidev_path) {
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
 
     /* check SPI link status */
+    if (spidev_path == NULL) {
+        DEBUG_MSG("ERROR: SPIDEV PATH IS NOT SET\n");
+        return LGW_REG_ERROR;
+    }
     if (lgw_spi_target != NULL) {
         DEBUG_MSG("WARNING: concentrator was already connected\n");
         lgw_spi_close(lgw_spi_target);
     }
 
     /* open the SPI link */
-    spi_stat = lgw_spi_open(&lgw_spi_target);
+    spi_stat = lgw_spi_open(spidev_path, &lgw_spi_target);
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;

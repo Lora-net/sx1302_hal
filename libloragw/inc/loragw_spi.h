@@ -41,11 +41,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /**
 @brief LoRa concentrator SPI setup (configure I/O and peripherals)
+@param spidev_path path to the SPI device to be used to connect to the SX1302
 @param spi_target_ptr pointer on a generic pointer to SPI target (implementation dependant)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-int lgw_spi_open(void **spi_target_ptr);
+int lgw_spi_open(char * spidev_path, void **spi_target_ptr);
 
 /**
 @brief LoRa concentrator SPI close

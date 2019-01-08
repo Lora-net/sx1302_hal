@@ -1105,9 +1105,10 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 
 /**
 @brief Connect LoRa concentrator by opening SPI link
+@param spidev_path path to the SPI device to be used to connect to the SX1302
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
-int lgw_connect(void);
+int lgw_connect(char * spidev_path);
 
 /**
 @brief Disconnect LoRa concentrator by closing SPI link

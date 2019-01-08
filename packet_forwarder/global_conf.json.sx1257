@@ -1,5 +1,6 @@
 {
     "SX130x_conf": {
+        "spidev_path": "/dev/spidev0.0",
         "lorawan_public": true,
         "clksrc": 0,
         "antenna_gain": 0, /* antenna gain, in dBi */
