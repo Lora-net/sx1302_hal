@@ -59,7 +59,6 @@ install:
 	@scp lora_pkt_fwd $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
 install_conf:
 	@echo "---- Copying packet_forwarder conf files to $(TARGET_IP):$(TARGET_DIR)"
-	@scp local_conf.json $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
 	@scp global_conf.json.sx1250 $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
 	@scp global_conf.json.sx1257 $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
   else
