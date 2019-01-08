@@ -69,9 +69,7 @@ Maintainer: Michael Coracin
     #define VERSION_STRING "undefined"
 #endif
 
-#define JSON_CONF_DEFAULT       "global_conf.json"
-#define LINUXDEV_PATH_DEFAULT   "/dev/spidev0.0"
-#define GPSTTY_PATH_DEFAULT     "/dev/ttyS0"
+#define JSON_CONF_DEFAULT   "global_conf.json"
 
 #define DEFAULT_SERVER      127.0.0.1   /* hostname also supported */
 #define DEFAULT_PORT_UP     1780
@@ -225,11 +223,6 @@ static void usage( void )
     printf(" %s\n", lgw_version_info());
     printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" -h  print this help\n");
-    printf(" -d <path>  use Linux SPI device driver\n");
-    printf("            => default path: " LINUXDEV_PATH_DEFAULT "\n");
-    printf(" -g <optional path>  use GPS receiver for synchronization\n");
-    printf("            => default path: " GPSTTY_PATH_DEFAULT "\n");
-    printf("            warning: NO SPACE between -g and gps path!!\n");
     printf(" -c <filename>  use config file other than 'global_conf.json'\n");
     printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
@@ -1021,32 +1014,13 @@ int main(int argc, char ** argv)
     float dw_ack_ratio;
 
     /* Parse command line options */
-    while( (i = getopt( argc, argv, "hd:c:g::" )) != -1 )
+    while( (i = getopt( argc, argv, "hc:" )) != -1 )
     {
         switch( i )
         {
         case 'h':
             usage( );
             return EXIT_SUCCESS;
-            break;
-
-        case 'd': /* -d <path>  use Linux SPI device driver */
-#if 0 /* TODO */
-            if( optarg != NULL )
-            {
-                spi1_path = optarg; TODO
-            }
-#endif
-            break;
-
-        case 'g': /* -g <optional path>  use GPS receiver for synchronization */
-#if 0 /* TODO */
-            enable_gps = true;
-            if( optarg != NULL )
-            {
-                gps_path = optarg;
-            }
-#endif
             break;
 
         case 'c':
@@ -1061,8 +1035,8 @@ int main(int argc, char ** argv)
     }
 
     /* display version informations */
-    MSG("*** Packet Forwarder for Lora Gateway ***\nVersion: " VERSION_STRING "\n");
-    MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
+    MSG("*** Packet Forwarder for Lora Micro Cell ***\nVersion: " VERSION_STRING "\n");
+    MSG("*** SX1302 HAL library version info ***\n%s\n***\n", lgw_version_info());
 
     /* display host endianness */
     #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
