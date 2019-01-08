@@ -1553,6 +1553,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
                                                 SX1302_REG_TX_TOP_B_TXRX_CFG0_0_MODEM_SF);
             lgw_reg_w(reg, pkt_data.datarate);
 
+            reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TXRX_CFG0_1_CODING_RATE,
+                                                SX1302_REG_TX_TOP_B_TXRX_CFG0_1_CODING_RATE);
+            lgw_reg_w(reg, pkt_data.coderate);
+
             reg = REG_SELECT(pkt_data.rf_chain, SX1302_REG_TX_TOP_A_TX_CFG0_0_CHIRP_LOWPASS,
                                                 SX1302_REG_TX_TOP_B_TX_CFG0_0_CHIRP_LOWPASS);
             if (pkt_data.datarate < 10) {
