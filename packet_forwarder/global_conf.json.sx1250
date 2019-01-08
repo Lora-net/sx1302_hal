@@ -95,7 +95,7 @@
     "debug_conf": {
         "ref_payload":[
             {"id": "0xCAFE1234"},
-            {"id": "0xCAFE2345"},
+            {"id": "0xCAFE2345"}
         ],
         "log_file": "loragw_hal.log"
     }
