@@ -4,7 +4,7 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+  (C)2018 Semtech-Cycleo
 
 Description:
     Configure Lora concentrator and forward packets to a server
@@ -68,6 +68,10 @@ Maintainer: Michael Coracin
 #ifndef VERSION_STRING
     #define VERSION_STRING "undefined"
 #endif
+
+#define JSON_CONF_DEFAULT       "global_conf.json"
+#define LINUXDEV_PATH_DEFAULT   "/dev/spidev0.0"
+#define GPSTTY_PATH_DEFAULT     "/dev/ttyS0"
 
 #define DEFAULT_SERVER      127.0.0.1   /* hostname also supported */
 #define DEFAULT_PORT_UP     1780
@@ -193,6 +197,8 @@ static uint32_t nb_pkt_received_ref[16];
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
+static void usage(void);
+
 static void sig_handler(int sigio);
 
 static int parse_SX1301_configuration(const char * conf_file);
@@ -212,6 +218,21 @@ void thread_jit(void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void usage( void )
+{
+    printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf(" %s\n", lgw_version_info());
+    printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf(" -h  print this help\n");
+    printf(" -d <path>  use Linux SPI device driver\n");
+    printf("            => default path: " LINUXDEV_PATH_DEFAULT "\n");
+    printf(" -g <optional path>  use GPS receiver for synchronization\n");
+    printf("            => default path: " GPSTTY_PATH_DEFAULT "\n");
+    printf("            warning: NO SPACE between -g and gps path!!\n");
+    printf(" -c <filename>  use config file other than 'global_conf.json'\n");
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+}
 
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
@@ -941,7 +962,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(void)
+int main(int argc, char ** argv)
 {
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     int i; /* loop variable and temporary variable for return value */
@@ -949,9 +970,8 @@ int main(void)
     int l, m;
 
     /* configuration file related */
-    char *global_cfg_path= "global_conf.json"; /* contain global (typ. network-wide) configuration */
-    char *local_cfg_path = "local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
-    char *debug_cfg_path = "debug_conf.json"; /* if present, all other configuration files are ignored */
+    const char defaut_conf_fname[] = JSON_CONF_DEFAULT;
+    const char * conf_fname = defaut_conf_fname; /* pointer to a string we won't touch */
 
     /* threads */
     pthread_t thrid_up;
@@ -1000,6 +1020,46 @@ int main(void)
     float up_ack_ratio;
     float dw_ack_ratio;
 
+    /* Parse command line options */
+    while( (i = getopt( argc, argv, "hd:c:g::" )) != -1 )
+    {
+        switch( i )
+        {
+        case 'h':
+            usage( );
+            return EXIT_SUCCESS;
+            break;
+
+        case 'd': /* -d <path>  use Linux SPI device driver */
+#if 0 /* TODO */
+            if( optarg != NULL )
+            {
+                spi1_path = optarg; TODO
+            }
+#endif
+            break;
+
+        case 'g': /* -g <optional path>  use GPS receiver for synchronization */
+#if 0 /* TODO */
+            enable_gps = true;
+            if( optarg != NULL )
+            {
+                gps_path = optarg;
+            }
+#endif
+            break;
+
+        case 'c':
+            conf_fname = optarg;
+            break;
+
+        default:
+            printf( "ERROR: argument parsing options, use -h option for help\n" );
+            usage( );
+            return EXIT_FAILURE;
+        }
+    }
+
     /* display version informations */
     MSG("*** Packet Forwarder for Lora Gateway ***\nVersion: " VERSION_STRING "\n");
     MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
@@ -1014,49 +1074,22 @@ int main(void)
     #endif
 
     /* load configuration files */
-    if (access(debug_cfg_path, R_OK) == 0) { /* if there is a debug conf, parse only the debug conf */
-        MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
-        MSG("INFO: other configuration files will be ignored\n");
-        x = parse_SX1301_configuration(debug_cfg_path);
+    if (access(conf_fname, R_OK) == 0) { /* if there is a global conf, parse it  */
+        MSG("INFO: found configuration file %s, parsing it\n", conf_fname);
+        x = parse_SX1301_configuration(conf_fname);
         if (x != 0) {
             exit(EXIT_FAILURE);
         }
-        x = parse_gateway_configuration(debug_cfg_path);
+        x = parse_gateway_configuration(conf_fname);
         if (x != 0) {
             exit(EXIT_FAILURE);
         }
-    } else if (access(global_cfg_path, R_OK) == 0) { /* if there is a global conf, parse it and then try to parse local conf  */
-        MSG("INFO: found global configuration file %s, parsing it\n", global_cfg_path);
-        x = parse_SX1301_configuration(global_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_gateway_configuration(global_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_debug_configuration(global_cfg_path);
+        x = parse_debug_configuration(conf_fname);
         if (x != 0) {
             MSG("INFO: no debug configuration\n");
         }
-        if (access(local_cfg_path, R_OK) == 0) {
-            MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
-            MSG("INFO: redefined parameters will overwrite global parameters\n");
-            parse_SX1301_configuration(local_cfg_path);
-            parse_gateway_configuration(local_cfg_path);
-        }
-    } else if (access(local_cfg_path, R_OK) == 0) { /* if there is only a local conf, parse it and that's all */
-        MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
-        x = parse_SX1301_configuration(local_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_gateway_configuration(local_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
     } else {
-        MSG("ERROR: [main] failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
+        MSG("ERROR: [main] failed to find any configuration file named %s\n", conf_fname);
         exit(EXIT_FAILURE);
     }
 
