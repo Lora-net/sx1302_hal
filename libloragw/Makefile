@@ -11,14 +11,14 @@ CROSS_COMPILE ?=
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 
-CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I.
+CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I. -I../libtools/inc
 
 OBJDIR = obj
-INCLUDES = $(wildcard inc/*.h)
+INCLUDES = $(wildcard inc/*.h) $(wildcard ../libtools/inc/*.h)
 
 ### linking options
 
-LIBS := -lloragw -lrt -lm
+LIBS := -lloragw -ltinymt32 -lrt -lm
 
 ### general build targets
 
@@ -85,27 +85,27 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_sx1302.o $(OBJDIR)/loragw_cal.o $(OBJDIR)/loragw_hal.o $(OBJDIR)/tinymt32.o
+libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_sx1302.o $(OBJDIR)/loragw_cal.o $(OBJDIR)/loragw_hal.o
 	$(AR) rcs $@ $^
 
 ### test programs
 
 test_loragw_spi: tst/test_loragw_spi.c
-	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
 test_loragw_reg: tst/test_loragw_reg.c
-	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
 test_loragw_hal_tx: tst/test_loragw_hal_tx.c
-	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
 test_loragw_hal_rx: tst/test_loragw_hal_rx.c
-	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
 test_loragw_capture_ram: tst/test_loragw_capture_ram.c
-	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 test_loragw_cal: tst/test_loragw_cal.c
-	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 ### EOF

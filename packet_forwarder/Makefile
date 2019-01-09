@@ -9,6 +9,7 @@ APP_NAME := lora_pkt_fwd
 ### Environment constants
 
 LGW_PATH ?= ../libloragw
+LIB_PATH ?= ../libtools
 ARCH ?=
 CROSS_COMPILE ?=
 
@@ -41,7 +42,7 @@ LGW_INC += $(LGW_PATH)/inc/loragw_hal.h
 
 ### Linking options
 
-LIBS := -lloragw -lrt -lpthread -lm
+LIBS := -lloragw -ltinymt32 -lrt -lpthread -lm
 
 ### General build targets
 
@@ -85,6 +86,6 @@ $(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC) $(INCLUDES) | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $(VFLAG) -I$(LGW_PATH)/inc $< -o $@
 
 $(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LGW_PATH)/libloragw.a $(OBJDIR)/parson.o $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o
-	$(CC) -L$(LGW_PATH) $< $(OBJDIR)/parson.o $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o -o $@ $(LIBS)
+	$(CC) -L$(LGW_PATH) -L$(LIB_PATH) $< $(OBJDIR)/parson.o $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o -o $@ $(LIBS)
 
 ### EOF
