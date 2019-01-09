@@ -35,15 +35,10 @@ endif
 
 ### Application-specific variables
 APP_NAME := net_downlink
-MODULES  := base64
-APP_LIBS := -lparson -lpthread
+APP_LIBS := -lparson -lbase64 -lpthread
 
 ### Environment constants
 LIB_PATH := ../libtools
-
-### Expand application sub-module names
-MOD_OBJ := $(addprefix obj/,$(addsuffix .o,$(MODULES)))
-MOD_INC := $(addprefix inc/,$(addsuffix .h,$(MODULES)))
 
 ### Expand build options
 CFLAGS := -std=c99 $(WARN_CFLAGS) $(OPT_CFLAGS) $(DEBUG_CFLAGS)
@@ -54,7 +49,6 @@ AR := $(CROSS_COMPILE)ar
 all: $(APP_NAME)
 
 clean:
-	rm -f $(MOD_OBJ)
 	rm -f obj/$(APP_NAME).o
 	rm -f $(APP_NAME)
 
@@ -77,16 +71,12 @@ endif
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-### Compile submodules of the main program
-$(MOD_OBJ): $(OBJDIR)/%.o: src/%.c inc/%.h  | $(OBJDIR)
-	$(CC) -c $< -o $@ $(CFLAGS) -Iinc
-
 ### Compile main program
-$(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(MOD_INC)  | $(OBJDIR)
+$(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c | $(OBJDIR)
 	$(CC) -c $< -o $@ $(CFLAGS) -Iinc -I../libtools/inc
 
 ### Link everything together
-$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(MOD_OBJ)
+$(APP_NAME): $(OBJDIR)/$(APP_NAME).o
 	$(CC) -L$(LIB_PATH) $^ -o $@ $(LDFLAGS) $(APP_LIBS)
 
 ### EOF

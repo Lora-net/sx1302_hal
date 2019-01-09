@@ -42,7 +42,7 @@ LGW_INC += $(LGW_PATH)/inc/loragw_hal.h
 
 ### Linking options
 
-LIBS := -lloragw -ltinymt32 -lparson -lrt -lpthread -lm
+LIBS := -lloragw -ltinymt32 -lparson -lbase64 -lrt -lpthread -lm
 
 ### General build targets
 
@@ -85,7 +85,7 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) | $(OBJDIR)
 $(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC) $(INCLUDES) | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $(VFLAG) -I$(LGW_PATH)/inc $< -o $@
 
-$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LGW_PATH)/libloragw.a $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o
-	$(CC) -L$(LGW_PATH) -L$(LIB_PATH) $< $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o -o $@ $(LIBS)
+$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LGW_PATH)/libloragw.a $(OBJDIR)/jitqueue.o
+	$(CC) -L$(LGW_PATH) -L$(LIB_PATH) $< $(OBJDIR)/jitqueue.o -o $@ $(LIBS)
 
 ### EOF
