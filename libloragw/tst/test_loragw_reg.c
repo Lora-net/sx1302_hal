@@ -12,21 +12,31 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
+
+/* Fix an issue between POSIX and C99 */
+#if __STDC_VERSION__ >= 199901L
+    #define _XOPEN_SOURCE 600
+#else
+    #define _XOPEN_SOURCE 500
+#endif
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>     /* getopt, access */
 #include <math.h>
 
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+#include "loragw_hal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
+
+#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -34,9 +44,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 extern const struct lgw_reg_s loregs[LGW_TOTALREGS+1];
 
 /* -------------------------------------------------------------------------- */
+/* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
+
+static void usage(void);
+
+/* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main()
+int main(int argc, char ** argv)
 {
     int x, i;
     int32_t val;
@@ -46,10 +61,35 @@ int main()
     uint8_t reg_val;
     uint8_t reg_max;
 
+    /* SPI interfaces */
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
+
+    /* Parse command line options */
+    while ((i = getopt(argc, argv, "hd:")) != -1) {
+        switch (i) {
+            case 'h':
+                usage();
+                return EXIT_SUCCESS;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    spidev_path = optarg;
+                }
+                break;
+
+            default:
+                printf("ERROR: argument parsing options, use -h option for help\n");
+                usage();
+                return EXIT_FAILURE;
+            }
+    }
+
     /* Board reset */
     system("./reset_lgw.sh start");
 
-    x = lgw_connect();
+    x = lgw_connect(spidev_path);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to connect\n");
         return -1;
@@ -138,5 +178,18 @@ int main()
 
     return 0;
 }
+
+/* -------------------------------------------------------------------------- */
+/* --- SUBFUNCTIONS DEFINITION ---------------------------------------------- */
+
+static void usage(void) {
+    printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf(" %s\n", lgw_version_info());
+    printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf(" -h            print this help\n");
+    printf(" -d <path>     use Linux SPI device driver\n");
+    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
+}
+
 
 /* --- EOF ------------------------------------------------------------------ */

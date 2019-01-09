@@ -37,13 +37,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 
-#define FULL_INIT 0
-#define CAPTURE_RAM_SIZE 0x4000
-
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
+
 #define DEBUG_MSG(str)                fprintf(stderr, str)
+
+#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+
+#define FULL_INIT 0
+#define CAPTURE_RAM_SIZE 0x4000
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -51,20 +53,23 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* Signal handling variables */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
+
+uint32_t sampling_frequency[] = {4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 0, 0, 1e6, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 8e6, 125e3, 125e3, 125e3, 0, 32e6, 32e6, 0, 32e6, 32e6, 0, 32e6, 32e6, 32e6};
+
 #if FULL_INIT
+#include "src/text_agc_sx1250_27_Nov_1.var"
+#include "src/text_agc_sx1257_19_Nov_1.var"
+#include "src/text_arb_sx1302_13_Nov_3.var"
+
+#define FW_VERSION_CAL      0 /* Expected version of calibration firmware */ /* TODO */
+#define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
+#define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
+
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 static uint8_t rf_clkout = 0;
-#include "src/text_agc_sx1250_10_Oct_3.var"
-#include "src/text_agc_sx1257_10_Oct_3.var"
-#include "src/text_arb_sx1302_24_sep_3.var"
-#define FW_VERSION_CAL      0 /* Expected version of calibration firmware */ /* TODO */
-#define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
-#define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 #endif
-uint32_t sampling_frequency[] = {4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 0, 0, 1e6, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 8e6, 125e3, 125e3, 125e3, 0, 32e6, 32e6, 0, 32e6, 32e6, 0, 32e6, 32e6, 32e6};
-
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -74,6 +79,8 @@ void usage(void)
 {
     printf("Available options:\n");
     printf(" -h print this help\n");
+    printf(" -d <path> use Linux SPI device driver\n");
+    printf("           => default path: " LINUXDEV_PATH_DEFAULT "\n");
     printf(" -s <uint> Capture source [0..31]\n");
 }
 
@@ -103,41 +110,43 @@ int main(int argc, char **argv)
     uint32_t val1, val2;
 #endif
     uint8_t capture_ram_buffer[CAPTURE_RAM_SIZE];
+
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+
+    /* SPI interfaces */
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
 
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
-        // {"pa", 1, 0, 0},
-        // {"dac", 1, 0, 0},
-        // {"dig", 1, 0, 0},
-        // {"mix", 1, 0, 0},
-        // {"pwid", 1, 0, 0},
         {0, 0, 0, 0}
     };
 
-    for (i=0; i<CAPTURE_RAM_SIZE; i++)
-    {
-        capture_ram_buffer[i] = i%256;
-    }
-
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "h:s:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "h:s:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
                 break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    spidev_path = optarg;
+                }
+                break;
+
             case 's': /* <uint> Capture Source */
                 i = sscanf(optarg, "%u", &arg_u);
                 if ((i != 1) || (arg_u > 31)) {
                     printf("ERROR: argument parsing of -s argument. Use -h to print help\n");
                     return EXIT_FAILURE;
-                }
-                else {
+                } else {
                     capture_source = arg_u;
                 }
                 break;
+
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -155,11 +164,15 @@ int main(int argc, char **argv)
 
 #if FULL_INIT
     /* Board reset */
-    // system("../tools/reset_lgw.sh start");
-    system("/home/pi/sx1302_hal_proto/tools/reset_lgw.sh start");
+    system("./reset_lgw.sh start");
 #endif
 
-    reg_stat = lgw_connect();
+    /* Initialize memory for capture */
+    for (i = 0; i < CAPTURE_RAM_SIZE; i++) {
+        capture_ram_buffer[i] = i%256;
+    }
+
+    reg_stat = lgw_connect(spidev_path);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -196,7 +209,7 @@ int main(int argc, char **argv)
     }
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout);
+    sx1302_radio_clock_select(rf_clkout, true);
 
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val1);

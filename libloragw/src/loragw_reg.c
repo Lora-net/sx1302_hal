@@ -1196,7 +1196,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(char * spidev_path) {
+int lgw_connect(const char * spidev_path) {
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
 

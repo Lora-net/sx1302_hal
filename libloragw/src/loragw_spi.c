@@ -53,7 +53,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* SPI initialization and configuration */
-int lgw_spi_open(char * spidev_path, void **spi_target_ptr) {
+int lgw_spi_open(const char * spidev_path, void **spi_target_ptr) {
     int *spi_device = NULL;
     int dev;
     int a=0, b=0;

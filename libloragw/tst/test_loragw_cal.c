@@ -51,6 +51,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
 
@@ -96,6 +98,8 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
+    printf(" -d <path>     use Linux SPI device driver\n");
+    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
     printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
@@ -467,6 +471,10 @@ int main(int argc, char **argv)
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
+    /* SPI interfaces */
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
+
     /* Initialize TX gain LUT */
     txlut.size = 1;
     memset(txlut.lut, 0, sizeof txlut.lut);
@@ -482,12 +490,19 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hf:k:r:c:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hf:k:r:c:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
                 break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    spidev_path = optarg;
+                }
+                break;
+
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
                 if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
@@ -507,6 +522,7 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
+
             case 'k': /* <uint> Clock Source */
                 i = sscanf(optarg, "%u", &arg_u);
                 if ((i != 1) || (arg_u > 1)) {
@@ -516,6 +532,7 @@ int main(int argc, char **argv)
                     clocksource = (uint8_t)arg_u;
                 }
                 break;
+
             case 'c': /* <uint> RF chain */
                 i = sscanf(optarg, "%u", &arg_u);
                 if ((i != 1) || (arg_u > 1)) {
@@ -525,6 +542,7 @@ int main(int argc, char **argv)
                     rf_chain = (uint8_t)arg_u;
                 }
                 break;
+
             case 'f': /* <float> Radio TX frequency in MHz */
                 i = sscanf(optarg, "%lf", &arg_d);
                 if (i != 1) {
@@ -534,6 +552,7 @@ int main(int argc, char **argv)
                     ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
+
             case 0:
                 if (strcmp(long_options[option_index].name, "dac") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
@@ -558,6 +577,7 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 }
                 break;
+
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -577,16 +597,17 @@ int main(int argc, char **argv)
     system("./reset_lgw.sh start");
 
     /* Configure the gateway */
-    memset( &boardconf, 0, sizeof boardconf);
+    memset(&boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
+    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = ((rf_chain == 0) ? true : false);
     rfconf.freq_hz = ft;
     rfconf.type = radio_type;
@@ -596,7 +617,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = ((rf_chain == 1) ? true : false);
     rfconf.freq_hz = ft;
     rfconf.type = radio_type;
@@ -614,10 +635,10 @@ int main(int argc, char **argv)
     }
 
     /* open log file for writing */
-    fp = fopen ("log.txt", "w+");
+    fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
-    x = lgw_connect();
+    x = lgw_connect(spidev_path);
     if (x != 0) {
         printf("ERROR: failed to connect the gateway\n");
         return EXIT_FAILURE;
