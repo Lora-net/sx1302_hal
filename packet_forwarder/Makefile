@@ -27,7 +27,7 @@ RELEASE_VERSION := `cat ../VERSION`
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 
-CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I.
+CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I. -I../libtools/inc
 VFLAG := -D VERSION_STRING="\"$(RELEASE_VERSION)\""
 
 ### Constants for Lora concentrator HAL library
@@ -42,7 +42,7 @@ LGW_INC += $(LGW_PATH)/inc/loragw_hal.h
 
 ### Linking options
 
-LIBS := -lloragw -ltinymt32 -lrt -lpthread -lm
+LIBS := -lloragw -ltinymt32 -lparson -lrt -lpthread -lm
 
 ### General build targets
 
@@ -85,7 +85,7 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) | $(OBJDIR)
 $(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC) $(INCLUDES) | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $(VFLAG) -I$(LGW_PATH)/inc $< -o $@
 
-$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LGW_PATH)/libloragw.a $(OBJDIR)/parson.o $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o
-	$(CC) -L$(LGW_PATH) -L$(LIB_PATH) $< $(OBJDIR)/parson.o $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o -o $@ $(LIBS)
+$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LGW_PATH)/libloragw.a $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o
+	$(CC) -L$(LGW_PATH) -L$(LIB_PATH) $< $(OBJDIR)/base64.o $(OBJDIR)/jitqueue.o -o $@ $(LIBS)
 
 ### EOF

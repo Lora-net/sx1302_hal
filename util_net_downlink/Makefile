@@ -35,8 +35,11 @@ endif
 
 ### Application-specific variables
 APP_NAME := net_downlink
-MODULES  := parson base64
-APP_LIBS := -lpthread
+MODULES  := base64
+APP_LIBS := -lparson -lpthread
+
+### Environment constants
+LIB_PATH := ../libtools
 
 ### Expand application sub-module names
 MOD_OBJ := $(addprefix obj/,$(addsuffix .o,$(MODULES)))
@@ -80,10 +83,10 @@ $(MOD_OBJ): $(OBJDIR)/%.o: src/%.c inc/%.h  | $(OBJDIR)
 
 ### Compile main program
 $(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(MOD_INC)  | $(OBJDIR)
-	$(CC) -c $< -o $@ $(CFLAGS) -Iinc
+	$(CC) -c $< -o $@ $(CFLAGS) -Iinc -I../libtools/inc
 
 ### Link everything together
 $(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(MOD_OBJ)
-	$(CC) $^ -o $@ $(LDFLAGS) $(APP_LIBS)
+	$(CC) -L$(LIB_PATH) $^ -o $@ $(LDFLAGS) $(APP_LIBS)
 
 ### EOF
