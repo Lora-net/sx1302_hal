@@ -1085,6 +1085,7 @@ static void log_csv(FILE * file, uint8_t * buf)
         }
     }
 
+    fflush(file);
     json_value_free( root_val );
 }
 
