@@ -134,7 +134,6 @@ static bool if_enable[LGW_IF_CHAIN_NB];
 static bool if_rf_chain[LGW_IF_CHAIN_NB]; /* for each IF, 0 -> radio A, 1 -> radio B */
 static int32_t if_freq[LGW_IF_CHAIN_NB]; /* relative to radio frequency, +/- in Hz */
 
-
 static uint8_t lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
 static uint8_t lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
 static bool lora_rx_implicit_hdr; /* implicit header setting for LoRa standalone modem */
