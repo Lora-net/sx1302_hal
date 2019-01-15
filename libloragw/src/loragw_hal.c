@@ -1499,6 +1499,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_0_MODEM_BW(pkt_data.rf_chain), pkt_data.bandwidth);
 
             /* Preamble length */
+            if (pkt_data.preamble == 0) { /* if not explicit, use recommended LoRa preamble size */
+                pkt_data.preamble = STD_LORA_PREAMBLE;
+            } else if (pkt_data.preamble < MIN_LORA_PREAMBLE) { /* enforce minimum preamble size */
+                pkt_data.preamble = MIN_LORA_PREAMBLE;
+                DEBUG_MSG("Note: preamble length adjusted to respect minimum LoRa preamble size\n");
+            }
             lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG1_3_PREAMBLE_SYMB_NB(pkt_data.rf_chain), (pkt_data.preamble >> 8) & 0xFF); /* MSB */
             lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG1_2_PREAMBLE_SYMB_NB(pkt_data.rf_chain), (pkt_data.preamble >> 0) & 0xFF); /* LSB */
 
@@ -1599,6 +1605,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_BIT_RATE_LSB_BIT_RATE(pkt_data.rf_chain), fsk_br_reg >> 0);
 
             /* Preamble length */
+            if (pkt_data.preamble == 0) { /* if not explicit, use LoRa MAC preamble size */
+                pkt_data.preamble = STD_FSK_PREAMBLE;
+            } else if (pkt_data.preamble < MIN_FSK_PREAMBLE) { /* enforce minimum preamble size */
+                pkt_data.preamble = MIN_FSK_PREAMBLE;
+                DEBUG_MSG("Note: preamble length adjusted to respect minimum FSK preamble size\n");
+            }
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE(pkt_data.rf_chain), (pkt_data.preamble >> 8) & 0xFF); /* MSB */
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE(pkt_data.rf_chain), (pkt_data.preamble >> 0) & 0xFF); /* LSB */
 
