@@ -71,12 +71,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
-#define TX_METADATA_NB      16
-#define RX_METADATA_NB      16
-
-#define AGC_CMD_WAIT        16
-#define AGC_CMD_ABORT       17
-
 #define MIN_LORA_PREAMBLE   6
 #define STD_LORA_PREAMBLE   8
 #define MIN_FSK_PREAMBLE    3
@@ -140,7 +134,6 @@ static bool if_enable[LGW_IF_CHAIN_NB];
 static bool if_rf_chain[LGW_IF_CHAIN_NB]; /* for each IF, 0 -> radio A, 1 -> radio B */
 static int32_t if_freq[LGW_IF_CHAIN_NB]; /* relative to radio frequency, +/- in Hz */
 
-static uint8_t lora_multi_sfmask[LGW_MULTI_NB]; /* enables SF for LoRa 'multi' modems */
 
 static uint8_t lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
 static uint8_t lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
@@ -592,9 +585,8 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             if_enable[if_chain] = conf.enable;
             if_rf_chain[if_chain] = conf.rf_chain;
             if_freq[if_chain] = conf.freq_hz;
-            lora_multi_sfmask[if_chain] = conf.datarate;
 
-            DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
+            DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain]);
             break;
 
         case IF_FSK_STD:
