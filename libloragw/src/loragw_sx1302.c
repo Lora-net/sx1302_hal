@@ -631,7 +631,6 @@ int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw, bool implicit_hd
 
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB
-    //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE
 
     switch (bw) {
         case BW_125KHZ:

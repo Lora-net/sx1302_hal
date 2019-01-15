@@ -57,10 +57,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* concentrator chipset-specific parameters */
 /* to use array parameters, declare a local const and use 'if_chain' as index */
-#define LGW_IF_CHAIN_NB     10    /* number of IF+modem RX chains */
-#define LGW_PKT_FIFO_SIZE   16    /* depth of the RX packet FIFO */
-#define LGW_REF_BW          125000    /* typical bandwidth of data channel */
-#define LGW_MULTI_NB        8    /* number of LoRa 'multi SF' chains */
+#define LGW_IF_CHAIN_NB     10      /* number of IF+modem RX chains */
+#define LGW_REF_BW          125000  /* typical bandwidth of data channel */
+#define LGW_MULTI_NB        8       /* number of LoRa 'multi SF' chains */
 #define LGW_IFMODEM_CONFIG {\
         IF_LORA_MULTI, \
         IF_LORA_MULTI, \
@@ -145,9 +144,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* Maximum size of Tx gain LUT */
 #define TX_GAIN_LUT_SIZE_MAX 16
-
-/* LBT constants */
-#define LBT_CHANNEL_FREQ_NB 8 /* Number of LBT channels */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
