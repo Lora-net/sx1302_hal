@@ -779,7 +779,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_mem_wb(AGC_MEM_ADDR, firmware, MCU_FW_SIZE);
 
     /* Read back and check */
-    lgw_mem_rb(AGC_MEM_ADDR, fw_check, 8192, false);
+    lgw_mem_rb(AGC_MEM_ADDR, fw_check, MCU_FW_SIZE, false);
     if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
         printf ("ERROR: Failed to load fw\n");
         return -1;
@@ -1190,7 +1190,7 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
     lgw_mem_wb(ARB_MEM_ADDR, &firmware[0], MCU_FW_SIZE);
 
     /* Read back and check */
-    lgw_mem_rb(ARB_MEM_ADDR, fw_check, 8192, false);
+    lgw_mem_rb(ARB_MEM_ADDR, fw_check, MCU_FW_SIZE, false);
     if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
         printf ("ERROR: Failed to load fw\n");
         return -1;
