@@ -178,7 +178,7 @@ int main( int argc, char **argv )
     struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)};
 
     /* Variables for receiving and sending packets */
-    uint8_t databuf_up[4096];
+    uint8_t databuf_up[32768];
     uint8_t databuf_ack[4];
     int byte_nb;
 
