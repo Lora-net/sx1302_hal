@@ -93,7 +93,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_RX_BANDWIDTH_250KHZ  1600000     /* for 250KHz channels */
 #define LGW_RF_RX_BANDWIDTH_500KHZ  1600000     /* for 500KHz channels */
 
-#define TX_START_DELAY_DEFAULT  1497 /* Calibrated value for 500KHz BW */ /* TODO */
+#define TX_START_DELAY_DEFAULT      1500 /* Calibrated value for 500KHz BW */ /* TODO */
 
 #define LGW_RF_RX_FREQ_MIN          100E6
 #define LGW_RF_RX_FREQ_MAX          1E9
@@ -384,11 +384,33 @@ int32_t lgw_sf_getval(int x) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint16_t lgw_get_tx_start_delay(uint8_t bw) {
-    /* TODO */
+uint16_t lgw_get_tx_start_delay(enum lgw_radio_type_e radio_type, uint8_t bw) {
+    uint16_t tx_start_delay = TX_START_DELAY_DEFAULT * 32;
+    uint16_t radio_delay = 0;
+    uint16_t bw_delay = 0;
+
+    /* Adjust with radio type */
+    switch (radio_type) {
+        case LGW_RADIO_TYPE_SX1250:
+            radio_delay = 34 * 32 + 9;
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            radio_delay = 37 * 32 - 3;
+            break;
+        default:
+            DEBUG_MSG("ERROR: radio type not supported\n");
+            return LGW_HAL_ERROR;
+    }
+
+    /* Adjust with bandwidth : TODO */
     if (bw == 0) {} /* dummy */
 
-    return (uint16_t)TX_START_DELAY_DEFAULT; /* keep truncating instead of rounding: better behaviour measured */
+    /* Compute total delay */
+    tx_start_delay -= (radio_delay + bw_delay);
+
+    printf("INFO: tx_start_delay=%u (%u, radio_delay=%u, bw_delay=%u)\n", (uint16_t)tx_start_delay, TX_START_DELAY_DEFAULT*32, radio_delay, bw_delay);
+
+    return tx_start_delay;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1597,17 +1619,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* Set TX start delay */
-    switch (rf_radio_type[pkt_data.rf_chain]) {
-        case LGW_RADIO_TYPE_SX1250:
-            tx_start_delay = 1466 * 32 - 9; /* us */
-            break;
-        case LGW_RADIO_TYPE_SX1257:
-            tx_start_delay = 1463 * 32 + 3; /* us */
-            break;
-        default:
-            DEBUG_MSG("ERROR: radio type not supported\n");
-            return LGW_HAL_ERROR;
-    }
+    tx_start_delay = lgw_get_tx_start_delay(rf_radio_type[pkt_data.rf_chain], pkt_data.bandwidth);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(pkt_data.rf_chain), (uint8_t)(tx_start_delay >> 8));
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_LSB_TX_START_DELAY(pkt_data.rf_chain), (uint8_t)(tx_start_delay >> 0));
 
