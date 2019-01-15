@@ -1405,6 +1405,11 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
 int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
     int spi_stat = LGW_SPI_SUCCESS;
+    int chunk_cnt = 0;
+    uint16_t addr = mem_addr;
+    uint16_t sz_todo = size;
+    uint16_t chunk_size;
+    const uint16_t CHUNK_SIZE_MAX = 1024;
 
     /* check input parameters */
     CHECK_NULL(data);
@@ -1419,8 +1424,19 @@ int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
         return LGW_REG_ERROR;
     }
 
-    /* do the burst write */
-    spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, mem_addr, data, size);
+    /* write memory by chunks */
+    while (sz_todo > 0) {
+        /* full or partial chunk ? */
+        chunk_size = (sz_todo > CHUNK_SIZE_MAX) ? CHUNK_SIZE_MAX : sz_todo;
+
+        /* do the burst write */
+        spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+
+        /* prepare for next write */
+        addr += chunk_size;
+        sz_todo -= chunk_size;
+        chunk_cnt += 1;
+    }
 
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
@@ -1430,8 +1446,15 @@ int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
     }
 }
 
-int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size) {
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) {
     int spi_stat = LGW_SPI_SUCCESS;
+    int chunk_cnt = 0;
+    uint16_t addr = mem_addr;
+    uint16_t sz_todo = size;
+    uint16_t chunk_size;
+    const uint16_t CHUNK_SIZE_MAX = 1024;
 
     /* check input parameters */
     CHECK_NULL(data);
@@ -1446,8 +1469,23 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size) {
         return LGW_REG_ERROR;
     }
 
-    /* do the burst read */
-    spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, mem_addr, data, size);
+    /* read memory by chunks */
+    while (sz_todo > 0) {
+        /* full or partial chunk ? */
+        chunk_size = (sz_todo > CHUNK_SIZE_MAX) ? CHUNK_SIZE_MAX : sz_todo;
+
+        /* do the burst read */
+        spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+
+        /* do not increment the address when the target memory is in FIFO mode (auto-increment) */
+        if (fifo_mode == false) {
+            addr += chunk_size;
+        }
+
+        /* prepare for next read */
+        sz_todo -= chunk_size;
+        chunk_cnt += 1;
+    }
 
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");

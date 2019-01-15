@@ -310,9 +310,7 @@ int main(int argc, char **argv)
     // fprintf(stdout, "SX1302_REG_CAPTURE_RAM_LAST_RAM_ADDR_1_LASTRAMADDR value: %02x\n", val);
 
     lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 1);
-    for (i = 0; i < CAPTURE_RAM_SIZE; i += 1024) {
-        lgw_mem_rb(0 + i, &capture_ram_buffer[i], 1024);
-    }
+    lgw_mem_rb(0, capture_ram_buffer, CAPTURE_RAM_SIZE, false);
     lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0);
 
     printf("Data:\n");

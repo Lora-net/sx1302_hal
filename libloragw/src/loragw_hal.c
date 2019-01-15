@@ -926,12 +926,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     bool rx_buffer_error = false;
     int32_t val;
 
-    /* rx buffer chunk read */
-    uint16_t sz_todo;
-    uint16_t chunk_size;
-    int chunk_cnt = 0;
-    uint16_t CHUNK_SIZE = 1024;
-
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint32_t sf, cr, bw_pow, crc_en, ppm; /* used to calculate timestamp correction */
@@ -965,13 +959,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* read bytes from fifo */
     memset(rx_fifo, 0, sizeof rx_fifo);
-    sz_todo = sz;
-    while (sz_todo > 0) {
-        chunk_size = (sz_todo > CHUNK_SIZE) ? CHUNK_SIZE : sz_todo;
-        lgw_mem_rb(0x4000, &rx_fifo[chunk_cnt * CHUNK_SIZE], chunk_size);
-        sz_todo -= chunk_size;
-        chunk_cnt += 1;
-    }
+    lgw_mem_rb(0x4000, rx_fifo, sz, true);
     for (i = 0; i < sz; i++) {
         printf("%02X ", rx_fifo[i]);
     }
@@ -1013,7 +1001,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
             }
             sx1302_dump_rx_buffer(log_file);
-            return 0;
+            return 0; /* drop all packets in case of checksum error */
         } else {
             printf("Packet checksum OK (0x%02X)\n", checksum);
         }
@@ -1693,7 +1681,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
 int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
     int32_t read_value;
-    uint16_t reg;
 
     /* check input variables */
     CHECK_NULL(code);
@@ -1732,12 +1719,11 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_abort_tx(uint8_t rf_chain) {
-    uint16_t reg;
     uint8_t tx_status;
 
     lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(rf_chain), 0x00);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(rf_chain), 0x00);
-    lgw_reg_w(SX1302_REG_TX_TOP_A_TX_TRIG_TX_TRIG_GPS(rf_chain), 0x00);
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_GPS(rf_chain), 0x00);
 
     do {
         wait_ms(1);
