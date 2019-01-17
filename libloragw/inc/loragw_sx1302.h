@@ -26,13 +26,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
+/* Default values */
 #define SX1302_AGC_RADIO_GAIN_AUTO  0xFF
+#define TX_START_DELAY_DEFAULT      1500 /* Calibrated value for 500KHz BW */ /* TODO */
 
+/* RX buffer packet structure */
 #define SX1302_PKT_SYNCWORD_BYTE_0  0xA5
 #define SX1302_PKT_SYNCWORD_BYTE_1  0xC0
 #define SX1302_PKT_HEAD_METADATA    9
 #define SX1302_PKT_TAIL_METADATA    14
 
+/* modem IDs */
 #if FPGA_BOARD_16_CH
 #define SX1302_LORA_MODEM_ID_MAX    15
 #define SX1302_LORA_STD_MODEM_ID    16
@@ -84,26 +88,47 @@ typedef enum {
     SX1302_RADIO_TYPE_SX125X    /* sx1255/1257 */
 } sx1302_radio_type_t;
 
+typedef struct {
+    bool        if_enable;
+    bool        if_rf_chain; /* for each IF, 0 -> radio A, 1 -> radio B */
+    int32_t     if_freq; /* relative to radio frequency, +/- in Hz */
+} sx1302_if_cfg_t;
+
+typedef struct {
+    uint8_t     lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
+    uint8_t     lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
+    bool        lora_rx_implicit_hdr; /* implicit header setting for LoRa standalone modem */
+    uint8_t     lora_rx_implicit_length; /* implicit header payload length setting for LoRa standalone modem */
+    bool        lora_rx_implicit_crc_en; /* implicit header payload crc enable setting for LoRa standalone modem */
+    uint8_t     lora_rx_implicit_coderate; /* implicit header payload coderate setting for LoRa standalone modem */
+} sx1302_lora_service_cfg_t;
+
+typedef struct {
+    uint8_t     fsk_rx_bw; /* bandwidth setting of FSK modem */
+    uint32_t    fsk_rx_dr; /* FSK modem datarate in bauds */
+    uint8_t     fsk_sync_word_size; /* default number of bytes for FSK sync word */
+    uint64_t    fsk_sync_word; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
+} sx1302_fsk_cfg_t;
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 int sx1302_radio_clock_select(uint8_t rf_chain);
 int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type);
 int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type);
-
-int sx1302_clock_enable(void);
+int sx1302_radio_host_ctrl(bool host_ctrl);
 
 int sx1302_radio_fe_configure();
 
-int sx1302_lora_channelizer_configure(bool * if_rf_chain, int32_t * channel_if, bool fix_gain);
+int sx1302_channelizer_configure(sx1302_if_cfg_t * if_cfg, bool fix_gain);
+
 int sx1302_lora_correlator_configure();
 int sx1302_lora_modem_configure();
 
-int sx1302_lora_service_channelizer_configure(bool * if_rf_chain, int32_t * channel_if);
-int sx1302_lora_service_correlator_configure(uint8_t sf);
-int sx1302_lora_service_modem_configure(uint8_t sf, uint8_t bw, bool implicit_hdr, uint8_t implicit_length, bool implicit_crc_en, uint8_t implicit_coderate) ;
+int sx1302_lora_service_correlator_configure(sx1302_lora_service_cfg_t * cfg);
+int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) ;
 
-int sx1302_fsk_configure(bool * if_rf_chain, int32_t * channel_if, uint64_t sync_word, uint8_t sync_word_size, uint32_t datarate);
+int sx1302_fsk_configure(sx1302_fsk_cfg_t * cfg);
 
 int sx1302_modem_enable();
 
@@ -111,7 +136,7 @@ int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
-int sx1302_get_cnt(bool pps, uint32_t* cnt_us);
+int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
 
 int sx1302_agc_load_firmware(const uint8_t *firmware);
 int sx1302_agc_status(uint8_t* status);

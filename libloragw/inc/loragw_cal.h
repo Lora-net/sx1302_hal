@@ -23,6 +23,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "config.h"     /* library configuration options (dynamically generated) */
 
+#include "loragw_brd.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
@@ -52,7 +54,7 @@ struct lgw_sx125x_cal_tx_result_s {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1302_cal_start(uint8_t version, bool * rf_enable, uint32_t * rf_rx_freq, enum lgw_radio_type_e * rf_radio_type, struct lgw_tx_gain_lut_s * txgain_lut, bool * rf_tx_enable);
+int sx1302_cal_start(uint8_t version, lgw_rf_cfg_t * rf_cfg, struct lgw_tx_gain_lut_s * txgain_lut);
 
 #endif
 
