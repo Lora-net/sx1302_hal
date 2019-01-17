@@ -645,7 +645,7 @@ int main(int argc, char **argv)
     }
 
     sx1302_radio_reset(rf_chain, SX1302_RADIO_TYPE_SX125X);
-    sx1302_radio_clock_select(clocksource, true);
+    sx1302_radio_clock_select(clocksource);
     sx1302_radio_set_mode(rf_chain, SX1302_RADIO_TYPE_SX125X);
 
     printf("Loading CAL fw for sx125x\n");

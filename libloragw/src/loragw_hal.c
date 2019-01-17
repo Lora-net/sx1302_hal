@@ -742,7 +742,7 @@ int lgw_start(void) {
         }
     }
     /* -- Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout, true);
+    sx1302_radio_clock_select(lgw_context.brd_cfg.rf_clkout);
 
     /* -- Ensure PA/LNA are disabled */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 1);
@@ -797,7 +797,7 @@ int lgw_start(void) {
     }
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout, true);
+    sx1302_radio_clock_select(lgw_context.brd_cfg.rf_clkout);
 
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val);

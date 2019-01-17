@@ -209,7 +209,7 @@ int main(int argc, char **argv)
     }
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(rf_clkout, true);
+    sx1302_radio_clock_select(rf_clkout);
 
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val1);

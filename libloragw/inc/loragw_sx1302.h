@@ -87,7 +87,7 @@ typedef enum {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1302_radio_clock_select(uint8_t rf_chain, bool switch_clock);
+int sx1302_radio_clock_select(uint8_t rf_chain);
 int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type);
 int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type);
 
