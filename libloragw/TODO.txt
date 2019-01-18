@@ -1,0 +1,5 @@
+- create sx1302_read_packet() dans lgw_sx1302.h/c que sera appelé par lgw_receive
+- create sx1302_write_packet() dans lgw_sx1302.h/c que sera appelé par lgw_send
+- create sx1302_radio_calibrate() ?
+- revoir decoupage types lgw_context, et comment définir les params des fonctions de lgw_sx1302.h/c
+....
