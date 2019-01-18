@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     unsigned int arg_u;
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
-    enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;

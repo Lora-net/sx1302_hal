@@ -81,7 +81,7 @@ struct cal_tx_log {
 FILE * fp;
 
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {865500000, 865500000};
-static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX1257, LGW_RADIO_TYPE_SX1257};
+static lgw_radio_type_t rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX1257, LGW_RADIO_TYPE_SX1257};
 static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 
 /* Signal handling variables */
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
     unsigned int arg_u;
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
-    enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -644,9 +644,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    sx1302_radio_reset(rf_chain, SX1302_RADIO_TYPE_SX125X);
+    sx1302_radio_reset(rf_chain, LGW_RADIO_TYPE_SX1257);
     sx1302_radio_clock_select(clocksource);
-    sx1302_radio_set_mode(rf_chain, SX1302_RADIO_TYPE_SX125X);
+    sx1302_radio_set_mode(rf_chain, LGW_RADIO_TYPE_SX1257);
 
     printf("Loading CAL fw for sx125x\n");
     if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
@@ -668,8 +668,8 @@ int main(int argc, char **argv)
 
     //test_capture_ram(rf_chain);
 
-    sx1302_radio_reset(0, SX1302_RADIO_TYPE_SX125X);
-    sx1302_radio_reset(1, SX1302_RADIO_TYPE_SX125X);
+    sx1302_radio_reset(0, LGW_RADIO_TYPE_SX1257);
+    sx1302_radio_reset(1, LGW_RADIO_TYPE_SX1257);
 
     /* disconnect the gateway */
     x = lgw_disconnect();

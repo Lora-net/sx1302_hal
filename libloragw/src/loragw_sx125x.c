@@ -45,16 +45,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
-/**
-@struct lgw_radio_type_version_s
-@brief Associate a radio type with its corresponding expected version value
-        read in the radio version register.
-*/
-struct lgw_radio_type_version_s {
-    enum lgw_radio_type_e type;
-    uint8_t reg_version;
-};
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 

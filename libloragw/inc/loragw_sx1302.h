@@ -83,17 +83,20 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
-typedef enum {
-    SX1302_RADIO_TYPE_SX1250,   /* sx1250 */
-    SX1302_RADIO_TYPE_SX125X    /* sx1255/1257 */
-} sx1302_radio_type_t;
-
+/**
+@struct sx1302_if_cfg_t
+@brief TODO
+*/
 typedef struct {
     bool        if_enable;
     bool        if_rf_chain; /* for each IF, 0 -> radio A, 1 -> radio B */
     int32_t     if_freq; /* relative to radio frequency, +/- in Hz */
 } sx1302_if_cfg_t;
 
+/**
+@struct sx1302_lora_service_cfg_t
+@brief TODO
+*/
 typedef struct {
     uint8_t     lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
     uint8_t     lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
@@ -103,6 +106,10 @@ typedef struct {
     uint8_t     lora_rx_implicit_coderate; /* implicit header payload coderate setting for LoRa standalone modem */
 } sx1302_lora_service_cfg_t;
 
+/**
+@struct sx1302_fsk_cfg_t
+@brief TODO
+*/
 typedef struct {
     uint8_t     fsk_rx_bw; /* bandwidth setting of FSK modem */
     uint32_t    fsk_rx_dr; /* FSK modem datarate in bauds */
@@ -114,8 +121,8 @@ typedef struct {
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 int sx1302_radio_clock_select(uint8_t rf_chain);
-int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type);
-int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type);
+int sx1302_radio_reset(uint8_t rf_chain, lgw_radio_type_t type);
+int sx1302_radio_set_mode(uint8_t rf_chain, lgw_radio_type_t type);
 int sx1302_radio_host_ctrl(bool host_ctrl);
 
 int sx1302_radio_fe_configure();
@@ -123,19 +130,16 @@ int sx1302_radio_fe_configure();
 int sx1302_channelizer_configure(sx1302_if_cfg_t * if_cfg, bool fix_gain);
 
 int sx1302_lora_correlator_configure();
-int sx1302_lora_modem_configure();
-
 int sx1302_lora_service_correlator_configure(sx1302_lora_service_cfg_t * cfg);
-int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) ;
+int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 
+int sx1302_lora_modem_configure();
+int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) ;
 int sx1302_fsk_configure(sx1302_fsk_cfg_t * cfg);
 
 int sx1302_modem_enable();
 
-int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
-uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
-
 int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
 
 int sx1302_agc_load_firmware(const uint8_t *firmware);
@@ -143,7 +147,7 @@ int sx1302_agc_status(uint8_t* status);
 int sx1302_agc_wait_status(uint8_t status);
 int sx1302_agc_mailbox_read(uint8_t mailbox, uint8_t* value);
 int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value);
-int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode);
+int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode);
 
 int sx1302_arb_load_firmware(const uint8_t *firmware);
 int sx1302_arb_status(uint8_t* status);
@@ -155,6 +159,8 @@ int sx1302_arb_start(uint8_t version);
 uint8_t sx1302_arb_get_debug_stats_detect(uint8_t channel);
 uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel);
 void sx1302_arb_print_debug_stats(bool full);
+
+uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
 void sx1302_dump_rx_buffer(FILE * file);
 

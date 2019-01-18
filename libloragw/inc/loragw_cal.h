@@ -54,7 +54,7 @@ struct lgw_sx125x_cal_tx_result_s {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1302_cal_start(uint8_t version, lgw_rf_cfg_t * rf_cfg, struct lgw_tx_gain_lut_s * txgain_lut);
+int sx1302_cal_start(uint8_t version, lgw_rf_chain_cfg_t * rf_chain_cfg, struct lgw_tx_gain_lut_s * txgain_lut);
 
 #endif
 

@@ -28,18 +28,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 typedef struct {
-    uint8_t     rf_clkout;
-    bool        full_duplex;
-    char        spidev_path[64];
-} lgw_brd_cfg_t;
+    uint8_t rf_clkout;
+    bool    full_duplex;
+} lgw_rf_board_cfg_t;
 
 typedef struct {
-    bool        rf_enable;
-    uint32_t    rf_rx_freq; /* absolute, in Hz */
-    float       rf_rssi_offset;
-    bool        rf_tx_enable;
-    enum lgw_radio_type_e rf_radio_type;
-} lgw_rf_cfg_t;
+    bool                rf_enable;
+    uint32_t            rf_rx_freq; /* absolute, in Hz */
+    float               rf_rssi_offset;
+    bool                rf_tx_enable;
+    lgw_radio_type_t    rf_radio_type;
+} lgw_rf_chain_cfg_t;
 
 #endif
 

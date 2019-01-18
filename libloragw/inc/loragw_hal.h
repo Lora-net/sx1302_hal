@@ -149,17 +149,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 /**
-@enum lgw_radio_type_e
+@enum lgw_radio_type_t
 @brief Radio types that can be found on the LoRa Gateway
 */
-enum lgw_radio_type_e {
+typedef enum {
     LGW_RADIO_TYPE_NONE,
     LGW_RADIO_TYPE_SX1255,
     LGW_RADIO_TYPE_SX1257,
     LGW_RADIO_TYPE_SX1272,
     LGW_RADIO_TYPE_SX1276,
     LGW_RADIO_TYPE_SX1250
-};
+} lgw_radio_type_t;
 
 /**
 @struct lgw_conf_board_s
@@ -180,7 +180,7 @@ struct lgw_conf_rxrf_s {
     bool                    enable;         /*!> enable or disable that RF chain */
     uint32_t                freq_hz;        /*!> center frequency of the radio in Hz */
     float                   rssi_offset;    /*!> Board-specific RSSI correction factor */
-    enum lgw_radio_type_e   type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
+    lgw_radio_type_t        type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
     bool                    tx_enable;      /*!> enable or disable TX on that RF chain */
 };
 

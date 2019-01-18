@@ -106,7 +106,7 @@ int sx1302_radio_clock_select(uint8_t rf_chain) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
+int sx1302_radio_reset(uint8_t rf_chain, lgw_radio_type_t type) {
     uint16_t reg_radio_en;
     uint16_t reg_radio_rst;
 
@@ -116,9 +116,8 @@ int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
         DEBUG_MSG("ERROR: invalid RF chain\n");
         return LGW_REG_ERROR;
     }
-    if ((type != SX1302_RADIO_TYPE_SX1250) && (type != SX1302_RADIO_TYPE_SX125X))
-    {
-        DEBUG_MSG("ERROR: invalid radio mode\n");
+    if ((type != LGW_RADIO_TYPE_SX1255) && (type != LGW_RADIO_TYPE_SX1257) && (type != LGW_RADIO_TYPE_SX1250)) {
+        DEBUG_MSG("ERROR: invalid radio type\n");
         return LGW_REG_ERROR;
     }
 
@@ -136,11 +135,12 @@ int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
     lgw_reg_w(reg_radio_rst, 0x00);
     wait_ms(10);
     switch (type) {
-        case SX1302_RADIO_TYPE_SX125X:
+        case LGW_RADIO_TYPE_SX1255:
+        case LGW_RADIO_TYPE_SX1257:
             /* Do nothing */
             DEBUG_PRINTF("INFO: reset sx125x (RADIO_%s) done\n", REG_SELECT(rf_chain, "A", "B"));
             break;
-        case SX1302_RADIO_TYPE_SX1250:
+        case LGW_RADIO_TYPE_SX1250:
             lgw_reg_w(reg_radio_rst, 0x01);
             wait_ms(10); /* wait for auto calibration to complete */
             DEBUG_PRINTF("INFO: reset sx1250 (RADIO_%s) done\n", REG_SELECT(rf_chain, "A", "B"));
@@ -154,18 +154,16 @@ int sx1302_radio_reset(uint8_t rf_chain, sx1302_radio_type_t type) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type) {
+int sx1302_radio_set_mode(uint8_t rf_chain, lgw_radio_type_t type) {
     uint16_t reg;
 
     /* Check input parameters */
-    if (rf_chain >= LGW_RF_CHAIN_NB)
-    {
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: invalid RF chain\n");
         return LGW_REG_ERROR;
     }
-    if ((type != SX1302_RADIO_TYPE_SX1250) && (type != SX1302_RADIO_TYPE_SX125X))
-    {
-        DEBUG_MSG("ERROR: invalid radio mode\n");
+    if ((type != LGW_RADIO_TYPE_SX1255) && (type != LGW_RADIO_TYPE_SX1257) && (type != LGW_RADIO_TYPE_SX1250)) {
+        DEBUG_MSG("ERROR: invalid radio type\n");
         return LGW_REG_ERROR;
     }
 
@@ -173,7 +171,7 @@ int sx1302_radio_set_mode(uint8_t rf_chain, sx1302_radio_type_t type) {
     reg = REG_SELECT(rf_chain,  SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_A,
                                 SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B);
     switch (type) {
-        case SX1302_RADIO_TYPE_SX1250:
+        case LGW_RADIO_TYPE_SX1250:
             printf("Setting rf_chain_%u in sx1250 mode\n", rf_chain);
             lgw_reg_w(reg, 0x01);
             break;
@@ -868,9 +866,15 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
+int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
     uint8_t val;
     struct agc_gain_params_s agc_params;
+
+    /* Check parameters */
+    if ((radio_type != LGW_RADIO_TYPE_SX1255) && (radio_type != LGW_RADIO_TYPE_SX1257) && (radio_type != LGW_RADIO_TYPE_SX1250)) {
+        DEBUG_MSG("ERROR: invalid radio type\n");
+        return LGW_REG_ERROR;
+    }
 
     /* Wait for AGC fw to be started, and VERSION available in mailbox */
     sx1302_agc_wait_status(0x01); /* fw has started, VERSION is ready in mailbox */
@@ -890,7 +894,7 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Configure Radio A gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
     sx1302_agc_mailbox_write(1, dec_gain);
-    if (radio_type == SX1302_RADIO_TYPE_SX125X) {
+    if (radio_type != LGW_RADIO_TYPE_SX1250) {
         printf("AGC: setting fdd_mode to %u\n", fdd_mode);
         sx1302_agc_mailbox_write(2, fdd_mode);
     }
@@ -927,7 +931,7 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     /* Configure Radio B gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
     sx1302_agc_mailbox_write(1, dec_gain);
-    if (radio_type == SX1302_RADIO_TYPE_SX125X) {
+    if (radio_type != LGW_RADIO_TYPE_SX1250) {
         sx1302_agc_mailbox_write(2, fdd_mode);
     }
 
@@ -961,7 +965,7 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
     printf("AGC: Radio B config done\n");
 
     /* Configure AGC gains */
-    agc_params = (radio_type == SX1302_RADIO_TYPE_SX125X) ? agc_params_sx125x : agc_params_sx1250;
+    agc_params = (radio_type == LGW_RADIO_TYPE_SX1250) ? agc_params_sx1250 : agc_params_sx125x;
 
     /* Configure analog gain min/max */
     sx1302_agc_mailbox_write(0, agc_params.ana_min);
@@ -1113,7 +1117,7 @@ int sx1302_agc_start(uint8_t version, sx1302_radio_type_t radio_type, uint8_t an
 
     printf("AGC: config of channel atten threshold done\n");
 
-    if (radio_type == SX1302_RADIO_TYPE_SX1250) {
+    if (radio_type == LGW_RADIO_TYPE_SX1250) {
         /* Configure sx1250 SetPAConfig */
         sx1302_agc_mailbox_write(0, agc_params.deviceSel);
         sx1302_agc_mailbox_write(1, agc_params.hpMax);

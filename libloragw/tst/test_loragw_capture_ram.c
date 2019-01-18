@@ -67,7 +67,7 @@ uint32_t sampling_frequency[] = {4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 0, 0, 1e6, 1
 
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
-static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
+static lgw_radio_type_t rf_radio_type[LGW_RF_CHAIN_NB];
 static uint8_t rf_clkout = 0;
 #endif
 
@@ -106,7 +106,6 @@ int main(int argc, char **argv)
     uint16_t period_value = 0;
     int16_t real = 0, imag = 0;
 #if FULL_INIT
-    sx1302_radio_type_t radio_type;
     uint32_t val1, val2;
 #endif
     uint8_t capture_ram_buffer[CAPTURE_RAM_SIZE];
@@ -190,14 +189,14 @@ int main(int argc, char **argv)
     /* setup radios */
     for (i=0; i < 2; i++)
     {
-        radio_type = ((rf_radio_type[i] == LGW_RADIO_TYPE_SX1250) ? SX1302_RADIO_TYPE_SX1250 : SX1302_RADIO_TYPE_SX125X);
         if (rf_enable[i] == true) {
-            sx1302_radio_reset(i, radio_type);
+            sx1302_radio_reset(i, rf_radio_type[i]);
             switch (radio_type) {
-                case SX1302_RADIO_TYPE_SX1250:
+                case LGW_RADIO_TYPE_SX1250:
                     sx1250_setup(i, rf_rx_freq[i]);
                     break;
-                case SX1302_RADIO_TYPE_SX125X:
+                case LGW_RADIO_TYPE_SX1255:
+                case LGW_RADIO_TYPE_SX1257:
                     sx125x_setup(i, rf_clkout, true, rf_radio_type[i], rf_rx_freq[i]);
                     break;
                 default:

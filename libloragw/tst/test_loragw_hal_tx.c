@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     float xf = 0.0;
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
-    enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
     uint16_t preamble = 8;
     bool invert_pol = false;
     bool no_header = false;
