@@ -44,6 +44,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
 
@@ -133,6 +135,10 @@ int main(int argc, char **argv)
     uint32_t count_us;
     uint32_t trig_delay_us = 1000000;
     bool trig_delay = false;
+
+    /* SPI interfaces */
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -385,6 +391,7 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
+    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;

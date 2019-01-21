@@ -38,6 +38,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
+#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
 
@@ -80,6 +82,10 @@ void usage(void) {
 
 int main(int argc, char **argv)
 {
+    /* SPI interfaces */
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
+
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     int i, j, x;
@@ -219,6 +225,7 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
+    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
