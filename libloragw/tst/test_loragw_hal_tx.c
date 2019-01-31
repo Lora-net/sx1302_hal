@@ -87,6 +87,8 @@ void usage(void) {
     printf(" --pwid <uint> sx1250 power index [0..31]\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --nhdr        Send LoRa packet with implicit header\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
 }
 
 /* handle signals */
@@ -111,6 +113,7 @@ int main(int argc, char **argv)
     uint8_t sf = 0;
     uint16_t bw_khz = 0;
     uint32_t nb_pkt = 1;
+    unsigned int nb_loop = 1, cnt_loop;
     uint8_t size = 0;
     char mod[64] = "LORA";
     float br_kbps = 50;
@@ -154,6 +157,7 @@ int main(int argc, char **argv)
         {"dig",  required_argument, 0, 0},
         {"mix",  required_argument, 0, 0},
         {"pwid", required_argument, 0, 0},
+        {"loop", required_argument, 0, 0},
         {"nhdr", no_argument, 0, 0},
         {0, 0, 0, 0}
     };
@@ -354,6 +358,15 @@ int main(int argc, char **argv)
                         txlut.lut[0].mix_gain = 5; /* TODO: rework this, should not be needed for sx1250 */
                         txlut.lut[0].pwr_idx = (uint8_t)arg_u;
                     }
+                } else if (strcmp(long_options[option_index].name, "loop") == 0) {
+                    printf("%p\n", optarg);
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if (i != 1) {
+                        printf("ERROR: argument parsing of --loop argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        nb_loop = arg_u;
+                    }
                 } else if (strcmp(long_options[option_index].name, "nhdr") == 0) {
                     no_header = true;
                 } else {
@@ -424,109 +437,115 @@ int main(int argc, char **argv)
         }
     }
 
-    x = lgw_start();
-    if (x != 0) {
-        printf("ERROR: failed to start the gateway\n");
-        return EXIT_FAILURE;
-    }
-
-    /* Send packets */
-    memset(&pkt, 0, sizeof pkt);
-    pkt.rf_chain = rf_chain;
-    pkt.freq_hz = ft;
-    pkt.rf_power = rf_power;
-    if (trig_delay == false) {
-        pkt.tx_mode = IMMEDIATE;
-    } else {
-        if (trig_delay_us == 0) {
-            pkt.tx_mode = ON_GPS;
-        } else {
-            pkt.tx_mode = TIMESTAMPED;
-        }
-    }
-    if( strcmp( mod, "FSK" ) == 0 ) {
-        pkt.modulation = MOD_FSK;
-        pkt.no_crc = false;
-        pkt.datarate = br_kbps * 1e3;
-        pkt.f_dev = fdev_khz;
-    } else {
-        pkt.modulation = MOD_LORA;
-        pkt.coderate = CR_LORA_4_5;
-        pkt.no_crc = true;
-    }
-    pkt.invert_pol = invert_pol;
-    pkt.preamble = preamble;
-    pkt.no_header = no_header;
-    pkt.payload[0] = 0x40; /* Confirmed Data Up */
-    pkt.payload[1] = 0xAB;
-    pkt.payload[2] = 0xAB;
-    pkt.payload[3] = 0xAB;
-    pkt.payload[4] = 0xAB;
-    pkt.payload[5] = 0x00; /* FCTrl */
-    pkt.payload[6] = 0; /* FCnt */
-    pkt.payload[7] = 0; /* FCnt */
-    pkt.payload[8] = 0x02; /* FPort */
-    for (i = 9; i < 255; i++) {
-        pkt.payload[i] = i;
-    }
-
-    for (i = 0; i < (int)nb_pkt; i++) {
-        if (trig_delay == true) {
-            if (trig_delay_us > 0) {
-                lgw_get_instcnt(&count_us);
-                printf("count_us:%u\n", count_us);
-                pkt.count_us = count_us + trig_delay_us;
-                printf("programming TX for %u\n", pkt.count_us);
-            } else {
-                printf("programming TX for next PPS (GPS)\n");
-            }
-        }
-
-        if( strcmp( mod, "LORA" ) == 0 ) {
-            pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
-        }
-
-        switch (bw_khz) {
-            case 125:
-                pkt.bandwidth = BW_125KHZ;
-                break;
-            case 250:
-                pkt.bandwidth = BW_250KHZ;
-                break;
-            case 500:
-                pkt.bandwidth = BW_500KHZ;
-                break;
-            default:
-                pkt.bandwidth = (uint8_t)RAND_RANGE(BW_125KHZ, BW_500KHZ);
-                break;
-        }
-
-        pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
-
-        pkt.payload[6] = (uint8_t)(i >> 0); /* FCnt */
-        pkt.payload[7] = (uint8_t)(i >> 8); /* FCnt */
-        x = lgw_send(pkt);
+    for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
+        x = lgw_start();
         if (x != 0) {
-            printf("ERROR: failed to send packet\n");
+            printf("ERROR: failed to start the gateway\n");
             return EXIT_FAILURE;
         }
-        /* wait for packet to finish sending */
-        do {
-            wait_ms(5);
-            lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
-        } while ((tx_status != TX_FREE) && (quit_sig != 1) && (exit_sig != 1));
 
-        if ((quit_sig == 1) || (exit_sig == 1)) {
-            break;
+        /* Send packets */
+        memset(&pkt, 0, sizeof pkt);
+        pkt.rf_chain = rf_chain;
+        pkt.freq_hz = ft;
+        pkt.rf_power = rf_power;
+        if (trig_delay == false) {
+            pkt.tx_mode = IMMEDIATE;
+        } else {
+            if (trig_delay_us == 0) {
+                pkt.tx_mode = ON_GPS;
+            } else {
+                pkt.tx_mode = TIMESTAMPED;
+            }
         }
-        printf("TX done\n");
-    }
+        if( strcmp( mod, "FSK" ) == 0 ) {
+            pkt.modulation = MOD_FSK;
+            pkt.no_crc = false;
+            pkt.datarate = br_kbps * 1e3;
+            pkt.f_dev = fdev_khz;
+        } else {
+            pkt.modulation = MOD_LORA;
+            pkt.coderate = CR_LORA_4_5;
+            pkt.no_crc = true;
+        }
+        pkt.invert_pol = invert_pol;
+        pkt.preamble = preamble;
+        pkt.no_header = no_header;
+        pkt.payload[0] = 0x40; /* Confirmed Data Up */
+        pkt.payload[1] = 0xAB;
+        pkt.payload[2] = 0xAB;
+        pkt.payload[3] = 0xAB;
+        pkt.payload[4] = 0xAB;
+        pkt.payload[5] = 0x00; /* FCTrl */
+        pkt.payload[6] = 0; /* FCnt */
+        pkt.payload[7] = 0; /* FCnt */
+        pkt.payload[8] = 0x02; /* FPort */
+        for (i = 9; i < 255; i++) {
+            pkt.payload[i] = i;
+        }
 
-    /* Stop the gateway */
-    x = lgw_stop();
-    if (x != 0) {
-        printf("ERROR: failed to stop the gateway\n");
-        return EXIT_FAILURE;
+        for (i = 0; i < (int)nb_pkt; i++) {
+            if (trig_delay == true) {
+                if (trig_delay_us > 0) {
+                    lgw_get_instcnt(&count_us);
+                    printf("count_us:%u\n", count_us);
+                    pkt.count_us = count_us + trig_delay_us;
+                    printf("programming TX for %u\n", pkt.count_us);
+                } else {
+                    printf("programming TX for next PPS (GPS)\n");
+                }
+            }
+
+            if( strcmp( mod, "LORA" ) == 0 ) {
+                pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
+            }
+
+            switch (bw_khz) {
+                case 125:
+                    pkt.bandwidth = BW_125KHZ;
+                    break;
+                case 250:
+                    pkt.bandwidth = BW_250KHZ;
+                    break;
+                case 500:
+                    pkt.bandwidth = BW_500KHZ;
+                    break;
+                default:
+                    pkt.bandwidth = (uint8_t)RAND_RANGE(BW_125KHZ, BW_500KHZ);
+                    break;
+            }
+
+            pkt.size = (size == 0) ? (uint8_t)RAND_RANGE(9, 255) : size;
+
+            pkt.payload[6] = (uint8_t)(i >> 0); /* FCnt */
+            pkt.payload[7] = (uint8_t)(i >> 8); /* FCnt */
+            x = lgw_send(pkt);
+            if (x != 0) {
+                printf("ERROR: failed to send packet\n");
+                return EXIT_FAILURE;
+            }
+            /* wait for packet to finish sending */
+            do {
+                wait_ms(5);
+                lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
+            } while ((tx_status != TX_FREE) && (quit_sig != 1) && (exit_sig != 1));
+
+            if ((quit_sig == 1) || (exit_sig == 1)) {
+                break;
+            }
+            printf("TX done\n");
+        }
+
+        printf( "\nNb packets sent: %u (%u)\n", i, cnt_loop + 1 );
+
+        /* Stop the gateway */
+        x = lgw_stop();
+        if (x != 0) {
+            printf("ERROR: failed to stop the gateway\n");
+            return EXIT_FAILURE;
+        }
+
+        system("./reset_lgw.sh start");
     }
 
     printf("=========== Test End ===========\n");
