@@ -149,6 +149,15 @@ static lgw_context_t lgw_context = {
     }
 };
 
+#define CONTEXT_SPI             lgw_context.spidev_path
+#define CONTEXT_STARTED         lgw_context.is_started
+#define CONTEXT_LWAN_PUBLIC     lgw_context.lorawan_public
+#define CONTEXT_RF_BOARD        lgw_context.rf_board_cfg
+#define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
+#define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
+#define CONTEXT_LORA_SERVICE    lgw_context.lora_service_cfg
+#define CONTEXT_FSK             lgw_context.fsk_cfg
+
 static uint8_t rx_fifo[4096];
 
 static struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
@@ -410,21 +419,21 @@ uint16_t lgw_get_tx_start_delay(lgw_radio_type_t radio_type, uint8_t bw) {
 int lgw_board_setconf(struct lgw_conf_board_s conf) {
 
     /* check if the concentrator is running */
-    if (lgw_context.is_started == true) {
+    if (CONTEXT_STARTED == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
         return LGW_HAL_ERROR;
     }
 
     /* set internal config according to parameters */
-    lgw_context.lorawan_public = conf.lorawan_public;
-    lgw_context.rf_board_cfg.rf_clkout = conf.clksrc;
-    lgw_context.rf_board_cfg.full_duplex = conf.full_duplex;
-    strncpy(lgw_context.spidev_path, conf.spidev_path, sizeof lgw_context.spidev_path);
+    CONTEXT_LWAN_PUBLIC = conf.lorawan_public;
+    CONTEXT_RF_BOARD.rf_clkout = conf.clksrc;
+    CONTEXT_RF_BOARD.full_duplex = conf.full_duplex;
+    strncpy(CONTEXT_SPI, conf.spidev_path, sizeof CONTEXT_SPI);
 
-    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  lgw_context.spidev_path,
-                                                                                                                lgw_context.lorawan_public,
-                                                                                                                lgw_context.rf_board_cfg.rf_clkout,
-                                                                                                                lgw_context.rf_board_cfg.full_duplex);
+    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
+                                                                                                                CONTEXT_LWAN_PUBLIC,
+                                                                                                                CONTEXT_RF_BOARD.rf_clkout,
+                                                                                                                CONTEXT_RF_BOARD.full_duplex);
 
     return LGW_HAL_SUCCESS;
 }
@@ -434,7 +443,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
     /* check if the concentrator is running */
-    if (lgw_context.is_started == true) {
+    if (CONTEXT_STARTED == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
         return LGW_HAL_ERROR;
     }
@@ -464,18 +473,18 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     }
 
     /* set internal config according to parameters */
-    lgw_context.rf_chain_cfg[rf_chain].rf_enable = conf.enable;
-    lgw_context.rf_chain_cfg[rf_chain].rf_rx_freq = conf.freq_hz;
-    lgw_context.rf_chain_cfg[rf_chain].rf_rssi_offset = conf.rssi_offset;
-    lgw_context.rf_chain_cfg[rf_chain].rf_radio_type = conf.type;
-    lgw_context.rf_chain_cfg[rf_chain].rf_tx_enable = conf.tx_enable;
+    CONTEXT_RF_CHAIN[rf_chain].rf_enable = conf.enable;
+    CONTEXT_RF_CHAIN[rf_chain].rf_rx_freq = conf.freq_hz;
+    CONTEXT_RF_CHAIN[rf_chain].rf_rssi_offset = conf.rssi_offset;
+    CONTEXT_RF_CHAIN[rf_chain].rf_radio_type = conf.type;
+    CONTEXT_RF_CHAIN[rf_chain].rf_tx_enable = conf.tx_enable;
 
     DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n",  rf_chain,
-                                                                                                                lgw_context.rf_chain_cfg[rf_chain].rf_enable,
-                                                                                                                lgw_context.rf_chain_cfg[rf_chain].rf_rx_freq,
-                                                                                                                lgw_context.rf_chain_cfg[rf_chain].rf_rssi_offset,
-                                                                                                                lgw_context.rf_chain_cfg[rf_chain].rf_radio_type,
-                                                                                                                lgw_context.rf_chain_cfg[rf_chain].rf_tx_enable);
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].rf_enable,
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].rf_rx_freq,
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].rf_rssi_offset,
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].rf_radio_type,
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].rf_tx_enable);
 
     return LGW_HAL_SUCCESS;
 }
@@ -487,7 +496,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     uint32_t rf_rx_bandwidth;
 
     /* check if the concentrator is running */
-    if (lgw_context.is_started == true) {
+    if (CONTEXT_STARTED == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
         return LGW_HAL_ERROR;
     }
@@ -500,8 +509,8 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 
     /* if chain is disabled, don't care about most parameters */
     if (conf.enable == false) {
-        lgw_context.if_chain_cfg[if_chain].if_enable = false;
-        lgw_context.if_chain_cfg[if_chain].if_freq = 0;
+        CONTEXT_IF_CHAIN[if_chain].if_enable = false;
+        CONTEXT_IF_CHAIN[if_chain].if_freq = 0;
         DEBUG_PRINTF("Note: if_chain %d disabled\n", if_chain);
         return LGW_HAL_SUCCESS;
     }
@@ -557,21 +566,21 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
-            lgw_context.if_chain_cfg[if_chain].if_enable = conf.enable;
-            lgw_context.if_chain_cfg[if_chain].if_rf_chain = conf.rf_chain;
-            lgw_context.if_chain_cfg[if_chain].if_freq = conf.freq_hz;
-            lgw_context.lora_service_cfg.lora_rx_bw = conf.bandwidth;
-            lgw_context.lora_service_cfg.lora_rx_sf = conf.datarate;
-            lgw_context.lora_service_cfg.lora_rx_implicit_hdr      = conf.implicit_hdr;
-            lgw_context.lora_service_cfg.lora_rx_implicit_length   = conf.implicit_payload_length;
-            lgw_context.lora_service_cfg.lora_rx_implicit_crc_en   = conf.implicit_crc_en;
-            lgw_context.lora_service_cfg.lora_rx_implicit_coderate = conf.implicit_coderate;
+            CONTEXT_IF_CHAIN[if_chain].if_enable = conf.enable;
+            CONTEXT_IF_CHAIN[if_chain].if_rf_chain = conf.rf_chain;
+            CONTEXT_IF_CHAIN[if_chain].if_freq = conf.freq_hz;
+            CONTEXT_LORA_SERVICE.lora_rx_bw = conf.bandwidth;
+            CONTEXT_LORA_SERVICE.lora_rx_sf = conf.datarate;
+            CONTEXT_LORA_SERVICE.lora_rx_implicit_hdr      = conf.implicit_hdr;
+            CONTEXT_LORA_SERVICE.lora_rx_implicit_length   = conf.implicit_payload_length;
+            CONTEXT_LORA_SERVICE.lora_rx_implicit_crc_en   = conf.implicit_crc_en;
+            CONTEXT_LORA_SERVICE.lora_rx_implicit_coderate = conf.implicit_coderate;
 
             DEBUG_PRINTF("Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain,
-                                                                                                    lgw_context.if_chain_cfg[if_chain].if_enable,
-                                                                                                    lgw_context.if_chain_cfg[if_chain].if_freq,
-                                                                                                    lgw_context.lora_service_cfg.lora_rx_bw,
-                                                                                                    lgw_context.lora_service_cfg.lora_rx_sf);
+                                                                                                    CONTEXT_IF_CHAIN[if_chain].if_enable,
+                                                                                                    CONTEXT_IF_CHAIN[if_chain].if_freq,
+                                                                                                    CONTEXT_LORA_SERVICE.lora_rx_bw,
+                                                                                                    CONTEXT_LORA_SERVICE.lora_rx_sf);
             break;
 
         case IF_LORA_MULTI:
@@ -592,13 +601,13 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
-            lgw_context.if_chain_cfg[if_chain].if_enable = conf.enable;
-            lgw_context.if_chain_cfg[if_chain].if_rf_chain = conf.rf_chain;
-            lgw_context.if_chain_cfg[if_chain].if_freq = conf.freq_hz;
+            CONTEXT_IF_CHAIN[if_chain].if_enable = conf.enable;
+            CONTEXT_IF_CHAIN[if_chain].if_rf_chain = conf.rf_chain;
+            CONTEXT_IF_CHAIN[if_chain].if_freq = conf.freq_hz;
 
             DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d\n",   if_chain,
-                                                                                            lgw_context.if_chain_cfg[if_chain].if_enable,
-                                                                                            lgw_context.if_chain_cfg[if_chain].if_freq);
+                                                                                            CONTEXT_IF_CHAIN[if_chain].if_enable,
+                                                                                            CONTEXT_IF_CHAIN[if_chain].if_freq);
             break;
 
         case IF_FSK_STD:
@@ -619,23 +628,23 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
-            lgw_context.if_chain_cfg[if_chain].if_enable = conf.enable;
-            lgw_context.if_chain_cfg[if_chain].if_rf_chain = conf.rf_chain;
-            lgw_context.if_chain_cfg[if_chain].if_freq = conf.freq_hz;
-            lgw_context.fsk_cfg.fsk_rx_bw = conf.bandwidth;
-            lgw_context.fsk_cfg.fsk_rx_dr = conf.datarate;
+            CONTEXT_IF_CHAIN[if_chain].if_enable = conf.enable;
+            CONTEXT_IF_CHAIN[if_chain].if_rf_chain = conf.rf_chain;
+            CONTEXT_IF_CHAIN[if_chain].if_freq = conf.freq_hz;
+            CONTEXT_FSK.fsk_rx_bw = conf.bandwidth;
+            CONTEXT_FSK.fsk_rx_dr = conf.datarate;
             if (conf.sync_word > 0) {
-                lgw_context.fsk_cfg.fsk_sync_word_size = conf.sync_word_size;
-                lgw_context.fsk_cfg.fsk_sync_word = conf.sync_word;
+                CONTEXT_FSK.fsk_sync_word_size = conf.sync_word_size;
+                CONTEXT_FSK.fsk_sync_word = conf.sync_word;
             }
             DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain,
-                                                                                                                        lgw_context.if_chain_cfg[if_chain].if_enable,
-                                                                                                                        lgw_context.if_chain_cfg[if_chain].if_freq,
-                                                                                                                        lgw_context.fsk_cfg.fsk_rx_bw,
-                                                                                                                        lgw_context.fsk_cfg.fsk_rx_dr,
-                                                                                                                        LGW_XTAL_FREQU/(LGW_XTAL_FREQU/lgw_context.fsk_cfg.fsk_rx_dr),
-                                                                                                                        2*lgw_context.fsk_cfg.fsk_sync_word_size,
-                                                                                                                        lgw_context.fsk_cfg.fsk_sync_word);
+                                                                                                                        CONTEXT_IF_CHAIN[if_chain].if_enable,
+                                                                                                                        CONTEXT_IF_CHAIN[if_chain].if_freq,
+                                                                                                                        CONTEXT_FSK.fsk_rx_bw,
+                                                                                                                        CONTEXT_FSK.fsk_rx_dr,
+                                                                                                                        LGW_XTAL_FREQU/(LGW_XTAL_FREQU/CONTEXT_FSK.fsk_rx_dr),
+                                                                                                                        2*CONTEXT_FSK.fsk_sync_word_size,
+                                                                                                                        CONTEXT_FSK.fsk_sync_word);
             break;
 
         default:
@@ -741,11 +750,11 @@ int lgw_start(void) {
     uint32_t val, val2;
     int reg_stat;
 
-    if (lgw_context.is_started == true) {
+    if (CONTEXT_STARTED == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(lgw_context.spidev_path);
+    reg_stat = lgw_connect(CONTEXT_SPI);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -754,37 +763,37 @@ int lgw_start(void) {
     /* Radio calibration - START */
     /* -- Reset radios */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        if (lgw_context.rf_chain_cfg[i].rf_enable == true) {
-            sx1302_radio_reset(i, lgw_context.rf_chain_cfg[i].rf_radio_type);
-            sx1302_radio_set_mode(i, lgw_context.rf_chain_cfg[i].rf_radio_type);
+        if (CONTEXT_RF_CHAIN[i].rf_enable == true) {
+            sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].rf_radio_type);
+            sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].rf_radio_type);
         }
     }
     /* -- Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(lgw_context.rf_board_cfg.rf_clkout);
+    sx1302_radio_clock_select(CONTEXT_RF_BOARD.rf_clkout);
 
     /* -- Ensure PA/LNA are disabled */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 1);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_PA_EN, 0);
     lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_LNA_EN, 0);
     /* -- Start calibration */
-    if ((lgw_context.rf_chain_cfg[lgw_context.rf_board_cfg.rf_clkout].rf_radio_type == LGW_RADIO_TYPE_SX1257) ||
-        (lgw_context.rf_chain_cfg[lgw_context.rf_board_cfg.rf_clkout].rf_radio_type == LGW_RADIO_TYPE_SX1255)) {
+    if ((CONTEXT_RF_CHAIN[CONTEXT_RF_BOARD.rf_clkout].rf_radio_type == LGW_RADIO_TYPE_SX1257) ||
+        (CONTEXT_RF_CHAIN[CONTEXT_RF_BOARD.rf_clkout].rf_radio_type == LGW_RADIO_TYPE_SX1255)) {
         printf("Loading CAL fw for sx125x\n");
         if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
             printf("ERROR: Failed to load calibration fw\n");
             return LGW_HAL_ERROR;
         }
-        if (sx1302_cal_start(FW_VERSION_CAL, lgw_context.rf_chain_cfg, &txgain_lut[0]) != LGW_HAL_SUCCESS) {
+        if (sx1302_cal_start(FW_VERSION_CAL, CONTEXT_RF_CHAIN, &txgain_lut[0]) != LGW_HAL_SUCCESS) {
             printf("ERROR: radio calibration failed\n");
-            sx1302_radio_reset(0, lgw_context.rf_chain_cfg[0].rf_radio_type);
-            sx1302_radio_reset(1, lgw_context.rf_chain_cfg[1].rf_radio_type);
+            sx1302_radio_reset(0, CONTEXT_RF_CHAIN[0].rf_radio_type);
+            sx1302_radio_reset(1, CONTEXT_RF_CHAIN[1].rf_radio_type);
             return LGW_HAL_ERROR;
         }
     } else {
         printf("Calibrating sx1250 radios\n");
         for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-            if (lgw_context.rf_chain_cfg[i].rf_enable == true) {
-                if (sx1250_calibrate(i, lgw_context.rf_chain_cfg[i].rf_rx_freq)) {
+            if (CONTEXT_RF_CHAIN[i].rf_enable == true) {
+                if (sx1250_calibrate(i, CONTEXT_RF_CHAIN[i].rf_rx_freq)) {
                     printf("ERROR: radio calibration failed\n");
                     return LGW_HAL_ERROR;
                 }
@@ -797,26 +806,26 @@ int lgw_start(void) {
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        if (lgw_context.rf_chain_cfg[i].rf_enable == true) {
-            sx1302_radio_reset(i, lgw_context.rf_chain_cfg[i].rf_radio_type);
-            switch (lgw_context.rf_chain_cfg[i].rf_radio_type) {
+        if (CONTEXT_RF_CHAIN[i].rf_enable == true) {
+            sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].rf_radio_type);
+            switch (CONTEXT_RF_CHAIN[i].rf_radio_type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    sx1250_setup(i, lgw_context.rf_chain_cfg[i].rf_rx_freq);
+                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].rf_rx_freq);
                     break;
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:
-                    sx125x_setup(i, lgw_context.rf_board_cfg.rf_clkout, true, lgw_context.rf_chain_cfg[i].rf_radio_type, lgw_context.rf_chain_cfg[i].rf_rx_freq);
+                    sx125x_setup(i, CONTEXT_RF_BOARD.rf_clkout, true, CONTEXT_RF_CHAIN[i].rf_radio_type, CONTEXT_RF_CHAIN[i].rf_rx_freq);
                     break;
                 default:
                     DEBUG_PRINTF("ERROR: RADIO TYPE NOT SUPPORTED (RF_CHAIN %d)\n", i);
                     return LGW_HAL_ERROR;
             }
-            sx1302_radio_set_mode(i, lgw_context.rf_chain_cfg[i].rf_radio_type);
+            sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].rf_radio_type);
         }
     }
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(lgw_context.rf_board_cfg.rf_clkout);
+    sx1302_radio_clock_select(CONTEXT_RF_BOARD.rf_clkout);
 
     /* Release host control on radio (will be controlled by AGC) */
     sx1302_radio_host_ctrl(false);
@@ -833,31 +842,31 @@ int lgw_start(void) {
     sx1302_radio_fe_configure();
 
     /* Configure the Channelizer */
-    sx1302_channelizer_configure(lgw_context.if_chain_cfg, false);
+    sx1302_channelizer_configure(CONTEXT_IF_CHAIN, false);
 
     /* configure LoRa 'multi' demodulators */
     sx1302_lora_correlator_configure();
     sx1302_lora_modem_configure();
 
     /* configure LoRa 'stand-alone' modem */
-    if (lgw_context.if_chain_cfg[8].if_enable == true) {
-        sx1302_lora_service_correlator_configure(&(lgw_context.lora_service_cfg));
-        sx1302_lora_service_modem_configure(&(lgw_context.lora_service_cfg));
+    if (CONTEXT_IF_CHAIN[8].if_enable == true) {
+        sx1302_lora_service_correlator_configure(&(CONTEXT_LORA_SERVICE));
+        sx1302_lora_service_modem_configure(&(CONTEXT_LORA_SERVICE));
     }
 
     /* configure FSK modem */
-    if (lgw_context.if_chain_cfg[9].if_enable == true) {
-        sx1302_fsk_configure(&(lgw_context.fsk_cfg));
+    if (CONTEXT_IF_CHAIN[9].if_enable == true) {
+        sx1302_fsk_configure(&(CONTEXT_FSK));
     }
 
     /* configure syncword */
-    sx1302_lora_syncword(lgw_context.lorawan_public, lgw_context.lora_service_cfg.lora_rx_sf);
+    sx1302_lora_syncword(CONTEXT_LWAN_PUBLIC, CONTEXT_LORA_SERVICE.lora_rx_sf);
 
     /* configure timestamp */
     sx1302_timestamp_mode(&timestamp_conf);
 
     /* Load firmware */
-    switch (lgw_context.rf_chain_cfg[lgw_context.rf_board_cfg.rf_clkout].rf_radio_type) {
+    switch (CONTEXT_RF_CHAIN[CONTEXT_RF_BOARD.rf_clkout].rf_radio_type) {
         case LGW_RADIO_TYPE_SX1250:
             printf("Loading AGC fw for sx1250\n");
             if (sx1302_agc_load_firmware(agc_firmware_sx1250) != LGW_HAL_SUCCESS) {
@@ -873,7 +882,7 @@ int lgw_start(void) {
         default:
             break;
     }
-    if (sx1302_agc_start(FW_VERSION_AGC, lgw_context.rf_chain_cfg[lgw_context.rf_board_cfg.rf_clkout].rf_radio_type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (lgw_context.rf_board_cfg.full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
+    if (sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_RF_BOARD.rf_clkout].rf_radio_type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_RF_BOARD.full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
     printf("Loading ARB fw\n");
@@ -903,7 +912,7 @@ int lgw_start(void) {
     tinymt.mat2 = 0xfc78ff1f;
     tinymt.tmat = 0x3793fdff;
 
-    lgw_context.is_started = true;
+    CONTEXT_STARTED = true;
 
     return LGW_HAL_SUCCESS;
 }
@@ -927,7 +936,7 @@ int lgw_stop(void) {
     DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
 
-    lgw_context.is_started = false;
+    CONTEXT_STARTED = false;
     return LGW_HAL_SUCCESS;
 }
 
@@ -1105,18 +1114,18 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
 
         p->size = payload_length;
-        p->rf_chain = (uint8_t)lgw_context.if_chain_cfg[p->if_chain].if_rf_chain;
+        p->rf_chain = (uint8_t)CONTEXT_IF_CHAIN[p->if_chain].if_rf_chain;
         p->modem_id = SX1302_PKT_MODEM_ID(rx_fifo, buffer_index);
-        p->freq_hz = (uint32_t)((int32_t)lgw_context.rf_chain_cfg[p->rf_chain].rf_rx_freq + lgw_context.if_chain_cfg[p->if_chain].if_freq);
-        p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + lgw_context.rf_chain_cfg[p->rf_chain].rf_rssi_offset;
-        p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + lgw_context.rf_chain_cfg[p->rf_chain].rf_rssi_offset;
+        p->freq_hz = (uint32_t)((int32_t)CONTEXT_RF_CHAIN[p->rf_chain].rf_rx_freq + CONTEXT_IF_CHAIN[p->if_chain].if_freq);
+        p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + CONTEXT_RF_CHAIN[p->rf_chain].rf_rssi_offset;
+        p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + CONTEXT_RF_CHAIN[p->rf_chain].rf_rssi_offset;
         /* TODO: RSSI correction */
 
         /* Get CRC status */
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
             DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_fifo, buffer_index), p->if_chain);
             /* TODO: handle sync_err and hdr_err, to be reported when enabled (RX_BUFFER_STORE_SYNC_FAIL_META, RX_BUFFER_STORE_HEADER_ERR_META) */
-            if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index) || (lgw_context.lora_service_cfg.lora_rx_implicit_crc_en == true)) {
+            if (SX1302_PKT_CRC_EN(rx_fifo, buffer_index) || (CONTEXT_LORA_SERVICE.lora_rx_implicit_crc_en == true)) {
                 /* CRC enabled */
                 if (SX1302_PKT_CRC_ERROR(rx_fifo, buffer_index + p->size)) {
                     p->status = STAT_CRC_BAD;
@@ -1178,7 +1187,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             if (ifmod == IF_LORA_MULTI) {
                 p->bandwidth = BW_125KHZ; /* fixed in hardware */
             } else {
-                p->bandwidth = lgw_context.lora_service_cfg.lora_rx_bw; /* get the parameter from the config variable */
+                p->bandwidth = CONTEXT_LORA_SERVICE.lora_rx_bw; /* get the parameter from the config variable */
             }
 
             /* Get datarate */
@@ -1196,10 +1205,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             }
 
             /* Get coding rate */
-            if ((ifmod == IF_LORA_MULTI) || (lgw_context.lora_service_cfg.lora_rx_implicit_hdr == false)) {
+            if ((ifmod == IF_LORA_MULTI) || (CONTEXT_LORA_SERVICE.lora_rx_implicit_hdr == false)) {
                 cr = SX1302_PKT_CODING_RATE(rx_fifo, buffer_index);
             } else {
-                cr = lgw_context.lora_service_cfg.lora_rx_implicit_coderate;
+                cr = CONTEXT_LORA_SERVICE.lora_rx_implicit_coderate;
             }
             switch (cr) {
                 case 1: p->coderate = CR_LORA_4_5; break;
@@ -1243,7 +1252,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
             /* timestamp correction code, base delay */
             if (ifmod == IF_LORA_STD) { /* if packet was received on the stand-alone LoRa modem */
-                switch (lgw_context.lora_service_cfg.lora_rx_bw) {
+                switch (CONTEXT_LORA_SERVICE.lora_rx_bw) {
                     case BW_125KHZ:
                         delay_x = 64;
                         bw_pow = 1;
@@ -1303,10 +1312,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             }
             p->modulation = MOD_FSK;
             p->snr = -128.0;
-            p->bandwidth = lgw_context.fsk_cfg.fsk_rx_bw;
-            p->datarate = lgw_context.fsk_cfg.fsk_rx_dr;
+            p->bandwidth = CONTEXT_FSK.fsk_rx_bw;
+            p->datarate = CONTEXT_FSK.fsk_rx_dr;
             p->coderate = CR_UNDEFINED;
-            timestamp_correction = ((uint32_t)680000 / lgw_context.fsk_cfg.fsk_rx_dr) - 20;
+            timestamp_correction = ((uint32_t)680000 / CONTEXT_FSK.fsk_rx_dr) - 20;
 
             /* RSSI correction */
             p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2);
@@ -1360,7 +1369,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint8_t mod_bw;
 
     /* check if the concentrator is running */
-    if (lgw_context.is_started == false) {
+    if (CONTEXT_STARTED == false) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING\n");
         return LGW_HAL_ERROR;
     }
@@ -1372,11 +1381,11 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* check input variables */
-    if (lgw_context.rf_chain_cfg[pkt_data.rf_chain].rf_tx_enable == false) {
+    if (CONTEXT_RF_CHAIN[pkt_data.rf_chain].rf_tx_enable == false) {
         DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
         return LGW_HAL_ERROR;
     }
-    if (lgw_context.rf_chain_cfg[pkt_data.rf_chain].rf_enable == false) {
+    if (CONTEXT_RF_CHAIN[pkt_data.rf_chain].rf_enable == false) {
         DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
         return LGW_HAL_ERROR;
     }
@@ -1424,7 +1433,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 
     /* Set radio type */
     reg = SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL_TX_IF_DST(pkt_data.rf_chain);
-    switch (lgw_context.rf_chain_cfg[pkt_data.rf_chain].rf_radio_type) {
+    switch (CONTEXT_RF_CHAIN[pkt_data.rf_chain].rf_radio_type) {
         case LGW_RADIO_TYPE_SX1250:
             lgw_reg_w(reg, 0x01); /* SX126x Tx RFFE */
             break;
@@ -1468,7 +1477,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     printf("INFO: Applying IQ offset (i:%d, q:%d)\n", txgain_lut[pkt_data.rf_chain].lut[pow_index].offset_i, txgain_lut[pkt_data.rf_chain].lut[pow_index].offset_q);
 
     /* Set the power parameters to be used for TX */
-    switch (lgw_context.rf_chain_cfg[pkt_data.rf_chain].rf_radio_type) {
+    switch (CONTEXT_RF_CHAIN[pkt_data.rf_chain].rf_radio_type) {
         case LGW_RADIO_TYPE_SX1250:
             power = (txgain_lut[pkt_data.rf_chain].lut[pow_index].pa_gain << 6) | txgain_lut[pkt_data.rf_chain].lut[pow_index].pwr_idx;
             break;
@@ -1548,7 +1557,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_2_CRC_EN(pkt_data.rf_chain), (pkt_data.no_crc) ? 0 : 1);
 
             /* Syncword */
-            if ((lgw_context.lorawan_public == false) || (pkt_data.datarate == DR_LORA_SF5) || (pkt_data.datarate == DR_LORA_SF6)) {
+            if ((CONTEXT_LWAN_PUBLIC == false) || (pkt_data.datarate == DR_LORA_SF5) || (pkt_data.datarate == DR_LORA_SF6)) {
                 printf("Setting LoRa syncword 0x12\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_FRAME_SYNCH_0_PEAK1_POS(pkt_data.rf_chain), 2);
                 lgw_reg_w(SX1302_REG_TX_TOP_FRAME_SYNCH_1_PEAK2_POS(pkt_data.rf_chain), 4);
@@ -1602,10 +1611,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_MOD_FSK_GAUSSIAN_EN(pkt_data.rf_chain), 1);
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_MOD_FSK_GAUSSIAN_SELECT_BT(pkt_data.rf_chain), 2);
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_MOD_FSK_REF_PATTERN_EN(pkt_data.rf_chain), 1);
-            lgw_reg_w(SX1302_REG_TX_TOP_FSK_MOD_FSK_REF_PATTERN_SIZE(pkt_data.rf_chain), lgw_context.fsk_cfg.fsk_sync_word_size - 1);
+            lgw_reg_w(SX1302_REG_TX_TOP_FSK_MOD_FSK_REF_PATTERN_SIZE(pkt_data.rf_chain), CONTEXT_FSK.fsk_sync_word_size - 1);
 
             /* Syncword */
-            fsk_sync_word_reg = lgw_context.fsk_cfg.fsk_sync_word << (8 * (8 - lgw_context.fsk_cfg.fsk_sync_word_size));
+            fsk_sync_word_reg = CONTEXT_FSK.fsk_sync_word << (8 * (8 - CONTEXT_FSK.fsk_sync_word_size));
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN(pkt_data.rf_chain), (uint8_t)(fsk_sync_word_reg >> 0));
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN(pkt_data.rf_chain), (uint8_t)(fsk_sync_word_reg >> 8));
             lgw_reg_w(SX1302_REG_TX_TOP_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN(pkt_data.rf_chain), (uint8_t)(fsk_sync_word_reg >> 16));
@@ -1640,7 +1649,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* Set TX start delay */
-    tx_start_delay = lgw_get_tx_start_delay(lgw_context.rf_chain_cfg[pkt_data.rf_chain].rf_radio_type, pkt_data.bandwidth);
+    tx_start_delay = lgw_get_tx_start_delay(CONTEXT_RF_CHAIN[pkt_data.rf_chain].rf_radio_type, pkt_data.bandwidth);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(pkt_data.rf_chain), (uint8_t)(tx_start_delay >> 8));
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_LSB_TX_START_DELAY(pkt_data.rf_chain), (uint8_t)(tx_start_delay >> 0));
 
@@ -1725,7 +1734,7 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
     if (select == TX_STATUS) {
         lgw_reg_r(SX1302_REG_TX_TOP_TX_FSM_STATUS_TX_STATUS(rf_chain), &read_value);
         // TODO: select porper TX rf chain
-        if (lgw_context.is_started == false) {
+        if (CONTEXT_STARTED == false) {
             *code = TX_OFF;
         } else if (read_value == 0x80) {
             *code = TX_FREE;
@@ -1841,7 +1850,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
                 PKT_PAYLOAD: x bytes
                 CRC: 0 or 2 bytes
         */
-        Tfsk = (8 * (double)(packet->preamble + lgw_context.fsk_cfg.fsk_sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
+        Tfsk = (8 * (double)(packet->preamble + CONTEXT_FSK.fsk_sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
 
         /* Duration of packet */
         Tpacket = (uint32_t)Tfsk + 1; /* add margin for rounding */
