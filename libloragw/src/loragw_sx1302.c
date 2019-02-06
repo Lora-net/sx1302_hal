@@ -215,7 +215,7 @@ int sx1302_radio_fe_configure() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_channelizer_configure(sx1302_if_cfg_t * if_cfg, bool fix_gain) {
+int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain) {
     int32_t if_freq;
     uint8_t channels_mask = 0x00;
     int i;
@@ -228,59 +228,59 @@ int sx1302_channelizer_configure(sx1302_if_cfg_t * if_cfg, bool fix_gain) {
 
     /* Select which radio is connected to each multi-SF channel */
     for (i = 0; i < LGW_MULTI_NB; i++) {
-        channels_mask |= (if_cfg[i].if_rf_chain << i);
+        channels_mask |= (if_cfg[i].rf_chain << i);
     }
     printf("LoRa multi-SF radio select: 0x%02X\n", channels_mask);
     lgw_reg_w(SX1302_REG_RX_TOP_RADIO_SELECT_RADIO_SELECT, channels_mask);
 
     /* Select which radio is connected to the LoRa service channel */
-    printf("LoRa service radio select: 0x%02X\n", if_cfg[8].if_rf_chain);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_RADIO_SEL_RADIO_SELECT, if_cfg[8].if_rf_chain);
+    printf("LoRa service radio select: 0x%02X\n", if_cfg[8].rf_chain);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_RADIO_SEL_RADIO_SELECT, if_cfg[8].rf_chain);
 
     /* Select which radio is connected to the FSK channel */
-    printf("FSK radio select %u\n", if_cfg[9].if_rf_chain);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_RADIO_SELECT, if_cfg[9].if_rf_chain);
+    printf("FSK radio select %u\n", if_cfg[9].rf_chain);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_RADIO_SELECT, if_cfg[9].rf_chain);
 
     /* Configure multi-SF channels IF frequencies */
-    if_freq = IF_HZ_TO_REG(if_cfg[0].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[0].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_MSB_IF_FREQ_0, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_0_LSB_IF_FREQ_0, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[1].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[1].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_1_MSB_IF_FREQ_1, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_1_LSB_IF_FREQ_1, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[2].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[2].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_2_MSB_IF_FREQ_2, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_2_LSB_IF_FREQ_2, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[3].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[3].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_3_MSB_IF_FREQ_3, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_3_LSB_IF_FREQ_3, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[4].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[4].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_4_MSB_IF_FREQ_4, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_4_LSB_IF_FREQ_4, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[5].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[5].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_5_MSB_IF_FREQ_5, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_5_LSB_IF_FREQ_5, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[6].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[6].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_6_MSB_IF_FREQ_6, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_6_LSB_IF_FREQ_6, (if_freq >> 0) & 0x000000FF);
 
-    if_freq = IF_HZ_TO_REG(if_cfg[7].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[7].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_MSB_IF_FREQ_7, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_7_LSB_IF_FREQ_7, (if_freq >> 0) & 0x000000FF);
 
     /* Configure LoRa service channel IF frequency */
-    if_freq = IF_HZ_TO_REG(if_cfg[8].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[8].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_FREQ_MSB_IF_FREQ_0, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_FREQ_LSB_IF_FREQ_0, (if_freq >> 0) & 0x000000FF);
 
     /* Configure FSK channel IF frequency */
-    if_freq = IF_HZ_TO_REG(if_cfg[9].if_freq);
+    if_freq = IF_HZ_TO_REG(if_cfg[9].freq_hz);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_FREQ_MSB_IF_FREQ_0, (if_freq >> 8) & 0x0000001F);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_FREQ_LSB_IF_FREQ_0, (if_freq >> 0) & 0x000000FF);
 
@@ -304,14 +304,14 @@ int sx1302_channelizer_configure(sx1302_if_cfg_t * if_cfg, bool fix_gain) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_fsk_configure(sx1302_fsk_cfg_t * cfg) {
+int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg) {
     uint64_t fsk_sync_word_reg;
     uint32_t fsk_br_reg;
 
-    printf("FSK: syncword:0x%" PRIx64 ", syncword_size:%u\n", cfg->fsk_sync_word, cfg->fsk_sync_word_size);
+    printf("FSK: syncword:0x%" PRIx64 ", syncword_size:%u\n", cfg->sync_word, cfg->sync_word_size);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_PSIZE, cfg->fsk_sync_word_size - 1);
-    fsk_sync_word_reg = cfg->fsk_sync_word << (8 * (8 - cfg->fsk_sync_word_size));
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_PSIZE, cfg->sync_word_size - 1);
+    fsk_sync_word_reg = cfg->sync_word << (8 * (8 - cfg->sync_word_size));
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE0_FSK_REF_PATTERN, (uint8_t)(fsk_sync_word_reg >> 0));
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE1_FSK_REF_PATTERN, (uint8_t)(fsk_sync_word_reg >> 8));
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE2_FSK_REF_PATTERN, (uint8_t)(fsk_sync_word_reg >> 16));
@@ -321,7 +321,7 @@ int sx1302_fsk_configure(sx1302_fsk_cfg_t * cfg) {
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE6_FSK_REF_PATTERN, (uint8_t)(fsk_sync_word_reg >> 48));
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_REF_PATTERN_BYTE7_FSK_REF_PATTERN, (uint8_t)(fsk_sync_word_reg >> 56));
 
-    fsk_br_reg = 32000000 / cfg->fsk_rx_dr;
+    fsk_br_reg = 32000000 / cfg->datarate;
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_BIT_RATE_MSB_BIT_RATE, (uint8_t)(fsk_br_reg >> 8));
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_BIT_RATE_LSB_BIT_RATE, (uint8_t)(fsk_br_reg >> 0));
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_CH_BW_EXPO, 0x03); /* 125KHz */
@@ -422,8 +422,8 @@ int sx1302_lora_correlator_configure() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_service_correlator_configure(sx1302_lora_service_cfg_t * cfg) {
-    switch (cfg->lora_rx_sf) {
+int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg) {
+    switch (cfg->datarate) {
         case 5:
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_FINE_SYNCH_EN, 1);
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DETECT_MSP3_MSP_CNT_MODE, 0);
@@ -559,7 +559,7 @@ int sx1302_lora_modem_configure(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) {
+int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) {
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_ENABLE, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FORCE_DEFAULT_FIR, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_GAIN_DROP_COMP, 0x01);
@@ -568,7 +568,7 @@ int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) {
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FINE_TIMING1_GAIN_P_AUTO, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FINE_TIMING2_GAIN_I_PAYLOAD, 0x01);
 
-    switch (cfg->lora_rx_sf) {
+    switch (cfg->datarate) {
         case DR_LORA_SF5:
         case DR_LORA_SF6:
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FINE_TIMING1_GAIN_P_PREAMB, 0x04);
@@ -584,7 +584,7 @@ int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) {
         case DR_LORA_SF11:
         case DR_LORA_SF12:
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FINE_TIMING1_GAIN_P_PREAMB, 0x07);
-            switch (cfg->lora_rx_bw) {
+            switch (cfg->bandwidth) {
                 case BW_125KHZ:
                     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FINE_TIMING2_GAIN_I_EN, 0x01);
                     break;
@@ -595,28 +595,28 @@ int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) {
                     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FINE_TIMING2_GAIN_I_EN, 0x03);
                     break;
                 default:
-                    printf("ERROR: unsupported bandwidth %u for LoRa Service modem\n", cfg->lora_rx_bw);
+                    printf("ERROR: unsupported bandwidth %u for LoRa Service modem\n", cfg->bandwidth);
                     break;
             }
             break;
         default:
-            printf("ERROR: unsupported datarate %u for LoRa Service modem\n", cfg->lora_rx_sf);
+            printf("ERROR: unsupported datarate %u for LoRa Service modem\n", cfg->datarate);
             break;
     }
 
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER, (cfg->lora_rx_implicit_hdr == true) ? 1 : 0);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CRC_EN, (cfg->lora_rx_implicit_crc_en == true) ? 1 : 0);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE, cfg->lora_rx_implicit_coderate);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG3_PAYLOAD_LENGTH, cfg->lora_rx_implicit_length);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_IMPLICIT_HEADER, (cfg->implicit_hdr == true) ? 1 : 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CRC_EN, (cfg->implicit_crc_en == true) ? 1 : 0);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_CODING_RATE, cfg->implicit_coderate);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG3_PAYLOAD_LENGTH, cfg->implicit_payload_length);
 
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_SF, cfg->lora_rx_sf);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_BW, cfg->lora_rx_bw);
-    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_PPM_OFFSET, SET_PPM_ON(cfg->lora_rx_bw, cfg->lora_rx_sf));
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_SF, cfg->datarate);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_BW, cfg->bandwidth);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_PPM_OFFSET, SET_PPM_ON(cfg->bandwidth, cfg->datarate));
 
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB
 
-    switch (cfg->lora_rx_bw) {
+    switch (cfg->bandwidth) {
         case BW_125KHZ:
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4);
             break;
@@ -627,7 +627,7 @@ int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) {
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 6);
             break;
         default:
-            printf("ERROR: unsupported bandwidth %u for LoRa Service modem\n", cfg->lora_rx_bw);
+            printf("ERROR: unsupported bandwidth %u for LoRa Service modem\n", cfg->bandwidth);
             break;
     }
 

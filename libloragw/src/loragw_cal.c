@@ -85,7 +85,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1302_cal_start(uint8_t version, lgw_rf_chain_cfg_t * rf_chain_cfg, struct lgw_tx_gain_lut_s * txgain_lut) {
+int sx1302_cal_start(uint8_t version, struct lgw_conf_rxrf_s * rf_chain_cfg, struct lgw_tx_gain_lut_s * txgain_lut) {
     int i, j, k;
     uint8_t val;
     bool cal_status = false;
@@ -120,22 +120,22 @@ int sx1302_cal_start(uint8_t version, lgw_rf_chain_cfg_t * rf_chain_cfg, struct 
 
     /* Run Rx image calibration */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        if (rf_chain_cfg[i].rf_enable) {
+        if (rf_chain_cfg[i].enable) {
             /* Calibration using the other radio for Tx */
-            if (rf_chain_cfg[0].rf_radio_type == rf_chain_cfg[1].rf_radio_type) {
+            if (rf_chain_cfg[0].type == rf_chain_cfg[1].type) {
                 cal_rx_result_init(&cal_rx_min, &cal_rx_max);
                 for (j = 0; j < CAL_ITER; j++) {
-                    sx125x_cal_rx_image(i, rf_chain_cfg[i].rf_rx_freq, false, rf_chain_cfg[i].rf_radio_type, &cal_rx[j]);
+                    sx125x_cal_rx_image(i, rf_chain_cfg[i].freq_hz, false, rf_chain_cfg[i].type, &cal_rx[j]);
                     cal_rx_result_sort(&cal_rx[j], &cal_rx_min, &cal_rx_max);
                 }
                 cal_status = cal_rx_result_assert(&cal_rx_min, &cal_rx_max);
             }
 
             /* If failed or different radios, run calibration using RF loopback (assuming that it is better than no calibration) */
-            if ((cal_status == false) || (rf_chain_cfg[0].rf_radio_type != rf_chain_cfg[1].rf_radio_type)) {
+            if ((cal_status == false) || (rf_chain_cfg[0].type != rf_chain_cfg[1].type)) {
                 cal_rx_result_init(&cal_rx_min, &cal_rx_max);
                 for (j = 0; j < CAL_ITER; j++) {
-                    sx125x_cal_rx_image(i, rf_chain_cfg[i].rf_rx_freq, true, rf_chain_cfg[i].rf_radio_type, &cal_rx[j]);
+                    sx125x_cal_rx_image(i, rf_chain_cfg[i].freq_hz, true, rf_chain_cfg[i].type, &cal_rx[j]);
                     cal_rx_result_sort(&cal_rx[j], &cal_rx_min, &cal_rx_max);
                 }
                 cal_status = cal_rx_result_assert(&cal_rx_min, &cal_rx_max);
@@ -193,11 +193,11 @@ int sx1302_cal_start(uint8_t version, lgw_rf_chain_cfg_t * rf_chain_cfg, struct 
 
     /* Run Tx image calibration */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        if (rf_chain_cfg[i].rf_tx_enable) {
+        if (rf_chain_cfg[i].tx_enable) {
             for (j = 0; j < nb_gains[i]; j++) {
                 cal_tx_result_init(&cal_tx_min, &cal_tx_max);
                 for (k = 0; k < CAL_ITER; k++){
-                    sx125x_cal_tx_dc_offset(i, rf_chain_cfg[i].rf_rx_freq, dac_gain[i][j], mix_gain[i][j], rf_chain_cfg[i].rf_radio_type, &cal_tx[k]);
+                    sx125x_cal_tx_dc_offset(i, rf_chain_cfg[i].freq_hz, dac_gain[i][j], mix_gain[i][j], rf_chain_cfg[i].type, &cal_tx[k]);
                     cal_tx_result_sort(&cal_tx[k], &cal_tx_min, &cal_tx_max);
                 }
                 cal_status = cal_tx_result_assert(&cal_tx_min, &cal_tx_max);

@@ -127,15 +127,15 @@ int sx1302_radio_host_ctrl(bool host_ctrl);
 
 int sx1302_radio_fe_configure();
 
-int sx1302_channelizer_configure(sx1302_if_cfg_t * if_cfg, bool fix_gain);
+int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain);
 
 int sx1302_lora_correlator_configure();
-int sx1302_lora_service_correlator_configure(sx1302_lora_service_cfg_t * cfg);
+int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg);
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 
 int sx1302_lora_modem_configure();
-int sx1302_lora_service_modem_configure(sx1302_lora_service_cfg_t * cfg) ;
-int sx1302_fsk_configure(sx1302_fsk_cfg_t * cfg);
+int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) ;
+int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg);
 
 int sx1302_modem_enable();
 
