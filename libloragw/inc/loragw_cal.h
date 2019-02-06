@@ -23,8 +23,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "config.h"     /* library configuration options (dynamically generated) */
 
-#include "loragw_brd.h"
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 

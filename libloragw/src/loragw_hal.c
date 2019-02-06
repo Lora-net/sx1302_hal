@@ -32,7 +32,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 #include "loragw_cal.h"
-#include "loragw_brd.h"
 
 #include "tinymt32.h"
 
@@ -123,7 +122,20 @@ typedef struct lgw_context_s {
     struct lgw_conf_rxif_s      fsk_cfg;                                /* FSK channel config parameters */
     /* TX context */
     struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
+    /* Misc */
+    struct lgw_conf_timestamp_s timestamp_cfg;
 } lgw_context_t;
+
+#define CONTEXT_STARTED         lgw_context.is_started
+#define CONTEXT_SPI             lgw_context.board_cfg.spidev_path
+#define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
+#define CONTEXT_BOARD           lgw_context.board_cfg
+#define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
+#define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
+#define CONTEXT_LORA_SERVICE    lgw_context.lora_service_cfg
+#define CONTEXT_FSK             lgw_context.fsk_cfg
+#define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
+#define CONTEXT_TIMESTAMP       lgw_context.timestamp_cfg
 
 /*
 The following static variable holds the gateway configuration provided by the
@@ -186,27 +198,16 @@ static lgw_context_t lgw_context = {
                 .pwr_idx = 0
             }
         }
+    },
+    .timestamp_cfg = {
+        .enable_precision_ts = false,
+        .max_ts_metrics = 0xFF,
+        .nb_symbols = 1
     }
 };
 
-#define CONTEXT_STARTED         lgw_context.is_started
-#define CONTEXT_SPI             lgw_context.board_cfg.spidev_path
-#define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
-#define CONTEXT_BOARD           lgw_context.board_cfg
-#define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
-#define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
-#define CONTEXT_LORA_SERVICE    lgw_context.lora_service_cfg
-#define CONTEXT_FSK             lgw_context.fsk_cfg
-#define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
-
 /* Buffer to fetch received packets from sx1302 */
 static uint8_t rx_fifo[4096];
-
-static struct lgw_conf_timestamp_s timestamp_conf = {
-    .enable_precision_ts = false,
-    .max_ts_metrics = 0xFF,
-    .nb_symbols = 1
-};
 
 static struct lgw_conf_debug_s DEBUG_context = {
     .nb_ref_payload = 0,
@@ -725,9 +726,9 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf) {
-    timestamp_conf.enable_precision_ts = conf->enable_precision_ts;
-    timestamp_conf.max_ts_metrics = conf->max_ts_metrics;
-    timestamp_conf.nb_symbols = conf->nb_symbols;
+    CONTEXT_TIMESTAMP.enable_precision_ts = conf->enable_precision_ts;
+    CONTEXT_TIMESTAMP.max_ts_metrics = conf->max_ts_metrics;
+    CONTEXT_TIMESTAMP.nb_symbols = conf->nb_symbols;
 
     return LGW_HAL_SUCCESS;
 }
@@ -877,7 +878,7 @@ int lgw_start(void) {
     sx1302_lora_syncword(CONTEXT_LWAN_PUBLIC, CONTEXT_LORA_SERVICE.datarate);
 
     /* configure timestamp */
-    sx1302_timestamp_mode(&timestamp_conf);
+    sx1302_timestamp_mode(&CONTEXT_TIMESTAMP);
 
     /* Load firmware */
     switch (CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type) {

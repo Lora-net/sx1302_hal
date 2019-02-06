@@ -34,7 +34,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx1302.h"
 #include "loragw_sx125x.h"
 #include "loragw_cal.h"
-#include "loragw_brd.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- DEBUG FLAGS ---------------------------------------------------------- */
