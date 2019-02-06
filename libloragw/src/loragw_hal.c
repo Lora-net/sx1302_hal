@@ -113,12 +113,16 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 #include "src/text_arb_sx1302_13_Nov_3.var"
 
 typedef struct lgw_context_s {
+    /* Global context */
     bool                        is_started;
     struct lgw_conf_board_s     board_cfg;
+    /* RX context */
     struct lgw_conf_rxrf_s      rf_chain_cfg[LGW_RF_CHAIN_NB];
     struct lgw_conf_rxif_s      if_chain_cfg[LGW_IF_CHAIN_NB];
     struct lgw_conf_rxif_s      lora_service_cfg;                       /* LoRa service channel config parameters */
     struct lgw_conf_rxif_s      fsk_cfg;                                /* FSK channel config parameters */
+    /* TX context */
+    struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
 } lgw_context_t;
 
 /*
@@ -155,6 +159,33 @@ static lgw_context_t lgw_context = {
         .datarate = 50000,
         .sync_word_size = 3,
         .sync_word = 0xC194C1
+    },
+    .tx_gain_lut = {
+        {
+            .size = 1,
+            .lut[0] = {
+                .rf_power = 14,
+                .dig_gain = 0,
+                .pa_gain = 2,
+                .dac_gain = 3,
+                .mix_gain = 10,
+                .offset_i = 0,
+                .offset_q = 0,
+                .pwr_idx = 0
+            }
+        },{
+            .size = 1,
+            .lut[0] = {
+                .rf_power = 14,
+                .dig_gain = 0,
+                .pa_gain = 2,
+                .dac_gain = 3,
+                .mix_gain = 10,
+                .offset_i = 0,
+                .offset_q = 0,
+                .pwr_idx = 0
+            }
+        }
     }
 };
 
@@ -166,36 +197,10 @@ static lgw_context_t lgw_context = {
 #define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
 #define CONTEXT_LORA_SERVICE    lgw_context.lora_service_cfg
 #define CONTEXT_FSK             lgw_context.fsk_cfg
+#define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
 
+/* Buffer to fetch received packets from sx1302 */
 static uint8_t rx_fifo[4096];
-
-static struct lgw_tx_gain_lut_s txgain_lut[LGW_RF_CHAIN_NB] = {
-    {
-        .size = 1,
-        .lut[0] = {
-            .rf_power = 14,
-            .dig_gain = 0,
-            .pa_gain = 2,
-            .dac_gain = 3,
-            .mix_gain = 10,
-            .offset_i = 0,
-            .offset_q = 0,
-            .pwr_idx = 0
-        }
-    },{
-        .size = 1,
-        .lut[0] = {
-            .rf_power = 14,
-            .dig_gain = 0,
-            .pa_gain = 2,
-            .dac_gain = 3,
-            .mix_gain = 10,
-            .offset_i = 0,
-            .offset_q = 0,
-            .pwr_idx = 0
-        }
-    }
-};
 
 static struct lgw_conf_timestamp_s timestamp_conf = {
     .enable_precision_ts = false,
@@ -675,9 +680,9 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
         return LGW_HAL_ERROR;
     }
 
-    txgain_lut[rf_chain].size = conf->size;
+    CONTEXT_TX_GAIN_LUT[rf_chain].size = conf->size;
 
-    for (i = 0; i < txgain_lut[rf_chain].size; i++) {
+    for (i = 0; i < CONTEXT_TX_GAIN_LUT[rf_chain].size; i++) {
         /* Check gain range */
         if (conf->lut[i].dig_gain > 3) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1302 digital gain must be between 0 and 3\n");
@@ -701,17 +706,17 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
         }
 
         /* Set internal LUT */
-        txgain_lut[rf_chain].lut[i].rf_power = conf->lut[i].rf_power;
-        txgain_lut[rf_chain].lut[i].dig_gain = conf->lut[i].dig_gain;
-        txgain_lut[rf_chain].lut[i].pa_gain  = conf->lut[i].pa_gain;
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].rf_power = conf->lut[i].rf_power;
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].dig_gain = conf->lut[i].dig_gain;
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].pa_gain  = conf->lut[i].pa_gain;
         /* sx125x */
-        txgain_lut[rf_chain].lut[i].dac_gain = conf->lut[i].dac_gain;
-        txgain_lut[rf_chain].lut[i].mix_gain = conf->lut[i].mix_gain;
-        txgain_lut[rf_chain].lut[i].offset_i = 0; /* To be calibrated */
-        txgain_lut[rf_chain].lut[i].offset_q = 0; /* To be calibrated */
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].dac_gain = conf->lut[i].dac_gain;
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].mix_gain = conf->lut[i].mix_gain;
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].offset_i = 0; /* To be calibrated */
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].offset_q = 0; /* To be calibrated */
 
         /* sx1250 */
-        txgain_lut[rf_chain].lut[i].pwr_idx = conf->lut[i].pwr_idx;
+        CONTEXT_TX_GAIN_LUT[rf_chain].lut[i].pwr_idx = conf->lut[i].pwr_idx;
     }
 
     return LGW_HAL_SUCCESS;
@@ -792,7 +797,7 @@ int lgw_start(void) {
             printf("ERROR: Failed to load calibration fw\n");
             return LGW_HAL_ERROR;
         }
-        if (sx1302_cal_start(FW_VERSION_CAL, CONTEXT_RF_CHAIN, &txgain_lut[0]) != LGW_HAL_SUCCESS) {
+        if (sx1302_cal_start(FW_VERSION_CAL, CONTEXT_RF_CHAIN, &CONTEXT_TX_GAIN_LUT[0]) != LGW_HAL_SUCCESS) {
             printf("ERROR: radio calibration failed\n");
             sx1302_radio_reset(0, CONTEXT_RF_CHAIN[0].type);
             sx1302_radio_reset(1, CONTEXT_RF_CHAIN[1].type);
@@ -1472,26 +1477,26 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* Find the proper index in the TX gain LUT according to requested rf_power */
-    for (pow_index = txgain_lut[pkt_data.rf_chain].size-1; pow_index > 0; pow_index--) {
-        if (txgain_lut[pkt_data.rf_chain].lut[pow_index].rf_power <= pkt_data.rf_power) {
+    for (pow_index = CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].size-1; pow_index > 0; pow_index--) {
+        if (CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].rf_power <= pkt_data.rf_power) {
             break;
         }
     }
     printf("INFO: selecting TX Gain LUT index %u\n", pow_index);
 
     /* loading calibrated Tx DC offsets */
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_I_OFFSET_I_OFFSET(pkt_data.rf_chain), txgain_lut[pkt_data.rf_chain].lut[pow_index].offset_i);
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_Q_OFFSET_Q_OFFSET(pkt_data.rf_chain), txgain_lut[pkt_data.rf_chain].lut[pow_index].offset_q);
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_I_OFFSET_I_OFFSET(pkt_data.rf_chain), CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].offset_i);
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_Q_OFFSET_Q_OFFSET(pkt_data.rf_chain), CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].offset_q);
 
-    printf("INFO: Applying IQ offset (i:%d, q:%d)\n", txgain_lut[pkt_data.rf_chain].lut[pow_index].offset_i, txgain_lut[pkt_data.rf_chain].lut[pow_index].offset_q);
+    printf("INFO: Applying IQ offset (i:%d, q:%d)\n", CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].offset_i, CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].offset_q);
 
     /* Set the power parameters to be used for TX */
     switch (CONTEXT_RF_CHAIN[pkt_data.rf_chain].type) {
         case LGW_RADIO_TYPE_SX1250:
-            power = (txgain_lut[pkt_data.rf_chain].lut[pow_index].pa_gain << 6) | txgain_lut[pkt_data.rf_chain].lut[pow_index].pwr_idx;
+            power = (CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].pa_gain << 6) | CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].pwr_idx;
             break;
         case LGW_RADIO_TYPE_SX1257:
-            power = (txgain_lut[pkt_data.rf_chain].lut[pow_index].pa_gain << 6) | (txgain_lut[pkt_data.rf_chain].lut[pow_index].dac_gain << 4) | txgain_lut[pkt_data.rf_chain].lut[pow_index].mix_gain;
+            power = (CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].pa_gain << 6) | (CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].dac_gain << 4) | CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].mix_gain;
             break;
         default:
             DEBUG_MSG("ERROR: radio type not supported\n");
@@ -1500,7 +1505,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     lgw_reg_w(SX1302_REG_TX_TOP_AGC_TX_PWR_AGC_TX_PWR(pkt_data.rf_chain), power);
 
     /* Set digital gain */
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_IQ_GAIN_IQ_GAIN(pkt_data.rf_chain), txgain_lut[pkt_data.rf_chain].lut[pow_index].dig_gain);
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_IQ_GAIN_IQ_GAIN(pkt_data.rf_chain), CONTEXT_TX_GAIN_LUT[pkt_data.rf_chain].lut[pow_index].dig_gain);
 
     /* Set Tx frequency */
     freq_reg = SX1302_FREQ_TO_REG(pkt_data.freq_hz); /* TODO: AGC fw to be updated for sx1255 */
