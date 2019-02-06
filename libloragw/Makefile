@@ -36,7 +36,7 @@ ifneq ($(strip $(TARGET_IP)),)
   ifneq ($(strip $(TARGET_USR)),)
 	@echo "---- Copying libloragw files to $(TARGET_IP):$(TARGET_DIR)"
 	@scp test_loragw_* $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
-	@scp ../tools/reset_lgw.sh $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
+	@scp ../tools/reset_lgw_fpga.sh $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)/reset_lgw.sh
   else
 	@echo "ERROR: TARGET_USR is not configured in target.cfg"
   endif
