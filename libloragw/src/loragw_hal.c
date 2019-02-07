@@ -124,6 +124,8 @@ typedef struct lgw_context_s {
     struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
     /* Misc */
     struct lgw_conf_timestamp_s timestamp_cfg;
+    /* Debug */
+    struct lgw_conf_debug_s     debug_cfg;
 } lgw_context_t;
 
 #define CONTEXT_STARTED         lgw_context.is_started
@@ -136,6 +138,7 @@ typedef struct lgw_context_s {
 #define CONTEXT_FSK             lgw_context.fsk_cfg
 #define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
 #define CONTEXT_TIMESTAMP       lgw_context.timestamp_cfg
+#define CONTEXT_DEBUG           lgw_context.debug_cfg
 
 /*
 The following static variable holds the gateway configuration provided by the
@@ -203,19 +206,17 @@ static lgw_context_t lgw_context = {
         .enable_precision_ts = false,
         .max_ts_metrics = 0xFF,
         .nb_symbols = 1
+    },
+    .debug_cfg = {
+        .nb_ref_payload = 0,
+        .log_file_name = "loragw_hal.log"
     }
 };
 
 /* Buffer to fetch received packets from sx1302 */
 static uint8_t rx_fifo[4096];
 
-static struct lgw_conf_debug_s DEBUG_context = {
-    .nb_ref_payload = 0,
-    .log_file = "loragw_hal.log"
-};
-
 static FILE * log_file = NULL;
-
 static tinymt32_t tinymt;
 
 /* -------------------------------------------------------------------------- */
@@ -300,36 +301,36 @@ int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t size, u
     uint32_t debug_payload_cnt;
 
     /* If the 4 first bytes of received payload match with the expected ones, go on with comparison */
-    if (memcmp((void*)payload_received, (void*)(DEBUG_context.ref_payload[ref_payload_idx].payload), 4) == 0) {
+    if (memcmp((void*)payload_received, (void*)(CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload), 4) == 0) {
         /* get counter to initialize random seed */
         debug_payload_cnt = (unsigned int)(payload_received[4] << 24) | (unsigned int)(payload_received[5] << 16) | (unsigned int)(payload_received[6] << 8) | (unsigned int)(payload_received[7] << 0);
 
         /* check if we missed some packets */
-        if (debug_payload_cnt > (DEBUG_context.ref_payload[ref_payload_idx].prev_cnt + 1)) {
-            printf("ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt - DEBUG_context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
+        if (debug_payload_cnt > (CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt + 1)) {
+            printf("ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt - CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
             if (file != NULL) {
-                fprintf(file, "ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt - DEBUG_context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
+                fprintf(file, "ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt - CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
                 fflush(file);
             }
-        } else if (debug_payload_cnt < DEBUG_context.ref_payload[ref_payload_idx].prev_cnt) {
+        } else if (debug_payload_cnt < CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt) {
             if (file != NULL) {
-                fprintf(file, "INFO:  0x%08X got missing pkt %u (SF%u, size:%u) ?\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
+                fprintf(file, "INFO:  0x%08X got missing pkt %u (SF%u, size:%u) ?\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
                 fflush(file);
             }
         } else {
 #if 0
             if (file != NULL) {
-                fprintf(file, "0x%08X %u (SF%u, size:%u)\n", DEBUG_context.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
+                fprintf(file, "0x%08X %u (SF%u, size:%u)\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
             }
 #endif
         }
-        DEBUG_context.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
+        CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
 
         /* generate the random payload which is expected for this packet count */
-        DEBUG_generate_random_payload(debug_payload_cnt, DEBUG_context.ref_payload[ref_payload_idx].payload, size);
+        DEBUG_generate_random_payload(debug_payload_cnt, CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload, size);
 
         /* compare expected with received */
-        if (memcmp((void *)payload_received, (void *)(DEBUG_context.ref_payload[ref_payload_idx].payload), size) != 0) {
+        if (memcmp((void *)payload_received, (void *)(CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload), size) != 0) {
             if (file != NULL) {
                 fprintf(file, "RECEIVED:");
                 for (k = 0; k < (int)size; k++) {
@@ -338,7 +339,7 @@ int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t size, u
                 fprintf(file, "\n");
                 fprintf(file, "EXPECTED:");
                 for (k = 0; k < (int)size; k++) {
-                    fprintf(file, "%02X ", DEBUG_context.ref_payload[ref_payload_idx].payload[k]);
+                    fprintf(file, "%02X ", CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload[k]);
                 }
                 fprintf(file, "\n");
             }
@@ -738,21 +739,21 @@ int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf) {
 int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
     int i;
 
-    DEBUG_context.nb_ref_payload = conf->nb_ref_payload;
-    for (i = 0; i < DEBUG_context.nb_ref_payload; i++) {
+    CONTEXT_DEBUG.nb_ref_payload = conf->nb_ref_payload;
+    for (i = 0; i < CONTEXT_DEBUG.nb_ref_payload; i++) {
         /* Get user configuration */
-        DEBUG_context.ref_payload[i].id = conf->ref_payload[i].id;
+        CONTEXT_DEBUG.ref_payload[i].id = conf->ref_payload[i].id;
 
         /* Initialize global context */
-        DEBUG_context.ref_payload[i].prev_cnt = 0;
-        DEBUG_context.ref_payload[i].payload[0] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 24);
-        DEBUG_context.ref_payload[i].payload[1] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 16);
-        DEBUG_context.ref_payload[i].payload[2] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 8);
-        DEBUG_context.ref_payload[i].payload[3] = (uint8_t)(DEBUG_context.ref_payload[i].id >> 0);
+        CONTEXT_DEBUG.ref_payload[i].prev_cnt = 0;
+        CONTEXT_DEBUG.ref_payload[i].payload[0] = (uint8_t)(CONTEXT_DEBUG.ref_payload[i].id >> 24);
+        CONTEXT_DEBUG.ref_payload[i].payload[1] = (uint8_t)(CONTEXT_DEBUG.ref_payload[i].id >> 16);
+        CONTEXT_DEBUG.ref_payload[i].payload[2] = (uint8_t)(CONTEXT_DEBUG.ref_payload[i].id >> 8);
+        CONTEXT_DEBUG.ref_payload[i].payload[3] = (uint8_t)(CONTEXT_DEBUG.ref_payload[i].id >> 0);
     }
 
-    if (conf->log_file != NULL) {
-        strncpy(DEBUG_context.log_file, conf->log_file, strlen(conf->log_file));
+    if (conf->log_file_name != NULL) {
+        strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, strlen(conf->log_file_name));
     }
 
     return LGW_HAL_SUCCESS;
@@ -913,12 +914,12 @@ int lgw_start(void) {
 
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
-    log_file = fopen(DEBUG_context.log_file, "w+"); /* create log file, overwrite if file already exist */
+    log_file = fopen(CONTEXT_DEBUG.log_file_name, "w+"); /* create log file, overwrite if file already exist */
     if (log_file == NULL) {
-        printf("ERROR: impossible to create log file %s\n", DEBUG_context.log_file);
+        printf("ERROR: impossible to create log file %s\n", CONTEXT_DEBUG.log_file_name);
         return LGW_HAL_ERROR;
     } else {
-        printf("INFO: %s file opened for debug log\n", DEBUG_context.log_file);
+        printf("INFO: %s file opened for debug log\n", CONTEXT_DEBUG.log_file_name);
     }
 #endif
 
@@ -1156,17 +1157,17 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         4 bytes: packet counter used to initialize the seed for pseudo-random generation
                         x bytes: pseudo-random payload
                     */
-                    for (j = 0; j < DEBUG_context.nb_ref_payload; j++) {
+                    for (j = 0; j < CONTEXT_DEBUG.nb_ref_payload; j++) {
                         res = DEBUG_check_payload(log_file, p->payload, p->size, j, SX1302_PKT_DATARATE(rx_fifo, buffer_index));
                         if (res == -1) {
-                            printf("ERROR: 0x%08X payload error\n", DEBUG_context.ref_payload[j].id);
+                            printf("ERROR: 0x%08X payload error\n", CONTEXT_DEBUG.ref_payload[j].id);
                             if (log_file != NULL) {
-                                fprintf(log_file, "ERROR: 0x%08X payload error (pkt:%u)\n", DEBUG_context.ref_payload[j].id, nb_pkt_found - 1);
+                                fprintf(log_file, "ERROR: 0x%08X payload error (pkt:%u)\n", CONTEXT_DEBUG.ref_payload[j].id, nb_pkt_found - 1);
                                 DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
-                                DEBUG_log_payload_diff_to_file(log_file, p->payload, DEBUG_context.ref_payload[j].payload, p->size);
+                                DEBUG_log_payload_diff_to_file(log_file, p->payload, CONTEXT_DEBUG.ref_payload[j].payload, p->size);
                             }
                         } else if (res == 1) {
-                            printf("0x%08X payload matches\n", DEBUG_context.ref_payload[j].id);
+                            printf("0x%08X payload matches\n", CONTEXT_DEBUG.ref_payload[j].id);
                         } else {
                             /* Do nothing */
                         }

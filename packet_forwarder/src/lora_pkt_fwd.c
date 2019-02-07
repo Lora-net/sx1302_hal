@@ -824,8 +824,8 @@ static int parse_debug_configuration(const char * conf_file) {
     /* Get log file configuration */
     str = json_object_get_string(conf_obj, "log_file");
     if (str != NULL) {
-        strncpy(debugconf.log_file, str, strlen(str));
-        MSG("INFO: setting debug log file name to %s\n", debugconf.log_file);
+        strncpy(debugconf.log_file_name, str, strlen(str));
+        MSG("INFO: setting debug log file name to %s\n", debugconf.log_file_name);
     }
 
     /* Commit configuration */
