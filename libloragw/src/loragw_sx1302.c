@@ -1155,7 +1155,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         sx1302_agc_mailbox_write(3, 0x09);
     }
 
-    printf("AGC: started (hopefully)\n");
+    printf("AGC: started\n");
 
     return LGW_HAL_SUCCESS;
 }
