@@ -22,7 +22,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
 #include <assert.h>
-#include <time.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -32,8 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 #include "loragw_cal.h"
-
-#include "tinymt32.h"
+#include "loragw_debug.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- DEBUG CONSTANTS ------------------------------------------------------ */
@@ -216,8 +214,8 @@ static lgw_context_t lgw_context = {
 /* Buffer to fetch received packets from sx1302 */
 static uint8_t rx_fifo[4096];
 
+/* File handle to write debug logs */
 static FILE * log_file = NULL;
-static tinymt32_t tinymt;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -227,150 +225,6 @@ int32_t lgw_bw_getval(int x);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-void DEBUG_log_buffer_to_file(FILE * file, uint8_t * buffer, uint16_t size) {
-    int i;
-    char stat_timestamp[24];
-    time_t t;
-
-    t = time(NULL);
-    strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
-    fprintf(file, "---------(%s)------------\n", stat_timestamp);
-    for (i = 0; i < size; i++) {
-        fprintf(file, "%02X ", buffer[i]);
-    }
-    fprintf(file, "\n");
-
-    fflush(file);
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void DEBUG_log_payload_diff_to_file(FILE * file, uint8_t * buffer1, uint8_t * buffer2, uint16_t size) {
-    int i, j;
-    uint16_t nb_bits_diff = 0;
-    uint8_t debug_payload_diff[255];
-
-    fprintf(file, "Diff: ");
-    /* bit comparison of payloads */
-    for (j = 0; j < size; j++) {
-        debug_payload_diff[j] = buffer1[j] ^ buffer2[j];
-        fprintf(file, "%02X ", debug_payload_diff[j]);
-    }
-    fprintf(file, "\n");
-
-    /* count number of bits flipped, and display bit by bit */
-    for (j = 0; j < size; j++) {
-        for (i = 7; i >= 0; i--) {
-            fprintf(file, "%u", TAKE_N_BITS_FROM(debug_payload_diff[j], i, 1));
-            if (TAKE_N_BITS_FROM(debug_payload_diff[j], i, 1) == 1) {
-                nb_bits_diff += 1;
-            }
-        }
-        fprintf(file, " ");
-    }
-    fprintf(file, "\n");
-    fprintf(file, "%u bits flipped\n", nb_bits_diff);
-
-    fflush(file);
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void DEBUG_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, uint8_t size) {
-    int k;
-    uint8_t dummy;
-
-    /* construct payload we should get for this packet counter */
-    tinymt32_init(&tinymt, (int)pkt_cnt);
-    buffer_expected[4] = (uint8_t)(pkt_cnt >> 24);
-    buffer_expected[5] = (uint8_t)(pkt_cnt >> 16);
-    buffer_expected[6] = (uint8_t)(pkt_cnt >> 8);
-    buffer_expected[7] = (uint8_t)(pkt_cnt >> 0);
-    dummy = (uint8_t)tinymt32_generate_uint32(&tinymt); /* for sync with random size generation */
-    if (dummy) { /* do nothing */ } /* to avoid compilation warning */
-    for (k = 8; k < (int)size; k++) {
-        buffer_expected[k] = (uint8_t)tinymt32_generate_uint32(&tinymt);
-    }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int DEBUG_check_payload(FILE * file, uint8_t * payload_received, uint8_t size, uint8_t ref_payload_idx, uint8_t sf) {
-    int k;
-    uint32_t debug_payload_cnt;
-
-    /* If the 4 first bytes of received payload match with the expected ones, go on with comparison */
-    if (memcmp((void*)payload_received, (void*)(CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload), 4) == 0) {
-        /* get counter to initialize random seed */
-        debug_payload_cnt = (unsigned int)(payload_received[4] << 24) | (unsigned int)(payload_received[5] << 16) | (unsigned int)(payload_received[6] << 8) | (unsigned int)(payload_received[7] << 0);
-
-        /* check if we missed some packets */
-        if (debug_payload_cnt > (CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt + 1)) {
-            printf("ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt - CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
-            if (file != NULL) {
-                fprintf(file, "ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt - CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
-                fflush(file);
-            }
-        } else if (debug_payload_cnt < CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt) {
-            if (file != NULL) {
-                fprintf(file, "INFO:  0x%08X got missing pkt %u (SF%u, size:%u) ?\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
-                fflush(file);
-            }
-        } else {
-#if 0
-            if (file != NULL) {
-                fprintf(file, "0x%08X %u (SF%u, size:%u)\n", CONTEXT_DEBUG.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
-            }
-#endif
-        }
-        CONTEXT_DEBUG.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
-
-        /* generate the random payload which is expected for this packet count */
-        DEBUG_generate_random_payload(debug_payload_cnt, CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload, size);
-
-        /* compare expected with received */
-        if (memcmp((void *)payload_received, (void *)(CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload), size) != 0) {
-            if (file != NULL) {
-                fprintf(file, "RECEIVED:");
-                for (k = 0; k < (int)size; k++) {
-                    fprintf(file, "%02X ", payload_received[k]);
-                }
-                fprintf(file, "\n");
-                fprintf(file, "EXPECTED:");
-                for (k = 0; k < (int)size; k++) {
-                    fprintf(file, "%02X ", CONTEXT_DEBUG.ref_payload[ref_payload_idx].payload[k]);
-                }
-                fprintf(file, "\n");
-            }
-            return -1;
-        } else {
-            return 1; /* matches */
-        }
-    }
-
-    return 0; /* ignored */
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void led(uint8_t val) {
-    int32_t gpio_sel = 0x00; /* SPI */
-
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
-
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_OUT_L_OUT_VALUE, val);
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int32_t lgw_bw_getval(int x) {
     switch (x) {
@@ -924,10 +778,9 @@ int lgw_start(void) {
 #endif
 
     /* Configure the pseudo-random generator (For Debug) */
-    tinymt.mat1 = 0x8f7011ee;
-    tinymt.mat2 = 0xfc78ff1f;
-    tinymt.tmat = 0x3793fdff;
+    dbg_init_random();
 
+    /* set hal state */
     CONTEXT_STARTED = true;
 
     return LGW_HAL_SUCCESS;
@@ -1053,7 +906,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
             if (log_file != NULL) {
                 fprintf(log_file, "\nWARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
-                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                dbg_log_buffer_to_file(log_file, rx_fifo, sz);
             }
             sx1302_dump_rx_buffer(log_file);
             assert(0);
@@ -1098,7 +951,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         if (rx_buffer_error == true) {
             if (log_file != NULL) {
                 fprintf(log_file, "ERROR: METADATA ERROR (%u)\n", nb_pkt_found);
-                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                dbg_log_buffer_to_file(log_file, rx_fifo, sz);
 
             }
             sx1302_dump_rx_buffer(log_file);
@@ -1158,13 +1011,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         x bytes: pseudo-random payload
                     */
                     for (j = 0; j < CONTEXT_DEBUG.nb_ref_payload; j++) {
-                        res = DEBUG_check_payload(log_file, p->payload, p->size, j, SX1302_PKT_DATARATE(rx_fifo, buffer_index));
+                        res = dbg_check_payload(CONTEXT_DEBUG, log_file, p->payload, p->size, j, SX1302_PKT_DATARATE(rx_fifo, buffer_index));
                         if (res == -1) {
                             printf("ERROR: 0x%08X payload error\n", CONTEXT_DEBUG.ref_payload[j].id);
                             if (log_file != NULL) {
                                 fprintf(log_file, "ERROR: 0x%08X payload error (pkt:%u)\n", CONTEXT_DEBUG.ref_payload[j].id, nb_pkt_found - 1);
-                                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
-                                DEBUG_log_payload_diff_to_file(log_file, p->payload, CONTEXT_DEBUG.ref_payload[j].payload, p->size);
+                                dbg_log_buffer_to_file(log_file, rx_fifo, sz);
+                                dbg_log_payload_diff_to_file(log_file, p->payload, CONTEXT_DEBUG.ref_payload[j].payload, p->size);
                             }
                         } else if (res == 1) {
                             printf("0x%08X payload matches\n", CONTEXT_DEBUG.ref_payload[j].id);
@@ -1183,7 +1036,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                             printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", payload_crc16_read, payload_crc16_calc);
                             if (log_file != NULL) {
                                 fprintf(log_file, "ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X) (pkt:%u)\n", payload_crc16_read, payload_crc16_calc, nb_pkt_found-1);
-                                DEBUG_log_buffer_to_file(log_file, rx_fifo, sz);
+                                dbg_log_buffer_to_file(log_file, rx_fifo, sz);
                             }
                         } else {
                             printf("Payload CRC check OK (0x%04X)\n", payload_crc16_read);
