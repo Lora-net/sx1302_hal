@@ -994,6 +994,42 @@ static void log_csv(FILE * file, uint8_t * buf)
                     return;
                 }
                 fprintf(file, ",%d,%d", x0, x1 );
+
+                val = json_object_get_value( rxpk, "codr" );
+                if( json_value_get_type( val ) != JSONString )
+                {
+                    printf( "ERROR: wrong type for codr\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%s", json_value_get_string( val ) );
+
+                val = json_object_get_value( rxpk, "rssi" );
+                if( json_value_get_type( val ) != JSONNumber )
+                {
+                    printf( "ERROR: wrong type for rssic\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%.1f", json_value_get_number( val ) );
+
+                val = json_object_get_value( rxpk, "rssis" );
+                if( json_value_get_type( val ) != JSONNumber )
+                {
+                    printf( "ERROR: wrong type for rssis\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%.1f", json_value_get_number( val ) );
+
+                val = json_object_get_value( rxpk, "lsnr" );
+                if( json_value_get_type( val ) != JSONNumber )
+                {
+                    printf( "ERROR: wrong type for lsnr\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%.1f", json_value_get_number( val ) );
             }
             else if( strcmp( str, "FSK" ) == 0 )
             {
@@ -1004,7 +1040,16 @@ static void log_csv(FILE * file, uint8_t * buf)
                     json_value_free( root_val );
                     return;
                 }
-                fprintf(file, ",%d,", (uint32_t)json_value_get_number( val ) );
+                fprintf(file, ",%d,,", (uint32_t)json_value_get_number( val ) ); /* bw,codr fields are left empty */
+
+                val = json_object_get_value( rxpk, "rssi" );
+                if( json_value_get_type( val ) != JSONNumber )
+                {
+                    printf( "ERROR: wrong type for rssic\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%.1f,,", json_value_get_number( val ) ); /* rssis,lsnr fields are left empty */
             }
             else
             {
@@ -1012,42 +1057,6 @@ static void log_csv(FILE * file, uint8_t * buf)
                 json_value_free( root_val );
                 return;
             }
-
-            val = json_object_get_value( rxpk, "codr" );
-            if( json_value_get_type( val ) != JSONString )
-            {
-                printf( "ERROR: wrong type for codr\n" );
-                json_value_free( root_val );
-                return;
-            }
-            fprintf(file, ",%s", json_value_get_string( val ) );
-
-            val = json_object_get_value( rxpk, "rssic" );
-            if( json_value_get_type( val ) != JSONNumber )
-            {
-                printf( "ERROR: wrong type for rssic\n" );
-                json_value_free( root_val );
-                return;
-            }
-            fprintf(file, ",%.1f", json_value_get_number( val ) );
-
-            val = json_object_get_value( rxpk, "rssis" );
-            if( json_value_get_type( val ) != JSONNumber )
-            {
-                printf( "ERROR: wrong type for rssis\n" );
-                json_value_free( root_val );
-                return;
-            }
-            fprintf(file, ",%.1f", json_value_get_number( val ) );
-
-            val = json_object_get_value( rxpk, "lsnr" );
-            if( json_value_get_type( val ) != JSONNumber )
-            {
-                printf( "ERROR: wrong type for lsnr\n" );
-                json_value_free( root_val );
-                return;
-            }
-            fprintf(file, ",%.1f", json_value_get_number( val ) );
 
             val = json_object_get_value( rxpk, "size" );
             if( json_value_get_type( val ) != JSONNumber )
