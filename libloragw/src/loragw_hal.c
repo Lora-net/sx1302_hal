@@ -22,6 +22,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
 #include <assert.h>
+#include <time.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -768,6 +769,16 @@ int lgw_start(void) {
 
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
+    char timestamp_str[40];
+    struct tm *timenow;
+
+    /* Append current time to log file name */
+    time_t now = time(NULL);
+    timenow = gmtime(&now);
+    strftime(timestamp_str, sizeof(timestamp_str), ".%Y-%m-%d_%H%M%S", timenow);
+    strncat(CONTEXT_DEBUG.log_file_name, timestamp_str, sizeof CONTEXT_DEBUG.log_file_name);
+
+    /* Open the file for writting */
     log_file = fopen(CONTEXT_DEBUG.log_file_name, "w+"); /* create log file, overwrite if file already exist */
     if (log_file == NULL) {
         printf("ERROR: impossible to create log file %s\n", CONTEXT_DEBUG.log_file_name);
