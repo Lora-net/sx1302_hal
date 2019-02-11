@@ -125,25 +125,25 @@ void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, ui
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int dbg_check_payload(struct lgw_conf_debug_s context, FILE * file, uint8_t * payload_received, uint8_t size, uint8_t ref_payload_idx, uint8_t sf) {
+int dbg_check_payload(struct lgw_conf_debug_s * context, FILE * file, uint8_t * payload_received, uint8_t size, uint8_t ref_payload_idx, uint8_t sf) {
     int k;
     uint32_t debug_payload_cnt;
 
     /* If the 4 first bytes of received payload match with the expected ones, go on with comparison */
-    if (memcmp((void*)payload_received, (void*)(context.ref_payload[ref_payload_idx].payload), 4) == 0) {
+    if (memcmp((void*)payload_received, (void*)(context->ref_payload[ref_payload_idx].payload), 4) == 0) {
         /* get counter to initialize random seed */
         debug_payload_cnt = (unsigned int)(payload_received[4] << 24) | (unsigned int)(payload_received[5] << 16) | (unsigned int)(payload_received[6] << 8) | (unsigned int)(payload_received[7] << 0);
 
         /* check if we missed some packets */
-        if (debug_payload_cnt > (context.ref_payload[ref_payload_idx].prev_cnt + 1)) {
-            printf("ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", context.ref_payload[ref_payload_idx].id, debug_payload_cnt - context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
+        if (debug_payload_cnt > (context->ref_payload[ref_payload_idx].prev_cnt + 1)) {
+            printf("ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", context->ref_payload[ref_payload_idx].id, debug_payload_cnt - context->ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
             if (file != NULL) {
-                fprintf(file, "ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", context.ref_payload[ref_payload_idx].id, debug_payload_cnt - context.ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
+                fprintf(file, "ERROR: 0x%08X missed %u pkt before %u (SF%u, size:%u)\n", context->ref_payload[ref_payload_idx].id, debug_payload_cnt - context->ref_payload[ref_payload_idx].prev_cnt - 1, debug_payload_cnt, sf, size);
                 fflush(file);
             }
-        } else if (debug_payload_cnt < context.ref_payload[ref_payload_idx].prev_cnt) {
+        } else if (debug_payload_cnt < context->ref_payload[ref_payload_idx].prev_cnt) {
             if (file != NULL) {
-                fprintf(file, "INFO:  0x%08X got missing pkt %u (SF%u, size:%u) ?\n", context.ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
+                fprintf(file, "INFO:  0x%08X got missing pkt %u (SF%u, size:%u) ?\n", context->ref_payload[ref_payload_idx].id, debug_payload_cnt, sf, size);
                 fflush(file);
             }
         } else {
@@ -153,13 +153,13 @@ int dbg_check_payload(struct lgw_conf_debug_s context, FILE * file, uint8_t * pa
             }
 #endif
         }
-        context.ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
+        context->ref_payload[ref_payload_idx].prev_cnt = debug_payload_cnt;
 
         /* generate the random payload which is expected for this packet count */
-        dbg_generate_random_payload(debug_payload_cnt, context.ref_payload[ref_payload_idx].payload, size);
+        dbg_generate_random_payload(debug_payload_cnt, context->ref_payload[ref_payload_idx].payload, size);
 
         /* compare expected with received */
-        if (memcmp((void *)payload_received, (void *)(context.ref_payload[ref_payload_idx].payload), size) != 0) {
+        if (memcmp((void *)payload_received, (void *)(context->ref_payload[ref_payload_idx].payload), size) != 0) {
             if (file != NULL) {
                 fprintf(file, "RECEIVED:");
                 for (k = 0; k < (int)size; k++) {
@@ -168,7 +168,7 @@ int dbg_check_payload(struct lgw_conf_debug_s context, FILE * file, uint8_t * pa
                 fprintf(file, "\n");
                 fprintf(file, "EXPECTED:");
                 for (k = 0; k < (int)size; k++) {
-                    fprintf(file, "%02X ", context.ref_payload[ref_payload_idx].payload[k]);
+                    fprintf(file, "%02X ", context->ref_payload[ref_payload_idx].payload[k]);
                 }
                 fprintf(file, "\n");
             }

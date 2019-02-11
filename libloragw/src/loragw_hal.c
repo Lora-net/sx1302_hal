@@ -1011,7 +1011,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         x bytes: pseudo-random payload
                     */
                     for (j = 0; j < CONTEXT_DEBUG.nb_ref_payload; j++) {
-                        res = dbg_check_payload(CONTEXT_DEBUG, log_file, p->payload, p->size, j, SX1302_PKT_DATARATE(rx_fifo, buffer_index));
+                        res = dbg_check_payload(&CONTEXT_DEBUG, log_file, p->payload, p->size, j, SX1302_PKT_DATARATE(rx_fifo, buffer_index));
                         if (res == -1) {
                             printf("ERROR: 0x%08X payload error\n", CONTEXT_DEBUG.ref_payload[j].id);
                             if (log_file != NULL) {
