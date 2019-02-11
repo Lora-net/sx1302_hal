@@ -22,7 +22,7 @@ LIBS := -lloragw -ltinymt32 -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram
+all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram test_loragw_spi_sx1250
 
 clean:
 	rm -f libloragw.a
@@ -106,6 +106,9 @@ test_loragw_capture_ram: tst/test_loragw_capture_ram.c
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 test_loragw_cal: tst/test_loragw_cal.c
+	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
+
+test_loragw_spi_sx1250: tst/test_loragw_spi_sx1250.c
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 ### EOF
