@@ -138,7 +138,7 @@ and associated metadata with the following fields:
  datr | string | LoRa datarate identifier (eg. SF12BW500)
  datr | number | FSK datarate (unsigned, in bits per second)
  codr | string | LoRa ECC coding rate identifier
- rssic| number | RSSI of the channel in dBm (signed integer, 1 dB precision)
+ rssi | number | RSSI of the channel in dBm (signed integer, 1 dB precision)
  rssis| number | RSSI of the signal in dBm (signed integer, 1 dB precision)
  lsnr | number | Lora SNR ratio in dB (signed float, 0.1 dB precision)
  foff | number | LoRa frequency offset in Hz (signed interger)
