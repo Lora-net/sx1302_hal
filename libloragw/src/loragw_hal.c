@@ -1167,7 +1167,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         bw_pow = 0;
                 }
             } else { /* packet was received on one of the sensor channels = 125kHz */
-                delay_x = 114;
+                delay_x = 64;
                 bw_pow = 1;
             }
 
