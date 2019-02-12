@@ -1376,7 +1376,7 @@ int sx1302_arb_start(uint8_t version) {
     /* Enable/disable ARB detect/modem alloc stats for the specified SF */
     sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
 
-    /* Disable double demod for different timing set (best_timestamp / best_demodulation) - Only available for SF9 -> SF12 */
+    /* 0:Disable 1:Enable double demod for different timing set (best_timestamp / best_demodulation) - Only available for SF9 -> SF12 */
     sx1302_arb_debug_write(3, 0);
 
     /* Set double detect packet filtering threshold [0..3] */

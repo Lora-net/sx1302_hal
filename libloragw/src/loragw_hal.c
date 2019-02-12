@@ -16,6 +16,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
+/* fix an issue between POSIX and C99 */
+#if __STDC_VERSION__ >= 199901L
+    #define _XOPEN_SOURCE 600
+#else
+    #define _XOPEN_SOURCE 500
+#endif
+
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
@@ -23,6 +30,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>       /* pow, cell */
 #include <assert.h>
 #include <time.h>
+#include <unistd.h>     /* symlink, unlink */
+#include <fcntl.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -785,6 +794,13 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     } else {
         printf("INFO: %s file opened for debug log\n", CONTEXT_DEBUG.log_file_name);
+
+        /* Create "pktlog.csv" symlink to simplify user life */
+        unlink("loragw_hal.log");
+        i = symlink(CONTEXT_DEBUG.log_file_name, "loragw_hal.log");
+        if (i < 0) {
+            printf("ERROR: impossible to create symlink to log file %s\n", CONTEXT_DEBUG.log_file_name);
+        }
     }
 #endif
 
