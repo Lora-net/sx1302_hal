@@ -1430,13 +1430,18 @@ void thread_up(void) {
 
             /* Get mote information from current packet (addr, fcnt) */
             /* FHDR - DevAddr */
-            mote_addr  = p->payload[1];
-            mote_addr |= p->payload[2] << 8;
-            mote_addr |= p->payload[3] << 16;
-            mote_addr |= p->payload[4] << 24;
-            /* FHDR - FCnt */
-            mote_fcnt  = p->payload[6];
-            mote_fcnt |= p->payload[7] << 8;
+            if (p->size >= 8) {
+                mote_addr  = p->payload[1];
+                mote_addr |= p->payload[2] << 8;
+                mote_addr |= p->payload[3] << 16;
+                mote_addr |= p->payload[4] << 24;
+                /* FHDR - FCnt */
+                mote_fcnt  = p->payload[6];
+                mote_fcnt |= p->payload[7] << 8;
+            } else {
+                mote_addr = 0;
+                mote_fcnt = 0;
+            }
 
             /* basic packet filtering */
             pthread_mutex_lock(&mx_meas_up);
