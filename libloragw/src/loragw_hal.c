@@ -881,6 +881,12 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         //printf( "No message in DSP%d FIFO\n", dsp);
         return 0;
     }
+
+#if 0
+    /* Print statistics of number of detects and modem allocations from ARB for configured SF (see sx1302_arb_start()) */
+    sx1302_arb_print_debug_stats(true);
+#endif
+
     printf("-----------------\n");
     printf("lgw_receive()\n");
     printf("nb_bytes received: %u (%u %u)\n", sz, buff[1], buff[0]);
@@ -928,16 +934,16 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         for (i = 0; i < (int)checksum_pos; i++) {
             checksum_calc += rx_fifo[buffer_index + i];
         }
-
         if (checksum != checksum_calc) {
-            printf("WARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
+            printf("WARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum, checksum_calc);
             if (log_file != NULL) {
-                fprintf(log_file, "\nWARNING: checkum failed (got:0x%02X calc:0x%02X), aborting\n", checksum, checksum_calc);
+                fprintf(log_file, "\nWARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum, checksum_calc);
                 dbg_log_buffer_to_file(log_file, rx_fifo, sz);
             }
             sx1302_dump_rx_buffer(log_file);
-            assert(0);
-            return 0; /* drop all packets in case of checksum error */
+#if 0 /* Keep the packets as it is probably a false positive (TODO: CAN-209) */
+            return 0; /* drop all packets fetched in case of checksum error */
+#endif
         } else {
             printf("Packet checksum OK (0x%02X)\n", checksum);
         }
@@ -982,7 +988,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
             }
             sx1302_dump_rx_buffer(log_file);
-            //assert(0);
+            assert(0); /* TODO: TO BE REMOVED */
             return 0;
         }
 
