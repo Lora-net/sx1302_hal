@@ -28,7 +28,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
-#include <assert.h>
 #include <time.h>
 #include <unistd.h>     /* symlink, unlink */
 #include <fcntl.h>
@@ -813,6 +812,11 @@ int lgw_start(void) {
     /* Configure the pseudo-random generator (For Debug) */
     dbg_init_random();
 
+#if 0
+    /* Configure a GPIO to be toggled for debug purpose */
+    dbg_init_gpio();
+#endif
+
     /* set hal state */
     CONTEXT_STARTED = true;
 
@@ -859,6 +863,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t sanity_check;
     bool rx_buffer_error = false;
     int32_t val;
+    uint16_t last_addr_read;
+    uint16_t last_addr_write;
 
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
@@ -906,11 +912,21 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* read bytes from fifo */
     memset(rx_fifo, 0, sizeof rx_fifo);
-    lgw_mem_rb(0x4000, rx_fifo, sz, true);
+    res = lgw_mem_rb(0x4000, rx_fifo, sz, true);
+    if (res != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to read RX buffer, SPI error\n");
+        return 0;
+    }
+
+    /* print debug info : TODO to be removed */
+    printf("RX_BUFFER: ");
     for (i = 0; i < sz; i++) {
         printf("%02X ", rx_fifo[i]);
     }
     printf("\n");
+    last_addr_write = sx1302_rx_buffer_write_ptr_addr();
+    last_addr_read = sx1302_rx_buffer_read_ptr_addr();
+    printf("RX_BUFFER: write_ptr 0x%04X, read_ptr 0x%04X\n", last_addr_write, last_addr_read);
 
     /* Parse raw data and fill messages array */
     buffer_index = 0;
@@ -946,10 +962,15 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 fprintf(log_file, "\nWARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum, checksum_calc);
                 dbg_log_buffer_to_file(log_file, rx_fifo, sz);
             }
-            sx1302_dump_rx_buffer(log_file);
-#if 0 /* Keep the packets as it is probably a false positive (TODO: CAN-209) */
-            return 0; /* drop all packets fetched in case of checksum error */
+#if 0
+            /* toggle GPIO for logic analyzer capture */
+            dbg_toggle_gpio();
 #endif
+#if 1
+            /* direct-memory access of the whole rx_buffer (assert) */
+            sx1302_rx_buffer_dump(log_file, 0, 4095);
+#endif
+            return 0; /* drop all packets fetched in case of checksum error */
         } else {
             printf("Packet checksum OK (0x%02X)\n", checksum);
         }
@@ -993,8 +1014,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 dbg_log_buffer_to_file(log_file, rx_fifo, sz);
 
             }
-            sx1302_dump_rx_buffer(log_file);
-            assert(0); /* TODO: TO BE REMOVED */
+#if 1 /* TODO: TO BE REMOVED */
+            sx1302_rx_buffer_dump(log_file, 0, 4095);
+#endif
             return 0;
         }
 

@@ -162,7 +162,9 @@ void sx1302_arb_print_debug_stats(bool full);
 
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
-void sx1302_dump_rx_buffer(FILE * file);
+void sx1302_rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr);
+uint16_t sx1302_rx_buffer_read_ptr_addr(void);
+uint16_t sx1302_rx_buffer_write_ptr_addr(void);
 
 #endif
 

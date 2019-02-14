@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <time.h>
 
 #include "loragw_aux.h"
+#include "loragw_reg.h"
 #include "loragw_hal.h"
 #include "loragw_debug.h"
 
@@ -56,6 +57,26 @@ void dbg_init_random(void) {
     tinymt.mat2 = 0xfc78ff1f;
     tinymt.tmat = 0x3793fdff;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void dbg_init_gpio(void) {
+    /* Select GPIO_6 to be controlled by HOST */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, 0);
+    /* Configure it as an OUTPUT */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void dbg_toggle_gpio(void) {
+    /* Set GPIO_6 to high */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_OUT_L_OUT_VALUE, 64);
+    /* Set GPIO_6 to low */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_OUT_L_OUT_VALUE, 0);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void dbg_log_buffer_to_file(FILE * file, uint8_t * buffer, uint16_t size) {
     int i;

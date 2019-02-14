@@ -24,6 +24,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memset */
 #include <inttypes.h>
 #include <time.h>
+#include <assert.h>
 
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
@@ -1395,17 +1396,19 @@ int sx1302_arb_start(uint8_t version) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void sx1302_dump_rx_buffer(FILE * file) {
+void sx1302_rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr) {
     int i;
     uint8_t rx_buffer[4096];
+
+    printf("Dumping %u bytes, from 0x%X to 0x%X\n", end_addr - start_addr + 1, start_addr, end_addr);
 
     memset(rx_buffer, 0, sizeof rx_buffer);
 
     lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
-    lgw_mem_rb(0x4000, rx_buffer, 4096, false);
+    lgw_mem_rb(0x4000 + start_addr, rx_buffer, end_addr - start_addr + 1, false);
     lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 0);
 
-    for (i = 0; i < 4096; i++) {
+    for (i = 0; i < (end_addr - start_addr + 1); i++) {
         if (file == NULL) {
             printf("%02X ", rx_buffer[i]);
         } else {
@@ -1417,7 +1420,40 @@ void sx1302_dump_rx_buffer(FILE * file) {
     } else {
         fprintf(file, "\n");
     }
+
+    /* Switching to direct-access memory could lead to corruption, so to be done only for debugging */
+    assert(0);
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint16_t sx1302_rx_buffer_read_ptr_addr(void) {
+    int32_t val;
+    uint16_t addr;
+
+    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_READ_MSB_LAST_ADDR_READ, &val); /* mandatory to read MSB first */
+    addr  = (uint16_t)(val << 8);
+    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_READ_LSB_LAST_ADDR_READ, &val);
+    addr |= (uint16_t)val;
+
+    return addr;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint16_t sx1302_rx_buffer_write_ptr_addr(void) {
+    int32_t val;
+    uint16_t addr;
+
+    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_WRITE_MSB_LAST_ADDR_WRITE, &val);  /* mandatory to read MSB first */
+    addr  = (uint16_t)(val << 8);
+    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_WRITE_LSB_LAST_ADDR_WRITE, &val);
+    addr |= (uint16_t)val;
+
+    return addr;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void lora_crc16(const char data, int *crc) {
     int next = 0;
@@ -1439,6 +1475,8 @@ void lora_crc16(const char data, int *crc) {
     next += ((((*crc>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<15) ;
     (*crc) = next;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size) {
     int i;
