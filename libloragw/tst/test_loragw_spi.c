@@ -29,6 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 #include <signal.h>     /* sigaction */
 #include <unistd.h>     /* getopt, access */
+#include <time.h>
 
 #include "loragw_spi.h"
 #include "loragw_aux.h"
@@ -73,6 +74,7 @@ int main(int argc, char ** argv)
     uint8_t read_buff[BUFF_SIZE];
     int cycle_number = 0;
     int i;
+    uint16_t size;
 
     /* SPI interfaces */
     const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
@@ -133,32 +135,35 @@ int main(int argc, char ** argv)
     lgw_spi_r(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, &data);
     lgw_spi_w(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, 0x06); /* mcu_clear, host_prog */
 
+    srand(time(NULL));
+
     /* databuffer R/W stress test */
     while ((quit_sig != 1) && (exit_sig != 1)) {
-        for (i=0; i<BUFF_SIZE; ++i) {
+        size = rand() % BUFF_SIZE;
+        for (i = 0; i < size; ++i) {
             test_buff[i] = rand() & 0xFF;
         }
         printf("Cycle %i > ", cycle_number);
-        lgw_spi_wb(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, BUFF_SIZE);
-        lgw_spi_rb(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, BUFF_SIZE);
-        for (i=0; ((i<BUFF_SIZE) && (test_buff[i] == read_buff[i])); ++i);
-        if (i != BUFF_SIZE) {
+        lgw_spi_wb(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, size);
+        lgw_spi_rb(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, size);
+        for (i=0; ((i<size) && (test_buff[i] == read_buff[i])); ++i);
+        if (i != size) {
             printf("error during the buffer comparison\n");
             printf("Written values:\n");
-            for (i=0; i<BUFF_SIZE; ++i) {
+            for (i=0; i<size; ++i) {
                 printf(" %02X ", test_buff[i]);
                 if (i%16 == 15) printf("\n");
             }
             printf("\n");
             printf("Read values:\n");
-            for (i=0; i<BUFF_SIZE; ++i) {
+            for (i=0; i<size; ++i) {
                 printf(" %02X ", read_buff[i]);
                 if (i%16 == 15) printf("\n");
             }
             printf("\n");
             return EXIT_FAILURE;
         } else {
-            printf("did a %i-byte R/W on a data buffer with no error\n", BUFF_SIZE);
+            printf("did a %i-byte R/W on a data buffer with no error\n", size);
             ++cycle_number;
         }
     }
