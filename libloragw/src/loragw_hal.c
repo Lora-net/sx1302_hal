@@ -715,12 +715,6 @@ int lgw_start(void) {
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
     /* Radio calibration - END */
 
-    /* Configure PA/LNA LUTs */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[2] is high when PA_EN=1 & LNA_EN=0 */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[8] is high when PA_EN=1 & LNA_EN=0 */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[1] is high when PA_EN=0 & LNA_EN=1 */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[7] is high when PA_EN=0 & LNA_EN=1 */
-
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (CONTEXT_RF_CHAIN[i].enable == true) {
@@ -754,6 +748,12 @@ int lgw_start(void) {
         printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
         return -1;
     }
+
+    /* Configure PA/LNA LUTs */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[2] is high when PA_EN=1 & LNA_EN=0 */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[8] is high when PA_EN=1 & LNA_EN=0 */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[1] is high when PA_EN=0 & LNA_EN=1 */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[7] is high when PA_EN=0 & LNA_EN=1 */
 
     /* Configure Radio FE */
     sx1302_radio_fe_configure();
