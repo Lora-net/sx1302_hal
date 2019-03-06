@@ -49,7 +49,7 @@ AR := $(CROSS_COMPILE)ar
 all: $(APP_NAME)
 
 clean:
-	rm -f obj/$(APP_NAME).o
+	rm -f obj/*.o
 	rm -f $(APP_NAME)
 
 install:
