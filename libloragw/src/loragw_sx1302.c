@@ -553,7 +553,12 @@ int sx1302_lora_modem_configure(void) {
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF12, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF11, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF12, 1);
-    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4);
+    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4); /* TODO: depends on BW & center freq */
+    /* TODO: MANT */
+
+    /* Time drift compensation */
+    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB, 1);
+
 
     return LGW_REG_SUCCESS;
 }
@@ -617,6 +622,7 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) {
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB
 
+    /* TODO: MANT */
     switch (cfg->bandwidth) {
         case BW_125KHZ:
             lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4);
@@ -631,6 +637,10 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) {
             printf("ERROR: unsupported bandwidth %u for LoRa Service modem\n", cfg->bandwidth);
             break;
     }
+
+    /* Time drift compensation */
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB, 1);
+
 
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC2_DAGC_IN_COMP, 1);
 
