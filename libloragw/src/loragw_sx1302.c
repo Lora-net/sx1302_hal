@@ -755,6 +755,19 @@ int sx1302_timestamp_counter(bool pps, uint32_t * cnt_us) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int sx1302_gps_enable(bool enable) {
+    if (enable == true) {
+        lgw_reg_w(SX1302_REG_TIMESTAMP_GPS_CTRL_GPS_EN, 1);
+        lgw_reg_w(SX1302_REG_TIMESTAMP_GPS_CTRL_GPS_POL, 1); /* invert polarity for PPS */
+    } else {
+        lgw_reg_w(SX1302_REG_TIMESTAMP_GPS_CTRL_GPS_EN, 0);
+    }
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_agc_load_firmware(const uint8_t *firmware) {
     int32_t val;
     uint8_t fw_check[MCU_FW_SIZE];

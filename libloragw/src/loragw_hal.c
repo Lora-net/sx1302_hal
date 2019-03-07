@@ -813,6 +813,9 @@ int lgw_start(void) {
     /* enable demodulators */
     sx1302_modem_enable();
 
+    /* enable GPS */
+    sx1302_gps_enable(true);
+
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
     char timestamp_str[40];

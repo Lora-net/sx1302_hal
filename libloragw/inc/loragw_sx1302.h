@@ -139,6 +139,8 @@ int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg);
 
 int sx1302_modem_enable();
 
+int sx1302_gps_enable(bool enable);
+
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
 

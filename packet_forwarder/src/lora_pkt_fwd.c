@@ -1011,6 +1011,7 @@ int main(int argc, char ** argv)
 
     /* SX1302 data variables */
     uint32_t trig_tstamp;
+    uint32_t inst_tstamp;
 
     /* statistics variable */
     time_t t;
@@ -1294,17 +1295,20 @@ int main(int argc, char ** argv)
             printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
             printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
         }
-        printf("### [JIT] ###\n");
-        /* get timestamp captured on PPM pulse  */
+        printf("### SX1302 counters ###\n");
         pthread_mutex_lock(&mx_concent);
-        i = lgw_get_trigcnt(&trig_tstamp);
+        i  = lgw_get_instcnt(&inst_tstamp);
+        i |= lgw_get_trigcnt(&trig_tstamp);
         pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
-            printf("# SX1302 time (PPS): unknown\n");
+            printf("# SX1302 counter unknown\n");
         } else {
-            printf("# SX1302 time (PPS): %u\n", trig_tstamp);
-
-        jit_print_queue (&jit_queue[0], false, DEBUG_LOG);}
+            printf("# SX1302 counter (INST): %u\n", inst_tstamp);
+            printf("# SX1302 counter (PPS):  %u\n", trig_tstamp);
+        }
+        printf("### [JIT] ###\n");
+        /* get timestamp captured on PPM pulse  */
+        jit_print_queue (&jit_queue[0], false, DEBUG_LOG);
         printf("#--------\n");
         jit_print_queue (&jit_queue[1], false, DEBUG_LOG);
         printf("##### END #####\n");
