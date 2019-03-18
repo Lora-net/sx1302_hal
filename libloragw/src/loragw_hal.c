@@ -1786,6 +1786,11 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
         val = lgw_sf_getval(packet->datarate);
         if (val != -1) {
             SF = (uint8_t)val;
+            /* TODO: update formula for SF5/SF6 */
+            if (SF < 7) {
+                DEBUG_MSG("WARNING: clipping time on air computing to SF7 for SF5/SF6\n");
+                SF = 7;
+            }
         } else {
             DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported datarate (0x%02X)\n", packet->datarate);
             return 0;
