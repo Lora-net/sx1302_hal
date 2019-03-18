@@ -37,7 +37,7 @@ Maintainer: Michael Coracin
 #define TX_MARGIN_DELAY         1000    /* Packet overlap margin in microseconds */
                                         /* TODO: How much margin should we take? */
 #define TX_JIT_DELAY            30000   /* Pre-delay to program packet for TX in microseconds */
-#define TX_MAX_ADVANCE_DELAY    ((JIT_NUM_BEACON_IN_QUEUE + 1) * 128 * 1E6) /* Maximum advance delay accepted for a TX packet, compared to current time */
+#define TX_MAX_ADVANCE_DELAY    64 * 1E6 /* Maximum advance delay accepted for a TX packet, compared to current time (sx1302 counter wraps every 134 seconds) */
 
 #define BEACON_GUARD            3000000 /* Interval where no ping slot can be placed,
                                             to ensure beacon can be sent */
@@ -120,8 +120,8 @@ void jit_sort_queue(struct jit_queue_s *queue) {
 }
 
 bool jit_collision_test(uint32_t p1_count_us, uint32_t p1_pre_delay, uint32_t p1_post_delay, uint32_t p2_count_us, uint32_t p2_pre_delay, uint32_t p2_post_delay) {
-    if (((p1_count_us - p2_count_us) <= (p1_pre_delay + p2_post_delay + TX_MARGIN_DELAY)) ||
-        ((p2_count_us - p1_count_us) <= (p2_pre_delay + p1_post_delay + TX_MARGIN_DELAY))) {
+    if (((p1_count_us - p2_count_us) % 0x07FFFFFF <= (p1_pre_delay + p2_post_delay + TX_MARGIN_DELAY)) ||
+        ((p2_count_us - p1_count_us) % 0x07FFFFFF <= (p2_pre_delay + p1_post_delay + TX_MARGIN_DELAY))) {
         return true;
     } else {
         return false;
@@ -174,7 +174,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
         packet->tx_mode = TIMESTAMPED;
 
         /* Search for the ASAP timestamp to be given to the packet */
-        asap_count_us = time_us + 1E6; /* TODO: Take 1 second margin, to be refined */
+        asap_count_us = (time_us + 1000000UL) % 0x07FFFFFF; /* TODO: Take 1 second margin, to be refined */
         if (queue->num_pkt == 0) {
             /* If the jit queue is empty, we can insert this packet */
             MSG_DEBUG(DEBUG_JIT, "DEBUG: insert IMMEDIATE downlink, first in JiT queue (count_us=%u)\n", asap_count_us);
@@ -198,7 +198,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
             } else {
                 /* Search for the best slot then */
                 for (i=0; i<queue->num_pkt; i++) {
-                    asap_count_us = queue->nodes[i].pkt.count_us + queue->nodes[i].post_delay + packet_pre_delay + TX_JIT_DELAY + TX_MARGIN_DELAY;
+                    asap_count_us = (queue->nodes[i].pkt.count_us + queue->nodes[i].post_delay + packet_pre_delay + TX_JIT_DELAY + TX_MARGIN_DELAY) % 0x07FFFFFF;
                     if (i == (queue->num_pkt - 1)) {
                         /* Last packet index, we can insert after this one */
                         MSG_DEBUG(DEBUG_JIT, "DEBUG: insert IMMEDIATE downlink, last in JiT queue (count_us=%u)\n", asap_count_us);
@@ -228,7 +228,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
      *  Warning: unsigned arithmetic (handle roll-over)
      *      t_packet < t_current + TX_START_DELAY + MARGIN
      */
-    if ((packet->count_us - time_us) <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY)) {
+    if ((packet->count_us - time_us) % 0x07FFFFFF <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY)) {
         MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, already too late to send it (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
         pthread_mutex_unlock(&mx_jit_queue);
         return JIT_ERROR_TOO_LATE;
@@ -246,7 +246,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
                 t_packet > t_current + TX_MAX_ADVANCE_DELAY
      */
     if ((pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_A) || (pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_B)) {
-        if ((packet->count_us - time_us) > TX_MAX_ADVANCE_DELAY) {
+        if ((packet->count_us - time_us) % 0x07FFFFFF > TX_MAX_ADVANCE_DELAY) {
             MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, timestamp seems wrong, too much in advance (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
             pthread_mutex_unlock(&mx_jit_queue);
             return JIT_ERROR_TOO_EARLY;
@@ -387,7 +387,7 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_
          *  Warning: unsigned arithmetic
          *      t_packet > t_current + TX_MAX_ADVANCE_DELAY
          */
-        if ((queue->nodes[i].pkt.count_us - time_us) >= TX_MAX_ADVANCE_DELAY) {
+        if ((queue->nodes[i].pkt.count_us - time_us) % 0x07FFFFFF >= TX_MAX_ADVANCE_DELAY) {
             /* We drop the packet to avoid lock-up */
             queue->num_pkt--;
             if (queue->nodes[i].pkt_type == JIT_PKT_TYPE_BEACON) {
@@ -413,7 +413,8 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_
          *  Warning: unsigned arithmetic (handle roll-over)
          *      t_packet < t_highest
          */
-        if ((idx_highest_priority == -1) || (((queue->nodes[i].pkt.count_us - time_us) < (queue->nodes[idx_highest_priority].pkt.count_us - time_us)))) {
+        /* TODO !!!! */
+        if ((idx_highest_priority == -1) || (((queue->nodes[i].pkt.count_us - time_us) % 0x07FFFFFF < (queue->nodes[idx_highest_priority].pkt.count_us - time_us) % 0x07FFFFFF))) {
             idx_highest_priority = i;
         }
     }
@@ -422,7 +423,7 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_
      *  Warning: unsigned arithmetic (handle roll-over)
      *      t_packet < t_current + TX_JIT_DELAY
      */
-    if ((queue->nodes[idx_highest_priority].pkt.count_us - time_us) < TX_JIT_DELAY) {
+    if ((queue->nodes[idx_highest_priority].pkt.count_us - time_us) % 0x07FFFFFF < TX_JIT_DELAY) {
         *pkt_idx = idx_highest_priority;
         MSG_DEBUG(DEBUG_JIT, "peek packet with count_us=%u at index %d\n",
             queue->nodes[idx_highest_priority].pkt.count_us, idx_highest_priority);
