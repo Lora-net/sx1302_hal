@@ -22,7 +22,7 @@ LIBS := -lloragw -ltinymt32 -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram test_loragw_spi_sx1250
+all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram test_loragw_spi_sx1250 test_loragw_counter
 
 clean:
 	rm -f libloragw.a
@@ -90,25 +90,28 @@ libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.
 
 ### test programs
 
-test_loragw_spi: tst/test_loragw_spi.c
+test_loragw_spi: tst/test_loragw_spi.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
-test_loragw_reg: tst/test_loragw_reg.c
+test_loragw_reg: tst/test_loragw_reg.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
-test_loragw_hal_tx: tst/test_loragw_hal_tx.c
+test_loragw_hal_tx: tst/test_loragw_hal_tx.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
-test_loragw_hal_rx: tst/test_loragw_hal_rx.c
+test_loragw_hal_rx: tst/test_loragw_hal_rx.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
-test_loragw_capture_ram: tst/test_loragw_capture_ram.c
+test_loragw_capture_ram: tst/test_loragw_capture_ram.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
-test_loragw_cal: tst/test_loragw_cal.c
+test_loragw_cal: tst/test_loragw_cal.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
-test_loragw_spi_sx1250: tst/test_loragw_spi_sx1250.c
+test_loragw_spi_sx1250: tst/test_loragw_spi_sx1250.c libloragw.a
+	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
+
+test_loragw_counter: tst/test_loragw_counter.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 ### EOF
