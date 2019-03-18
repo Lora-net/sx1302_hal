@@ -30,7 +30,7 @@ Maintainer: Michael Coracin
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 #define JIT_QUEUE_MAX           32  /* Maximum number of packets to be stored in JiT queue */
-#define JIT_NUM_BEACON_IN_QUEUE 1   /* Number of beacons to be loaded in JiT queue at any time */
+#define JIT_NUM_BEACON_IN_QUEUE 3   /* Number of beacons to be loaded in JiT queue at any time */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */

@@ -143,6 +143,7 @@ int sx1302_gps_enable(bool enable);
 
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
+int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us);
 
 int sx1302_agc_load_firmware(const uint8_t *firmware);
 int sx1302_agc_status(uint8_t* status);

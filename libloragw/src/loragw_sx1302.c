@@ -730,9 +730,32 @@ int sx1302_timestamp_mode(struct lgw_conf_timestamp_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+/* memory variables */
+static uint32_t counter_us_raw_27bits_inst_prev = 0;
+static uint32_t counter_us_raw_27bits_pps_prev = 0;
+static uint8_t  counter_us_raw_27bits_inst_wrap = 0;
+static uint8_t  counter_us_raw_27bits_pps_wrap = 0;
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us) {
+    if (pps == true) {
+        *cnt_us = (counter_us_raw_27bits_pps_wrap << 27) | *cnt_us;
+    } else {
+        *cnt_us = (counter_us_raw_27bits_inst_wrap << 27) | *cnt_us;
+    }
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_timestamp_counter(bool pps, uint32_t * cnt_us) {
     int x;
     uint8_t buff[4];
+    uint32_t counter_us_32bits;
+    uint32_t counter_us_raw_27bits_now;
+    uint32_t counter_us_raw_27bits_prev;
+    uint8_t  counter_us_raw_27bits_wrap;
 
     /* Get the 32MHz timestamp counter - 4 bytes */
     /* step of 31.25 ns */
@@ -743,12 +766,39 @@ int sx1302_timestamp_counter(bool pps, uint32_t * cnt_us) {
         return LGW_HAL_ERROR;
     }
 
-    *cnt_us  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    *cnt_us |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    *cnt_us |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    *cnt_us |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+    counter_us_raw_27bits_now  = (uint32_t)((buff[0] << 24) & 0xFF000000);
+    counter_us_raw_27bits_now |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
+    counter_us_raw_27bits_now |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
+    counter_us_raw_27bits_now |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+    counter_us_raw_27bits_now /= 32; /* scale to 1MHz */
 
-    *cnt_us /= 32; /* scale to 1MHz */
+    /* Get the previous value of the counter we want to get */
+    counter_us_raw_27bits_prev = ((pps == true) ? counter_us_raw_27bits_pps_prev : counter_us_raw_27bits_inst_prev);
+
+    /* Get the current wrap status */
+    counter_us_raw_27bits_wrap = ((pps == true) ? counter_us_raw_27bits_pps_wrap : counter_us_raw_27bits_inst_wrap);
+
+    /* Check if counter has wrapped */
+    if (counter_us_raw_27bits_now < counter_us_raw_27bits_prev) {
+        counter_us_raw_27bits_wrap += 1;
+        counter_us_raw_27bits_wrap = counter_us_raw_27bits_wrap % 32;
+    }
+
+    /* Store counter value and wrap status for next time */
+    if (pps == true) {
+        counter_us_raw_27bits_pps_prev = counter_us_raw_27bits_now;
+        counter_us_raw_27bits_pps_wrap = counter_us_raw_27bits_wrap;
+    } else {
+        counter_us_raw_27bits_inst_prev = counter_us_raw_27bits_now;
+        counter_us_raw_27bits_inst_wrap = counter_us_raw_27bits_wrap;
+    }
+
+    /* Convert 27-bits counter to 32-bits counter */
+    counter_us_32bits = (counter_us_raw_27bits_wrap << 27) | counter_us_raw_27bits_now;
+
+    printf("%u,%u,%u\n", counter_us_raw_27bits_now, counter_us_32bits, counter_us_raw_27bits_wrap);
+
+    *cnt_us = counter_us_32bits;
 
     return LGW_HAL_SUCCESS;
 }

@@ -900,6 +900,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int32_t val;
     uint16_t last_addr_read;
     uint16_t last_addr_write;
+    uint32_t dummy;
 
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
@@ -926,6 +927,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     if( sz == 0 )
     {
         //printf( "No message in DSP%d FIFO\n", dsp);
+        lgw_get_instcnt(&dummy); /* Maintain 27bits to 32bits internal counter conversion */
         return 0;
     }
 
@@ -962,6 +964,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     last_addr_write = sx1302_rx_buffer_write_ptr_addr();
     last_addr_read = sx1302_rx_buffer_read_ptr_addr();
     printf("RX_BUFFER: write_ptr 0x%04X, read_ptr 0x%04X\n", last_addr_write, last_addr_read);
+
+    /* Update counter wrap status for packet timestamp conversion (27bits -> 32bits) */
+    lgw_get_instcnt(&dummy);
 
     /* Parse raw data and fill messages array */
     buffer_index = 0;
@@ -1300,13 +1305,19 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             timestamp_correction = 0;
         }
 
+        /* Packet timestamp (32MHz ) */
         p->count_us  = (uint32_t)((SX1302_PKT_TIMESTAMP_7_0(rx_fifo, buffer_index + p->size) <<  0) & 0x000000FF);
         p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_15_8(rx_fifo, buffer_index + p->size) <<  8) & 0x0000FF00);
         p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(rx_fifo, buffer_index + p->size) << 16) & 0x00FF0000);
         p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(rx_fifo, buffer_index + p->size) << 24) & 0xFF000000);
+        /* Scale packet timestamp to 1 MHz (microseconds) */
         p->count_us /= 32;
+        /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
+        sx1302_timestamp_expand(false, &(p->count_us));
+        /* Apply timestamp correction */
         p->count_us -= timestamp_correction;
 
+        /* Packet CRC status */
         p->crc = (uint16_t)(SX1302_PKT_CRC_PAYLOAD_7_0(rx_fifo, buffer_index + p->size)) + ((uint16_t)(SX1302_PKT_CRC_PAYLOAD_15_8(rx_fifo, buffer_index + p->size)) << 8);
 
         /* move buffer index toward next message */
@@ -1329,6 +1340,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint16_t reg;
     uint16_t mem_addr;
     uint32_t count_us;
+    uint32_t count_us_now;
     uint8_t power;
     uint8_t pow_index;
     uint8_t mod_bw;
@@ -1390,6 +1402,13 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
         }
     } else {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Check if timestamp is valid */
+    sx1302_timestamp_counter(false, &count_us_now);
+    if ((pkt_data.count_us - count_us_now) > 0x07FFFFFF) {
+        DEBUG_MSG("ERROR: INVALID PACKET TIMESTAMP (MUST NOT BE MORE THAN 134s FROM CURRENT TIME)\n");
         return LGW_HAL_ERROR;
     }
 
