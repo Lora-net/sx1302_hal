@@ -796,7 +796,7 @@ int sx1302_timestamp_counter(bool pps, uint32_t * cnt_us) {
     /* Convert 27-bits counter to 32-bits counter */
     counter_us_32bits = (counter_us_raw_27bits_wrap << 27) | counter_us_raw_27bits_now;
 
-    printf("%u,%u,%u\n", counter_us_raw_27bits_now, counter_us_32bits, counter_us_raw_27bits_wrap);
+    //printf("%u,%u,%u\n", counter_us_raw_27bits_now, counter_us_32bits, counter_us_raw_27bits_wrap);
 
     *cnt_us = counter_us_32bits;
 
