@@ -42,11 +42,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #if DEBUG_REG == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_SPI_ERROR;}
+    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
 #else
     #define DEBUG_MSG(str)
     #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
+    #define CHECK_NULL(a)                if(a==NULL){return LGW_REG_ERROR;}
 #endif
 
 #define IF_HZ_TO_REG(f)     ((f << 5) / 15625)
@@ -68,6 +68,41 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+extern int32_t lgw_sf_getval(int x);
+extern int32_t lgw_bw_getval(int x);
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int calculate_freq_to_time_drift(uint32_t freq_hz, uint8_t bw, uint16_t * mant, uint8_t * exp) {
+    uint64_t mantissa_u64;
+    uint8_t exponent = 0;
+    int32_t bw_hz;
+
+    /* check input variables */
+    CHECK_NULL(mant);
+    CHECK_NULL(exp);
+
+    bw_hz = lgw_bw_getval(bw);
+    if (bw_hz < 0) {
+        printf("ERROR: Unsupported bandwidth for frequency to time drift calculation\n");
+        return LGW_REG_ERROR;
+    }
+
+    mantissa_u64 = (uint64_t)bw_hz * (2 << (20-1)) / freq_hz;
+    while (mantissa_u64 < 2048) {
+        exponent += 1;
+        mantissa_u64 <<= 1;
+    }
+
+    *mant = (uint16_t)mantissa_u64;
+    *exp = exponent;
+
+    return LGW_REG_SUCCESS;
+}
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -507,7 +542,10 @@ int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_modem_configure(void) {
+int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
+    uint16_t mantissa = 0;
+    uint8_t exponent = 0;
+
     /* TODO: test if channel is enabled */
 
     lgw_reg_w(SX1302_REG_RX_TOP_DC_NOTCH_CFG1_ENABLE, 0x00);
@@ -553,8 +591,16 @@ int sx1302_lora_modem_configure(void) {
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_A_5_GAIN_I_EN_SF12, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF11, 1);
     lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_5_GAIN_I_EN_SF12, 1);
-    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4); /* TODO: depends on BW & center freq */
-    /* TODO: MANT */
+
+    /* Freq2TimeDrift computation */
+    if (calculate_freq_to_time_drift(radio_freq_hz, BW_125KHZ, &mantissa, &exponent) != 0) {
+        printf("ERROR: failed to calculate frequency to time drift for LoRa modem\n");
+        return LGW_REG_ERROR;
+    }
+    printf("Freq2TimeDrift: Mantissa = %u (0x%02X, 0x%02X), Exponent = %d (0x%02X)\n", mantissa, (mantissa >> 8) & 0x00FF, (mantissa) & 0x00FF, exponent, exponent);
+    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME0_FREQ_TO_TIME_DRIFT_MANT, (mantissa >> 8) & 0x00FF);
+    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME1_FREQ_TO_TIME_DRIFT_MANT, (mantissa) & 0x00FF);
+    lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, exponent);
 
     /* Time drift compensation */
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB, 1);
@@ -565,7 +611,10 @@ int sx1302_lora_modem_configure(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) {
+int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz) {
+    uint16_t mantissa = 0;
+    uint8_t exponent = 0;
+
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_ENABLE, 0x00);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC1_FORCE_DEFAULT_FIR, 0x01);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DAGC_CFG_GAIN_DROP_COMP, 0x01);
@@ -622,25 +671,18 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) {
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB
     //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB
 
-    /* TODO: MANT */
-    switch (cfg->bandwidth) {
-        case BW_125KHZ:
-            lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 4);
-            break;
-        case BW_250KHZ:
-            lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 5);
-            break;
-        case BW_500KHZ:
-            lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, 6);
-            break;
-        default:
-            printf("ERROR: unsupported bandwidth %u for LoRa Service modem\n", cfg->bandwidth);
-            break;
+    /* Freq2TimeDrift computation */
+    if (calculate_freq_to_time_drift(radio_freq_hz, cfg->bandwidth, &mantissa, &exponent) != 0) {
+        printf("ERROR: failed to calculate frequency to time drift for LoRa service modem\n");
+        return LGW_REG_ERROR;
     }
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME0_FREQ_TO_TIME_DRIFT_MANT, (mantissa >> 8) & 0x00FF);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME1_FREQ_TO_TIME_DRIFT_MANT, (mantissa) & 0x00FF);
+    lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, exponent);
+    printf("Freq2TimeDrift: Mantissa = %d (0x%02X, 0x%02X), Exponent = %d (0x%02X)\n", mantissa, (mantissa >> 8) & 0x00FF, (mantissa) & 0x00FF, exponent, exponent);
 
     /* Time drift compensation */
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB, 1);
-
 
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_DFE_AGC2_DAGC_IN_COMP, 1);
 

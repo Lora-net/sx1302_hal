@@ -763,12 +763,12 @@ int lgw_start(void) {
 
     /* configure LoRa 'multi' demodulators */
     sx1302_lora_correlator_configure();
-    sx1302_lora_modem_configure();
+    sx1302_lora_modem_configure(CONTEXT_RF_CHAIN[0].freq_hz); /* TODO: freq_hz used to confiogure freq to time drift, based on RF0 center freq only */
 
     /* configure LoRa 'stand-alone' modem */
     if (CONTEXT_IF_CHAIN[8].enable == true) {
         sx1302_lora_service_correlator_configure(&(CONTEXT_LORA_SERVICE));
-        sx1302_lora_service_modem_configure(&(CONTEXT_LORA_SERVICE));
+        sx1302_lora_service_modem_configure(&(CONTEXT_LORA_SERVICE), CONTEXT_RF_CHAIN[0].freq_hz);  /* TODO: freq_hz used to confiogure freq to time drift, based on RF0 center freq only */
     }
 
     /* configure FSK modem */

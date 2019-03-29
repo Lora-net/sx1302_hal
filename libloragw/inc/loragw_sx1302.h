@@ -133,8 +133,8 @@ int sx1302_lora_correlator_configure();
 int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg);
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 
-int sx1302_lora_modem_configure();
-int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg) ;
+int sx1302_lora_modem_configure(uint32_t radio_freq_hz);
+int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz);
 int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg);
 
 int sx1302_modem_enable();
