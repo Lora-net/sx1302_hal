@@ -22,7 +22,7 @@ LIBS := -lloragw -ltinymt32 -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram test_loragw_spi_sx1250 test_loragw_counter
+all: libloragw.a test_loragw_spi test_loragw_i2c test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal test_loragw_capture_ram test_loragw_spi_sx1250 test_loragw_counter
 
 clean:
 	rm -f libloragw.a
@@ -61,6 +61,7 @@ inc/config.h: ../VERSION library.cfg
 	# Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
+	@echo "	#define DEBUG_I2C	$(DEBUG_SPI)" >> $@
 	@echo "	#define DEBUG_REG	$(DEBUG_REG)" >> $@
 	@echo "	#define DEBUG_HAL	$(DEBUG_HAL)" >> $@
 	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
@@ -85,12 +86,15 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_sx1302.o $(OBJDIR)/loragw_cal.o $(OBJDIR)/loragw_debug.o $(OBJDIR)/loragw_hal.o
+libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_i2c.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_sx1302.o $(OBJDIR)/loragw_cal.o $(OBJDIR)/loragw_debug.o $(OBJDIR)/loragw_hal.o
 	$(AR) rcs $@ $^
 
 ### test programs
 
 test_loragw_spi: tst/test_loragw_spi.c libloragw.a
+	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
+
+test_loragw_i2c: tst/test_loragw_i2c.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
 test_loragw_reg: tst/test_loragw_reg.c libloragw.a
