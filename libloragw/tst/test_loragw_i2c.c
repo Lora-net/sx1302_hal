@@ -199,7 +199,7 @@ int stts751_get_temperature( int i2c_fd, float * temperature)
     h = (int8_t)high_byte;
     *temperature =  ((h << 8) | low_byte) / 256.0;
 
-    printf("Temperature: %.2f C (h:0x%02X l:0x%02X)\n", *temperature, high_byte, low_byte);
+    printf("Temperature: %f C (h:0x%02X l:0x%02X)\n", *temperature, high_byte, low_byte);
 
     return LGW_I2C_SUCCESS;
 }
