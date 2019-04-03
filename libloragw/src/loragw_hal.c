@@ -36,9 +36,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_aux.h"
 #include "loragw_spi.h"
+#include "loragw_i2c.h"
 #include "loragw_sx1250.h"
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
+#include "loragw_stts751.h"
 #include "loragw_cal.h"
 #include "loragw_debug.h"
 
@@ -225,6 +227,9 @@ static uint8_t rx_fifo[4096];
 
 /* File handle to write debug logs */
 static FILE * log_file = NULL;
+
+/* File descriptor to I2C linux device */
+int lgw_i2c_target = -1;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -657,7 +662,7 @@ int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i;
+    int i, err;
     uint32_t val, val2;
     int reg_stat;
 
@@ -852,6 +857,19 @@ int lgw_start(void) {
     dbg_init_gpio();
 #endif
 
+    /* Open I2C */
+    err = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR, &lgw_i2c_target);
+    if ((err != 0) || (lgw_i2c_target <= 0)) {
+        printf("ERROR: failed to open I2C device %s (err=%i)\n", I2C_DEVICE, err);
+        return LGW_HAL_ERROR;
+    }
+
+    /* Configure the corecell temperature sensor */
+    if (lgw_stts751_configure() != LGW_I2C_SUCCESS) {
+        printf("ERROR: failed to configure temperature sensor\n");
+        return LGW_HAL_ERROR;
+    }
+
     /* set hal state */
     CONTEXT_STARTED = true;
 
@@ -861,7 +879,7 @@ int lgw_start(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_stop(void) {
-    int i;
+    int i, err;
 
     DEBUG_MSG("INFO: aborting TX\n");
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
@@ -876,6 +894,13 @@ int lgw_stop(void) {
 
     DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
+
+    DEBUG_MSG("INFO: Closing I2C\n");
+    err = i2c_linuxdev_close(lgw_i2c_target);
+    if (err != 0) {
+        printf("ERROR: failed to close I2C device (err=%i)\n", err);
+        /* TODO: return error or not ? */
+    }
 
     CONTEXT_STARTED = false;
     return LGW_HAL_SUCCESS;
@@ -901,6 +926,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t last_addr_read;
     uint16_t last_addr_write;
     uint32_t dummy;
+    float current_temperature;
 
     struct lgw_pkt_rx_s *p;
     int ifmod; /* type of if_chain/modem a packet was received by */
@@ -967,6 +993,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* Update counter wrap status for packet timestamp conversion (27bits -> 32bits) */
     lgw_get_instcnt(&dummy);
+
+    /* Get the current temperature for further RSSI compensation : TODO */
+    if (lgw_stts751_get_temperature(&current_temperature) != LGW_I2C_SUCCESS) {
+        printf("ERROR: failed to get current temperature\n");
+        return LGW_HAL_ERROR;
+    }
+    printf("INFO: current temperature is %f C\n", current_temperature);
 
     /* Parse raw data and fill messages array */
     buffer_index = 0;

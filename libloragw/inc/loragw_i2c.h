@@ -29,8 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_I2C_SUCCESS     0
 #define LGW_I2C_ERROR       -1
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
+#define I2C_DEVICE          "/dev/i2c-1"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
