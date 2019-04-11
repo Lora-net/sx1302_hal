@@ -1373,7 +1373,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint16_t reg;
     uint16_t mem_addr;
     uint32_t count_us;
-    uint32_t count_us_now;
     uint8_t power;
     uint8_t pow_index;
     uint8_t mod_bw;
@@ -1435,13 +1434,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
         }
     } else {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
-        return LGW_HAL_ERROR;
-    }
-
-    /* Check if timestamp is valid */
-    sx1302_timestamp_counter(false, &count_us_now);
-    if ((pkt_data.count_us - count_us_now) > 0x07FFFFFF) {
-        DEBUG_MSG("ERROR: INVALID PACKET TIMESTAMP (MUST NOT BE MORE THAN 134s FROM CURRENT TIME)\n");
         return LGW_HAL_ERROR;
     }
 
