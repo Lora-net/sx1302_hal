@@ -59,7 +59,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
-        quit_sig = 1;;
+        quit_sig = 1;
     } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
         exit_sig = 1;
     }
