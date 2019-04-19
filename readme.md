@@ -117,7 +117,7 @@ Lets say you want to copy between two hosts host_src and host_dest (they can
 be the same). host_src is the host where you would run the scp command,
 irrespective of the direction of the file copy!
 
-* On host_src, run this command as the user that runs scp</br>
+* On host_src, run this command as the user that runs scp<br/>
 `ssh-keygen -t rsa`
 This will prompt for a passphrase. Just press the enter key. It'll then
 generate an identification (private key) and a public key. Do not ever share
@@ -127,14 +127,14 @@ This is by default ~/.ssh/id_rsa.pub
 method.
 * On host_dest, login as the remote user which you plan to use when you run
 scp.
-* Copy the contents of id_rsa.pub to ~/.ssh/authorized_keys</br>
-`cat id_rsa.pub >>~/.ssh/authorized_keys`</br>
+* Copy the contents of id_rsa.pub to ~/.ssh/authorized_keys<br/>
+`cat id_rsa.pub >>~/.ssh/authorized_keys`<br/>
 `chmod 700 ~/.ssh/authorized_keys`
 
-Now that everything is set, the following command can be invoked:</br>
+Now that everything is set, the following command can be invoked:<br/>
 `make install`
 
-In order to also install the packet forwarder JSON configuration files:</br>
+In order to also install the packet forwarder JSON configuration files:<br/>
 `make install_conf`
 
 ### 4.3. Cross-compile from a PC
