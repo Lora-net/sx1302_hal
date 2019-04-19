@@ -119,6 +119,7 @@ irrespective of the direction of the file copy!
 
 * On host_src, run this command as the user that runs scp<br/>
 `ssh-keygen -t rsa`
+
 This will prompt for a passphrase. Just press the enter key. It'll then
 generate an identification (private key) and a public key. Do not ever share
 the private key with anyone! ssh-keygen shows where it saved the public key.
@@ -128,7 +129,8 @@ method.
 * On host_dest, login as the remote user which you plan to use when you run
 scp.
 * Copy the contents of id_rsa.pub to ~/.ssh/authorized_keys<br/>
-`cat id_rsa.pub >>~/.ssh/authorized_keys`<br/>
+`cat id_rsa.pub >>~/.ssh/authorized_keys`
+
 `chmod 700 ~/.ssh/authorized_keys`
 
 Now that everything is set, the following command can be invoked:<br/>
