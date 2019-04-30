@@ -6,11 +6,21 @@ export
 
 ### general build targets
 
-all:
-	$(MAKE) all -e -C libtools
-	$(MAKE) all -e -C libloragw
-	$(MAKE) all -e -C packet_forwarder
-	$(MAKE) all -e -C util_net_downlink
+.PHONY: all clean install install_conf libtools libloragw packet_forwarder util_net_downlink
+
+all: libtools libloragw packet_forwarder util_net_downlink
+
+libtools:
+	$(MAKE) all -e -C $@
+
+libloragw: libtools
+	$(MAKE) all -e -C $@
+
+packet_forwarder: libloragw
+	$(MAKE) all -e -C $@
+
+util_net_downlink: libtools
+	$(MAKE) all -e -C $@
 
 clean:
 	$(MAKE) clean -e -C libtools
