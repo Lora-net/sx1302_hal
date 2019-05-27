@@ -41,7 +41,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 #include "loragw_stts751.h"
-#include "loragw_cal.h"
 #include "loragw_debug.h"
 
 /* -------------------------------------------------------------------------- */
@@ -76,7 +75,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define FW_VERSION_CAL      1 /* Expected version of calibration firmware */
 #define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
@@ -117,7 +115,6 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "cal_fw.var" /* external definition of the variable */
 #include "src/text_agc_sx1250_07_Fev_2019.var"
 #include "src/text_agc_sx1257_19_Nov_1.var"
-#include "src/text_cal_sx1257_16_Nov_1.var"
 #include "src/text_arb_sx1302_13_Nov_3.var"
 
 typedef struct lgw_context_s {
@@ -663,7 +660,6 @@ int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
 
 int lgw_start(void) {
     int i, err;
-    uint32_t val, val2;
     int reg_stat;
 
     if (CONTEXT_STARTED == true) {
@@ -676,49 +672,12 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* Radio calibration - START */
-    /* -- Reset radios */
-    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        if (CONTEXT_RF_CHAIN[i].enable == true) {
-            sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
-            sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].type);
-        }
+    /* Calibrate radios */
+    err = sx1302_radio_calibrate(&CONTEXT_RF_CHAIN[0], CONTEXT_BOARD.clksrc, &CONTEXT_TX_GAIN_LUT[0]);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: radio calibration failed\n");
+        return LGW_HAL_ERROR;
     }
-    /* -- Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(CONTEXT_BOARD.clksrc);
-
-    /* -- Ensure PA/LNA are disabled */
-    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 1);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_PA_EN, 0);
-    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_LNA_EN, 0);
-    /* -- Start calibration */
-    if ((CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type == LGW_RADIO_TYPE_SX1257) ||
-        (CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type == LGW_RADIO_TYPE_SX1255)) {
-        printf("Loading CAL fw for sx125x\n");
-        if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
-            printf("ERROR: Failed to load calibration fw\n");
-            return LGW_HAL_ERROR;
-        }
-        if (sx1302_cal_start(FW_VERSION_CAL, CONTEXT_RF_CHAIN, &CONTEXT_TX_GAIN_LUT[0]) != LGW_HAL_SUCCESS) {
-            printf("ERROR: radio calibration failed\n");
-            sx1302_radio_reset(0, CONTEXT_RF_CHAIN[0].type);
-            sx1302_radio_reset(1, CONTEXT_RF_CHAIN[1].type);
-            return LGW_HAL_ERROR;
-        }
-    } else {
-        printf("Calibrating sx1250 radios\n");
-        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-            if (CONTEXT_RF_CHAIN[i].enable == true) {
-                if (sx1250_calibrate(i, CONTEXT_RF_CHAIN[i].freq_hz)) {
-                    printf("ERROR: radio calibration failed\n");
-                    return LGW_HAL_ERROR;
-                }
-            }
-        }
-    }
-    /* -- Release control over FE */
-    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
-    /* Radio calibration - END */
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
@@ -746,6 +705,8 @@ int lgw_start(void) {
     /* Release host control on radio (will be controlled by AGC) */
     sx1302_radio_host_ctrl(false);
 
+#if 0
+    uint32_t val, val2;
     /* Check that the SX1302 timestamp counter is running */
     lgw_get_instcnt(&val);
     lgw_get_instcnt(&val2);
@@ -753,12 +714,10 @@ int lgw_start(void) {
         printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
         return -1;
     }
+#endif
 
     /* Configure PA/LNA LUTs */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[2] is high when PA_EN=1 & LNA_EN=0 */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[8] is high when PA_EN=1 & LNA_EN=0 */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[1] is high when PA_EN=0 & LNA_EN=1 */
-    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[7] is high when PA_EN=0 & LNA_EN=1 */
+    sx1302_pa_lna_lut_configure();
 
     /* Configure Radio FE */
     sx1302_radio_fe_configure();

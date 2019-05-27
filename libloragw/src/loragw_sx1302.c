@@ -33,7 +33,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 #include "loragw_sx1302.h"
+#include "loragw_sx1250.h"
 #include "loragw_agc_params.h"
+#include "loragw_cal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -65,6 +67,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ARB_MEM_ADDR            0x2000
 
 #define MCU_FW_SIZE             8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+
+#define FW_VERSION_CAL          1 /* Expected version of calibration firmware */
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+
+#include "src/text_cal_sx1257_16_Nov_1.var"
 
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
@@ -230,7 +239,68 @@ int sx1302_radio_host_ctrl(bool host_ctrl) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_radio_fe_configure() {
+int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_fr_chain, uint8_t clksrc, struct lgw_tx_gain_lut_s * txgain_lut) {
+    int i;
+
+    /* -- Reset radios */
+    for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+        if (context_fr_chain[i].enable == true) {
+            sx1302_radio_reset(i, context_fr_chain[i].type);
+            sx1302_radio_set_mode(i, context_fr_chain[i].type);
+        }
+    }
+    /* -- Select the radio which provides the clock to the sx1302 */
+    sx1302_radio_clock_select(clksrc);
+
+    /* -- Ensure PA/LNA are disabled */
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 1);
+    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_PA_EN, 0);
+    lgw_reg_w(SX1302_REG_AGC_MCU_RF_EN_A_LNA_EN, 0);
+    /* -- Start calibration */
+    if ((context_fr_chain[clksrc].type == LGW_RADIO_TYPE_SX1257) ||
+        (context_fr_chain[clksrc].type == LGW_RADIO_TYPE_SX1255)) {
+        printf("Loading CAL fw for sx125x\n");
+        if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
+            printf("ERROR: Failed to load calibration fw\n");
+            return LGW_REG_ERROR;
+        }
+        if (sx1302_cal_start(FW_VERSION_CAL, context_fr_chain, txgain_lut) != LGW_HAL_SUCCESS) {
+            printf("ERROR: radio calibration failed\n");
+            sx1302_radio_reset(0, context_fr_chain[0].type);
+            sx1302_radio_reset(1, context_fr_chain[1].type);
+            return LGW_REG_ERROR;
+        }
+    } else {
+        printf("Calibrating sx1250 radios\n");
+        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+            if (context_fr_chain[i].enable == true) {
+                if (sx1250_calibrate(i, context_fr_chain[i].freq_hz)) {
+                    printf("ERROR: radio calibration failed\n");
+                    return LGW_REG_ERROR;
+                }
+            }
+        }
+    }
+    /* -- Release control over FE */
+    lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_FORCE_HOST_FE_CTRL, 0);
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_pa_lna_lut_configure(void) {
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[2] is high when PA_EN=1 & LNA_EN=0 */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_PA_LUT, 0x04);     /* Enable PA: RADIO_CTRL[8] is high when PA_EN=1 & LNA_EN=0 */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_A_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[1] is high when PA_EN=0 & LNA_EN=1 */
+    lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_LNA_LUT, 0x02);    /* Enable LNA: RADIO_CTRL[7] is high when PA_EN=0 & LNA_EN=1 */
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_radio_fe_configure(void) {
     lgw_reg_w(SX1302_REG_RADIO_FE_RSSI_BB_FILTER_ALPHA_RADIO_A_RSSI_BB_FILTER_ALPHA, 0x03);
     lgw_reg_w(SX1302_REG_RADIO_FE_RSSI_DEC_FILTER_ALPHA_RADIO_A_RSSI_DEC_FILTER_ALPHA, 0x07);
     lgw_reg_w(SX1302_REG_RADIO_FE_RSSI_BB_FILTER_ALPHA_RADIO_B_RSSI_BB_FILTER_ALPHA, 0x03);
@@ -696,7 +766,7 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t r
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_modem_enable() {
+int sx1302_modem_enable(void) {
     /* Enable LoRa multi-SF modems */
     lgw_reg_w(SX1302_REG_COMMON_GEN_CONCENTRATOR_MODEM_ENABLE, 0x01);
 

@@ -124,12 +124,15 @@ int sx1302_radio_clock_select(uint8_t rf_chain);
 int sx1302_radio_reset(uint8_t rf_chain, lgw_radio_type_t type);
 int sx1302_radio_set_mode(uint8_t rf_chain, lgw_radio_type_t type);
 int sx1302_radio_host_ctrl(bool host_ctrl);
+int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_fr_chain, uint8_t clksrc, struct lgw_tx_gain_lut_s * txgain_lut);
 
-int sx1302_radio_fe_configure();
+int sx1302_pa_lna_lut_configure(void);
+
+int sx1302_radio_fe_configure(void);
 
 int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain);
 
-int sx1302_lora_correlator_configure();
+int sx1302_lora_correlator_configure(void);
 int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg);
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 
@@ -137,7 +140,7 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz);
 int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz);
 int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg);
 
-int sx1302_modem_enable();
+int sx1302_modem_enable(void);
 
 int sx1302_gps_enable(bool enable);
 
