@@ -877,13 +877,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t payload_length;
     uint16_t payload_crc16_calc;
     uint16_t payload_crc16_read;
-    int32_t freq_offset_raw, freq_offset;
+    int32_t freq_offset_raw;
     uint8_t num_ts_metrics = 0;
     uint8_t sanity_check;
     bool rx_buffer_error = false;
     int32_t val;
-    uint16_t last_addr_read;
-    uint16_t last_addr_write;
     uint32_t dummy;
     float current_temperature;
 
@@ -922,8 +920,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 #endif
 
     printf("-----------------\n");
-    printf("lgw_receive()\n");
-    printf("nb_bytes received: %u (%u %u)\n", sz, buff[1], buff[0]);
+    printf("%s: nb_bytes received: %u (%u %u)\n", __FUNCTION__, sz, buff[1], buff[0]);
 
 #if 0 /* FOR TESTING: Wait for FIFO to be full: 91 packets of 22 bytes => 4095 bytes */
       /* Need to have a device sending packets with 22-bytes payload */
@@ -946,9 +943,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("%02X ", rx_fifo[i]);
     }
     printf("\n");
-    last_addr_write = sx1302_rx_buffer_write_ptr_addr();
-    last_addr_read = sx1302_rx_buffer_read_ptr_addr();
-    printf("RX_BUFFER: write_ptr 0x%04X, read_ptr 0x%04X\n", last_addr_write, last_addr_read);
 
     /* Update counter wrap status for packet timestamp conversion (27bits -> 32bits) */
     lgw_get_instcnt(&dummy);
@@ -1073,7 +1067,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             break;
         }
         ifmod = ifmod_config[p->if_chain];
-        DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
+        DEBUG_PRINTF("[%d 0x%02X]\n", p->if_chain, ifmod);
 
         p->size = payload_length;
         p->rf_chain = (uint8_t)CONTEXT_IF_CHAIN[p->if_chain].rf_chain;
@@ -1081,7 +1075,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->freq_hz = (uint32_t)((int32_t)CONTEXT_RF_CHAIN[p->rf_chain].freq_hz + CONTEXT_IF_CHAIN[p->if_chain].freq_hz);
         p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_fifo, buffer_index + p->size) + CONTEXT_RF_CHAIN[p->rf_chain].rssi_offset;
         p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_fifo, buffer_index + p->size) + CONTEXT_RF_CHAIN[p->rf_chain].rssi_offset;
-        /* TODO: RSSI correction */
 
         /* Get CRC status */
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
@@ -1189,23 +1182,20 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             /* Get frequency offset in Hz depending on bandwidth */
             switch (p->bandwidth) {
                 case BW_125KHZ:
-                    freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_125KHZ );
+                    p->freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_125KHZ );
                     break;
                 case BW_250KHZ:
-                    freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_250KHZ );
+                    p->freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_250KHZ );
                     break;
                 case BW_500KHZ:
-                    freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_500KHZ );
+                    p->freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_500KHZ );
                     break;
                 default:
-                    freq_offset = 0;
+                    p->freq_offset = 0;
                     printf("Invalid frequency offset\n");
                     break;
             }
-            printf("  f_offset: %d Hz\n", freq_offset);
-            p->freq_offset = freq_offset;
 
-            /* determine if 'PPM mode' is on, needed for timestamp correction */
             if (SET_PPM_ON(p->bandwidth, p->datarate)) {
                 ppm = 1;
             } else {
