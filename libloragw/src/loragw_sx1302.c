@@ -239,7 +239,7 @@ int sx1302_radio_host_ctrl(bool host_ctrl) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_fr_chain, uint8_t clksrc, struct lgw_tx_gain_lut_s * txgain_lut) {
+int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_rf_chain, uint8_t clksrc, struct lgw_tx_gain_lut_s * txgain_lut) {
     int i;
 
     /* -- Reset radios */

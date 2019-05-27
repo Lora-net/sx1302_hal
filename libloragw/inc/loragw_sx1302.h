@@ -120,28 +120,123 @@ typedef struct {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
+/**
+@brief Select the clock source radio
+@param rf_chain The RF chain index from which to get the clock source
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_radio_clock_select(uint8_t rf_chain);
-int sx1302_radio_reset(uint8_t rf_chain, lgw_radio_type_t type);
-int sx1302_radio_set_mode(uint8_t rf_chain, lgw_radio_type_t type);
-int sx1302_radio_host_ctrl(bool host_ctrl);
-int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_fr_chain, uint8_t clksrc, struct lgw_tx_gain_lut_s * txgain_lut);
 
+/**
+@brief Apply the radio reset sequence to the required RF chain index
+@param rf_chain The RF chain index of the radio to be reset
+@param type     The type of radio to be reset
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
+int sx1302_radio_reset(uint8_t rf_chain, lgw_radio_type_t type);
+
+/**
+@brief Configure the radio type for the given RF chain
+@param rf_chain The RF chain index to be configured
+@param type     The type of radio to be set for the given RF chain
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
+int sx1302_radio_set_mode(uint8_t rf_chain, lgw_radio_type_t type);
+
+/**
+@brief Give/Release control over the radios to/from the Host
+@param host_ctrl    Set to true to give control to the host, false otherwise
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
+int sx1302_radio_host_ctrl(bool host_ctrl);
+
+/**
+@brief Perform the radio calibration sequence and fill the TX gain LUT with calibration offsets
+@param context_rf_chain The RF chains array from which to get RF chains current configuration
+@param clksrc           The RF chain index which provides the clock source
+@param txgain_lut       A pointer to the TX gain LUT to be filled
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
+int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_rf_chain, uint8_t clksrc, struct lgw_tx_gain_lut_s * txgain_lut);
+
+/**
+@brief Configure the PA and LNA LUTs
+@param N/A
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_pa_lna_lut_configure(void);
 
+/**
+@brief Configure the Radio Front-End stage of the SX1302
+@param N/A
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_radio_fe_configure(void);
 
+/**
+@brief Configure the channelizer stage of the SX1302
+@param if_cfg   A pointer to the channels configuration
+@param fix_gain Set to true to force the channelizer to a fixed gain, false to let the AGC controlling it
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain);
 
+/**
+@brief Configure the correlator stage of the SX1302 LoRa multi-SF modems
+@param N/A
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_lora_correlator_configure(void);
+
+/**
+@brief Configure the correlator stage of the SX1302 LoRa single-SF modem
+@param cfg  A pointer to the channel configuration
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg);
+
+/**
+@brief Configure the syncword to be used by LoRa modems (public:0x34, private:0x12)
+@param public           Set to true to use the "public" syncword, false to use the private one
+@param lora_service_sf  The spreading factor configured for the single-SF LoRa modem
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 
+/**
+@brief Configure the LoRa multi-SF modems
+@param radio_freq_hz    The center frequency of the RF chain (0 or 1)
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_lora_modem_configure(uint32_t radio_freq_hz);
+
+/**
+@brief Configure the LoRa single-SF modem
+@param cfg              A pointer to the channel configuration
+@param radio_freq_hz    The center frequency of the RF chain (0 or 1)
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz);
+
+/**
+@brief Configure the FSK modem
+@param cfg  A pointer to the channel configuration
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg);
 
+/**
+@brief Enable the modems
+@param N/A
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_modem_enable(void);
 
+/**
+@brief Enable/Disable the GPS to allow PPS trigger and counter sampling
+@param enbale   Set to true to enable, false otherwise
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
 int sx1302_gps_enable(bool enable);
 
 /**
@@ -156,32 +251,158 @@ int sx1302_gps_enable(bool enable);
 */
 uint32_t sx1302_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_agc_load_firmware(const uint8_t *firmware);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_agc_status(uint8_t* status);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_agc_wait_status(uint8_t status);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_agc_mailbox_read(uint8_t mailbox, uint8_t* value);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_arb_load_firmware(const uint8_t *firmware);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_arb_status(uint8_t* status);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_arb_wait_status(uint8_t status);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_arb_debug_read(uint8_t reg_id, uint8_t* value);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 int sx1302_arb_start(uint8_t version);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 uint8_t sx1302_arb_get_debug_stats_detect(uint8_t channel);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 void sx1302_arb_print_debug_stats(bool full);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 void sx1302_rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 uint16_t sx1302_rx_buffer_read_ptr_addr(void);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
 uint16_t sx1302_rx_buffer_write_ptr_addr(void);
 
 #endif
