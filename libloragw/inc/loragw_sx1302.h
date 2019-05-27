@@ -144,6 +144,18 @@ int sx1302_modem_enable(void);
 
 int sx1302_gps_enable(bool enable);
 
+/**
+@brief Get the timestamp correction to applied to the packet timestamp
+@param ifmod            modem type
+@param bandwidth        modulation bandwidth
+@param datarate         modulation datarate
+@param coderate         modulation coding rate
+@param crc_en           indicates if CRC is enabled or disabled
+@param payload_length   payload length
+@return The correction to be applied to the packet timestamp, in microseconds
+*/
+uint32_t sx1302_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length);
+
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
 int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us);

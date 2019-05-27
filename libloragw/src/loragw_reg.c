@@ -3363,7 +3363,12 @@ Fine sync enable for SF5
 
 RX_TOP_RX_CFG0_DFT_PEAK_EN:
 Half DFT mode to improve tracking & demod when drift is present.
-around peak to improve tracking and demodulation performances."
+enum:
+    - DISABLED = 0 "No Half-DFT processing"
+    - FULL     = 1 "Use Half-DFT processing for both Tracking and demodulation"
+    - TRACK    = 2 "Use half-DFT processing for tracking only (good at sensitivity level)"
+    - AUTO     = 3 "Switch from TRACK to FULL when SNR is high enough"
+description: around peak to improve tracking and demodulation performances.
 
 RX_TOP_RX_CFG0_CHIRP_INVERT:
 Invert chirp direction in receive
@@ -4507,7 +4512,13 @@ High for long gap post preamble
 
 RX_TOP_LORA_SERVICE_FSK_RX_CFG0_DFT_PEAK_EN:
 Half DFT mode to improve tracking & demod when drift is present.
-around peak to improve tracking and demodulation performances."
+Half DFT mode to improve tracking & demod when drift is present.
+enum:
+    - DISABLED = 0 "No Half-DFT processing"
+    - FULL     = 1 "Use Half-DFT processing for both Tracking and demodulation"
+    - TRACK    = 2 "Use half-DFT processing for tracking only (good at sensitivity level)"
+    - AUTO     = 3 "Switch from TRACK to FULL when SNR is high enough"
+description: around peak to improve tracking and demodulation performances.
 
 RX_TOP_LORA_SERVICE_FSK_RX_CFG0_CHIRP_INVERT:
 Invert chirp direction in receive
