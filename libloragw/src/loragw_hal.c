@@ -1267,7 +1267,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     uint32_t freq_dev;
     uint32_t fsk_br_reg;
     uint64_t fsk_sync_word_reg;
-    uint16_t tx_start_delay;
     uint16_t reg;
     uint16_t mem_addr;
     uint32_t count_us;
@@ -1556,9 +1555,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* Set TX start delay */
-    tx_start_delay = lgw_get_tx_start_delay(CONTEXT_RF_CHAIN[pkt_data.rf_chain].type, pkt_data.modulation, pkt_data.bandwidth);
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(pkt_data.rf_chain), (uint8_t)(tx_start_delay >> 8));
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_LSB_TX_START_DELAY(pkt_data.rf_chain), (uint8_t)(tx_start_delay >> 0));
+    sx1302_tx_set_start_delay(pkt_data.rf_chain, CONTEXT_RF_CHAIN[pkt_data.rf_chain].type, pkt_data.modulation, pkt_data.bandwidth);
 
     /* Write payload in transmit buffer */
     lgw_reg_w(SX1302_REG_TX_TOP_TX_CTRL_WRITE_BUFFER(pkt_data.rf_chain), 0x01);

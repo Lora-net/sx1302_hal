@@ -1781,4 +1781,72 @@ uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size) {
     return (uint16_t)crc;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth) {
+    uint16_t tx_start_delay = TX_START_DELAY_DEFAULT * 32;
+    uint16_t radio_bw_delay = 0;
+    uint16_t filter_delay = 0;
+    uint16_t modem_delay = 0;
+    int32_t bw_hz = lgw_bw_getval(bandwidth);
+    int32_t val;
+    uint8_t chirp_low_pass = 0;
+
+    /* Adjust with radio type and bandwidth */
+    switch (radio_type) {
+        case LGW_RADIO_TYPE_SX1250:
+            if (bandwidth == BW_125KHZ) {
+                radio_bw_delay = 19;
+            } else if (bandwidth == BW_250KHZ) {
+                radio_bw_delay = 24;
+            } else if (bandwidth == BW_500KHZ) {
+                radio_bw_delay = 21;
+            } else {
+                DEBUG_MSG("ERROR: bandwidth not supported\n");
+                return LGW_REG_ERROR;
+            }
+            break;
+        case LGW_RADIO_TYPE_SX1255:
+        case LGW_RADIO_TYPE_SX1257:
+            radio_bw_delay = 3*32 + 4;
+            if (bandwidth == BW_125KHZ) {
+                radio_bw_delay += 0;
+            } else if (bandwidth == BW_250KHZ) {
+                radio_bw_delay += 6;
+            } else if (bandwidth == BW_500KHZ) {
+                radio_bw_delay += 0;
+            } else {
+                DEBUG_MSG("ERROR: bandwidth not supported\n");
+                return LGW_REG_ERROR;
+            }
+            break;
+        default:
+            DEBUG_MSG("ERROR: radio type not supported\n");
+            return LGW_REG_ERROR;
+    }
+
+    /* Adjust with modulation */
+    if (modulation == MOD_LORA) {
+        lgw_reg_r(SX1302_REG_TX_TOP_TX_CFG0_0_CHIRP_LOWPASS(0), &val);
+        chirp_low_pass = (uint8_t)val;
+        filter_delay = ((1 << chirp_low_pass) - 1) * 1e6 / bw_hz;
+        modem_delay = 8 * (32e6 / (32 * bw_hz)); /* if bw=125k then modem freq=4MHz */
+    } else {
+        /* TODO */
+        filter_delay = 0;
+        modem_delay = 0;
+    }
+
+    /* Compute total delay */
+    tx_start_delay -= (radio_bw_delay + filter_delay + modem_delay);
+
+    printf("INFO: tx_start_delay=%u (%u, radio_bw_delay=%u, filter_delay=%u, modem_delay=%u)\n", (uint16_t)tx_start_delay, TX_START_DELAY_DEFAULT*32, radio_bw_delay, filter_delay, modem_delay);
+
+    /* Configure the SX1302 with the calculated delay */
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 8));
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_LSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 0));
+
+    return LGW_REG_SUCCESS;
+}
+
 /* --- EOF ------------------------------------------------------------------ */

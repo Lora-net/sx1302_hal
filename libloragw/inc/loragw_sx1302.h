@@ -405,6 +405,16 @@ uint16_t sx1302_rx_buffer_read_ptr_addr(void);
 */
 uint16_t sx1302_rx_buffer_write_ptr_addr(void);
 
+/**
+@brief Configure the delay to be applied by the SX1302 for TX to start
+@param rf_chain     The RF chain index to be configured
+@param radio_type   The type of radio for this RF chain
+@param modulation   The modulation used for the TX
+@param bandwidth    The bandwidth used for the TX
+@return TODO
+*/
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
