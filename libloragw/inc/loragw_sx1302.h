@@ -259,9 +259,10 @@ uint32_t sx1302_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t datar
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Get the current SX1302 internal counter value
+@param pps      True for getting the counter value at last PPS
+@param cnt_us   Pointer to memory to hold the returned counter value
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
 

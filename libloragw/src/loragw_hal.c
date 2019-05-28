@@ -705,17 +705,6 @@ int lgw_start(void) {
     /* Release host control on radio (will be controlled by AGC) */
     sx1302_radio_host_ctrl(false);
 
-#if 0
-    uint32_t val, val2;
-    /* Check that the SX1302 timestamp counter is running */
-    lgw_get_instcnt(&val);
-    lgw_get_instcnt(&val2);
-    if (val == val2) {
-        printf("ERROR: SX1302 timestamp counter is not running (val:%u)\n", (uint32_t)val);
-        return -1;
-    }
-#endif
-
     /* Configure PA/LNA LUTs */
     sx1302_pa_lna_lut_configure();
 
@@ -908,8 +897,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     sz |= (uint16_t)((buff[1] << 0) & 0x00FF);
     if( sz == 0 )
     {
-        //printf( "No message in DSP%d FIFO\n", dsp);
-        lgw_get_instcnt(&dummy); /* Maintain 27bits to 32bits internal counter conversion */
+        sx1302_timestamp_counter(false, &dummy); /* Maintain 27bits to 32bits internal counter conversion */
         return 0;
     }
 
@@ -920,13 +908,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     printf("-----------------\n");
     printf("%s: nb_bytes received: %u (%u %u)\n", __FUNCTION__, sz, buff[1], buff[0]);
-
-#if 0 /* FOR TESTING: Wait for FIFO to be full: 91 packets of 22 bytes => 4095 bytes */
-      /* Need to have a device sending packets with 22-bytes payload */
-    if (sz < (4095 - (SX1302_PKT_HEAD_METADATA + 22 + SX1302_PKT_TAIL_METADATA - 1))) {
-        return 0;
-    }
-#endif
 
     /* read bytes from fifo */
     memset(rx_fifo, 0, sizeof rx_fifo);
@@ -944,7 +925,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     printf("\n");
 
     /* Update counter wrap status for packet timestamp conversion (27bits -> 32bits) */
-    lgw_get_instcnt(&dummy);
+    sx1302_timestamp_counter(false, &dummy);
 
     /* Get the current temperature for further RSSI compensation : TODO */
     if (lgw_stts751_get_temperature(&current_temperature) != LGW_I2C_SUCCESS) {
@@ -987,10 +968,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 fprintf(log_file, "\nWARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum, checksum_calc);
                 dbg_log_buffer_to_file(log_file, rx_fifo, sz);
             }
-#if 0
-            /* toggle GPIO for logic analyzer capture */
-            dbg_toggle_gpio();
-#endif
 #if 1
             /* direct-memory access of the whole rx_buffer (assert) */
             sx1302_rx_buffer_dump(log_file, 0, 4095);
