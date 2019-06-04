@@ -47,6 +47,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define SX1302_FSK_MODEM_ID         13
 #endif
 
+/* type of if_chain + modem */
+#define IF_UNDEFINED                0
+#define IF_LORA_STD                 0x10    /* if + standard single-SF LoRa modem */
+#define IF_LORA_MULTI               0x11    /* if + LoRa receiver with multi-SF capability */
+#define IF_FSK_STD                  0x20    /* if + standard FSK modem */
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 
@@ -174,6 +180,13 @@ int sx1302_pa_lna_lut_configure(void);
 int sx1302_radio_fe_configure(void);
 
 /**
+@brief TODO
+@param TODO
+@return TODO
+*/
+uint8_t sx1302_get_ifmod_config(uint8_t if_chain);
+
+/**
 @brief Configure the channelizer stage of the SX1302
 @param if_cfg   A pointer to the channels configuration
 @param fix_gain Set to true to force the channelizer to a fixed gain, false to let the AGC controlling it
@@ -272,6 +285,13 @@ int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
 @return TODO
 */
 int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us);
+
+/**
+@brief Check AGC & ARB MCUs parity error
+@param N/A
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
+*/
+int sx1302_mcu_check(void);
 
 /**
 @brief TODO
@@ -407,12 +427,28 @@ uint16_t sx1302_rx_buffer_read_ptr_addr(void);
 uint16_t sx1302_rx_buffer_write_ptr_addr(void);
 
 /**
+@brief Check if any data to be fetched from the SX1302 RX buffer and fetch it if any.
+@param nb_bytes A pointer to allocated memory to hold the number of bytes fetched
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
+int sx1302_rx_fetch(uint16_t * nb_bytes);
+
+/**
+@brief Parse and return the next packet available in the fetched RX buffer.
+@param context      Gateway configuration context
+@param ifmod_config SX1302 modem type configuration
+@param p            The structure to get the packet parsed
+@return LGW_REG_SUCCESS if a packet could be parsed, LGW_REG_ERROR otherwise
+*/
+int sx1302_rx_next_packet(lgw_context_t * context, struct lgw_pkt_rx_s * p);
+
+/**
 @brief Configure the delay to be applied by the SX1302 for TX to start
 @param rf_chain     The RF chain index to be configured
 @param radio_type   The type of radio for this RF chain
 @param modulation   The modulation used for the TX
 @param bandwidth    The bandwidth used for the TX
-@return TODO
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth);
 

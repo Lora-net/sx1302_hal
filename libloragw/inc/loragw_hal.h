@@ -49,28 +49,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_CHAIN_NB     2                   /* number of RF chains */
 #define LGW_RF_RX_BANDWIDTH {1000000, 1000000}  /* bandwidth of the radios */
 
-/* type of if_chain + modem */
-#define IF_UNDEFINED        0
-#define IF_LORA_STD         0x10    /* if + standard single-SF LoRa modem */
-#define IF_LORA_MULTI       0x11    /* if + LoRa receiver with multi-SF capability */
-#define IF_FSK_STD          0x20    /* if + standard FSK modem */
-
 /* concentrator chipset-specific parameters */
 /* to use array parameters, declare a local const and use 'if_chain' as index */
 #define LGW_IF_CHAIN_NB     10      /* number of IF+modem RX chains */
 #define LGW_REF_BW          125000  /* typical bandwidth of data channel */
 #define LGW_MULTI_NB        8       /* number of LoRa 'multi SF' chains */
-#define LGW_IFMODEM_CONFIG {\
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_MULTI, \
-        IF_LORA_STD, \
-        IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
 
 /* values available for the 'modulation' parameters */
 /* NOTE: arbitrary values */
@@ -299,6 +282,27 @@ struct lgw_conf_timestamp_s {
     uint8_t max_ts_metrics;
     uint8_t nb_symbols;
 };
+
+/**
+@struct lgw_context_s
+@brief Configuration context shared across modules
+*/
+typedef struct lgw_context_s {
+    /* Global context */
+    bool                        is_started;
+    struct lgw_conf_board_s     board_cfg;
+    /* RX context */
+    struct lgw_conf_rxrf_s      rf_chain_cfg[LGW_RF_CHAIN_NB];
+    struct lgw_conf_rxif_s      if_chain_cfg[LGW_IF_CHAIN_NB];
+    struct lgw_conf_rxif_s      lora_service_cfg;                       /* LoRa service channel config parameters */
+    struct lgw_conf_rxif_s      fsk_cfg;                                /* FSK channel config parameters */
+    /* TX context */
+    struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
+    /* Misc */
+    struct lgw_conf_timestamp_s timestamp_cfg;
+    /* Debug */
+    struct lgw_conf_debug_s     debug_cfg;
+} lgw_context_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */

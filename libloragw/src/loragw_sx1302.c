@@ -22,6 +22,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
+#include <math.h>       /* pow, cell */
 #include <inttypes.h>
 #include <time.h>
 #include <assert.h>
@@ -36,6 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx1250.h"
 #include "loragw_agc_params.h"
 #include "loragw_cal.h"
+#include "loragw_debug.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -70,13 +72,47 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define FW_VERSION_CAL          1 /* Expected version of calibration firmware */
 
+#define RSSI_FSK_POLY_0         86 /* polynomiam coefficients to linearize FSK RSSI */
+#define RSSI_FSK_POLY_1         1
+#define RSSI_FSK_POLY_2         0
+
+#define FREQ_OFFSET_LSB_125KHZ  0.11920929f     /* 125000 * 32 / 2^6 / 2^19 */
+#define FREQ_OFFSET_LSB_250KHZ  0.238418579f    /* 250000 * 32 / 2^6 / 2^19 */
+#define FREQ_OFFSET_LSB_500KHZ  0.476837158f    /* 500000 * 32 / 2^6 / 2^19 */
+
+/* sx1302 hardware modem capabilities */
+#define LGW_IFMODEM_CONFIG {\
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_MULTI, \
+        IF_LORA_STD, \
+        IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
+
+/* constant arrays defining hardware capability */
+const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 #include "src/text_cal_sx1257_16_Nov_1.var"
 
+/* Buffer to fetch received packets from sx1302 */
+static uint8_t rx_buffer[4096];
+
+/* Current parsing position & size of rx_buffer */
+static int buffer_index; /* initialized by sx1302_rx_fetch */
+static uint16_t buffer_size;  /* initialized by sx1302_rx_fetch */
+
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
+
+/* Log file */
+extern FILE * log_file;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -317,6 +353,12 @@ int sx1302_radio_fe_configure(void) {
     lgw_reg_w(SX1302_REG_RADIO_FE_CTRL0_RADIO_B_HOST_FILTER_GAIN, 0x0b);
 
     return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint8_t sx1302_get_ifmod_config(uint8_t if_chain) {
+    return ifmod_config[if_chain];
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1036,6 +1078,25 @@ int sx1302_gps_enable(bool enable) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int sx1302_mcu_check(void) {
+    int32_t val;
+
+    lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
+    if (val != 0) {
+        printf("ERROR: Parity error check failed on AGC firmware\n");
+        return LGW_REG_ERROR;
+    }
+    lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
+    if (val != 0) {
+        printf("ERROR: Parity error check failed on ARB firmware\n");
+        return LGW_REG_ERROR;
+    }
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_agc_load_firmware(const uint8_t *firmware) {
     int32_t val;
     uint8_t fw_check[MCU_FW_SIZE];
@@ -1682,7 +1743,7 @@ int sx1302_arb_start(uint8_t version) {
 
     printf("ARB: started\n");
 
-    return LGW_HAL_SUCCESS;
+    return LGW_REG_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1742,6 +1803,373 @@ uint16_t sx1302_rx_buffer_write_ptr_addr(void) {
     addr |= (uint16_t)val;
 
     return addr;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_rx_fetch(uint16_t * nb_bytes) {
+    int i, res;
+    uint8_t buff[2];
+
+    /* Check if there is data in the FIFO */
+    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    buffer_size  = (uint16_t)((buff[0] << 8) & 0xFF00);
+    buffer_size |= (uint16_t)((buff[1] << 0) & 0x00FF);
+
+    /* Fetch bytes from fifo if any */
+    if (buffer_size > 0) {
+        printf("-----------------\n");
+        printf("%s: nb_bytes received: %u (%u %u)\n", __FUNCTION__, buffer_size, buff[1], buff[0]);
+
+        memset(rx_buffer, 0, sizeof rx_buffer);
+        res = lgw_mem_rb(0x4000, rx_buffer, buffer_size, true);
+        if (res != LGW_REG_SUCCESS) {
+            printf("ERROR: Failed to read RX buffer, SPI error\n");
+            return LGW_REG_ERROR;
+        }
+
+        /* print debug info : TODO to be removed */
+        printf("RX_BUFFER: ");
+        for (i = 0; i < buffer_size; i++) {
+            printf("%02X ", rx_buffer[i]);
+        }
+        printf("\n");
+
+    }
+
+    /* Return the number of bytes fetched */
+    *nb_bytes = buffer_size;
+
+    /* Initialize the current buffer index */
+    buffer_index = 0;
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_rx_next_packet(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
+    int i;
+    uint16_t payload_length;
+    uint8_t num_ts_metrics;
+    uint8_t checksum_rcv, checksum_calc = 0;
+    uint16_t checksum_idx;
+    bool rx_buffer_error = false;
+    uint8_t sanity_check;
+    int ifmod; /* type of if_chain/modem a packet was received by */
+    uint32_t crc_en;
+    uint16_t payload_crc16_calc;
+    uint16_t payload_crc16_read;
+    int32_t freq_offset_raw;
+    uint8_t cr;
+    uint32_t timestamp_correction; /* correction to account for processing delay */
+
+    /* Check input params */
+    CHECK_NULL(context);
+    CHECK_NULL(ifmod_config);
+    CHECK_NULL(p);
+
+    /* Is there any data to be parsed ? */
+    if (buffer_index >= buffer_size) {
+        printf("INFO: No more data to be parsed\n");
+        return LGW_REG_ERROR;
+    }
+
+    /* Get pkt sync words */
+    if ((rx_buffer[buffer_index] != SX1302_PKT_SYNCWORD_BYTE_0) || (rx_buffer[buffer_index + 1] != SX1302_PKT_SYNCWORD_BYTE_1)) {
+        printf("INFO: searching syncword...\n");
+        buffer_index += 1;
+        return LGW_REG_ERROR;
+        /* TODO: while loop until syncword found ?? */
+    }
+    printf("INFO: pkt syncword found at index %u\n", buffer_index);
+
+    /* Get payload length */
+    payload_length = SX1302_PKT_PAYLOAD_LENGTH(rx_buffer, buffer_index);
+
+    /* Get fine timestamp metrics */
+    num_ts_metrics = SX1302_PKT_NUM_TS_METRICS(rx_buffer, buffer_index + payload_length);
+    if((buffer_index + SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics)) > buffer_size) {
+        printf("WARNING: aborting truncated message (size=%u)\n", buffer_size);
+        return LGW_REG_ERROR;
+    }
+
+    /* Get the checksum position index in the buffer */
+    checksum_idx = SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics) - 1;
+
+    /* Get the checksum as received in the RX buffer */
+    checksum_rcv = rx_buffer[buffer_index + checksum_idx];
+
+    /* Calculate the checksum from the actual payload bytes received */
+    for (i = 0; i < (int)checksum_idx; i++) {
+        checksum_calc += rx_buffer[buffer_index + i];
+    }
+
+    /* Check if the checksum is correct */
+    if (checksum_rcv != checksum_calc) {
+        printf("WARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum_rcv, checksum_calc);
+        if (log_file != NULL) {
+            fprintf(log_file, "\nWARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum_rcv, checksum_calc);
+            dbg_log_buffer_to_file(log_file, rx_buffer, buffer_size);
+        }
+#if 1
+        /* direct-memory access of the whole rx_buffer (assert) */
+        sx1302_rx_buffer_dump(log_file, 0, 4095);
+#endif
+        return 0; /* drop all packets fetched in case of checksum error */
+    } else {
+        printf("Packet checksum OK (0x%02X)\n", checksum_rcv);
+    }
+
+    printf("-----------------\n");
+    printf("  modem:      %u\n", SX1302_PKT_MODEM_ID(rx_buffer, buffer_index));
+    printf("  chan:       %u\n", SX1302_PKT_CHANNEL(rx_buffer, buffer_index));
+    printf("  size:       %u\n", SX1302_PKT_PAYLOAD_LENGTH(rx_buffer, buffer_index));
+    printf("  crc_en:     %u\n", SX1302_PKT_CRC_EN(rx_buffer, buffer_index));
+    printf("  crc_err:    %u\n", SX1302_PKT_CRC_ERROR(rx_buffer, buffer_index + payload_length));
+    printf("  sync_err:   %u\n", SX1302_PKT_SYNC_ERROR(rx_buffer, buffer_index + payload_length));
+    printf("  hdr_err:    %u\n", SX1302_PKT_HEADER_ERROR(rx_buffer, buffer_index + payload_length));
+    printf("  timing_set: %u\n", SX1302_PKT_TIMING_SET(rx_buffer, buffer_index + payload_length));
+    printf("  codr:       %u\n", SX1302_PKT_CODING_RATE(rx_buffer, buffer_index));
+    printf("  datr:       %u\n", SX1302_PKT_DATARATE(rx_buffer, buffer_index));
+    printf("  num_ts:     %u\n", SX1302_PKT_NUM_TS_METRICS(rx_buffer, buffer_index + payload_length));
+    printf("-----------------\n");
+
+    /* Sanity checks: check the range of few metadata */
+    sanity_check = SX1302_PKT_MODEM_ID(rx_buffer, buffer_index);
+    if (sanity_check > SX1302_FSK_MODEM_ID) {
+        printf("ERROR: modem_id is out of range - %u\n", sanity_check);
+        rx_buffer_error = true;
+    } else {
+        if (sanity_check <= SX1302_LORA_STD_MODEM_ID) { /* LoRa modems */
+            sanity_check = SX1302_PKT_CHANNEL(rx_buffer, buffer_index);
+            if (sanity_check > 9) {
+                printf("ERROR: channel is out of range - %u\n", sanity_check);
+                rx_buffer_error = true;
+            }
+
+            sanity_check = SX1302_PKT_DATARATE(rx_buffer, buffer_index);
+            if ((sanity_check < 5) || (sanity_check > 12)) {
+                printf("ERROR: SF is out of range - %u\n", sanity_check);
+                rx_buffer_error = true;
+            }
+        } else { /* FSK modem */
+            /* TODO: not checked */
+        }
+    }
+    if (rx_buffer_error == true) {
+        if (log_file != NULL) {
+            fprintf(log_file, "ERROR: METADATA ERROR\n");
+            dbg_log_buffer_to_file(log_file, rx_buffer, buffer_size);
+
+        }
+#if 1 /* TODO: TO BE REMOVED */
+        sx1302_rx_buffer_dump(log_file, 0, 4095);
+#endif
+        return LGW_REG_ERROR;
+    }
+
+    /* copy payload to result struct */
+    memcpy((void *)p->payload, (void *)(&rx_buffer[buffer_index + SX1302_PKT_HEAD_METADATA]), payload_length);
+
+    /* process metadata */
+    p->if_chain = SX1302_PKT_CHANNEL(rx_buffer, buffer_index);
+    if (p->if_chain >= LGW_IF_CHAIN_NB) {
+        DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
+        return LGW_REG_ERROR;
+    }
+    ifmod = ifmod_config[p->if_chain];
+    DEBUG_PRINTF("[%d 0x%02X]\n", p->if_chain, ifmod);
+
+    p->size = payload_length;
+    p->rf_chain = (uint8_t)context->if_chain_cfg[p->if_chain].rf_chain;
+    p->modem_id = SX1302_PKT_MODEM_ID(rx_buffer, buffer_index);
+    p->freq_hz = (uint32_t)((int32_t)context->rf_chain_cfg[p->rf_chain].freq_hz + context->if_chain_cfg[p->if_chain].freq_hz);
+    p->rssic = (float)SX1302_PKT_RSSI_CHAN(rx_buffer, buffer_index + p->size) + context->rf_chain_cfg[p->rf_chain].rssi_offset;
+    p->rssis = (float)SX1302_PKT_RSSI_SIG(rx_buffer, buffer_index + p->size) + context->rf_chain_cfg[p->rf_chain].rssi_offset;
+
+    /* Get modulation metadata */
+    if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
+        DEBUG_PRINTF("Note: LoRa packet (modem %u chan %u)\n", p->modem_id, p->if_chain);
+        /* Get CRC status */
+        if (SX1302_PKT_CRC_EN(rx_buffer, buffer_index) || (context->lora_service_cfg.implicit_crc_en == true)) {
+            /* CRC enabled */
+            if (SX1302_PKT_CRC_ERROR(rx_buffer, buffer_index + p->size)) {
+                p->status = STAT_CRC_BAD;
+                crc_en = 1;
+            } else {
+                p->status = STAT_CRC_OK;
+                crc_en = 1;
+
+#if 1
+                /* FOR DEBUG:
+                    We compare the received payload with predefined ones to ensure that the payload content is what we expect.
+                    4 bytes: ID to identify the payload
+                    4 bytes: packet counter used to initialize the seed for pseudo-random generation
+                    x bytes: pseudo-random payload
+                */
+                int res;
+                for (i = 0; i < context->debug_cfg.nb_ref_payload; i++) {
+                    res = dbg_check_payload(&(context->debug_cfg), log_file, p->payload, p->size, i, SX1302_PKT_DATARATE(rx_buffer, buffer_index));
+                    if (res == -1) {
+                        printf("ERROR: 0x%08X payload error\n", context->debug_cfg.ref_payload[i].id);
+                        if (log_file != NULL) {
+                            fprintf(log_file, "ERROR: 0x%08X payload error\n", context->debug_cfg.ref_payload[i].id);
+                            dbg_log_buffer_to_file(log_file, rx_buffer, buffer_size);
+                            dbg_log_payload_diff_to_file(log_file, p->payload, context->debug_cfg.ref_payload[i].payload, p->size);
+                        }
+                    } else if (res == 1) {
+                        printf("0x%08X payload matches\n", context->debug_cfg.ref_payload[i].id);
+                    } else {
+                        /* Do nothing */
+                    }
+                }
+#endif
+
+                /* check payload CRC */
+                if (p->size > 0) {
+                    payload_crc16_calc = sx1302_lora_payload_crc(p->payload, p->size);
+                    payload_crc16_read  = (uint16_t)((SX1302_PKT_CRC_PAYLOAD_7_0(rx_buffer, buffer_index + p->size) <<  0) & 0x00FF);
+                    payload_crc16_read |= (uint16_t)((SX1302_PKT_CRC_PAYLOAD_15_8(rx_buffer, buffer_index + p->size) <<  8) & 0xFF00);
+                    if (payload_crc16_calc != payload_crc16_read) {
+                        printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", payload_crc16_read, payload_crc16_calc);
+                        if (log_file != NULL) {
+                            fprintf(log_file, "ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", payload_crc16_read, payload_crc16_calc);
+                            dbg_log_buffer_to_file(log_file, rx_buffer, buffer_size);
+                        }
+                    } else {
+                        printf("Payload CRC check OK (0x%04X)\n", payload_crc16_read);
+                    }
+                }
+            }
+        } else {
+            /* CRC disabled */
+            p->status = STAT_NO_CRC;
+            crc_en = 0;
+        }
+
+        p->modulation = MOD_LORA;
+        p->snr = (float)((int8_t)SX1302_PKT_SNR_AVG(rx_buffer, buffer_index + p->size)) / 4;
+
+        /* Get bandwidth */
+        if (ifmod == IF_LORA_MULTI) {
+            p->bandwidth = BW_125KHZ; /* fixed in hardware */
+        } else {
+            p->bandwidth = context->lora_service_cfg.bandwidth; /* get the parameter from the config variable */
+        }
+
+        /* Get datarate */
+        switch (SX1302_PKT_DATARATE(rx_buffer, buffer_index)) {
+            case 5: p->datarate = DR_LORA_SF5; break;
+            case 6: p->datarate = DR_LORA_SF6; break;
+            case 7: p->datarate = DR_LORA_SF7; break;
+            case 8: p->datarate = DR_LORA_SF8; break;
+            case 9: p->datarate = DR_LORA_SF9; break;
+            case 10: p->datarate = DR_LORA_SF10; break;
+            case 11: p->datarate = DR_LORA_SF11; break;
+            case 12: p->datarate = DR_LORA_SF12; break;
+            default: p->datarate = DR_UNDEFINED;
+        }
+
+        /* Get coding rate */
+        if ((ifmod == IF_LORA_MULTI) || (context->lora_service_cfg.implicit_hdr == false)) {
+            cr = SX1302_PKT_CODING_RATE(rx_buffer, buffer_index);
+        } else {
+            cr = context->lora_service_cfg.implicit_coderate;
+        }
+        switch (cr) {
+            case 1: p->coderate = CR_LORA_4_5; break;
+            case 2: p->coderate = CR_LORA_4_6; break;
+            case 3: p->coderate = CR_LORA_4_7; break;
+            case 4: p->coderate = CR_LORA_4_8; break;
+            default: p->coderate = CR_UNDEFINED;
+        }
+
+        /* Get raw frequency offset as reported */
+        freq_offset_raw = (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(rx_buffer, buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(rx_buffer, buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(rx_buffer, buffer_index) << 0));
+        /* Handle signed value on 20bits */
+        if (freq_offset_raw >= (1<<19)) {
+            freq_offset_raw = (freq_offset_raw - (1<<20));
+        }
+        /* Get frequency offset in Hz depending on bandwidth */
+        switch (p->bandwidth) {
+            case BW_125KHZ:
+                p->freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_125KHZ );
+                break;
+            case BW_250KHZ:
+                p->freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_250KHZ );
+                break;
+            case BW_500KHZ:
+                p->freq_offset = (int32_t)((float)freq_offset_raw * FREQ_OFFSET_LSB_500KHZ );
+                break;
+            default:
+                p->freq_offset = 0;
+                printf("Invalid frequency offset\n");
+                break;
+        }
+
+        /* Get timestamp correction to be applied */
+        timestamp_correction = sx1302_timestamp_correction(ifmod, p->bandwidth, p->datarate, p->coderate, crc_en, payload_length);
+    } else if (ifmod == IF_FSK_STD) {
+        DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", SX1302_PKT_MODEM_ID(rx_buffer, buffer_index), p->if_chain);
+        /* Get CRC status */
+        if (SX1302_PKT_CRC_EN(rx_buffer, buffer_index)) {
+            /* CRC enabled */
+            if (SX1302_PKT_CRC_ERROR(rx_buffer, buffer_index + p->size)) {
+                printf("FSK: CRC ERR\n");
+                p->status = STAT_CRC_BAD;
+            } else {
+                printf("FSK: CRC OK\n");
+                p->status = STAT_CRC_OK;
+            }
+        } else {
+            /* CRC disabled */
+            p->status = STAT_NO_CRC;
+        }
+        p->modulation = MOD_FSK;
+        p->snr = -128.0;
+        p->bandwidth = context->fsk_cfg.bandwidth;
+        p->datarate = context->fsk_cfg.datarate;
+        p->coderate = CR_UNDEFINED;
+        timestamp_correction = ((uint32_t)680000 / context->fsk_cfg.datarate) - 20;
+
+        /* RSSI correction */
+        p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2);
+        p->rssis = -128.0;
+    } else {
+        DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
+        p->status = STAT_UNDEFINED;
+        p->modulation = MOD_UNDEFINED;
+        p->rssic = -128.0;
+        p->rssis = -128.0;
+        p->snr = -128.0;
+        p->snr_min = -128.0;
+        p->snr_max = -128.0;
+        p->bandwidth = BW_UNDEFINED;
+        p->datarate = DR_UNDEFINED;
+        p->coderate = CR_UNDEFINED;
+        timestamp_correction = 0;
+    }
+
+    /* Packet timestamp (32MHz ) */
+    p->count_us  = (uint32_t)((SX1302_PKT_TIMESTAMP_7_0(rx_buffer, buffer_index + p->size) <<  0) & 0x000000FF);
+    p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_15_8(rx_buffer, buffer_index + p->size) <<  8) & 0x0000FF00);
+    p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(rx_buffer, buffer_index + p->size) << 16) & 0x00FF0000);
+    p->count_us |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(rx_buffer, buffer_index + p->size) << 24) & 0xFF000000);
+    /* Scale packet timestamp to 1 MHz (microseconds) */
+    p->count_us /= 32;
+    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
+    sx1302_timestamp_expand(false, &(p->count_us));
+    /* Apply timestamp correction */
+    p->count_us -= timestamp_correction;
+
+    /* Packet CRC status */
+    p->crc = (uint16_t)(SX1302_PKT_CRC_PAYLOAD_7_0(rx_buffer, buffer_index + p->size)) + ((uint16_t)(SX1302_PKT_CRC_PAYLOAD_15_8(rx_buffer, buffer_index + p->size)) << 8);
+
+    /* move buffer index toward next message */
+    buffer_index += (SX1302_PKT_HEAD_METADATA + payload_length + SX1302_PKT_TAIL_METADATA + (2 * num_ts_metrics));
+
+    return LGW_REG_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
