@@ -71,7 +71,6 @@ void usage(void) {
     printf( " -h print this help\n");
     printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
-    printf( " -n <uint> number of packet received with CRC OK for each HAL start/stop loop\n");
 }
 
 /* -------------------------------------------------------------------------- */
