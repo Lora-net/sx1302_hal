@@ -24,6 +24,7 @@ Maintainer: Michael Coracin
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
+#include <errno.h>
 
 #include <time.h>       /* struct timespec */
 #include <fcntl.h>      /* open */
@@ -40,10 +41,12 @@ Maintainer: Michael Coracin
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_GPS == 1
     #define DEBUG_MSG(args...)  fprintf(stderr, args)
+    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define DEBUG_ARRAY(a,b,c)  for(a=0;a<b;++a) fprintf(stderr,"%x.",c[a]);fprintf(stderr,"end\n")
     #define CHECK_NULL(a)       if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_GPS_ERROR;}
 #else
     #define DEBUG_MSG(args...)
+    #define DEBUG_PRINTF(fmt, args...)
     #define DEBUG_ARRAY(a,b,c)  for(a=0;a!=0;){}
     #define CHECK_NULL(a)       if(a==NULL){return LGW_GPS_ERROR;}
 #endif
@@ -374,14 +377,14 @@ int lgw_gps_disable(int fd) {
     /* restore serial ports parameters */
     i = tcsetattr(fd, TCSANOW, &ttyopt_restore);
     if (i != 0){
-        DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION\n");
+        DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION - %s\n", strerror(errno));
         return LGW_GPS_ERROR;
     }
     tcflush(fd, TCIOFLUSH);
 
     i = close(fd);
-    if (i <= 0) {
-        DEBUG_MSG("ERROR: TTY PORT FAIL TO CLOSE\n");
+    if (i != 0) {
+        DEBUG_PRINTF("ERROR: TTY PORT FAIL TO CLOSE - %s\n", strerror(errno));
         return LGW_GPS_ERROR;
     }
 
