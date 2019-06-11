@@ -129,7 +129,6 @@ void dbg_log_payload_diff_to_file(FILE * file, uint8_t * buffer1, uint8_t * buff
 
 void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, uint8_t size) {
     int k;
-    uint8_t dummy;
 
     /* construct payload we should get for this packet counter */
     tinymt32_init(&tinymt, (int)pkt_cnt);
@@ -137,8 +136,7 @@ void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, ui
     buffer_expected[5] = (uint8_t)(pkt_cnt >> 16);
     buffer_expected[6] = (uint8_t)(pkt_cnt >> 8);
     buffer_expected[7] = (uint8_t)(pkt_cnt >> 0);
-    dummy = (uint8_t)tinymt32_generate_uint32(&tinymt); /* for sync with random size generation */
-    if (dummy) { /* do nothing */ } /* to avoid compilation warning */
+    tinymt32_generate_uint32(&tinymt); /* dummy: for sync with random size generation */
     for (k = 8; k < (int)size; k++) {
         buffer_expected[k] = (uint8_t)tinymt32_generate_uint32(&tinymt);
     }
