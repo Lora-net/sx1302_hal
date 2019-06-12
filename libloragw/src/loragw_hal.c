@@ -778,7 +778,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     sx1302_timestamp_counter(false, &dummy);
 
     /* Get packets from SX1302, if any */
-    res = sx1302_rx_fetch(&sz);
+    res = sx1302_fetch(&sz);
     if (res != LGW_REG_SUCCESS) {
         printf("ERROR: failed to fetch packets from SX1302\n");
         return LGW_HAL_ERROR;
@@ -803,7 +803,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* Iterate on the RX buffer to get parsed packets */
     res = LGW_REG_SUCCESS;
     while ((res == LGW_REG_SUCCESS) && (nb_pkt_found <= max_pkt)) {
-        res = sx1302_rx_next_packet(&lgw_context, &pkt_data[nb_pkt_found]);
+        res = sx1302_parse(&lgw_context, &pkt_data[nb_pkt_found]);
         if (res == LGW_REG_SUCCESS) {
             /* we found a packet and parsed it */
             if ((nb_pkt_found + 1) > max_pkt) {

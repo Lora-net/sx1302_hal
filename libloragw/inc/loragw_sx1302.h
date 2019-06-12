@@ -253,18 +253,6 @@ int sx1302_modem_enable(void);
 int sx1302_gps_enable(bool enable);
 
 /**
-@brief Get the timestamp correction to applied to the packet timestamp
-@param ifmod            modem type
-@param bandwidth        modulation bandwidth
-@param datarate         modulation datarate
-@param coderate         modulation coding rate
-@param crc_en           indicates if CRC is enabled or disabled
-@param payload_length   payload length
-@return The correction to be applied to the packet timestamp, in microseconds
-*/
-uint32_t sx1302_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length);
-
-/**
 @brief TODO
 @param TODO
 @return TODO
@@ -410,13 +398,6 @@ uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 @param TODO
 @return TODO
 */
-void sx1302_rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
 uint16_t sx1302_rx_buffer_read_ptr_addr(void);
 
 /**
@@ -431,16 +412,15 @@ uint16_t sx1302_rx_buffer_write_ptr_addr(void);
 @param nb_bytes A pointer to allocated memory to hold the number of bytes fetched
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_rx_fetch(uint16_t * nb_bytes);
+int sx1302_fetch(uint16_t * nb_bytes);
 
 /**
 @brief Parse and return the next packet available in the fetched RX buffer.
 @param context      Gateway configuration context
-@param ifmod_config SX1302 modem type configuration
 @param p            The structure to get the packet parsed
 @return LGW_REG_SUCCESS if a packet could be parsed, LGW_REG_ERROR otherwise
 */
-int sx1302_rx_next_packet(lgw_context_t * context, struct lgw_pkt_rx_s * p);
+int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p);
 
 /**
 @brief Configure the delay to be applied by the SX1302 for TX to start
