@@ -810,6 +810,29 @@ uint32_t timestamp_correction_lora(int ifmod, uint8_t bandwidth, uint8_t datarat
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
+int sx1302_get_eui(uint64_t * eui) {
+    int i, err;
+    int32_t val;
+
+    *eui = 0;
+    for (i = 0; i < 8; i++) {
+        err = lgw_reg_w(SX1302_REG_OTP_BYTE_ADDR_ADDR, i);
+        if (err != LGW_REG_SUCCESS) {
+            return LGW_REG_ERROR;
+        }
+        err = lgw_reg_r(SX1302_REG_OTP_RD_DATA_RD_DATA, &val);
+        if (err != LGW_REG_SUCCESS) {
+            return LGW_REG_ERROR;
+        }
+
+        *eui |= (uint64_t)((uint8_t)val) << (56 - (i * 8));
+    }
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1302_update(void) {
     int32_t val;
 

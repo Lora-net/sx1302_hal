@@ -1196,6 +1196,7 @@ int main(int argc, char ** argv)
     /* SX1302 data variables */
     uint32_t trig_tstamp;
     uint32_t inst_tstamp;
+    uint64_t eui;
 
     /* statistics variable */
     time_t t;
@@ -1371,6 +1372,14 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
+    /* get the concentrator EUI */
+    i = lgw_get_eui(&eui);
+    if (i != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to get concentrator EUI\n");
+    } else {
+        printf("INFO: concentrator EUI: 0x%016llX\n", eui);
+    }
+
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
@@ -1526,7 +1535,7 @@ int main(int argc, char ** argv)
             printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
             printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
         }
-        printf("### SX1302 counters ###\n");
+        printf("### SX1302 Status ###\n");
         pthread_mutex_lock(&mx_concent);
         i  = lgw_get_instcnt(&inst_tstamp);
         i |= lgw_get_trigcnt(&trig_tstamp);

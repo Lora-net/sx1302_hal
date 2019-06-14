@@ -127,6 +127,13 @@ typedef struct {
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
+@brief Get the SX1302 unique identifier
+@param eui  pointerto the memory holding the concentrator EUI
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
+*/
+int sx1302_get_eui(uint64_t * eui);
+
+/**
 @brief Check AGC & ARB MCUs parity error, and update timestamp counter wraping status
 @brief This function needs to be called regularly (every few seconds) by the upper layer
 @param N/A

@@ -1254,6 +1254,15 @@ int lgw_get_instcnt(uint32_t* inst_cnt_us) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_get_eui(uint64_t* eui) {
+    if (sx1302_get_eui(eui) != LGW_REG_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 const char* lgw_version_info() {
     return lgw_version_string;
 }
