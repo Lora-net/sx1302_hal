@@ -443,6 +443,16 @@ static int parse_SX130x_configuration(const char * conf_file) {
             rfconf.freq_hz = (uint32_t)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "radio_%i.rssi_offset", i);
             rfconf.rssi_offset = (float)json_object_dotget_number(conf_obj, param_name);
+            snprintf(param_name, sizeof param_name, "radio_%i.rssi_tcomp.coeff_a", i);
+            rfconf.rssi_tcomp.coeff_a = (float)json_object_dotget_number(conf_obj, param_name);
+            snprintf(param_name, sizeof param_name, "radio_%i.rssi_tcomp.coeff_b", i);
+            rfconf.rssi_tcomp.coeff_b = (float)json_object_dotget_number(conf_obj, param_name);
+            snprintf(param_name, sizeof param_name, "radio_%i.rssi_tcomp.coeff_c", i);
+            rfconf.rssi_tcomp.coeff_c = (float)json_object_dotget_number(conf_obj, param_name);
+            snprintf(param_name, sizeof param_name, "radio_%i.rssi_tcomp.coeff_d", i);
+            rfconf.rssi_tcomp.coeff_d = (float)json_object_dotget_number(conf_obj, param_name);
+            snprintf(param_name, sizeof param_name, "radio_%i.rssi_tcomp.coeff_e", i);
+            rfconf.rssi_tcomp.coeff_e = (float)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "radio_%i.type", i);
             str = json_object_dotget_string(conf_obj, param_name);
             if (!strncmp(str, "SX1255", 6)) {

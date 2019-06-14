@@ -2580,4 +2580,24 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
     return LGW_REG_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+float sx1302_rssi_get_temperature_offset(struct lgw_rssi_tcomp_s * context, float temperature) {
+    /* Chekc params */
+    CHECK_NULL(context);
+
+    printf("INFO: RSSI temperature compensation:\n");
+    printf("       coeff_a: %.3f\n", context->coeff_a);
+    printf("       coeff_b: %.3f\n", context->coeff_b);
+    printf("       coeff_c: %.3f\n", context->coeff_c);
+    printf("       coeff_d: %.3f\n", context->coeff_d);
+    printf("       coeff_e: %.3f\n", context->coeff_e);
+
+    /* Compute the offset to be applied to RSSI for given temperature */
+    return ((context->coeff_a * pow(temperature, 4)) +
+            (context->coeff_b * pow(temperature, 3)) +
+            (context->coeff_c * pow(temperature, 2)) +
+            (context->coeff_d * temperature) + context->coeff_e) / pow(2, 16);
+}
+
 /* --- EOF ------------------------------------------------------------------ */

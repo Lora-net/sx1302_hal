@@ -432,6 +432,14 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p);
 */
 int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth);
 
+/**
+@brief Compute the offset to be applied on RSSI for temperature compensation
+@param context  a pointer to the memory that holds the current temp comp context
+@param temperature  the temperature for which to compute the offset to be applied
+@return the offset to be applied to RSSI
+*/
+float sx1302_rssi_get_temperature_offset(struct lgw_rssi_tcomp_s * context, float temperature);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

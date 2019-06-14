@@ -293,6 +293,11 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     CONTEXT_RF_CHAIN[rf_chain].enable = conf.enable;
     CONTEXT_RF_CHAIN[rf_chain].freq_hz = conf.freq_hz;
     CONTEXT_RF_CHAIN[rf_chain].rssi_offset = conf.rssi_offset;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_a = conf.rssi_tcomp.coeff_a;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_b = conf.rssi_tcomp.coeff_b;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_c = conf.rssi_tcomp.coeff_c;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_d = conf.rssi_tcomp.coeff_d;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_e = conf.rssi_tcomp.coeff_e;
     CONTEXT_RF_CHAIN[rf_chain].type = conf.type;
     CONTEXT_RF_CHAIN[rf_chain].tx_enable = conf.tx_enable;
 
@@ -765,7 +770,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t sz = 0;
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_dropped = 0;
-    float current_temperature;
+    float current_temperature, rssi_temperature_offset;
 
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
@@ -808,6 +813,12 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 nb_pkt_dropped += 1;
                 continue;
             }
+            /* Apply temperature compensation on RSSI */
+            rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
+            printf("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
+            pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
+            pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
+            /* Next packet */
             nb_pkt_found += 1;
         }
     }
