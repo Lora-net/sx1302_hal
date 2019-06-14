@@ -101,6 +101,17 @@ typedef struct rx_buffer_s {
     int buffer_index;       /*!> Current parsing index in the buffer */
 } rx_buffer_t;
 
+/**
+@struct timestamp_counter_s
+@brief context to maintain the internal counters (inst and pps trig) wrapping
+*/
+typedef struct timestamp_counter_s {
+    uint32_t counter_us_raw_27bits_inst_prev;
+    uint32_t counter_us_raw_27bits_pps_prev;
+    uint8_t  counter_us_raw_27bits_inst_wrap;
+    uint8_t  counter_us_raw_27bits_pps_wrap;
+} timestamp_counter_t;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -147,6 +158,7 @@ const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 #include "src/text_cal_sx1257_16_Nov_1.var"
 
 rx_buffer_t rx_buffer;
+timestamp_counter_t counter_us = {0, 0, 0, 0};
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -220,6 +232,46 @@ extern int32_t lgw_bw_getval(int x);
 @return TODO
 */
 void lora_crc16(const char data, int *crc);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+void timestamp_counter_new(timestamp_counter_t * self);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+void timestamp_counter_delete(timestamp_counter_t * self);
+
+/**
+@brief Update the counter wrapping status based on given current counter
+@param self     Pointer to the counter handler
+@param pps      Set to true to update the PPS trig counter status
+@param cnt      Current value of the counter to be used for the update
+@return N/A
+*/
+void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt);
+
+/**
+@brief Convert the 27-bits counter given by the SX1302 to a 32-bits counter which wraps on a uint32_t.
+@param self     Pointer to the counter handler
+@param pps      Set to true to expand the counter based on the PPS trig wrapping status
+@param cnt_us   The 27-bits counter to be expanded
+@return the 32-bits counter
+*/
+uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us);
+
+/**
+@brief Reads the SX1302 internal counter register, and return the 32-bits 1 MHz counter
+@param self     Pointer to the counter handler
+@param pps      Set to true to expand the counter based on the PPS trig wrapping status
+@return the current 32-bits counter
+*/
+uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps);
 
 /**
 @brief Get the timestamp correction to applied to the packet timestamp
@@ -396,7 +448,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     /* Scale packet timestamp to 1 MHz (microseconds) */
     pkt->timestamp_cnt /= 32;
     /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
-    sx1302_timestamp_expand(false, &(pkt->timestamp_cnt));
+    pkt->timestamp_cnt = timestamp_counter_expand(&counter_us, false, pkt->timestamp_cnt);
 
     printf("-----------------\n");
     printf("  modem:      %u\n", pkt->modem_id);
@@ -553,6 +605,104 @@ void rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+void timestamp_counter_new(timestamp_counter_t * self) {
+    self->counter_us_raw_27bits_inst_prev = 0;
+    self->counter_us_raw_27bits_pps_prev = 0;
+    self->counter_us_raw_27bits_inst_wrap = 0;
+    self->counter_us_raw_27bits_pps_wrap = 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void timestamp_counter_delete(timestamp_counter_t * self) {
+    self->counter_us_raw_27bits_inst_prev = 0;
+    self->counter_us_raw_27bits_pps_prev = 0;
+    self->counter_us_raw_27bits_inst_wrap = 0;
+    self->counter_us_raw_27bits_pps_wrap = 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt) {
+    uint32_t counter_us_raw_27bits_prev;
+    uint8_t  counter_us_raw_27bits_wrap;
+
+    /* Get the previous counter value and wrap status */
+    if (pps == true) {
+        counter_us_raw_27bits_prev = self->counter_us_raw_27bits_pps_prev;
+        counter_us_raw_27bits_wrap = self->counter_us_raw_27bits_pps_wrap;
+    } else {
+        counter_us_raw_27bits_prev = self->counter_us_raw_27bits_inst_prev;
+        counter_us_raw_27bits_wrap = self->counter_us_raw_27bits_inst_wrap;
+    }
+
+    /* Check if counter has wrapped, and update wrap status if necessary */
+    if (cnt < counter_us_raw_27bits_prev) {
+        counter_us_raw_27bits_wrap += 1;
+        counter_us_raw_27bits_wrap = counter_us_raw_27bits_wrap % 32;
+    }
+
+    /* Store counter value and wrap status for next time */
+    if (pps == true) {
+        self->counter_us_raw_27bits_pps_prev = cnt;
+        self->counter_us_raw_27bits_pps_wrap = counter_us_raw_27bits_wrap;
+    } else {
+        self->counter_us_raw_27bits_inst_prev = cnt;
+        self->counter_us_raw_27bits_inst_wrap = counter_us_raw_27bits_wrap;
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
+    int x;
+    uint8_t buff[4];
+    uint32_t counter_us_raw_27bits_now;
+
+    /* Get the 32MHz timestamp counter - 4 bytes */
+    /* step of 31.25 ns */
+    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to get timestamp counter value\n");
+        return 0;
+    }
+
+    counter_us_raw_27bits_now  = (uint32_t)((buff[0] << 24) & 0xFF000000);
+    counter_us_raw_27bits_now |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
+    counter_us_raw_27bits_now |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
+    counter_us_raw_27bits_now |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+    counter_us_raw_27bits_now /= 32; /* scale to 1MHz */
+
+    /* Update counter wrapping status */
+    timestamp_counter_update(self, pps, counter_us_raw_27bits_now);
+
+    /* Convert 27-bits counter to 32-bits counter */
+    return timestamp_counter_expand(self, pps, counter_us_raw_27bits_now);
+}
+
+uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us) {
+    uint32_t counter_us_32bits;
+
+    if (pps == true) {
+        counter_us_32bits = (self->counter_us_raw_27bits_pps_wrap << 27) | cnt_us;
+    } else {
+        counter_us_32bits = (self->counter_us_raw_27bits_inst_wrap << 27) | cnt_us;
+    }
+
+#if 0
+    /* DEBUG: to be enabled when running test_loragw_counter test application
+       This generates a CSV log, and can be plotted with gnuplot:
+        > set datafile separator comma
+        > plot for [col=1:2:1] 'log_count.txt' using col with lines
+    */
+    printf("%u,%u,%u\n", cnt_us, counter_us_32bits, (pps == true) ? self->counter_us_raw_27bits_pps_wrap : self->counter_us_raw_27bits_inst_wrap);
+#endif
+
+    return counter_us_32bits;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 uint32_t timestamp_correction_lora(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length) {
     int32_t val;
     uint32_t sf = (uint32_t)datarate, cr = (uint32_t)coderate, bw_pow, ppm;
@@ -659,6 +809,30 @@ uint32_t timestamp_correction_lora(int ifmod, uint8_t bandwidth, uint8_t datarat
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+int sx1302_update(void) {
+    int32_t val;
+
+    /* Check MCUs parity errors */
+    lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
+    if (val != 0) {
+        printf("ERROR: Parity error check failed on AGC firmware\n");
+        return LGW_REG_ERROR;
+    }
+    lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
+    if (val != 0) {
+        printf("ERROR: Parity error check failed on ARB firmware\n");
+        return LGW_REG_ERROR;
+    }
+
+    /* Update internal timestamp counter wrapping status */
+    timestamp_counter_get(&counter_us, false); /* maintain inst counter */
+    timestamp_counter_get(&counter_us, true); /* maintain pps counter */
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_radio_clock_select(uint8_t rf_chain) {
     /* Check input parameters */
@@ -1392,77 +1566,8 @@ int sx1302_timestamp_mode(struct lgw_conf_timestamp_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* memory variables */
-static uint32_t counter_us_raw_27bits_inst_prev = 0;
-static uint32_t counter_us_raw_27bits_pps_prev = 0;
-static uint8_t  counter_us_raw_27bits_inst_wrap = 0;
-static uint8_t  counter_us_raw_27bits_pps_wrap = 0;
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us) {
-    if (pps == true) {
-        *cnt_us = (counter_us_raw_27bits_pps_wrap << 27) | *cnt_us;
-    } else {
-        *cnt_us = (counter_us_raw_27bits_inst_wrap << 27) | *cnt_us;
-    }
-    return LGW_REG_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int sx1302_timestamp_counter(bool pps, uint32_t * cnt_us) {
-    int x;
-    uint8_t buff[4];
-    uint32_t counter_us_32bits;
-    uint32_t counter_us_raw_27bits_now;
-    uint32_t counter_us_raw_27bits_prev;
-    uint8_t  counter_us_raw_27bits_wrap;
-
-    /* Get the 32MHz timestamp counter - 4 bytes */
-    /* step of 31.25 ns */
-    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
-    if (x != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to get timestamp counter value\n");
-        *cnt_us = 0;
-        return LGW_HAL_ERROR;
-    }
-
-    counter_us_raw_27bits_now  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
-    counter_us_raw_27bits_now /= 32; /* scale to 1MHz */
-
-    /* Get the previous value of the counter we want to get */
-    counter_us_raw_27bits_prev = ((pps == true) ? counter_us_raw_27bits_pps_prev : counter_us_raw_27bits_inst_prev);
-
-    /* Get the current wrap status */
-    counter_us_raw_27bits_wrap = ((pps == true) ? counter_us_raw_27bits_pps_wrap : counter_us_raw_27bits_inst_wrap);
-
-    /* Check if counter has wrapped */
-    if (counter_us_raw_27bits_now < counter_us_raw_27bits_prev) {
-        counter_us_raw_27bits_wrap += 1;
-        counter_us_raw_27bits_wrap = counter_us_raw_27bits_wrap % 32;
-    }
-
-    /* Store counter value and wrap status for next time */
-    if (pps == true) {
-        counter_us_raw_27bits_pps_prev = counter_us_raw_27bits_now;
-        counter_us_raw_27bits_pps_wrap = counter_us_raw_27bits_wrap;
-    } else {
-        counter_us_raw_27bits_inst_prev = counter_us_raw_27bits_now;
-        counter_us_raw_27bits_inst_wrap = counter_us_raw_27bits_wrap;
-    }
-
-    /* Convert 27-bits counter to 32-bits counter */
-    counter_us_32bits = (counter_us_raw_27bits_wrap << 27) | counter_us_raw_27bits_now;
-
-    //printf("%u,%u,%u\n", counter_us_raw_27bits_now, counter_us_32bits, counter_us_raw_27bits_wrap);
-
-    *cnt_us = counter_us_32bits;
-
-    return LGW_HAL_SUCCESS;
+uint32_t sx1302_timestamp_counter(bool pps) {
+    return timestamp_counter_get(&counter_us, pps);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1476,25 +1581,6 @@ int sx1302_gps_enable(bool enable) {
     }
 
     return LGW_HAL_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int sx1302_mcu_check(void) {
-    int32_t val;
-
-    lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
-    if (val != 0) {
-        printf("ERROR: Parity error check failed on AGC firmware\n");
-        return LGW_REG_ERROR;
-    }
-    lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
-    if (val != 0) {
-        printf("ERROR: Parity error check failed on ARB firmware\n");
-        return LGW_REG_ERROR;
-    }
-
-    return LGW_REG_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

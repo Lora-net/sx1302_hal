@@ -127,6 +127,14 @@ typedef struct {
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
+@brief Check AGC & ARB MCUs parity error, and update timestamp counter wraping status
+@brief This function needs to be called regularly (every few seconds) by the upper layer
+@param N/A
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
+*/
+int sx1302_update(void);
+
+/**
 @brief Select the clock source radio
 @param rf_chain The RF chain index from which to get the clock source
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
@@ -253,33 +261,18 @@ int sx1302_modem_enable(void);
 int sx1302_gps_enable(bool enable);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Select legacy or precision timestamp
+@param conf A pointer to the current timestamp configuration context
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 
 /**
 @brief Get the current SX1302 internal counter value
 @param pps      True for getting the counter value at last PPS
-@param cnt_us   Pointer to memory to hold the returned counter value
-@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+@return the counter value in mciroseconds (32-bits)
 */
-int sx1302_timestamp_counter(bool pps, uint32_t* cnt_us);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-int sx1302_timestamp_expand(bool pps, uint32_t * cnt_us);
-
-/**
-@brief Check AGC & ARB MCUs parity error
-@param N/A
-@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
-*/
-int sx1302_mcu_check(void);
+uint32_t sx1302_timestamp_counter(bool pps);
 
 /**
 @brief TODO

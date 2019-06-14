@@ -71,6 +71,7 @@ void usage(void) {
     printf( " -h print this help\n");
     printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
+    printf( " -p        Test PPS trig counter when set\n" );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -96,6 +97,7 @@ int main(int argc, char **argv)
     struct lgw_conf_rxif_s ifconf;
 
     uint32_t counter;
+    bool trig_cnt = false;
 
     const int32_t channel_if[9] = {
         -400000,
@@ -112,7 +114,7 @@ int main(int argc, char **argv)
     const uint8_t channel_rfchain[9] = { 1, 1, 1, 0, 0, 0, 0, 0, 1 };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hk:r:")) != -1) {
+    while ((i = getopt (argc, argv, "hk:r:p")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -145,6 +147,9 @@ int main(int argc, char **argv)
                 } else {
                     clocksource = (uint8_t)arg_u;
                 }
+                break;
+            case 'p':
+                trig_cnt = true;
                 break;
             default:
                 printf("ERROR: argument parsing\n");
@@ -220,7 +225,11 @@ int main(int argc, char **argv)
 
     /* Loop until user quits */
     while( (quit_sig != 1) && (exit_sig != 1) ) {
-        lgw_get_instcnt(&counter);
+        if (trig_cnt == false) {
+            lgw_get_instcnt(&counter);
+        } else {
+            lgw_get_trigcnt(&counter);
+        }
         wait_ms(10);
     }
 

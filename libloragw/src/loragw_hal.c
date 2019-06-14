@@ -765,17 +765,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t sz = 0;
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_dropped = 0;
-    uint32_t dummy;
     float current_temperature;
 
-    /* Check that AGC/ARB firmwares are not corrupted */
-    res = sx1302_mcu_check();
+    /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
+    /* WARNING: this needs to be called regularly by the upper layer */
+    res = sx1302_update();
     if (res != LGW_REG_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-
-    /* Update counter wrap status for packet timestamp conversion (27bits -> 32bits) */
-    sx1302_timestamp_counter(false, &dummy);
 
     /* Get packets from SX1302, if any */
     res = sx1302_fetch(&sz);
@@ -1242,13 +1239,17 @@ int lgw_abort_tx(uint8_t rf_chain) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
-    return (sx1302_timestamp_counter(true, trig_cnt_us));
+    *trig_cnt_us = sx1302_timestamp_counter(true);
+
+    return LGW_HAL_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_instcnt(uint32_t* inst_cnt_us) {
-    return (sx1302_timestamp_counter(false, inst_cnt_us));
+    *inst_cnt_us = sx1302_timestamp_counter(false);
+
+    return LGW_HAL_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
