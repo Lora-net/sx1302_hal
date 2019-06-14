@@ -2186,7 +2186,7 @@ uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void sx1302_arb_print_debug_stats(bool full) {
+void sx1302_arb_print_debug_stats(void) {
     int i;
     uint8_t nb_detect;
     uint8_t nb_alloc;
@@ -2195,25 +2195,23 @@ void sx1302_arb_print_debug_stats(bool full) {
 
     /* Get number of detects for all channels */
     nb_detect_total = 0;
+    printf("ARB: nb_detect: [");
     for (i = 0; i < 8; i++) {
         nb_detect = sx1302_arb_get_debug_stats_detect(i);
-        if (full == true) {
-            printf("ARB: CH%d: nb detect %u\n", i, nb_detect);
-        }
+        printf("%u ", nb_detect);
         nb_detect_total += nb_detect;
     }
+    printf("]\n");
 
     /* Get number of modem allocation for all channels */
     nb_alloc_total = 0;
+    printf("ARB: nb_alloc:  [");
     for (i = 0; i < 8; i++) {
         nb_alloc = sx1302_arb_get_debug_stats_alloc(i);
-        if (full == true) {
-            printf("ARB: CH%d: nb alloc %u\n", i, nb_alloc);
-        }
+        printf("%u ", nb_alloc);
         nb_alloc_total += nb_alloc;
     }
-
-    printf("ARB: DEBUG STATS: nb detect:%d, nb_alloc:%d\n", nb_detect_total, nb_alloc_total);
+    printf("]\n");
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -2238,7 +2236,7 @@ int sx1302_arb_start(uint8_t version) {
 #endif
 
     /* Enable/disable ARB detect/modem alloc stats for the specified SF */
-    sx1302_arb_set_debug_stats(true, DR_LORA_SF5);
+    sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
 
     /* 0:Disable 1:Enable double demod for different timing set (best_timestamp / best_demodulation) - Only available for SF9 -> SF12 */
     sx1302_arb_debug_write(3, 0);
@@ -2296,6 +2294,10 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     CHECK_NULL(context);
     CHECK_NULL(p);
 
+    /* FOR DEBUG: Print statistics of number of detects and modem allocations from ARB for configured SF (see sx1302_arb_start()) */
+    sx1302_arb_print_debug_stats();
+
+    /* get packet from RX buffer */
     err = rx_buffer_pop(&rx_buffer, &pkt);
     if (err != LGW_REG_SUCCESS) {
         return LGW_REG_ERROR;

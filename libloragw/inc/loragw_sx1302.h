@@ -384,7 +384,7 @@ uint8_t sx1302_arb_get_debug_stats_alloc(uint8_t channel);
 @param TODO
 @return TODO
 */
-void sx1302_arb_print_debug_stats(bool full);
+void sx1302_arb_print_debug_stats(void);
 
 /**
 @brief TODO

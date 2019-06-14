@@ -789,11 +789,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         return 0;
     }
 
-#if 0
-    /* Print statistics of number of detects and modem allocations from ARB for configured SF (see sx1302_arb_start()) */
-    sx1302_arb_print_debug_stats(true);
-#endif
-
     /* Get the current temperature for further RSSI compensation : TODO */
     res = lgw_stts751_get_temperature(&current_temperature);
     if (res != LGW_I2C_SUCCESS) {
