@@ -2322,9 +2322,9 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     /* Get the frequency for the channel configuration */
     p->freq_hz = (uint32_t)((int32_t)context->rf_chain_cfg[p->rf_chain].freq_hz + context->if_chain_cfg[p->if_chain].freq_hz);
 
-    /* Get signal strength - corrected with calibrated offset */
-    p->rssic = (float)(pkt.rssi_chan_avg) + context->rf_chain_cfg[p->rf_chain].rssi_offset;
-    p->rssis = (float)(pkt.rssi_signal_avg) + context->rf_chain_cfg[p->rf_chain].rssi_offset;
+    /* Get signal strength */
+    p->rssic = (float)(pkt.rssi_chan_avg);
+    p->rssis = (float)(pkt.rssi_signal_avg);
 
     /* Get modulation metadata */
     if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {

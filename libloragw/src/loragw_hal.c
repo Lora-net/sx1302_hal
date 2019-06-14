@@ -808,11 +808,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 nb_pkt_dropped += 1;
                 continue;
             }
-            /* Apply temperature compensation on RSSI */
+            /* Appli RSSI offset calibrated for the board */
+            pkt_data[nb_pkt_found].rssic += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
+            pkt_data[nb_pkt_found].rssis += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
+            /* Apply RSSI temperature compensation */
             rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
-            printf("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
             pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
             pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
+            printf("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
             /* Next packet */
             nb_pkt_found += 1;
         }
