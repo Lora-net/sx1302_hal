@@ -1192,8 +1192,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
-    int32_t read_value;
-
     /* check input variables */
     CHECK_NULL(code);
     if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -1201,24 +1199,19 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
         return LGW_HAL_ERROR;
     }
 
+    /* Get status */
     if (select == TX_STATUS) {
-        lgw_reg_r(SX1302_REG_TX_TOP_TX_FSM_STATUS_TX_STATUS(rf_chain), &read_value);
-        // TODO: select porper TX rf chain
         if (CONTEXT_STARTED == false) {
             *code = TX_OFF;
-        } else if (read_value == 0x80) {
-            *code = TX_FREE;
-        } else if ((read_value == 0x30) || (read_value == 0x50) || (read_value == 0x60) || (read_value == 0x70)) {
-            *code = TX_EMITTING;
-        } else if ((read_value == 0x91) || (read_value == 0x92)) {
-            *code = TX_SCHEDULED;
         } else {
-            *code = TX_STATUS_UNKNOWN;
-            DEBUG_PRINTF("ERROR: UNKNOWN TX STATUS 0x%02X\n", read_value);
-            return LGW_HAL_ERROR;
+            *code = sx1302_tx_status(rf_chain);
         }
     } else if (select == RX_STATUS) {
-        *code = RX_STATUS_UNKNOWN; /* todo */
+        if (CONTEXT_STARTED == false) {
+            *code = RX_OFF;
+        } else {
+            *code = sx1302_rx_status(rf_chain);
+        }
     } else {
         DEBUG_MSG("ERROR: SELECTION INVALID, NO STATUS TO RETURN\n");
         return LGW_HAL_ERROR;

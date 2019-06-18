@@ -440,6 +440,21 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
 */
 float sx1302_rssi_get_temperature_offset(struct lgw_rssi_tcomp_s * context, float temperature);
 
+/**
+@brief Get current TX status of the SX1302
+@param rf_chain the TX chain we want to get the status from
+@return current status
+*/
+uint8_t sx1302_tx_status(uint8_t rf_chain);
+
+/**
+@brief Get current RX status of the SX1302
+@param rf_chain the RX chain we want to get the status from
+@return current status
+@note NOT IMPLEMENTED
+*/
+uint8_t sx1302_rx_status(uint8_t rf_chain);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
