@@ -1224,18 +1224,14 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_abort_tx(uint8_t rf_chain) {
-    uint8_t tx_status;
+    /* check input variables */
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
+        return LGW_HAL_ERROR;
+    }
 
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(rf_chain), 0x00);
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(rf_chain), 0x00);
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_GPS(rf_chain), 0x00);
-
-    do {
-        wait_ms(1);
-        lgw_status(rf_chain, TX_STATUS, &tx_status);
-    } while (tx_status != TX_FREE);
-
-    return LGW_HAL_SUCCESS;
+    /* Abort current TX */
+    return sx1302_tx_abort(rf_chain);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

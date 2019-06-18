@@ -2634,4 +2634,18 @@ uint8_t sx1302_rx_status(uint8_t rf_chain) {
     return RX_STATUS_UNKNOWN;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_tx_abort(uint8_t rf_chain) {
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(rf_chain), 0x00);
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(rf_chain), 0x00);
+    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_GPS(rf_chain), 0x00);
+
+    do {
+        wait_ms(1);
+    } while (sx1302_tx_status(rf_chain) != TX_FREE);
+
+    return LGW_REG_SUCCESS;
+}
+
 /* --- EOF ------------------------------------------------------------------ */

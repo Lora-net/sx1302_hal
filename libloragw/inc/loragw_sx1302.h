@@ -455,6 +455,13 @@ uint8_t sx1302_tx_status(uint8_t rf_chain);
 */
 uint8_t sx1302_rx_status(uint8_t rf_chain);
 
+/**
+@brief Abort current transmit
+@param rf_chain the TX chain on which we want to abort transmit
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
+*/
+int sx1302_tx_abort(uint8_t rf_chain);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
