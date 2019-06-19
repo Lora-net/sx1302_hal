@@ -325,7 +325,7 @@ typedef struct lgw_context_s {
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_board_setconf(struct lgw_conf_board_s conf);
+int lgw_board_setconf(struct lgw_conf_board_s * conf);
 
 /**
 @brief Configure an RF chain (must configure before start)
@@ -333,7 +333,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf);
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
+int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf);
 
 /**
 @brief Configure an IF chain + modem (must configure before start)
@@ -341,28 +341,28 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
+int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf);
 
 /**
 @brief Configure the Tx gain LUT
 @param pointer to structure defining the LUT
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf);
+int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf);
 
 /**
 @brief Configure the precision timestamp
 @param pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf);
+int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf);
 
 /**
 @brief Configure the debug context
 @param pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_debug_setconf(struct lgw_conf_debug_s *conf);
+int lgw_debug_setconf(struct lgw_conf_debug_s * conf);
 
 /**
 @brief Connect to the LoRa concentrator, reset it and configure it according to previously set parameters
@@ -382,7 +382,7 @@ int lgw_stop(void);
 @param pkt_data pointer to an array of struct that will receive the packet metadata and payload pointers
 @return LGW_HAL_ERROR id the operation failed, else the number of packets retrieved
 */
-int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data);
+int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s * pkt_data);
 
 /**
 @brief Schedule a packet to be send immediately or after a delay depending on tx_mode
@@ -416,7 +416,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data);
 @param code is used to return the status code
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code);
+int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t * code);
 
 /**
 @brief Abort a currently scheduled or ongoing TX
@@ -429,21 +429,21 @@ int lgw_abort_tx(uint8_t rf_chain);
 @param trig_cnt_us pointer to receive timestamp value
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_trigcnt(uint32_t* trig_cnt_us);
+int lgw_get_trigcnt(uint32_t * trig_cnt_us);
 
 /**
 @brief Return instateneous value of internal counter
 @param inst_cnt_us pointer to receive timestamp value
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_instcnt(uint32_t* inst_cnt_us);
+int lgw_get_instcnt(uint32_t * inst_cnt_us);
 
 /**
 @brief Return the LoRa concentrator EUI
 @param eui pointer to receive eui
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_eui(uint64_t* eui);
+int lgw_get_eui(uint64_t * eui);
 
 /**
 @brief Allow user to check the version/options of the library once compiled
@@ -456,7 +456,7 @@ const char* lgw_version_info(void);
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
+uint32_t lgw_time_on_air(struct lgw_pkt_tx_s * packet);
 
 #endif
 

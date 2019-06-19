@@ -363,7 +363,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     }
     MSG("INFO: spidev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.spidev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
-    if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
+    if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
         return -1;
     }
@@ -577,7 +577,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
             MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
         }
         /* all parameters parsed, submitting configuration to the HAL */
-        if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
+        if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for radio %i\n", i);
             return -1;
         }
@@ -611,7 +611,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
             MSG("INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 5 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
         }
         /* all parameters parsed, submitting configuration to the HAL */
-        if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
+        if (lgw_rxif_setconf(i, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
             return -1;
         }
@@ -685,7 +685,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
             MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u, %s\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf, (ifconf.implicit_hdr == true) ? "Implicit header" : "Explicit header");
         }
-        if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
+        if (lgw_rxif_setconf(8, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for Lora standard channel\n");
             return -1;
         }
@@ -730,7 +730,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
             MSG("INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
-        if (lgw_rxif_setconf(9, ifconf) != LGW_HAL_SUCCESS) {
+        if (lgw_rxif_setconf(9, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for FSK channel\n");
             return -1;
         }

@@ -223,7 +223,8 @@ int32_t lgw_sf_getval(int x) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_board_setconf(struct lgw_conf_board_s conf) {
+int lgw_board_setconf(struct lgw_conf_board_s * conf) {
+    CHECK_NULL(conf);
 
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == true) {
@@ -232,10 +233,10 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
     }
 
     /* set internal config according to parameters */
-    CONTEXT_LWAN_PUBLIC = conf.lorawan_public;
-    CONTEXT_BOARD.clksrc = conf.clksrc;
-    CONTEXT_BOARD.full_duplex = conf.full_duplex;
-    strncpy(CONTEXT_SPI, conf.spidev_path, sizeof CONTEXT_SPI);
+    CONTEXT_LWAN_PUBLIC = conf->lorawan_public;
+    CONTEXT_BOARD.clksrc = conf->clksrc;
+    CONTEXT_BOARD.full_duplex = conf->full_duplex;
+    strncpy(CONTEXT_SPI, conf->spidev_path, sizeof CONTEXT_SPI);
 
     DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
                                                                                                                 CONTEXT_LWAN_PUBLIC,
@@ -247,7 +248,8 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
+int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf) {
+    CHECK_NULL(conf);
 
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == true) {
@@ -255,7 +257,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
         return LGW_HAL_ERROR;
     }
 
-    if (conf.enable == false) {
+    if (conf->enable == false) {
         /* nothing to do */
         DEBUG_PRINTF("Note: rf_chain %d disabled\n", rf_chain);
         return LGW_HAL_SUCCESS;
@@ -268,28 +270,28 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     }
 
     /* check if radio type is supported */
-    if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257) && (conf.type != LGW_RADIO_TYPE_SX1250)) {
-        DEBUG_PRINTF("ERROR: NOT A VALID RADIO TYPE (%d)\n", conf.type);
+    if ((conf->type != LGW_RADIO_TYPE_SX1255) && (conf->type != LGW_RADIO_TYPE_SX1257) && (conf->type != LGW_RADIO_TYPE_SX1250)) {
+        DEBUG_PRINTF("ERROR: NOT A VALID RADIO TYPE (%d)\n", conf->type);
         return LGW_HAL_ERROR;
     }
 
     /* check if the radio central frequency is valid */
-    if ((conf.freq_hz < LGW_RF_RX_FREQ_MIN) || (conf.freq_hz > LGW_RF_RX_FREQ_MAX)) {
-        DEBUG_PRINTF("ERROR: NOT A VALID RADIO CENTER FREQUENCY, PLEASE CHECK IF IT HAS BEEN GIVEN IN HZ (%u)\n", conf.freq_hz);
+    if ((conf->freq_hz < LGW_RF_RX_FREQ_MIN) || (conf->freq_hz > LGW_RF_RX_FREQ_MAX)) {
+        DEBUG_PRINTF("ERROR: NOT A VALID RADIO CENTER FREQUENCY, PLEASE CHECK IF IT HAS BEEN GIVEN IN HZ (%u)\n", conf->freq_hz);
         return LGW_HAL_ERROR;
     }
 
     /* set internal config according to parameters */
-    CONTEXT_RF_CHAIN[rf_chain].enable = conf.enable;
-    CONTEXT_RF_CHAIN[rf_chain].freq_hz = conf.freq_hz;
-    CONTEXT_RF_CHAIN[rf_chain].rssi_offset = conf.rssi_offset;
-    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_a = conf.rssi_tcomp.coeff_a;
-    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_b = conf.rssi_tcomp.coeff_b;
-    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_c = conf.rssi_tcomp.coeff_c;
-    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_d = conf.rssi_tcomp.coeff_d;
-    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_e = conf.rssi_tcomp.coeff_e;
-    CONTEXT_RF_CHAIN[rf_chain].type = conf.type;
-    CONTEXT_RF_CHAIN[rf_chain].tx_enable = conf.tx_enable;
+    CONTEXT_RF_CHAIN[rf_chain].enable = conf->enable;
+    CONTEXT_RF_CHAIN[rf_chain].freq_hz = conf->freq_hz;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_offset = conf->rssi_offset;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_a = conf->rssi_tcomp.coeff_a;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_b = conf->rssi_tcomp.coeff_b;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_c = conf->rssi_tcomp.coeff_c;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_d = conf->rssi_tcomp.coeff_d;
+    CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_e = conf->rssi_tcomp.coeff_e;
+    CONTEXT_RF_CHAIN[rf_chain].type = conf->type;
+    CONTEXT_RF_CHAIN[rf_chain].tx_enable = conf->tx_enable;
 
     DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n",  rf_chain,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].enable,
@@ -303,9 +305,11 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
+int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf) {
     int32_t bw_hz;
     uint32_t rf_rx_bandwidth;
+
+    CHECK_NULL(conf);
 
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == true) {
@@ -320,7 +324,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     }
 
     /* if chain is disabled, don't care about most parameters */
-    if (conf.enable == false) {
+    if (conf->enable == false) {
         CONTEXT_IF_CHAIN[if_chain].enable = false;
         CONTEXT_IF_CHAIN[if_chain].freq_hz = 0;
         DEBUG_PRINTF("Note: if_chain %d disabled\n", if_chain);
@@ -331,12 +335,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     if (sx1302_get_ifmod_config(if_chain) == IF_UNDEFINED) {
         DEBUG_PRINTF("ERROR: IF CHAIN %d NOT CONFIGURABLE\n", if_chain);
     }
-    if (conf.rf_chain >= LGW_RF_CHAIN_NB) {
+    if (conf->rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
         return LGW_HAL_ERROR;
     }
     /* check if IF frequency is optimal based on channel and radio bandwidths */
-    switch (conf.bandwidth) {
+    switch (conf->bandwidth) {
         case BW_250KHZ:
             rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_250KHZ; /* radio bandwidth */
             break;
@@ -348,12 +352,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_125KHZ; /* radio bandwidth */
             break;
     }
-    bw_hz = lgw_bw_getval(conf.bandwidth); /* channel bandwidth */
-    if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth/2)) {
-        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
+    bw_hz = lgw_bw_getval(conf->bandwidth); /* channel bandwidth */
+    if ((conf->freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth/2)) {
+        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf->freq_hz);
         return LGW_HAL_ERROR;
-    } else if ((conf.freq_hz - ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) < -((int32_t)rf_rx_bandwidth/2)) {
-        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO LOW\n", conf.freq_hz);
+    } else if ((conf->freq_hz - ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) < -((int32_t)rf_rx_bandwidth/2)) {
+        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO LOW\n", conf->freq_hz);
         return LGW_HAL_ERROR;
     }
 
@@ -362,31 +366,31 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     switch (sx1302_get_ifmod_config(if_chain)) {
         case IF_LORA_STD:
             /* fill default parameters if needed */
-            if (conf.bandwidth == BW_UNDEFINED) {
-                conf.bandwidth = BW_250KHZ;
+            if (conf->bandwidth == BW_UNDEFINED) {
+                conf->bandwidth = BW_250KHZ;
             }
-            if (conf.datarate == DR_UNDEFINED) {
-                conf.datarate = DR_LORA_SF7;
+            if (conf->datarate == DR_UNDEFINED) {
+                conf->datarate = DR_LORA_SF7;
             }
             /* check BW & DR */
-            if (!IS_LORA_BW(conf.bandwidth)) {
+            if (!IS_LORA_BW(conf->bandwidth)) {
                 DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
-            if (!IS_LORA_DR(conf.datarate)) {
+            if (!IS_LORA_DR(conf->datarate)) {
                 DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
-            CONTEXT_IF_CHAIN[if_chain].enable = conf.enable;
-            CONTEXT_IF_CHAIN[if_chain].rf_chain = conf.rf_chain;
-            CONTEXT_IF_CHAIN[if_chain].freq_hz = conf.freq_hz;
-            CONTEXT_LORA_SERVICE.bandwidth = conf.bandwidth;
-            CONTEXT_LORA_SERVICE.datarate = conf.datarate;
-            CONTEXT_LORA_SERVICE.implicit_hdr = conf.implicit_hdr;
-            CONTEXT_LORA_SERVICE.implicit_payload_length = conf.implicit_payload_length;
-            CONTEXT_LORA_SERVICE.implicit_crc_en   = conf.implicit_crc_en;
-            CONTEXT_LORA_SERVICE.implicit_coderate = conf.implicit_coderate;
+            CONTEXT_IF_CHAIN[if_chain].enable = conf->enable;
+            CONTEXT_IF_CHAIN[if_chain].rf_chain = conf->rf_chain;
+            CONTEXT_IF_CHAIN[if_chain].freq_hz = conf->freq_hz;
+            CONTEXT_LORA_SERVICE.bandwidth = conf->bandwidth;
+            CONTEXT_LORA_SERVICE.datarate = conf->datarate;
+            CONTEXT_LORA_SERVICE.implicit_hdr = conf->implicit_hdr;
+            CONTEXT_LORA_SERVICE.implicit_payload_length = conf->implicit_payload_length;
+            CONTEXT_LORA_SERVICE.implicit_crc_en   = conf->implicit_crc_en;
+            CONTEXT_LORA_SERVICE.implicit_coderate = conf->implicit_coderate;
 
             DEBUG_PRINTF("Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain,
                                                                                                     CONTEXT_IF_CHAIN[if_chain].enable,
@@ -397,25 +401,25 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 
         case IF_LORA_MULTI:
             /* fill default parameters if needed */
-            if (conf.bandwidth == BW_UNDEFINED) {
-                conf.bandwidth = BW_125KHZ;
+            if (conf->bandwidth == BW_UNDEFINED) {
+                conf->bandwidth = BW_125KHZ;
             }
-            if (conf.datarate == DR_UNDEFINED) {
-                conf.datarate = DR_LORA_SF7;
+            if (conf->datarate == DR_UNDEFINED) {
+                conf->datarate = DR_LORA_SF7;
             }
             /* check BW & DR */
-            if (conf.bandwidth != BW_125KHZ) {
+            if (conf->bandwidth != BW_125KHZ) {
                 DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
-            if (!IS_LORA_DR(conf.datarate)) {
+            if (!IS_LORA_DR(conf->datarate)) {
                 DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
-            CONTEXT_IF_CHAIN[if_chain].enable = conf.enable;
-            CONTEXT_IF_CHAIN[if_chain].rf_chain = conf.rf_chain;
-            CONTEXT_IF_CHAIN[if_chain].freq_hz = conf.freq_hz;
+            CONTEXT_IF_CHAIN[if_chain].enable = conf->enable;
+            CONTEXT_IF_CHAIN[if_chain].rf_chain = conf->rf_chain;
+            CONTEXT_IF_CHAIN[if_chain].freq_hz = conf->freq_hz;
 
             DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d\n",   if_chain,
                                                                                             CONTEXT_IF_CHAIN[if_chain].enable,
@@ -424,30 +428,30 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 
         case IF_FSK_STD:
             /* fill default parameters if needed */
-            if (conf.bandwidth == BW_UNDEFINED) {
-                conf.bandwidth = BW_250KHZ;
+            if (conf->bandwidth == BW_UNDEFINED) {
+                conf->bandwidth = BW_250KHZ;
             }
-            if (conf.datarate == DR_UNDEFINED) {
-                conf.datarate = 64000; /* default datarate */
+            if (conf->datarate == DR_UNDEFINED) {
+                conf->datarate = 64000; /* default datarate */
             }
             /* check BW & DR */
-            if(!IS_FSK_BW(conf.bandwidth)) {
+            if(!IS_FSK_BW(conf->bandwidth)) {
                 DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY FSK IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
-            if(!IS_FSK_DR(conf.datarate)) {
+            if(!IS_FSK_DR(conf->datarate)) {
                 DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
-            CONTEXT_IF_CHAIN[if_chain].enable = conf.enable;
-            CONTEXT_IF_CHAIN[if_chain].rf_chain = conf.rf_chain;
-            CONTEXT_IF_CHAIN[if_chain].freq_hz = conf.freq_hz;
-            CONTEXT_FSK.bandwidth = conf.bandwidth;
-            CONTEXT_FSK.datarate = conf.datarate;
-            if (conf.sync_word > 0) {
-                CONTEXT_FSK.sync_word_size = conf.sync_word_size;
-                CONTEXT_FSK.sync_word = conf.sync_word;
+            CONTEXT_IF_CHAIN[if_chain].enable = conf->enable;
+            CONTEXT_IF_CHAIN[if_chain].rf_chain = conf->rf_chain;
+            CONTEXT_IF_CHAIN[if_chain].freq_hz = conf->freq_hz;
+            CONTEXT_FSK.bandwidth = conf->bandwidth;
+            CONTEXT_FSK.datarate = conf->datarate;
+            if (conf->sync_word > 0) {
+                CONTEXT_FSK.sync_word_size = conf->sync_word_size;
+                CONTEXT_FSK.sync_word = conf->sync_word;
             }
             DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain,
                                                                                                                         CONTEXT_IF_CHAIN[if_chain].enable,
@@ -469,8 +473,10 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
+int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf) {
     int i;
+
+    CHECK_NULL(conf);
 
     /* Check LUT size */
     if ((conf->size < 1) || (conf->size > TX_GAIN_LUT_SIZE_MAX)) {
@@ -522,7 +528,9 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf) {
+int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf) {
+    CHECK_NULL(conf);
+
     CONTEXT_TIMESTAMP.enable_precision_ts = conf->enable_precision_ts;
     CONTEXT_TIMESTAMP.max_ts_metrics = conf->max_ts_metrics;
     CONTEXT_TIMESTAMP.nb_symbols = conf->nb_symbols;
@@ -532,8 +540,10 @@ int lgw_timestamp_setconf(struct lgw_conf_timestamp_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_debug_setconf(struct lgw_conf_debug_s *conf) {
+int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
     int i;
+
+    CHECK_NULL(conf);
 
     CONTEXT_DEBUG.nb_ref_payload = conf->nb_ref_payload;
     for (i = 0; i < CONTEXT_DEBUG.nb_ref_payload; i++) {

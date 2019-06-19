@@ -271,7 +271,7 @@ int main(int argc, char **argv)
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
     strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
+    if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
     }
@@ -283,7 +283,7 @@ int main(int argc, char **argv)
     rfconf.rssi_offset = 0.0;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
-    if (lgw_rxrf_setconf(0, rfconf) != LGW_HAL_SUCCESS) {
+    if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
     }
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
     rfconf.rssi_offset = 0.0;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
-    if (lgw_rxrf_setconf(1, rfconf) != LGW_HAL_SUCCESS) {
+    if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;
     }
