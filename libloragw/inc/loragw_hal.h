@@ -408,7 +408,7 @@ trigger signal. Because there is no way to anticipate the triggering event and
 start the analog circuitry beforehand, that delay must be taken into account in
 the protocol.
 */
-int lgw_send(struct lgw_pkt_tx_s pkt_data);
+int lgw_send(struct lgw_pkt_tx_s * pkt_data);
 
 /**
 @brief Give the the status of different part of the LoRa concentrator

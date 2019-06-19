@@ -519,7 +519,7 @@ int main(int argc, char **argv)
 
             pkt.payload[6] = (uint8_t)(i >> 0); /* FCnt */
             pkt.payload[7] = (uint8_t)(i >> 8); /* FCnt */
-            x = lgw_send(pkt);
+            x = lgw_send(&pkt);
             if (x != 0) {
                 printf("ERROR: failed to send packet\n");
                 return EXIT_FAILURE;

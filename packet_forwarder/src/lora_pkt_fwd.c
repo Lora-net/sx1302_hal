@@ -2957,7 +2957,7 @@ void thread_jit(void) {
 
                         /* send packet to concentrator */
                         pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
-                        result = lgw_send(pkt);
+                        result = lgw_send(&pkt);
                         pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
                         if (result == LGW_HAL_ERROR) {
                             pthread_mutex_lock(&mx_meas_dw);
