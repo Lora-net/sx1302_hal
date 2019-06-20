@@ -86,6 +86,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define SX1302_PKT_CRC_PAYLOAD_15_8(buffer, start_index)        TAKE_N_BITS_FROM(buffer[start_index + 20], 0, 8)
 #define SX1302_PKT_NUM_TS_METRICS(buffer, start_index)          TAKE_N_BITS_FROM(buffer[start_index + 21], 0, 8)
 
+#define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -125,6 +127,13 @@ typedef struct {
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+void sx1302_init(struct lgw_conf_timestamp_s *conf);
 
 /**
 @brief Get the SX1302 unique identifier
@@ -266,13 +275,6 @@ int sx1302_modem_enable(void);
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_gps_enable(bool enable);
-
-/**
-@brief Select legacy or precision timestamp
-@param conf A pointer to the current timestamp configuration context
-@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
-*/
-int sx1302_timestamp_mode(struct lgw_conf_timestamp_s *conf);
 
 /**
 @brief Get the current SX1302 internal counter value

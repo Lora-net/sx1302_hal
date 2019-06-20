@@ -64,7 +64,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define CHECK_NULL(a)                 if(a==NULL){return LGW_HAL_ERROR;}
 #endif
 
-#define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 #define CONTEXT_STARTED         lgw_context.is_started
@@ -614,6 +613,9 @@ int lgw_start(void) {
     /* Release host control on radio (will be controlled by AGC) */
     sx1302_radio_host_ctrl(false);
 
+    /* Basic initialization of the sx1302 */
+    sx1302_init(&CONTEXT_TIMESTAMP);
+
     /* Configure PA/LNA LUTs */
     sx1302_pa_lna_lut_configure();
 
@@ -640,9 +642,6 @@ int lgw_start(void) {
 
     /* configure syncword */
     sx1302_lora_syncword(CONTEXT_LWAN_PUBLIC, CONTEXT_LORA_SERVICE.datarate);
-
-    /* configure timestamp */
-    sx1302_timestamp_mode(&CONTEXT_TIMESTAMP);
 
     /* Load firmware */
     switch (CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type) {

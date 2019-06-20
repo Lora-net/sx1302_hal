@@ -34,6 +34,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 #include "loragw_sx1302.h"
+#include "loragw_sx1302_timestamp.h"
 #include "loragw_sx1250.h"
 #include "loragw_agc_params.h"
 #include "loragw_cal.h"
@@ -54,7 +55,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 
 #define IF_HZ_TO_REG(f)     ((f << 5) / 15625)
-#define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 
 #define SX1302_FREQ_TO_REG(f)   (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
 
@@ -102,17 +102,6 @@ typedef struct rx_buffer_s {
     uint16_t buffer_size;   /*!> The number of bytes currently stored in the buffer */
     int buffer_index;       /*!> Current parsing index in the buffer */
 } rx_buffer_t;
-
-/**
-@struct timestamp_counter_s
-@brief context to maintain the internal counters (inst and pps trig) wrapping
-*/
-typedef struct timestamp_counter_s {
-    uint32_t counter_us_raw_27bits_inst_prev;
-    uint32_t counter_us_raw_27bits_pps_prev;
-    uint8_t  counter_us_raw_27bits_inst_wrap;
-    uint8_t  counter_us_raw_27bits_pps_wrap;
-} timestamp_counter_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -165,7 +154,7 @@ const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 #include "src/text_cal_sx1257_16_Nov_1.var"
 
 rx_buffer_t rx_buffer;
-timestamp_counter_t counter_us = {0, 0, 0, 0};
+timestamp_counter_t counter_us;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -239,58 +228,6 @@ extern int32_t lgw_bw_getval(int x);
 @return TODO
 */
 void lora_crc16(const char data, int *crc);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-void timestamp_counter_new(timestamp_counter_t * self);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-void timestamp_counter_delete(timestamp_counter_t * self);
-
-/**
-@brief Update the counter wrapping status based on given current counter
-@param self     Pointer to the counter handler
-@param pps      Set to true to update the PPS trig counter status
-@param cnt      Current value of the counter to be used for the update
-@return N/A
-*/
-void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt);
-
-/**
-@brief Convert the 27-bits counter given by the SX1302 to a 32-bits counter which wraps on a uint32_t.
-@param self     Pointer to the counter handler
-@param pps      Set to true to expand the counter based on the PPS trig wrapping status
-@param cnt_us   The 27-bits counter to be expanded
-@return the 32-bits counter
-*/
-uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us);
-
-/**
-@brief Reads the SX1302 internal counter register, and return the 32-bits 1 MHz counter
-@param self     Pointer to the counter handler
-@param pps      Set to true to expand the counter based on the PPS trig wrapping status
-@return the current 32-bits counter
-*/
-uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps);
-
-/**
-@brief Get the timestamp correction to applied to the packet timestamp
-@param ifmod            modem type
-@param bandwidth        modulation bandwidth
-@param datarate         modulation datarate
-@param coderate         modulation coding rate
-@param crc_en           indicates if CRC is enabled or disabled
-@param payload_length   payload length
-@return The correction to be applied to the packet timestamp, in microseconds
-*/
-uint32_t timestamp_correction_lora(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length);
 
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
@@ -610,212 +547,18 @@ void rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr) {
     assert(0);
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void timestamp_counter_new(timestamp_counter_t * self) {
-    self->counter_us_raw_27bits_inst_prev = 0;
-    self->counter_us_raw_27bits_pps_prev = 0;
-    self->counter_us_raw_27bits_inst_wrap = 0;
-    self->counter_us_raw_27bits_pps_wrap = 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void timestamp_counter_delete(timestamp_counter_t * self) {
-    self->counter_us_raw_27bits_inst_prev = 0;
-    self->counter_us_raw_27bits_pps_prev = 0;
-    self->counter_us_raw_27bits_inst_wrap = 0;
-    self->counter_us_raw_27bits_pps_wrap = 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt) {
-    uint32_t counter_us_raw_27bits_prev;
-    uint8_t  counter_us_raw_27bits_wrap;
-
-    /* Get the previous counter value and wrap status */
-    if (pps == true) {
-        counter_us_raw_27bits_prev = self->counter_us_raw_27bits_pps_prev;
-        counter_us_raw_27bits_wrap = self->counter_us_raw_27bits_pps_wrap;
-    } else {
-        counter_us_raw_27bits_prev = self->counter_us_raw_27bits_inst_prev;
-        counter_us_raw_27bits_wrap = self->counter_us_raw_27bits_inst_wrap;
-    }
-
-    /* Check if counter has wrapped, and update wrap status if necessary */
-    if (cnt < counter_us_raw_27bits_prev) {
-        counter_us_raw_27bits_wrap += 1;
-        counter_us_raw_27bits_wrap = counter_us_raw_27bits_wrap % 32;
-    }
-
-    /* Store counter value and wrap status for next time */
-    if (pps == true) {
-        self->counter_us_raw_27bits_pps_prev = cnt;
-        self->counter_us_raw_27bits_pps_wrap = counter_us_raw_27bits_wrap;
-    } else {
-        self->counter_us_raw_27bits_inst_prev = cnt;
-        self->counter_us_raw_27bits_inst_wrap = counter_us_raw_27bits_wrap;
-    }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
-    int x;
-    uint8_t buff[4];
-    uint32_t counter_us_raw_27bits_now;
-
-    /* Get the 32MHz timestamp counter - 4 bytes */
-    /* step of 31.25 ns */
-    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
-    if (x != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to get timestamp counter value\n");
-        return 0;
-    }
-
-    counter_us_raw_27bits_now  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
-    counter_us_raw_27bits_now /= 32; /* scale to 1MHz */
-
-    /* Update counter wrapping status */
-    timestamp_counter_update(self, pps, counter_us_raw_27bits_now);
-
-    /* Convert 27-bits counter to 32-bits counter */
-    return timestamp_counter_expand(self, pps, counter_us_raw_27bits_now);
-}
-
-uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us) {
-    uint32_t counter_us_32bits;
-
-    if (pps == true) {
-        counter_us_32bits = (self->counter_us_raw_27bits_pps_wrap << 27) | cnt_us;
-    } else {
-        counter_us_32bits = (self->counter_us_raw_27bits_inst_wrap << 27) | cnt_us;
-    }
-
-#if 0
-    /* DEBUG: to be enabled when running test_loragw_counter test application
-       This generates a CSV log, and can be plotted with gnuplot:
-        > set datafile separator comma
-        > plot for [col=1:2:1] 'log_count.txt' using col with lines
-    */
-    printf("%u,%u,%u\n", cnt_us, counter_us_32bits, (pps == true) ? self->counter_us_raw_27bits_pps_wrap : self->counter_us_raw_27bits_inst_wrap);
-#endif
-
-    return counter_us_32bits;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-uint32_t timestamp_correction_lora(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length) {
-    int32_t val;
-    uint32_t sf = (uint32_t)datarate, cr = (uint32_t)coderate, bw_pow, ppm;
-    uint32_t clk_period;
-    uint32_t nb_nibble, nb_nibble_in_hdr, nb_nibble_in_last_block;
-    uint32_t dft_peak_en, nb_iter;
-    uint32_t demap_delay, decode_delay, fft_delay_state3, fft_delay, delay_x;
-    uint32_t timestamp_correction;
-
-    /* determine if 'PPM mode' is on */
-    if (SET_PPM_ON(bandwidth, datarate)) {
-        ppm = 1;
-    } else {
-        ppm = 0;
-    }
-
-    /* timestamp correction code, base delay */
-    switch (bandwidth)
-    {
-        case BW_125KHZ:
-            bw_pow = 1;
-            delay_x = 16000000 / bw_pow + 2031250;
-            break;
-        case BW_250KHZ:
-            bw_pow = 2;
-            delay_x = 16000000 / bw_pow + 2031250;
-            break;
-        case BW_500KHZ:
-            bw_pow = 4;
-            delay_x = 16000000 / bw_pow + 2031250;
-            break;
-        default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", bandwidth);
-            delay_x = 0;
-            bw_pow = 0;
-            break;
-    }
-    clk_period = 250000;
-
-    nb_nibble = (payload_length + 2 * crc_en) * 2 + 5;
-
-    if ((sf == 5) || (sf == 6)) {
-        nb_nibble_in_hdr = sf;
-    } else {
-        nb_nibble_in_hdr = sf - 2;
-    }
-
-    nb_nibble_in_last_block = nb_nibble - nb_nibble_in_hdr - (sf - 2 * ppm) * ((nb_nibble - nb_nibble_in_hdr) / (sf - 2 * ppm));
-    if (nb_nibble_in_last_block == 0) {
-        nb_nibble_in_last_block = sf - 2 * ppm;
-    }
-
-    nb_iter = ((sf + 1) >> 1);
-
-    /* timestamp correction code, variable delay */
-    if (ifmod == IF_LORA_STD) {
-        lgw_reg_r(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_CFG0_DFT_PEAK_EN, &val);
-    } else {
-        lgw_reg_r(SX1302_REG_RX_TOP_RX_CFG0_DFT_PEAK_EN, &val);
-    }
-    if (val != 0) {
-        /* TODO: should we differentiate the mode (FULL/TRACK) ? */
-        dft_peak_en = 1;
-    } else {
-        dft_peak_en = 0;
-    }
-
-
-    if ((sf >= 5) && (sf <= 12) && (bw_pow > 0)) {
-        if ((2 * (payload_length + 2 * crc_en) - (sf - 7)) <= 0) { /* payload fits entirely in first 8 symbols (header) */
-            if (sf > 6) {
-                nb_nibble_in_last_block = sf - 2;
-            } else {
-                nb_nibble_in_last_block = sf; // can't be acheived
-            }
-            dft_peak_en = 0;
-            cr = 4; /* header coding rate is 4 */
-            demap_delay = clk_period + (1 << sf) * clk_period * 3 / 4 + 3 * clk_period + (sf - 2) * clk_period;
-        } else {
-            demap_delay = clk_period + (1 << sf) * clk_period * (1 - ppm / 4) + 3 * clk_period + (sf - 2 * ppm) * clk_period;
-        }
-
-        fft_delay_state3 = clk_period * (((1 << sf) - 6) + 2 * ((1 << sf) * (nb_iter - 1) + 6)) + 4 * clk_period;
-
-        if (dft_peak_en) {
-            fft_delay = (5 - 2 * ppm) * ((1 << sf) * clk_period + 7 * clk_period) + 2 * clk_period;
-        } else {
-            fft_delay = (1 << sf) * 2 * clk_period + 3 * clk_period;
-        }
-
-        decode_delay = 5 * clk_period + (9 * clk_period + clk_period * cr) * nb_nibble_in_last_block + 3 * clk_period;
-        timestamp_correction = (uint32_t)(delay_x + fft_delay_state3 + fft_delay + demap_delay + decode_delay + 0.5e6) / 1e6;
-        //printf("INFO: timestamp_correction = %u us (delay_x %u, fft_delay_state3=%u, fft_delay=%u, demap_delay=%u, decode_delay = %u)\n", timestamp_correction, delay_x, fft_delay_state3, fft_delay, demap_delay, decode_delay);
-        printf("INFO: timestamp_correction = %u us\n", timestamp_correction);
-    }
-    else
-    {
-        timestamp_correction = 0;
-        DEBUG_MSG("WARNING: invalid packet, no timestamp correction\n");
-    }
-
-    return timestamp_correction;
-}
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+void sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
+    timestamp_counter_new(&counter_us);
+
+    if (conf_ts != NULL) {
+        timestamp_counter_mode(conf_ts->enable_precision_ts, conf_ts->max_ts_metrics, conf_ts->nb_symbols);
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_get_eui(uint64_t * eui) {
     int i, err;
@@ -1564,31 +1307,6 @@ int sx1302_lora_syncword(bool public, uint8_t lora_service_sf) {
         printf("INFO: configuring LoRa (Service) SF%u with syncword PUBLIC (0x34)\n", lora_service_sf);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH0_PEAK1_POS, 6);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS, 8);
-    }
-
-    return LGW_REG_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int sx1302_timestamp_mode(struct lgw_conf_timestamp_s * conf) {
-    if (conf->enable_precision_ts == false) {
-        printf("INFO: using legacy timestamp\n");
-        /* Latch end-of-packet timestamp (sx1301 compatibility) */
-        lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
-    } else {
-        printf("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", conf->max_ts_metrics, conf->nb_symbols);
-        /* Latch end-of-preamble timestamp */
-        lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x00);
-        lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS, conf->max_ts_metrics);
-
-        /* LoRa multi-SF modems */
-        lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_ENABLE, 0x01);
-        lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_NB_SYMB, conf->nb_symbols);
-
-        /* LoRa service modem */
-        lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_ENABLE, 0x01);
-        lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_NB_SYMB, conf->nb_symbols);
     }
 
     return LGW_REG_SUCCESS;
@@ -2449,7 +2167,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         }
 
         /* Get timestamp correction to be applied */
-        timestamp_correction = timestamp_correction_lora(ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
+        timestamp_correction = timestamp_counter_correction(ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
     } else if (ifmod == IF_FSK_STD) {
         DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", pkt.modem_id, p->if_chain);
         p->modulation = MOD_FSK;
@@ -2707,28 +2425,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     CHECK_NULL(tx_lut);
     CHECK_NULL(pkt_data);
 
-#if 0
-    /* Let AGC control PLL DIV (sx1250 only) */
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL2_PLL_DIV_CTRL_AGC(pkt_data->rf_chain), 1);
-
-    /* Set radio type */
-    reg = SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL_TX_IF_DST(pkt_data->rf_chain);
-    switch (radio_type) {
-        case LGW_RADIO_TYPE_SX1250:
-            lgw_reg_w(reg, 0x01); /* SX126x Tx RFFE */
-            break;
-        case LGW_RADIO_TYPE_SX1257:
-            lgw_reg_w(reg, 0x00); /* SX1255/57 Tx RFFE */
-            break;
-        default:
-            DEBUG_MSG("ERROR: radio type not supported\n");
-            return LGW_REG_ERROR;
-    }
-
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL_TX_MODE(pkt_data->rf_chain), 0x01); /* Modulation */
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL_TX_CLK_EDGE(pkt_data->rf_chain), 0x00); /* Data on rising edge */
-#endif
-
+    /* Select the proper modem */
     switch (pkt_data->modulation) {
         case MOD_LORA:
             lgw_reg_w(SX1302_REG_TX_TOP_GEN_CFG_0_MODULATION_TYPE(pkt_data->rf_chain), 0x00);
