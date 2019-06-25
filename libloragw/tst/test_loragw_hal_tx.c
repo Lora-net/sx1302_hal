@@ -71,7 +71,7 @@ void usage(void) {
     printf(" -m <str>   modulation type ['LORA', 'FSK']\n");
     printf(" -s <uint>  LoRa datarate 0:random, [5..12]\n");
     printf(" -b <uint>  LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
-    printf(" -l <uint>  FSK/LoRa preamble length, [0..65535]\n");
+    printf(" -l <uint>  FSK/LoRa preamble length, [6..65535]\n");
     printf(" -d <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -n <uint>  Number of packets to be sent\n");
@@ -424,7 +424,7 @@ int main(int argc, char **argv)
     rfconf.enable = (((rf_chain == 1) || (clocksource == 1)) ? true : false);
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
-    rfconf.tx_enable = true;
+    rfconf.tx_enable = false;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;

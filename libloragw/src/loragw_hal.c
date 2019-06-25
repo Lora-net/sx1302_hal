@@ -102,7 +102,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 //#include "arb_fw.var" /* external definition of the variable */
 //#include "agc_fw.var" /* external definition of the variable */
 //#include "cal_fw.var" /* external definition of the variable */
-#include "src/text_agc_sx1250_07_Fev_2019.var"
+#include "src/text_agc_sx1250_28_Mai_2019_1.var"
 #include "src/text_agc_sx1257_19_Nov_1.var"
 #include "src/text_arb_sx1302_13_Nov_3.var"
 
@@ -643,6 +643,9 @@ int lgw_start(void) {
     /* configure syncword */
     sx1302_lora_syncword(CONTEXT_LWAN_PUBLIC, CONTEXT_LORA_SERVICE.datarate);
 
+    /* enable demodulators - to be done before starting AGC/ARB */
+    sx1302_modem_enable();
+
     /* Load firmware */
     switch (CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type) {
         case LGW_RADIO_TYPE_SX1250:
@@ -670,9 +673,6 @@ int lgw_start(void) {
     if (sx1302_arb_start(FW_VERSION_ARB) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-
-    /* enable demodulators */
-    sx1302_modem_enable();
 
     /* static TX configuration */
     sx1302_tx_configure(CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type);
