@@ -111,7 +111,10 @@ int main(int argc, char ** argv)
     sigaction( SIGTERM, &sigact, NULL );
 
     /* Board reset */
-    system("./reset_lgw.sh start");
+    if (system("./reset_lgw.sh start") != 0) {
+        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+        exit(EXIT_FAILURE);
+    }
 
     printf("Beginning of test for loragw_spi.c\n");
     i = lgw_spi_open(spidev_path, &spi_target);

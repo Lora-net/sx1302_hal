@@ -107,7 +107,10 @@ int main(int argc, char ** argv)
     sigaction( SIGTERM, &sigact, NULL );
 
     /* Board reset */
-    system("./reset_lgw.sh start");
+    if (system("./reset_lgw.sh start") != 0) {
+        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+        exit(EXIT_FAILURE);
+    }
 
     x = lgw_connect(spidev_path);
     if (x != LGW_REG_SUCCESS) {

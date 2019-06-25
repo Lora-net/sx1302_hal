@@ -1365,7 +1365,10 @@ int main(int argc, char ** argv)
     freeaddrinfo(result);
 
     /* Board reset */
-    system("./reset_lgw.sh start"); /* TODO: to be removed */
+    if (system("./reset_lgw.sh start") != 0) {
+        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+        exit(EXIT_FAILURE);
+    }
 
     for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
         for (m = 0; m < 8; m++) {

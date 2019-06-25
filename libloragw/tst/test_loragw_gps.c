@@ -255,7 +255,10 @@ int main(int argc, char **argv)
     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 
     /* Board reset */
-    system("./reset_lgw.sh start");
+    if (system("./reset_lgw.sh start") != 0) {
+        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+        exit(EXIT_FAILURE);
+    }
 
     /* Open and configure GPS */
     i = lgw_gps_enable("/dev/ttyS0", "ubx7", 0, &gps_tty_dev);
