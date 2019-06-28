@@ -25,7 +25,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>       /* pow, cell */
 #include <inttypes.h>
 #include <time.h>
-#include <assert.h>
 
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
@@ -35,6 +34,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_sx1302.h"
 #include "loragw_sx1302_timestamp.h"
+#include "loragw_sx1302_rx.h"
 #include "loragw_sx1250.h"
 #include "loragw_agc_params.h"
 #include "loragw_cal.h"
@@ -60,48 +60,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
-
-/**
-@struct rx_packet_s
-@brief packet structure as contained in the sx1302 RX packet engine
-*/
-typedef struct rx_packet_s {
-    uint8_t     rxbytenb_modem;
-    uint8_t     rx_channel_in;
-    bool        crc_en;
-    uint8_t     coding_rate;                /* LoRa only */
-    uint8_t     rx_rate_sf;                 /* LoRa only */
-    uint8_t     modem_id;
-    int32_t     frequency_offset_error;     /* LoRa only */
-    uint8_t     payload[255];
-    bool        payload_crc_error;
-    bool        sync_error;                 /* LoRa only */
-    bool        header_error;               /* LoRa only */
-    bool        timing_set;                 /* LoRa only */
-    int8_t      snr_average;                /* LoRa only */
-    uint8_t     rssi_chan_avg;
-    uint8_t     rssi_signal_avg;            /* LoRa only */
-    uint8_t     rssi_chan_max_neg_delta;
-    uint8_t     rssi_chan_max_pos_delta;
-    uint8_t     rssi_sig_max_neg_delta;     /* LoRa only */
-    uint8_t     rssi_sig_max_pos_delta;     /* LoRa only */
-    uint32_t    timestamp_cnt;
-    uint16_t    rx_crc16_value;             /* LoRa only */
-    uint8_t     num_ts_metrics_stored;      /* LoRa only */
-    uint8_t     timestamp_avg[255];         /* LoRa only */
-    uint8_t     timestamp_stddev[255];      /* LoRa only */
-    uint8_t     packet_checksum;
-} rx_packet_t;
-
-/**
-@struct rx_buffer_s
-@brief buffer to hold the data fetched from the sx1302 RX buffer
-*/
-typedef struct rx_buffer_s {
-    uint8_t buffer[4096];   /*!> byte array to hald the data fetched from the RX buffer */
-    uint16_t buffer_size;   /*!> The number of bytes currently stored in the buffer */
-    int buffer_index;       /*!> Current parsing index in the buffer */
-} rx_buffer_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -151,62 +109,17 @@ const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
+/* Radio calibration firmware */
 #include "src/text_cal_sx1257_16_Nov_1.var"
 
+/* Buffer to hald RX data */
 rx_buffer_t rx_buffer;
+
+/* Internal timestamp counter */
 timestamp_counter_t counter_us;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-int rx_buffer_new(rx_buffer_t * self);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-int rx_buffer_del(rx_buffer_t * self);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-int rx_buffer_fetch(rx_buffer_t * self);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-uint16_t rx_buffer_read_ptr_addr(void);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-uint16_t rx_buffer_write_ptr_addr(void);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-void rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr);
 
 /**
 @brief TODO
@@ -237,206 +150,6 @@ extern FILE * log_file;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-int rx_buffer_new(rx_buffer_t * self) {
-    /* Check input params */
-    CHECK_NULL(self);
-
-    /* Initialize members */
-    memset(self->buffer, 0, sizeof self->buffer);
-    self->buffer_size = 0;
-    self->buffer_index = 0;
-
-    return LGW_REG_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int rx_buffer_del(rx_buffer_t * self) {
-    /* Check input params */
-    CHECK_NULL(self);
-
-    /* Reset index & size */
-    self->buffer_size = 0;
-    self->buffer_index = 0;
-
-    return LGW_REG_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int rx_buffer_fetch(rx_buffer_t * self) {
-    int i, res;
-    uint8_t buff[2];
-
-    /* Check input params */
-    CHECK_NULL(self);
-
-    /* Check if there is data in the FIFO */
-    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    self->buffer_size  = (uint16_t)((buff[0] << 8) & 0xFF00);
-    self->buffer_size |= (uint16_t)((buff[1] << 0) & 0x00FF);
-
-    /* Fetch bytes from fifo if any */
-    if (self->buffer_size > 0) {
-        printf("-----------------\n");
-        printf("%s: nb_bytes to be fetched: %u (%u %u)\n", __FUNCTION__, self->buffer_size, buff[1], buff[0]);
-
-        memset(self->buffer, 0, sizeof self->buffer);
-        res = lgw_mem_rb(0x4000, self->buffer, self->buffer_size, true);
-        if (res != LGW_REG_SUCCESS) {
-            printf("ERROR: Failed to read RX buffer, SPI error\n");
-            return LGW_REG_ERROR;
-        }
-
-        /* print debug info : TODO to be removed */
-        printf("RX_BUFFER: ");
-        for (i = 0; i < self->buffer_size; i++) {
-            printf("%02X ", self->buffer[i]);
-        }
-        printf("\n");
-
-    }
-
-    /* Initialize the current buffer index to iterate on */
-    self->buffer_index = 0;
-
-    return LGW_REG_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
-    int i;
-    uint8_t checksum_rcv, checksum_calc = 0;
-    uint16_t checksum_idx;
-    uint16_t pkt_num_bytes;
-
-    /* Check input params */
-    CHECK_NULL(self);
-    CHECK_NULL(pkt);
-
-    /* Is there any data to be parsed ? */
-    if (self->buffer_index >= self->buffer_size) {
-        printf("INFO: No more data to be parsed\n");
-        return LGW_REG_ERROR;
-    }
-
-    /* Get pkt sync words */
-    if ((self->buffer[self->buffer_index] != SX1302_PKT_SYNCWORD_BYTE_0) || (self->buffer[self->buffer_index + 1] != SX1302_PKT_SYNCWORD_BYTE_1)) {
-        printf("INFO: searching syncword...\n");
-        self->buffer_index += 1;
-        return LGW_REG_ERROR;
-        /* TODO: while loop until syncword found ?? */
-    }
-    printf("INFO: pkt syncword found at index %u\n", self->buffer_index);
-
-    /* Get payload length */
-    pkt->rxbytenb_modem = SX1302_PKT_PAYLOAD_LENGTH(self->buffer, self->buffer_index);
-
-    /* Get fine timestamp metrics */
-    pkt->num_ts_metrics_stored = SX1302_PKT_NUM_TS_METRICS(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-
-    /* Calculate the total number of bytes in the packet */
-    pkt_num_bytes = SX1302_PKT_HEAD_METADATA + pkt->rxbytenb_modem + SX1302_PKT_TAIL_METADATA + (2 * pkt->num_ts_metrics_stored);
-
-    /* Check if we have a complete packet in the rx buffer fetched */
-    if((self->buffer_index + pkt_num_bytes) > self->buffer_size) {
-        printf("WARNING: aborting truncated message (size=%u)\n", self->buffer_size);
-        return LGW_REG_ERROR;
-    }
-
-    /* Get the checksum as received in the RX buffer */
-    checksum_idx = pkt_num_bytes - 1;
-    checksum_rcv = self->buffer[self->buffer_index + pkt_num_bytes - 1];
-
-    /* Calculate the checksum from the actual payload bytes received */
-    for (i = 0; i < (int)checksum_idx; i++) {
-        checksum_calc += self->buffer[self->buffer_index + i];
-    }
-
-    /* Check if the checksum is correct */
-    if (checksum_rcv != checksum_calc) {
-        printf("WARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum_rcv, checksum_calc);
-        return LGW_REG_ERROR;
-    } else {
-        printf("Packet checksum OK (0x%02X)\n", checksum_rcv);
-    }
-
-    /* Parse packet metadata */
-    pkt->modem_id = SX1302_PKT_MODEM_ID(self->buffer, self->buffer_index);
-    pkt->rx_channel_in = SX1302_PKT_CHANNEL(self->buffer, self->buffer_index);
-    pkt->crc_en = SX1302_PKT_CRC_EN(self->buffer, self->buffer_index);
-    pkt->payload_crc_error = SX1302_PKT_CRC_ERROR(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-    pkt->sync_error = SX1302_PKT_SYNC_ERROR(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-    pkt->header_error = SX1302_PKT_HEADER_ERROR(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-    pkt->timing_set = SX1302_PKT_TIMING_SET(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-    pkt->coding_rate = SX1302_PKT_CODING_RATE(self->buffer, self->buffer_index);
-    pkt->rx_rate_sf = SX1302_PKT_DATARATE(self->buffer, self->buffer_index);
-    pkt->rssi_chan_avg = SX1302_PKT_RSSI_CHAN(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-    pkt->rssi_signal_avg = SX1302_PKT_RSSI_SIG(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-    pkt->rx_crc16_value  = (uint16_t)((SX1302_PKT_CRC_PAYLOAD_7_0(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  0) & 0x00FF);
-    pkt->rx_crc16_value |= (uint16_t)((SX1302_PKT_CRC_PAYLOAD_15_8(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  8) & 0xFF00);
-    pkt->snr_average = (int8_t)SX1302_PKT_SNR_AVG(self->buffer, self->buffer_index + pkt->rxbytenb_modem);
-
-    pkt->frequency_offset_error = (int32_t)((SX1302_PKT_FREQ_OFFSET_19_16(self->buffer, self->buffer_index) << 16) | (SX1302_PKT_FREQ_OFFSET_15_8(self->buffer, self->buffer_index) << 8) | (SX1302_PKT_FREQ_OFFSET_7_0(self->buffer, self->buffer_index) << 0));
-    if (pkt->frequency_offset_error >= (1<<19)) { /* Handle signed value on 20bits */
-        pkt->frequency_offset_error = (pkt->frequency_offset_error - (1<<20));
-    }
-
-    /* Packet timestamp (32MHz ) */
-    pkt->timestamp_cnt  = (uint32_t)((SX1302_PKT_TIMESTAMP_7_0(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  0) & 0x000000FF);
-    pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_15_8(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  8) & 0x0000FF00);
-    pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
-    pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
-    /* Scale packet timestamp to 1 MHz (microseconds) */
-    pkt->timestamp_cnt /= 32;
-    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
-    pkt->timestamp_cnt = timestamp_counter_expand(&counter_us, false, pkt->timestamp_cnt);
-
-    printf("-----------------\n");
-    printf("  modem:      %u\n", pkt->modem_id);
-    printf("  chan:       %u\n", pkt->rx_channel_in);
-    printf("  size:       %u\n", pkt->rxbytenb_modem);
-    printf("  crc_en:     %u\n", pkt->crc_en);
-    printf("  crc_err:    %u\n", pkt->payload_crc_error);
-    printf("  sync_err:   %u\n", pkt->sync_error);
-    printf("  hdr_err:    %u\n", pkt->header_error);
-    printf("  timing_set: %u\n", pkt->timing_set);
-    printf("  codr:       %u\n", pkt->coding_rate);
-    printf("  datr:       %u\n", pkt->rx_rate_sf);
-    printf("  num_ts:     %u\n", pkt->num_ts_metrics_stored);
-    printf("-----------------\n");
-
-    /* Sanity checks: check the range of few metadata */
-    if (pkt->modem_id > SX1302_FSK_MODEM_ID) {
-        printf("ERROR: modem_id is out of range - %u\n", pkt->modem_id);
-        return LGW_REG_ERROR;
-    } else {
-        if (pkt->modem_id <= SX1302_LORA_STD_MODEM_ID) { /* LoRa modems */
-            if (pkt->rx_channel_in > 9) {
-                printf("ERROR: channel is out of range - %u\n", pkt->rx_channel_in);
-                return LGW_REG_ERROR;
-            }
-            if ((pkt->rx_rate_sf < 5) || (pkt->rx_rate_sf > 12)) {
-                printf("ERROR: SF is out of range - %u\n", pkt->rx_rate_sf);
-                return LGW_REG_ERROR;
-            }
-        } else { /* FSK modem */
-            /* TODO: not checked */
-        }
-    }
-
-    /* Parse & copy payload in packet struct */
-    memcpy((void *)pkt->payload, (void *)(&(self->buffer[self->buffer_index + SX1302_PKT_HEAD_METADATA])), pkt->rxbytenb_modem);
-
-    /* move buffer index toward next message */
-    self->buffer_index += (SX1302_PKT_HEAD_METADATA + pkt->rxbytenb_modem + SX1302_PKT_TAIL_METADATA + (2 * pkt->num_ts_metrics_stored));
-
-    return LGW_REG_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int calculate_freq_to_time_drift(uint32_t freq_hz, uint8_t bw, uint16_t * mant, uint8_t * exp) {
     uint64_t mantissa_u64;
@@ -486,65 +199,6 @@ void lora_crc16(const char data, int *crc) {
     next += ((((*crc>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<14) ;
     next += ((((*crc>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<15) ;
     (*crc) = next;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-uint16_t rx_buffer_read_ptr_addr(void) {
-    int32_t val;
-    uint16_t addr;
-
-    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_READ_MSB_LAST_ADDR_READ, &val); /* mandatory to read MSB first */
-    addr  = (uint16_t)(val << 8);
-    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_READ_LSB_LAST_ADDR_READ, &val);
-    addr |= (uint16_t)val;
-
-    return addr;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-uint16_t rx_buffer_write_ptr_addr(void) {
-    int32_t val;
-    uint16_t addr;
-
-    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_WRITE_MSB_LAST_ADDR_WRITE, &val);  /* mandatory to read MSB first */
-    addr  = (uint16_t)(val << 8);
-    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_LAST_ADDR_WRITE_LSB_LAST_ADDR_WRITE, &val);
-    addr |= (uint16_t)val;
-
-    return addr;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr) {
-    int i;
-    uint8_t rx_buffer_debug[4096];
-
-    printf("Dumping %u bytes, from 0x%X to 0x%X\n", end_addr - start_addr + 1, start_addr, end_addr);
-
-    memset(rx_buffer_debug, 0, sizeof rx_buffer_debug);
-
-    lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 1);
-    lgw_mem_rb(0x4000 + start_addr, rx_buffer_debug, end_addr - start_addr + 1, false);
-    lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_DIRECT_RAM_IF, 0);
-
-    for (i = 0; i < (end_addr - start_addr + 1); i++) {
-        if (file == NULL) {
-            printf("%02X ", rx_buffer_debug[i]);
-        } else {
-            fprintf(file, "%02X ", rx_buffer_debug[i]);
-        }
-    }
-    if (file == NULL) {
-        printf("\n");
-    } else {
-        fprintf(file, "\n");
-    }
-
-    /* Switching to direct-access memory could lead to corruption, so to be done only for debugging */
-    assert(0);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2180,8 +1834,12 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         timestamp_correction = 0;
     }
 
+    /* Scale packet timestamp to 1 MHz (microseconds) */
+    p->count_us = pkt.timestamp_cnt / 32;
+    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
+    p->count_us = timestamp_counter_expand(&counter_us, false, p->count_us);
     /* Packet timestamp corrected */
-    p->count_us = pkt.timestamp_cnt - timestamp_correction;
+    p->count_us = p->count_us - timestamp_correction;
 
     /* Packet CRC status */
     p->crc = pkt.rx_crc16_value;

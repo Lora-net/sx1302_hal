@@ -38,7 +38,6 @@ Maintainer: Michael Coracin
 #include <stdlib.h>         /* atoi, exit */
 #include <errno.h>          /* error messages */
 #include <math.h>           /* modf */
-#include <assert.h>
 
 #include <sys/socket.h>     /* socket specific definitions */
 #include <netinet/in.h>     /* INET constants and stuff */
