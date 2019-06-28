@@ -88,7 +88,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
-#include "src/text_cal_sx1257_16_Nov_1.var"
+#include "../src/cal_fw.var" /* text_cal_sx1257_16_Nov_1 */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */

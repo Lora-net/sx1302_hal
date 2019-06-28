@@ -110,7 +110,7 @@ const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 /* Radio calibration firmware */
-#include "src/text_cal_sx1257_16_Nov_1.var"
+#include "cal_fw.var" /* text_cal_sx1257_16_Nov_1 */
 
 /* Buffer to hald RX data */
 rx_buffer_t rx_buffer;
