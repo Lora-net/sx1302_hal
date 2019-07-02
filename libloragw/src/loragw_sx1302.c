@@ -1665,7 +1665,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     /* Get the frequency for the channel configuration */
     p->freq_hz = (uint32_t)((int32_t)context->rf_chain_cfg[p->rf_chain].freq_hz + context->if_chain_cfg[p->if_chain].freq_hz);
 
-    /* Get signal strength */
+    /* Get signal strength : offset and temperature compensation will be applied later */
     p->rssic = (float)(pkt.rssi_chan_avg);
     p->rssis = (float)(pkt.rssi_signal_avg);
 
