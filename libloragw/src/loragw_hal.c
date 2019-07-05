@@ -100,7 +100,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 #include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
-#include "agc_fw_sx1250.var"    /* text_agc_sx1250_28_Mai_2019_1 */
+#include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
 #include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
 
 /*
