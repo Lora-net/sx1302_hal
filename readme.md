@@ -73,8 +73,6 @@ local CSV file.
 Please refer to the readme.md file located in the util_net_downlink directory
 for more details.
 
-TODO: to be renamed
-
 ## 3. Helper scripts
 
 ### 3.1. tools/reset_lgw.sh
@@ -83,7 +81,7 @@ This script is used to perform the basic initialization of the SX1302 through
 the GPIOs defined by the CoreCell reference design.
 It gets the SX1302 out of reset and set the Power Enable pin.
 This script is called by every program provided here which accesses the SX1302.
-It must be located in the same directory as the executable of the program.
+It MUST be located in the same directory as the executable of the program.
 
 ## 4. Compile, install and run instructions
 
@@ -156,7 +154,10 @@ set, do:
 
 ## 5. Third party libraries
 
-TODO
+This project relies on several third-party open source libraries, that can be
+found in the `libtools` directory.
+* parson: a JSON parser (http://kgabis.github.com/parson/)
+* tinymt32: a pseudo-random generator (only used for debug/test)
 
 ## 6. Changelog
 
