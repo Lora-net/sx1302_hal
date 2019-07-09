@@ -3,7 +3,7 @@
 	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-	  (C)2018 Semtech-Cycleo
+	  (C)2019 Semtech
 
 SX1302 Micro Cell packet forwarder
 ==================================
@@ -234,7 +234,7 @@ different system constraints.
 6. License
 -----------
 
-Copyright (C) 2013, SEMTECH S.A.
+Copyright (C) 2019, SEMTECH S.A.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

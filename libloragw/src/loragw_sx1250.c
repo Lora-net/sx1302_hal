@@ -7,7 +7,7 @@
   (C)2019 Semtech
 
 Description:
-        Functions used to handle LoRa concentrator SX1250 radios.
+    Functions used to handle LoRa concentrator SX1250 radios.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */

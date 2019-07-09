@@ -4,7 +4,7 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2018 Semtech-Cycleo
+  (C)2019 Semtech
 
 Description:
     Configure Lora concentrator and forward packets to a server
@@ -12,7 +12,6 @@ Description:
     Send a becon at a regular interval without server intervention
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Michael Coracin
 */
 
 

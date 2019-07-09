@@ -4,13 +4,12 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+  (C)2019 Semtech
 
 Description:
     LoRa concentrator : Just In Time TX scheduling queue
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Michael Coracin
 */
 
 /* -------------------------------------------------------------------------- */
@@ -457,4 +456,3 @@ void jit_print_queue(struct jit_queue_s *queue, bool show_all, int debug_level) 
         pthread_mutex_unlock(&mx_jit_queue);
     }
 }
-
