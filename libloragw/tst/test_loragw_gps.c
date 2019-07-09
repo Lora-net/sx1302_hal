@@ -4,13 +4,12 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+  (C)2013 Semtech
 
 Description:
     Minimum test program for the loragw_gps 'library'
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Michael Coracin
 */
 
 

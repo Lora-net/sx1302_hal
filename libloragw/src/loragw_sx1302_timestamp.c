@@ -4,10 +4,15 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2018 Semtech
+  (C)2019 Semtech
 
 Description:
-    TODO
+    SX1302 timestamp counter Hardware Abstraction Layer
+    Handles the conversion of a 32-bits 32MHz counter into a 32-bits 1 MHz counter.
+    This modules MUST be called regularly by the application to maintain counter
+    wrapping handling for conversion in 1MHz counter.
+    Provides function to compute the correction to be applied to the received
+    timestamp for demodulation processing time.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
