@@ -4,10 +4,13 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2018 Semtech
+  (C)2019 Semtech
 
 Description:
-    TODO
+    Functions used to handle a single LoRa SX1302 concentrator.
+    Registers are addressed by name.
+    Multi-bytes registers are handled automatically.
+    Read-modify-write is handled automatically.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
