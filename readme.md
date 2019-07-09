@@ -124,14 +124,10 @@ This will prompt for a passphrase. Just press the enter key. It'll then
 generate an identification (private key) and a public key. Do not ever share
 the private key with anyone! ssh-keygen shows where it saved the public key.
 This is by default ~/.ssh/id_rsa.pub
-* Transfer the id_rsa.pub file to host_dest by either ftp, scp or any other
-method.
-* On host_dest, login as the remote user which you plan to use when you run
-scp.
-* Copy the contents of id_rsa.pub to ~/.ssh/authorized_keys<br/>
-`cat id_rsa.pub >>~/.ssh/authorized_keys`
+* Transfer the id_rsa.pub file to host_dest<br/>
+`ssh-copy-id -i ~/.ssh/id_rsa.pub user@host_dest`
 
-`chmod 700 ~/.ssh/authorized_keys`
+You should be able to log on host_dest without being asked for a password.
 
 Now that everything is set, the following command can be invoked:<br/>
 `make install`
@@ -141,7 +137,22 @@ In order to also install the packet forwarder JSON configuration files:<br/>
 
 ### 4.3. Cross-compile from a PC
 
-TODO
+* Add the path to the binaries of the compiler corresponding to the target
+platform to the `PATH` environment variable.
+* set the `ARCH` environment variable to `arm`.
+* set the `CROSS_COMPILE` environment variable to the prefix corresponding to
+the compiler for the target platform.
+
+An example for a Raspberry Pi target:
+
+* `export PATH=[path]/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin`
+* `export ARCH=arm`
+* `export CROSS_COMPILE=arm-linux-gnueabihf-`
+
+Then, from the same console where the previous environment variables have been
+set, do:
+
+`make clean all`
 
 ## 5. Third party libraries
 
@@ -149,11 +160,15 @@ TODO
 
 ## 6. Changelog
 
+### v1.0.0 ###
+
+* HAL: Initial official release for SX1302 Corecell Reference Design.
+
 ### v0.0.1 ###
 
 * HAL: Initial private release for TAP program
 
-## 6. Legal notice
+## 7. Legal notice
 
 The information presented in this project documentation does not form part of
 any quotation or contract, is believed to be accurate and reliable and may be
