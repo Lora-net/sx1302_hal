@@ -4,10 +4,10 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2018 Semtech
+  (C)2019 Semtech
 
 Description:
-    Minimum test program for the loragw_spi 'library'
+    Minimum test program for the loragw_i2c module
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
