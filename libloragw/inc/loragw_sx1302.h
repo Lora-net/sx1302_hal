@@ -27,7 +27,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* Default values */
 #define SX1302_AGC_RADIO_GAIN_AUTO  0xFF
-#define TX_START_DELAY_DEFAULT      1500 /* Calibrated value for 500KHz BW */ /* TODO */
+#define TX_START_DELAY_DEFAULT      1500    /* Calibrated value for 500KHz BW */
 
 /* type of if_chain + modem */
 #define IF_UNDEFINED                0
