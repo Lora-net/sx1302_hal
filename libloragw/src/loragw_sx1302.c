@@ -1916,7 +1916,7 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
     /* Compute total delay */
     tx_start_delay -= (radio_bw_delay + filter_delay + modem_delay);
 
-    printf("INFO: tx_start_delay=%u (%u, radio_bw_delay=%u, filter_delay=%u, modem_delay=%u)\n", (uint16_t)tx_start_delay, TX_START_DELAY_DEFAULT*32, radio_bw_delay, filter_delay, modem_delay);
+    DEBUG_PRINTF("INFO: tx_start_delay=%u (%u, radio_bw_delay=%u, filter_delay=%u, modem_delay=%u)\n", (uint16_t)tx_start_delay, TX_START_DELAY_DEFAULT*32, radio_bw_delay, filter_delay, modem_delay);
 
     /* Configure the SX1302 with the calculated delay */
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 8));
@@ -2038,6 +2038,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     uint8_t power;
     uint8_t pow_index;
     uint8_t mod_bw;
+    uint8_t pa_en;
 
     /* CHeck input parameters */
     CHECK_NULL(tx_lut);
@@ -2114,7 +2115,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     switch (pkt_data->modulation) {
         case MOD_LORA:
             /* Set bandwidth */
-            printf("Bandwidth %dkHz\n", (int)(lgw_bw_getval(pkt_data->bandwidth) / 1E3));
             freq_dev = lgw_bw_getval(pkt_data->bandwidth) / 2;
             fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
             lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV(pkt_data->rf_chain), (fdev_reg >>  8) & 0xFF);
@@ -2155,21 +2155,21 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
 
             /* Syncword */
             if ((lwan_public == false) || (pkt_data->datarate == DR_LORA_SF5) || (pkt_data->datarate == DR_LORA_SF6)) {
-                printf("Setting LoRa syncword 0x12\n");
+                DEBUG_MSG("Setting LoRa syncword 0x12\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_FRAME_SYNCH_0_PEAK1_POS(pkt_data->rf_chain), 2);
                 lgw_reg_w(SX1302_REG_TX_TOP_FRAME_SYNCH_1_PEAK2_POS(pkt_data->rf_chain), 4);
             } else {
-                printf("Setting LoRa syncword 0x34\n");
+                DEBUG_MSG("Setting LoRa syncword 0x34\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_FRAME_SYNCH_0_PEAK1_POS(pkt_data->rf_chain), 6);
                 lgw_reg_w(SX1302_REG_TX_TOP_FRAME_SYNCH_1_PEAK2_POS(pkt_data->rf_chain), 8);
             }
 
             /* Set Fine Sync for SF5/SF6 */
             if ((pkt_data->datarate == DR_LORA_SF5) || (pkt_data->datarate == DR_LORA_SF6)) {
-                printf("Enable Fine Sync\n");
+                DEBUG_MSG("Enable Fine Sync\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_2_FINE_SYNCH_EN(pkt_data->rf_chain), 1);
             } else {
-                printf("Disable Fine Sync\n");
+                DEBUG_MSG("Disable Fine Sync\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_2_FINE_SYNCH_EN(pkt_data->rf_chain), 0);
             }
 
@@ -2179,10 +2179,10 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             /* Set PPM offset (low datarate optimization) */
             lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_1_PPM_OFFSET_HDR_CTRL(pkt_data->rf_chain), 0);
             if (SET_PPM_ON(pkt_data->bandwidth, pkt_data->datarate)) {
-                printf("Low datarate optimization ENABLED\n");
+                DEBUG_MSG("Low datarate optimization ENABLED\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_1_PPM_OFFSET(pkt_data->rf_chain), 1);
             } else {
-                printf("Low datarate optimization DISABLED\n");
+                DEBUG_MSG("Low datarate optimization DISABLED\n");
                 lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_1_PPM_OFFSET(pkt_data->rf_chain), 0);
             }
             break;
@@ -2190,7 +2190,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             CHECK_NULL(context_fsk);
 
             /* Set frequency deviation */
-            printf("f_dev %dkHz\n", (int)(pkt_data->f_dev));
             freq_dev = pkt_data->f_dev * 1e3;
             fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
             lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV(pkt_data->rf_chain), (fdev_reg >>  8) & 0xFF);
@@ -2262,7 +2261,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     lgw_reg_w(SX1302_REG_TX_TOP_TX_CTRL_WRITE_BUFFER(pkt_data->rf_chain), 0x00);
 
     /* Trigger transmit */
-    printf("Start Tx: Freq:%u %s%u size:%u preamb:%u\n", pkt_data->freq_hz, (pkt_data->modulation == MOD_LORA) ? "SF" : "DR:", pkt_data->datarate, pkt_data->size, pkt_data->preamble);
+    DEBUG_PRINTF("Start Tx: Freq:%u %s%u size:%u preamb:%u\n", pkt_data->freq_hz, (pkt_data->modulation == MOD_LORA) ? "SF" : "DR:", pkt_data->datarate, pkt_data->size, pkt_data->preamble);
     switch (pkt_data->tx_mode) {
         case IMMEDIATE:
             lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(pkt_data->rf_chain), 0x00); /* reset state machine */
@@ -2270,7 +2269,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             break;
         case TIMESTAMPED:
             count_us = pkt_data->count_us * 32;
-            printf("--> programming trig delay at %u (%u)\n", pkt_data->count_us, count_us);
+            DEBUG_PRINTF("--> programming trig delay at %u (%u)\n", pkt_data->count_us, count_us);
 
             lgw_reg_w(SX1302_REG_TX_TOP_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG(pkt_data->rf_chain), (uint8_t)((count_us >>  0) & 0x000000FF));
             lgw_reg_w(SX1302_REG_TX_TOP_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG(pkt_data->rf_chain), (uint8_t)((count_us >>  8) & 0x000000FF));
@@ -2279,30 +2278,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
 
             lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(pkt_data->rf_chain), 0x00); /* reset state machine */
             lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(pkt_data->rf_chain), 0x01);
-
-#if 0
-            wait_ms(1000);
-
-            lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x01);
-
-            //sx1250_setup(0, 865800000);
-
-            buff2[0] = 0x08;
-            buff2[1] = 0x8B;
-            buff2[2] = 0x00;
-            buff2[3] = 0x00;
-            buff2[4] = 0x00;
-            buff2[5] = 0x00;
-            buff2[6] = 0x00;
-            sx1250_read_command(0, READ_REGISTER, buff2, 7);
-            printf("reading %u\n", buff2[3]);
-            printf("reading %u\n", buff2[4]);
-            printf("reading %u\n", buff2[5]);
-            printf("reading %u\n", buff2[6]);
-
-            lgw_reg_w(SX1302_REG_COMMON_CTRL0_HOST_RADIO_CTRL, 0x00);
-#endif
-
             break;
         case ON_GPS:
             lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_GPS(pkt_data->rf_chain), 0x00); /* reset state machine */
