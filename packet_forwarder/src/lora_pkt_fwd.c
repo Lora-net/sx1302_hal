@@ -1626,6 +1626,9 @@ int main(int argc, char ** argv)
         }
     }
 
+    /* Board reset */
+    system("./reset_lgw.sh start");
+
     MSG("INFO: Exiting packet forwarder program\n");
     exit(EXIT_SUCCESS);
 }
