@@ -166,11 +166,11 @@ uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t
 
 int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uint8_t nb_symbols) {
     if (enable_precision_ts == false) {
-        printf("INFO: using legacy timestamp\n");
+        DEBUG_MSG("INFO: using legacy timestamp\n");
         /* Latch end-of-packet timestamp (sx1301 compatibility) */
         lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
     } else {
-        printf("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", max_ts_metrics, nb_symbols);
+        DEBUG_PRINTF("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", max_ts_metrics, nb_symbols);
         /* Latch end-of-preamble timestamp */
         lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x00);
         lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS, max_ts_metrics);

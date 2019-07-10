@@ -272,12 +272,12 @@ int sx1302_radio_clock_select(uint8_t rf_chain) {
     /* Switch SX1302 clock from SPI clock to radio clock of the selected RF chain */
     switch (rf_chain) {
         case 0:
-            printf("Select Radio A clock\n");
+            DEBUG_MSG("Select Radio A clock\n");
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x01);
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x00);
             break;
         case 1:
-            printf("Select Radio B clock\n");
+            DEBUG_MSG("Select Radio B clock\n");
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_A_SEL, 0x00);
             lgw_reg_w(SX1302_REG_CLK_CTRL_CLK_SEL_CLK_RADIO_B_SEL, 0x01);
             break;
@@ -362,11 +362,11 @@ int sx1302_radio_set_mode(uint8_t rf_chain, lgw_radio_type_t type) {
                                 SX1302_REG_COMMON_CTRL0_SX1261_MODE_RADIO_B);
     switch (type) {
         case LGW_RADIO_TYPE_SX1250:
-            printf("Setting rf_chain_%u in sx1250 mode\n", rf_chain);
+            DEBUG_PRINTF("Setting rf_chain_%u in sx1250 mode\n", rf_chain);
             lgw_reg_w(reg, 0x01);
             break;
         default:
-            printf("Setting rf_chain_%u in sx125x mode\n", rf_chain);
+            DEBUG_PRINTF("Setting rf_chain_%u in sx125x mode\n", rf_chain);
             lgw_reg_w(reg, 0x00);
             break;
     }
@@ -404,7 +404,7 @@ int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_rf_chain, uint8_t cl
     /* -- Start calibration */
     if ((context_rf_chain[clksrc].type == LGW_RADIO_TYPE_SX1257) ||
         (context_rf_chain[clksrc].type == LGW_RADIO_TYPE_SX1255)) {
-        printf("Loading CAL fw for sx125x\n");
+        DEBUG_MSG("Loading CAL fw for sx125x\n");
         if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
             printf("ERROR: Failed to load calibration fw\n");
             return LGW_REG_ERROR;
@@ -416,7 +416,7 @@ int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_rf_chain, uint8_t cl
             return LGW_REG_ERROR;
         }
     } else {
-        printf("Calibrating sx1250 radios\n");
+        DEBUG_MSG("Calibrating sx1250 radios\n");
         for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
             if (context_rf_chain[i].enable == true) {
                 if (sx1250_calibrate(i, context_rf_chain[i].freq_hz)) {
@@ -487,15 +487,15 @@ int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain)
     for (i = 0; i < LGW_MULTI_NB; i++) {
         channels_mask |= (if_cfg[i].rf_chain << i);
     }
-    printf("LoRa multi-SF radio select: 0x%02X\n", channels_mask);
+    DEBUG_PRINTF("LoRa multi-SF radio select: 0x%02X\n", channels_mask);
     lgw_reg_w(SX1302_REG_RX_TOP_RADIO_SELECT_RADIO_SELECT, channels_mask);
 
     /* Select which radio is connected to the LoRa service channel */
-    printf("LoRa service radio select: 0x%02X\n", if_cfg[8].rf_chain);
+    DEBUG_PRINTF("LoRa service radio select: 0x%02X\n", if_cfg[8].rf_chain);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_LORA_SERVICE_RADIO_SEL_RADIO_SELECT, if_cfg[8].rf_chain);
 
     /* Select which radio is connected to the FSK channel */
-    printf("FSK radio select %u\n", if_cfg[9].rf_chain);
+    DEBUG_PRINTF("FSK radio select %u\n", if_cfg[9].rf_chain);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_3_RADIO_SELECT, if_cfg[9].rf_chain);
 
     /* Configure multi-SF channels IF frequencies */
@@ -570,7 +570,7 @@ int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg) {
     uint64_t fsk_sync_word_reg;
     uint32_t fsk_br_reg;
 
-    printf("FSK: syncword:0x%" PRIx64 ", syncword_size:%u\n", cfg->sync_word, cfg->sync_word_size);
+    DEBUG_PRINTF("FSK: syncword:0x%" PRIx64 ", syncword_size:%u\n", cfg->sync_word, cfg->sync_word_size);
 
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FSK_CFG_1_PSIZE, cfg->sync_word_size - 1);
     fsk_sync_word_reg = cfg->sync_word << (8 * (8 - cfg->sync_word_size));
@@ -729,15 +729,15 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
     lgw_reg_w(SX1302_REG_RX_TOP_DAGC_CFG_TARGET_LVL, 0x01);
 
     /* Enable full modems */
-    printf("Configuring 8 full-SF modems\n");
+    DEBUG_MSG("Configuring 8 full-SF modems\n");
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_0_MODEM_EN, 0xFF);
 
     /* Enable limited modems */
 #if FPGA_BOARD_16_CH
-    printf("Configuring 8 limited-SF modems\n");
+    DEBUG_MSG("Configuring 8 limited-SF modems\n");
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0xFF);
 #else
-    printf("Configuring 4 limited-SF modems\n");
+    DEBUG_MSG("Configuring 4 limited-SF modems\n");
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0x0F);
 #endif
 
@@ -780,7 +780,7 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
         printf("ERROR: failed to calculate frequency to time drift for LoRa modem\n");
         return LGW_REG_ERROR;
     }
-    printf("Freq2TimeDrift MultiSF: Mantissa = %d (0x%02X, 0x%02X), Exponent = %d (0x%02X)\n", mantissa, (mantissa >> 8) & 0x00FF, (mantissa) & 0x00FF, exponent, exponent);
+    DEBUG_PRINTF("Freq2TimeDrift MultiSF: Mantissa = %d (0x%02X, 0x%02X), Exponent = %d (0x%02X)\n", mantissa, (mantissa >> 8) & 0x00FF, (mantissa) & 0x00FF, exponent, exponent);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME0_FREQ_TO_TIME_DRIFT_MANT, (mantissa >> 8) & 0x00FF);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME1_FREQ_TO_TIME_DRIFT_MANT, (mantissa) & 0x00FF);
     lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, exponent);
@@ -864,7 +864,7 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t r
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME0_FREQ_TO_TIME_DRIFT_MANT, (mantissa >> 8) & 0x00FF);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME1_FREQ_TO_TIME_DRIFT_MANT, (mantissa) & 0x00FF);
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME2_FREQ_TO_TIME_DRIFT_EXP, exponent);
-    printf("Freq2TimeDrift SingleSF: Mantissa = %d (0x%02X, 0x%02X), Exponent = %d (0x%02X)\n", mantissa, (mantissa >> 8) & 0x00FF, (mantissa) & 0x00FF, exponent, exponent);
+    DEBUG_PRINTF("Freq2TimeDrift SingleSF: Mantissa = %d (0x%02X, 0x%02X), Exponent = %d (0x%02X)\n", mantissa, (mantissa >> 8) & 0x00FF, (mantissa) & 0x00FF, exponent, exponent);
 
     /* Time drift compensation */
     lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB, 1);
@@ -901,28 +901,28 @@ int sx1302_modem_enable(void) {
 
 int sx1302_lora_syncword(bool public, uint8_t lora_service_sf) {
     /* Multi-SF modem configuration */
-    printf("INFO: configuring LoRa (Multi-SF) SF5->SF6 with syncword PRIVATE (0x12)\n");
+    DEBUG_MSG("INFO: configuring LoRa (Multi-SF) SF5->SF6 with syncword PRIVATE (0x12)\n");
     lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF5_PEAK1_POS_SF5, 2);
     lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_SF5_PEAK2_POS_SF5, 4);
     lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF6_PEAK1_POS_SF6, 2);
     lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_SF6_PEAK2_POS_SF6, 4);
     if (public == true) {
-        printf("INFO: configuring LoRa (Multi-SF) SF7->SF12 with syncword PUBLIC (0x34)\n");
+        DEBUG_MSG("INFO: configuring LoRa (Multi-SF) SF7->SF12 with syncword PUBLIC (0x34)\n");
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF7TO12_PEAK1_POS_SF7TO12, 6);
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_SF7TO12_PEAK2_POS_SF7TO12, 8);
     } else {
-        printf("INFO: configuring LoRa (Multi-SF) SF7->SF12 with syncword PRIVATE (0x12)\n");
+        DEBUG_MSG("INFO: configuring LoRa (Multi-SF) SF7->SF12 with syncword PRIVATE (0x12)\n");
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH0_SF7TO12_PEAK1_POS_SF7TO12, 2);
         lgw_reg_w(SX1302_REG_RX_TOP_FRAME_SYNCH1_SF7TO12_PEAK2_POS_SF7TO12, 4);
     }
 
     /* LoRa Service modem configuration */
     if ((public == false) || (lora_service_sf == DR_LORA_SF5) || (lora_service_sf == DR_LORA_SF6)) {
-        printf("INFO: configuring LoRa (Service) SF%u with syncword PRIVATE (0x12)\n", lora_service_sf);
+        DEBUG_PRINTF("INFO: configuring LoRa (Service) SF%u with syncword PRIVATE (0x12)\n", lora_service_sf);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH0_PEAK1_POS, 2);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS, 4);
     } else {
-        printf("INFO: configuring LoRa (Service) SF%u with syncword PUBLIC (0x34)\n", lora_service_sf);
+        DEBUG_PRINTF("INFO: configuring LoRa (Service) SF%u with syncword PUBLIC (0x34)\n", lora_service_sf);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH0_PEAK1_POS, 6);
         lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_FRAME_SYNCH1_PEAK2_POS, 8);
     }
@@ -993,8 +993,6 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
 
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
     printf("AGC fw loaded (parity error:0x%02X)\n", val);
-
-    printf("Waiting for AGC fw to start...\n");
 
     return LGW_HAL_SUCCESS;
 }
@@ -1133,7 +1131,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: Radio A config done\n");
+    DEBUG_MSG("AGC: Radio A config done\n");
 
     /* Configure Radio B gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
@@ -1169,7 +1167,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: Radio B config done\n");
+    DEBUG_MSG("AGC: Radio B config done\n");
 
     /* Configure AGC gains */
     agc_params = (radio_type == LGW_RADIO_TYPE_SX1250) ? agc_params_sx1250 : agc_params_sx125x;
@@ -1196,7 +1194,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: config of analog gain min/max done\n");
+    DEBUG_MSG("AGC: config of analog gain min/max done\n");
 
     /* Configure analog thresholds */
     sx1302_agc_mailbox_write(0, agc_params.ana_thresh_l);
@@ -1220,7 +1218,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: config of analog threshold done\n");
+    DEBUG_MSG("AGC: config of analog threshold done\n");
 
     /* Configure decimator attenuation min/max */
     sx1302_agc_mailbox_write(0, agc_params.dec_attn_min);
@@ -1244,7 +1242,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: config of decimator atten min/max done\n");
+    DEBUG_MSG("AGC: config of decimator atten min/max done\n");
 
     /* Configure decimator attenuation thresholds */
     sx1302_agc_mailbox_write(0, agc_params.dec_thresh_l);
@@ -1274,7 +1272,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: config of decimator threshold done\n");
+    DEBUG_MSG("AGC: config of decimator threshold done\n");
 
     /* Configure channel attenuation min/max */
     sx1302_agc_mailbox_write(0, agc_params.chan_attn_min);
@@ -1298,7 +1296,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: config of channel atten min/max done\n");
+    DEBUG_MSG("AGC: config of channel atten min/max done\n");
 
     /* Configure channel attenuation threshold */
     sx1302_agc_mailbox_write(0, agc_params.chan_thresh_l);
@@ -1322,7 +1320,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
 
-    printf("AGC: config of channel atten threshold done\n");
+    DEBUG_MSG("AGC: config of channel atten threshold done\n");
 
     if (radio_type == LGW_RADIO_TYPE_SX1250) {
         /* Configure sx1250 SetPAConfig */
@@ -1353,7 +1351,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
             return LGW_HAL_ERROR;
         }
 
-        printf("AGC: config of sx1250 PA optimal settings done\n");
+        DEBUG_MSG("AGC: config of sx1250 PA optimal settings done\n");
 
         /* notify AGC that it can resume */
         sx1302_agc_mailbox_write(3, 0x0A);
@@ -1410,8 +1408,6 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
 
     lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
     printf("ARB fw loaded (parity error:0x%02X)\n", val);
-
-    printf("Waiting for ARB fw to start...\n");
 
     return 0;
 }
@@ -1492,10 +1488,10 @@ int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value) {
 
 void sx1302_arb_set_debug_stats(bool enable, uint8_t sf) {
     if (enable == true) {
-        printf("ARB: Debug stats enabled for SF%u\n", sf);
+        DEBUG_PRINTF("ARB: Debug stats enabled for SF%u\n", sf);
         lgw_reg_w(SX1302_REG_ARB_MCU_ARB_DEBUG_CFG_0_ARB_DEBUG_CFG_0, sf);
     } else {
-        printf("ARB: Debug stats disabled\n");
+        DEBUG_MSG("ARB: Debug stats disabled\n");
     }
 }
 

@@ -1230,7 +1230,7 @@ int lgw_connect(const char * spidev_path) {
         DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
         return LGW_REG_ERROR;
     }
-    printf("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
+    DEBUG_PRINTF("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
 
     DEBUG_MSG("Note: success connecting the concentrator\n");
     return LGW_REG_SUCCESS;

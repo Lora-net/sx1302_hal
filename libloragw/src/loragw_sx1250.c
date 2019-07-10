@@ -158,7 +158,6 @@ int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
 
     buff[0] = 0x00;
     sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
-    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
     /* Run calibration */
     if ((freq_hz > 430E6) && (freq_hz < 440E6)) {
@@ -189,7 +188,6 @@ int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
     buff[1] = 0x00;
     buff[2] = 0x00;
     sx1250_read_command(rf_chain, GET_DEVICE_ERRORS, buff, 3);
-    printf("%s: get_device_errors: 0x%02X 0x%02X 0x%02X\n", __FUNCTION__, buff[0], buff[1], buff[2]);
     if (TAKE_N_BITS_FROM(buff[2], 4, 1) != 0) {
         printf("ERROR: sx1250 Image Calibration Error\n");
         return -1;
@@ -211,7 +209,6 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
 
     buff[0] = 0x00;
     sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
-    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
 
     /* Set Bitrate to maximum (to lower TX to FS switch time) */
     buff[0] = 0x06;
