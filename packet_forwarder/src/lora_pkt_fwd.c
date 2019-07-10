@@ -1237,7 +1237,7 @@ int main(int argc, char ** argv)
     }
 
     /* display version informations */
-    MSG("*** Packet Forwarder for CoreCell ***\nVersion: " VERSION_STRING "\n");
+    MSG("*** Packet Forwarder ***\nVersion: " VERSION_STRING "\n");
     MSG("*** SX1302 HAL library version info ***\n%s\n***\n", lgw_version_info());
 
     /* display host endianness */

@@ -5,8 +5,8 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 	  (C)2019 Semtech
 
-SX1302 LoRa Gateway Corecell project
-====================================
+SX1302 LoRa Gateway project
+===========================
 
 ## 1. Core library: libloragw
 
@@ -163,7 +163,7 @@ found in the `libtools` directory.
 
 ### v1.0.0 ###
 
-* HAL: Initial official release for SX1302 Corecell Reference Design.
+* HAL: Initial official release for SX1302 CoreCell Reference Design.
 
 ### v0.0.1 ###
 

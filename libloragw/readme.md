@@ -200,7 +200,7 @@ into account the LoRa demodulation processing time.
 ### 2.11. loragw_stts751
 
 This module contains a very basic driver for the STmicroelectronics ST751
-temeprature sensor which is on the Corecell reference design.
+temeprature sensor which is on the CoreCell reference design.
 
 ### 2.12. loragw_i2c
 

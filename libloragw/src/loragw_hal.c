@@ -720,7 +720,7 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* Configure the corecell temperature sensor */
+    /* Configure the CoreCell temperature sensor */
     if (lgw_stts751_configure() != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to configure temperature sensor\n");
         return LGW_HAL_ERROR;
