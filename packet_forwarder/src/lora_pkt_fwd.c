@@ -1724,7 +1724,7 @@ void thread_up(void) {
         /* get timestamp for statistics */
         t = time(NULL);
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
-        printf("\nCurrent time: %s \n", stat_timestamp);
+        MSG_DEBUG(DEBUG_PKT_FWD, "\nCurrent time: %s \n", stat_timestamp);
 
         /* start composing datagram with the header */
         token_h = (uint8_t)rand(); /* random token */
@@ -2064,26 +2064,26 @@ void thread_up(void) {
             }
         }
 
-#if 1
+
+        /* DEBUG: print the number of packets received per channel and per SF */
         {
             int l, m;
-            printf("\n");
+            MSG_PRINTF(DEBUG_PKT_FWD, "\n");
             for (l = 0; l < (LGW_IF_CHAIN_NB - 1); l++) {
-                printf("CH%d: ", l);
+                MSG_PRINTF(DEBUG_PKT_FWD, "CH%d: ", l);
                 for (m = 0; m < 8; m++) {
-                    printf("\t%d", nb_pkt_log[l][m]);
+                    MSG_PRINTF(DEBUG_PKT_FWD, "\t%d", nb_pkt_log[l][m]);
                 }
-                printf("\n");
+                MSG_PRINTF(DEBUG_PKT_FWD, "\n");
             }
-            printf("FSK: \t%d", nb_pkt_log[9][0]);
-            printf("\n");
-            printf("Total number of LoRa packet received: %u\n", nb_pkt_received_lora);
-            printf("Total number of FSK packet received: %u\n", nb_pkt_received_fsk);
+            MSG_PRINTF(DEBUG_PKT_FWD, "FSK: \t%d", nb_pkt_log[9][0]);
+            MSG_PRINTF(DEBUG_PKT_FWD, "\n");
+            MSG_PRINTF(DEBUG_PKT_FWD, "Total number of LoRa packet received: %u\n", nb_pkt_received_lora);
+            MSG_PRINTF(DEBUG_PKT_FWD, "Total number of FSK packet received: %u\n", nb_pkt_received_fsk);
             for (l = 0; l < debugconf.nb_ref_payload; l++) {
-                printf("Total number of LoRa packet received from 0x%08X: %u\n", debugconf.ref_payload[l].id, nb_pkt_received_ref[l]);
+                MSG_PRINTF(DEBUG_PKT_FWD, "Total number of LoRa packet received from 0x%08X: %u\n", debugconf.ref_payload[l].id, nb_pkt_received_ref[l]);
             }
         }
-#endif
 
         /* restart fetch sequence without sending empty JSON if all packets have been filtered out */
         if (pkt_in_dgram == 0) {

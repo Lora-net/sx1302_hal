@@ -646,13 +646,13 @@ int lgw_start(void) {
     /* Load firmware */
     switch (CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type) {
         case LGW_RADIO_TYPE_SX1250:
-            printf("Loading AGC fw for sx1250\n");
+            DEBUG_MSG("Loading AGC fw for sx1250\n");
             if (sx1302_agc_load_firmware(agc_firmware_sx1250) != LGW_HAL_SUCCESS) {
                 return LGW_HAL_ERROR;
             }
             break;
         case LGW_RADIO_TYPE_SX1257:
-            printf("Loading AGC fw for sx125x\n");
+            DEBUG_MSG("Loading AGC fw for sx125x\n");
             if (sx1302_agc_load_firmware(agc_firmware_sx125x) != LGW_HAL_SUCCESS) {
                 return LGW_HAL_ERROR;
             }
@@ -663,7 +663,7 @@ int lgw_start(void) {
     if (sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_BOARD.full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-    printf("Loading ARB fw\n");
+    DEBUG_MSG("Loading ARB fw\n");
     if (sx1302_arb_load_firmware(arb_firmware) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
@@ -794,7 +794,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
     }
-    printf("INFO: current temperature is %f C\n", current_temperature);
+    DEBUG_PRINTF("INFO: current temperature is %f C\n", current_temperature);
 
     /* Iterate on the RX buffer to get parsed packets */
     res = LGW_REG_SUCCESS;
@@ -814,13 +814,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
             pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
             pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
-            printf("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
+            DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
             /* Next packet */
             nb_pkt_found += 1;
         }
     }
 
-    printf("INFO: nb pkt found:%u dropped:%u\n", nb_pkt_found, nb_pkt_dropped);
+    DEBUG_PRINTF("INFO: nb pkt found:%u dropped:%u\n", nb_pkt_found, nb_pkt_dropped);
 
     return nb_pkt_found;
 }

@@ -147,8 +147,8 @@ int rx_buffer_fetch(rx_buffer_t * self) {
 
     /* Fetch bytes from fifo if any */
     if (self->buffer_size > 0) {
-        printf("-----------------\n");
-        printf("%s: nb_bytes to be fetched: %u (%u %u)\n", __FUNCTION__, self->buffer_size, buff[1], buff[0]);
+        DEBUG_MSG   ("-----------------\n");
+        DEBUG_PRINTF("%s: nb_bytes to be fetched: %u (%u %u)\n", __FUNCTION__, self->buffer_size, buff[1], buff[0]);
 
         memset(self->buffer, 0, sizeof self->buffer);
         res = lgw_mem_rb(0x4000, self->buffer, self->buffer_size, true);
@@ -158,11 +158,11 @@ int rx_buffer_fetch(rx_buffer_t * self) {
         }
 
         /* print debug info : TODO to be removed */
-        printf("RX_BUFFER: ");
+        DEBUG_MSG("RX_BUFFER: ");
         for (i = 0; i < self->buffer_size; i++) {
-            printf("%02X ", self->buffer[i]);
+            DEBUG_PRINTF("%02X ", self->buffer[i]);
         }
-        printf("\n");
+        DEBUG_MSG("\n");
 
     }
 
@@ -186,7 +186,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
 
     /* Is there any data to be parsed ? */
     if (self->buffer_index >= self->buffer_size) {
-        printf("INFO: No more data to be parsed\n");
+        DEBUG_MSG("INFO: No more data to be parsed\n");
         return LGW_REG_ERROR;
     }
 
@@ -197,7 +197,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
         return LGW_REG_ERROR;
         /* TODO: while loop until syncword found ?? */
     }
-    printf("INFO: pkt syncword found at index %u\n", self->buffer_index);
+    DEBUG_PRINTF("INFO: pkt syncword found at index %u\n", self->buffer_index);
 
     /* Get payload length */
     pkt->rxbytenb_modem = SX1302_PKT_PAYLOAD_LENGTH(self->buffer, self->buffer_index);
@@ -228,7 +228,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
         printf("WARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum_rcv, checksum_calc);
         return LGW_REG_ERROR;
     } else {
-        printf("Packet checksum OK (0x%02X)\n", checksum_rcv);
+        DEBUG_PRINTF("Packet checksum OK (0x%02X)\n", checksum_rcv);
     }
 
     /* Parse packet metadata */
@@ -265,19 +265,19 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     pkt->timestamp_cnt = timestamp_counter_expand(&counter_us, false, pkt->timestamp_cnt);
 #endif
 
-    printf("-----------------\n");
-    printf("  modem:      %u\n", pkt->modem_id);
-    printf("  chan:       %u\n", pkt->rx_channel_in);
-    printf("  size:       %u\n", pkt->rxbytenb_modem);
-    printf("  crc_en:     %u\n", pkt->crc_en);
-    printf("  crc_err:    %u\n", pkt->payload_crc_error);
-    printf("  sync_err:   %u\n", pkt->sync_error);
-    printf("  hdr_err:    %u\n", pkt->header_error);
-    printf("  timing_set: %u\n", pkt->timing_set);
-    printf("  codr:       %u\n", pkt->coding_rate);
-    printf("  datr:       %u\n", pkt->rx_rate_sf);
-    printf("  num_ts:     %u\n", pkt->num_ts_metrics_stored);
-    printf("-----------------\n");
+    DEBUG_MSG   ("-----------------\n");
+    DEBUG_PRINTF("  modem:      %u\n", pkt->modem_id);
+    DEBUG_PRINTF("  chan:       %u\n", pkt->rx_channel_in);
+    DEBUG_PRINTF("  size:       %u\n", pkt->rxbytenb_modem);
+    DEBUG_PRINTF("  crc_en:     %u\n", pkt->crc_en);
+    DEBUG_PRINTF("  crc_err:    %u\n", pkt->payload_crc_error);
+    DEBUG_PRINTF("  sync_err:   %u\n", pkt->sync_error);
+    DEBUG_PRINTF("  hdr_err:    %u\n", pkt->header_error);
+    DEBUG_PRINTF("  timing_set: %u\n", pkt->timing_set);
+    DEBUG_PRINTF("  codr:       %u\n", pkt->coding_rate);
+    DEBUG_PRINTF("  datr:       %u\n", pkt->rx_rate_sf);
+    DEBUG_PRINTF("  num_ts:     %u\n", pkt->num_ts_metrics_stored);
+    DEBUG_MSG   ("-----------------\n");
 
     /* Sanity checks: check the range of few metadata */
     if (pkt->modem_id > SX1302_FSK_MODEM_ID) {

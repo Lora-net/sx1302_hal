@@ -282,7 +282,6 @@ uint32_t timestamp_counter_correction(int ifmod, uint8_t bandwidth, uint8_t data
         decode_delay = 5 * clk_period + (9 * clk_period + clk_period * cr) * nb_nibble_in_last_block + 3 * clk_period;
         timestamp_correction = (uint32_t)(delay_x + fft_delay_state3 + fft_delay + demap_delay + decode_delay + 0.5e6) / 1e6;
         //printf("INFO: timestamp_correction = %u us (delay_x %u, fft_delay_state3=%u, fft_delay=%u, demap_delay=%u, decode_delay = %u)\n", timestamp_correction, delay_x, fft_delay_state3, fft_delay, demap_delay, decode_delay);
-        printf("INFO: timestamp_correction = %u us\n", timestamp_correction);
     }
     else
     {

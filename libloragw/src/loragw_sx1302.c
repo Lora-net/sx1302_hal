@@ -992,7 +992,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
 
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
-    printf("AGC fw loaded (parity error:0x%02X)\n", val);
+    DEBUG_PRINTF("AGC fw loaded (parity error:0x%02X)\n", val);
 
     return LGW_HAL_SUCCESS;
 }
@@ -1089,7 +1089,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         printf("ERROR: wrong AGC fw version (%d)\n", val);
         return LGW_HAL_ERROR;
     }
-    printf("AGC FW VERSION: %d\n", val);
+    DEBUG_PRINTF("AGC FW VERSION: %d\n", val);
 
 #if BYPASS_FW_INIT
     printf("Bypass AGC init protocol\n");
@@ -1360,7 +1360,7 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         sx1302_agc_mailbox_write(3, 0x09);
     }
 
-    printf("AGC: started\n");
+    DEBUG_MSG("AGC: started\n");
 
     return LGW_HAL_SUCCESS;
 }
@@ -1407,7 +1407,7 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x00);
 
     lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
-    printf("ARB fw loaded (parity error:0x%02X)\n", val);
+    DEBUG_PRINTF("ARB fw loaded (parity error:0x%02X)\n", val);
 
     return 0;
 }
@@ -1534,23 +1534,23 @@ void sx1302_arb_print_debug_stats(void) {
 
     /* Get number of detects for all channels */
     nb_detect_total = 0;
-    printf("ARB: nb_detect: [");
+    DEBUG_MSG("ARB: nb_detect: [");
     for (i = 0; i < 8; i++) {
         nb_detect = sx1302_arb_get_debug_stats_detect(i);
-        printf("%u ", nb_detect);
+        DEBUG_PRINTF("%u ", nb_detect);
         nb_detect_total += nb_detect;
     }
-    printf("]\n");
+    DEBUG_MSG("]\n");
 
     /* Get number of modem allocation for all channels */
     nb_alloc_total = 0;
-    printf("ARB: nb_alloc:  [");
+    DEBUG_MSG("ARB: nb_alloc:  [");
     for (i = 0; i < 8; i++) {
         nb_alloc = sx1302_arb_get_debug_stats_alloc(i);
-        printf("%u ", nb_alloc);
+        DEBUG_PRINTF("%u ", nb_alloc);
         nb_alloc_total += nb_alloc;
     }
-    printf("]\n");
+    DEBUG_MSG("]\n");
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1567,7 +1567,7 @@ int sx1302_arb_start(uint8_t version) {
         printf("ERROR: wrong ARB fw version (%d)\n", val);
         return LGW_HAL_ERROR;
     }
-    printf("ARB FW VERSION: %d\n", val);
+    DEBUG_PRINTF("ARB FW VERSION: %d\n", val);
 
 #if BYPASS_FW_INIT
     printf("Bypass ARB init protocol\n");
@@ -1589,7 +1589,7 @@ int sx1302_arb_start(uint8_t version) {
     /* Wait for ARB to acknoledge */
     sx1302_arb_wait_status(0x00);
 
-    printf("ARB: started\n");
+    DEBUG_MSG("ARB: started\n");
 
     return LGW_REG_SUCCESS;
 }
@@ -1689,7 +1689,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
                         }
                         return LGW_REG_ERROR;
                     } else {
-                        printf("Payload CRC check OK (0x%04X)\n", pkt.rx_crc16_value);
+                        DEBUG_PRINTF("Payload CRC check OK (0x%04X)\n", pkt.rx_crc16_value);
                     }
                 }
             }
@@ -1718,7 +1718,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
                     }
                     return LGW_REG_ERROR;
                 } else if (res == 1) {
-                    printf("0x%08X payload matches\n", context->debug_cfg.ref_payload[i].id);
+                    DEBUG_PRINTF("0x%08X payload matches\n", context->debug_cfg.ref_payload[i].id);
                 } else {
                     /* Do nothing */
                 }
@@ -1931,12 +1931,12 @@ float sx1302_rssi_get_temperature_offset(struct lgw_rssi_tcomp_s * context, floa
     /* Chekc params */
     CHECK_NULL(context);
 
-    printf("INFO: RSSI temperature compensation:\n");
-    printf("       coeff_a: %.3f\n", context->coeff_a);
-    printf("       coeff_b: %.3f\n", context->coeff_b);
-    printf("       coeff_c: %.3f\n", context->coeff_c);
-    printf("       coeff_d: %.3f\n", context->coeff_d);
-    printf("       coeff_e: %.3f\n", context->coeff_e);
+    DEBUG_MSG   ("INFO: RSSI temperature compensation:\n");
+    DEBUG_PRINTF("       coeff_a: %.3f\n", context->coeff_a);
+    DEBUG_PRINTF("       coeff_b: %.3f\n", context->coeff_b);
+    DEBUG_PRINTF("       coeff_c: %.3f\n", context->coeff_c);
+    DEBUG_PRINTF("       coeff_d: %.3f\n", context->coeff_d);
+    DEBUG_PRINTF("       coeff_e: %.3f\n", context->coeff_e);
 
     /* Compute the offset to be applied to RSSI for given temperature */
     return ((context->coeff_a * pow(temperature, 4)) +
