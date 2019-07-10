@@ -20,22 +20,8 @@
             "tx_freq_min": 863000000,
             "tx_freq_max": 870000000,
             "tx_gain_lut":[
-                {"rf_power": -6, "pa_gain": 0, "pwr_idx":  0, "dig_gain": 0},
-                {"rf_power": -3, "pa_gain": 0, "pwr_idx":  1, "dig_gain": 0},
-                {"rf_power":  0, "pa_gain": 0, "pwr_idx":  2, "dig_gain": 0},
-                {"rf_power":  3, "pa_gain": 1, "pwr_idx":  3, "dig_gain": 0},
-                {"rf_power":  6, "pa_gain": 1, "pwr_idx":  4, "dig_gain": 0},
-                {"rf_power": 10, "pa_gain": 1, "pwr_idx":  5, "dig_gain": 0},
-                {"rf_power": 11, "pa_gain": 1, "pwr_idx":  6, "dig_gain": 0},
-                {"rf_power": 12, "pa_gain": 2, "pwr_idx":  7, "dig_gain": 0},
-                {"rf_power": 13, "pa_gain": 1, "pwr_idx":  8, "dig_gain": 0},
-                {"rf_power": 14, "pa_gain": 2, "pwr_idx":  9, "dig_gain": 0},
-                {"rf_power": 16, "pa_gain": 2, "pwr_idx": 10, "dig_gain": 0},
-                {"rf_power": 20, "pa_gain": 3, "pwr_idx": 11, "dig_gain": 0},
-                {"rf_power": 23, "pa_gain": 3, "pwr_idx": 12, "dig_gain": 0},
-                {"rf_power": 25, "pa_gain": 3, "pwr_idx": 13, "dig_gain": 0},
-                {"rf_power": 26, "pa_gain": 3, "pwr_idx": 14, "dig_gain": 0},
-                {"rf_power": 27, "pa_gain": 3, "pwr_idx": 15, "dig_gain": 0}
+                {"rf_power": 14, "pa_gain": 0, "pwr_idx": 18, "dig_gain": 0},
+                {"rf_power": 27, "pa_gain": 1, "pwr_idx": 13, "dig_gain": 0}
             ]
         },
         "radio_1": {

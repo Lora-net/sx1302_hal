@@ -2064,18 +2064,19 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             break;
         }
     }
-    printf("INFO: selecting TX Gain LUT index %u\n", pow_index);
+    DEBUG_PRINTF("INFO: selecting TX Gain LUT index %u\n", pow_index);
 
     /* loading calibrated Tx DC offsets */
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_I_OFFSET_I_OFFSET(pkt_data->rf_chain), tx_lut->lut[pow_index].offset_i);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_Q_OFFSET_Q_OFFSET(pkt_data->rf_chain), tx_lut->lut[pow_index].offset_q);
 
-    printf("INFO: Applying IQ offset (i:%d, q:%d)\n", tx_lut->lut[pow_index].offset_i, tx_lut->lut[pow_index].offset_q);
+    DEBUG_PRINTF("INFO: Applying IQ offset (i:%d, q:%d)\n", tx_lut->lut[pow_index].offset_i, tx_lut->lut[pow_index].offset_q);
 
     /* Set the power parameters to be used for TX */
     switch (radio_type) {
         case LGW_RADIO_TYPE_SX1250:
-            power = (tx_lut->lut[pow_index].pa_gain << 6) | tx_lut->lut[pow_index].pwr_idx;
+            pa_en = (tx_lut->lut[pow_index].pa_gain > 0) ? 1 : 0; /* only 1 bit used to control the external PA */
+            power = (pa_en << 6) | tx_lut->lut[pow_index].pwr_idx;
             break;
         case LGW_RADIO_TYPE_SX1257:
             power = (tx_lut->lut[pow_index].pa_gain << 6) | (tx_lut->lut[pow_index].dac_gain << 4) | tx_lut->lut[pow_index].mix_gain;

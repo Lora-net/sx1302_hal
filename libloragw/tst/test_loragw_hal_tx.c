@@ -80,10 +80,10 @@ void usage(void) {
     printf(" -p <int>   RF power in dBm\n");
     printf(" -i         Send LoRa packet using inverted modulation polarity\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
-    printf(" --pa   <uint> PA gain [0..3]\n");
+    printf(" --pa   <uint> PA gain SX125x:[0..3], SX1250:[0,1]\n");
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
-    printf(" --dac  <uint> sx1257 DAC gain [0..3]\n");
-    printf(" --mix  <uint> sx1257 MIX gain [5..15]\n");
+    printf(" --dac  <uint> sx125x DAC gain [0..3]\n");
+    printf(" --mix  <uint> sx125x MIX gain [5..15]\n");
     printf(" --pwid <uint> sx1250 power index [0..22]\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --nhdr        Send LoRa packet with implicit header\n");
