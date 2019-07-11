@@ -68,7 +68,8 @@ void usage(void) {
     printf(" -c <uint>  RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint>  Radio type (1255, 1257, 1250)\n");
     printf(" -f <float> Radio TX frequency in MHz\n");
-    printf(" -m <str>   modulation type ['LORA', 'FSK']\n");
+    printf(" -m <str>   modulation type ['CW', 'LORA', 'FSK']\n");
+    printf(" -o <int>   CW frequency offset from Radio TX frequency in kHz [-65..65]\n");
     printf(" -s <uint>  LoRa datarate 0:random, [5..12]\n");
     printf(" -b <uint>  LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
     printf(" -l <uint>  FSK/LoRa preamble length, [6..65535]\n");
@@ -118,6 +119,7 @@ int main(int argc, char **argv)
     char mod[64] = "LORA";
     float br_kbps = 50;
     uint8_t fdev_khz = 25;
+    int8_t freq_offset = 0;
     double arg_d = 0.0;
     unsigned int arg_u;
     int arg_i;
@@ -163,7 +165,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:s:b:n:z:p:k:r:c:l:t:m:q:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -202,11 +204,20 @@ int main(int argc, char **argv)
                 break;
             case 'm': /* <str> Modulation type */
                 i = sscanf(optarg, "%s", arg_s);
-                if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
+                if ((i != 1) || ((strcmp(arg_s, "CW") != 0) && (strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
                     printf("ERROR: invalid modulation type\n");
                     return EXIT_FAILURE;
                 } else {
                     sprintf(mod, "%s", arg_s);
+                }
+                break;
+            case 'o': /* <int> CW frequency offset from Radio TX frequency */
+                i = sscanf(optarg, "%d", &arg_i);
+                if ((arg_i < -65) || (arg_i > 65)) {
+                    printf("ERROR: invalid frequency offset\n");
+                    return EXIT_FAILURE;
+                } else {
+                    freq_offset = (int32_t)arg_i;
                 }
                 break;
             case 'd': /* <uint> FSK frequency deviation */
@@ -382,7 +393,10 @@ int main(int argc, char **argv)
     }
 
     /* Summary of packet parameters */
-    if (strcmp(mod, "FSK") == 0) {
+    if (strcmp(mod, "CW") == 0) {
+        printf("Sending %i CW on %u Hz (Freq. offset %d kHz) at %i dBm\n", nb_pkt, ft, freq_offset, rf_power);
+    }
+    else if (strcmp(mod, "FSK") == 0) {
         printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, fdev_khz, br_kbps, size, preamble, rf_power);
     } else {
         printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
@@ -461,7 +475,12 @@ int main(int argc, char **argv)
                 pkt.tx_mode = TIMESTAMPED;
             }
         }
-        if( strcmp( mod, "FSK" ) == 0 ) {
+        if ( strcmp( mod, "CW" ) == 0 ) {
+            pkt.modulation = MOD_CW;
+            pkt.freq_offset = freq_offset;
+            pkt.f_dev = fdev_khz;
+        }
+        else if( strcmp( mod, "FSK" ) == 0 ) {
             pkt.modulation = MOD_FSK;
             pkt.no_crc = false;
             pkt.datarate = br_kbps * 1e3;

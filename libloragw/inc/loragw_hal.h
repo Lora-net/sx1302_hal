@@ -58,6 +58,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* values available for the 'modulation' parameters */
 /* NOTE: arbitrary values */
 #define MOD_UNDEFINED   0
+#define MOD_CW          0x08
 #define MOD_LORA        0x10
 #define MOD_FSK         0x20
 
@@ -235,6 +236,7 @@ struct lgw_pkt_tx_s {
     uint8_t     rf_chain;       /*!> through which RF chain will the packet be sent */
     int8_t      rf_power;       /*!> TX power, in dBm */
     uint8_t     modulation;     /*!> modulation to use for the packet */
+    int8_t      freq_offset;    /*!> frequency offset from Radio Tx frequency (CW mode) */
     uint8_t     bandwidth;      /*!> modulation bandwidth (LoRa only) */
     uint32_t    datarate;       /*!> TX datarate (baudrate for FSK, SF for LoRa) */
     uint8_t     coderate;       /*!> error-correcting code of the packet (LoRa only) */

@@ -2046,6 +2046,10 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
 
     /* Select the proper modem */
     switch (pkt_data->modulation) {
+        case MOD_CW:
+            lgw_reg_w(SX1302_REG_TX_TOP_GEN_CFG_0_MODULATION_TYPE(pkt_data->rf_chain), 0x00);
+            lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL_TX_IF_SRC(pkt_data->rf_chain), 0x00);
+            break;
         case MOD_LORA:
             lgw_reg_w(SX1302_REG_TX_TOP_GEN_CFG_0_MODULATION_TYPE(pkt_data->rf_chain), 0x00);
             lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_CTRL_TX_IF_SRC(pkt_data->rf_chain), 0x01);
@@ -2102,6 +2106,8 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
         case MOD_LORA:
             mod_bw = pkt_data->bandwidth;
             break;
+        case MOD_CW:
+            /* Intended fall-through */
         case MOD_FSK:
             mod_bw = (0x01 << 7) | pkt_data->bandwidth;
             break;
@@ -2113,6 +2119,24 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
 
     /* Configure modem */
     switch (pkt_data->modulation) {
+        case MOD_CW:
+            /* Set frequency deviation */
+            freq_dev = ceil(fabs((float)pkt_data->freq_offset/10))*10e3;
+            printf("CW: f_dev %d Hz\n", (int)(freq_dev));
+            fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
+            lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV(pkt_data->rf_chain), (fdev_reg >>  8) & 0xFF);
+            lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_DEV_L_FREQ_DEV(pkt_data->rf_chain), (fdev_reg >>  0) & 0xFF);
+
+            /* Send frequency deviation to AGC fw for radio config */
+            fdev_reg = SX1250_FREQ_TO_REG(freq_dev);
+            lgw_reg_w(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE2_MCU_MAIL_BOX_WR_DATA, (fdev_reg >> 16) & 0xFF); /* Needed by AGC to configure the sx1250 */
+            lgw_reg_w(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE1_MCU_MAIL_BOX_WR_DATA, (fdev_reg >>  8) & 0xFF); /* Needed by AGC to configure the sx1250 */
+            lgw_reg_w(SX1302_REG_AGC_MCU_MCU_MAIL_BOX_WR_DATA_BYTE0_MCU_MAIL_BOX_WR_DATA, (fdev_reg >>  0) & 0xFF); /* Needed by AGC to configure the sx1250 */
+
+            /* Set the frequency offset (ratio of the frequency deviation)*/
+            printf("CW: IF test mod freq %d\n", (int)(((float)pkt_data->freq_offset*1e3*64/(float)freq_dev)));
+            lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_TEST_MOD_FREQ(pkt_data->rf_chain), (int)(((float)pkt_data->freq_offset*1e3*64/(float)freq_dev)));
+            break;
         case MOD_LORA:
             /* Set bandwidth */
             freq_dev = lgw_bw_getval(pkt_data->bandwidth) / 2;

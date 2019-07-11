@@ -885,6 +885,8 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
             DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
             return LGW_HAL_ERROR;
         }
+    } else if (pkt_data->modulation == MOD_CW) {
+        /* do nothing */
     } else {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
