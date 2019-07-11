@@ -20,7 +20,21 @@
             "tx_freq_min": 863000000,
             "tx_freq_max": 870000000,
             "tx_gain_lut":[
+                {"rf_power": 12, "pa_gain": 0, "pwr_idx": 16, "dig_gain": 0},
+                {"rf_power": 13, "pa_gain": 0, "pwr_idx": 17, "dig_gain": 0},
                 {"rf_power": 14, "pa_gain": 0, "pwr_idx": 18, "dig_gain": 0},
+                {"rf_power": 15, "pa_gain": 0, "pwr_idx": 20, "dig_gain": 0},
+                {"rf_power": 16, "pa_gain": 1, "pwr_idx":  0, "dig_gain": 0},
+                {"rf_power": 17, "pa_gain": 1, "pwr_idx":  1, "dig_gain": 0},
+                {"rf_power": 18, "pa_gain": 1, "pwr_idx":  2, "dig_gain": 0},
+                {"rf_power": 19, "pa_gain": 1, "pwr_idx":  3, "dig_gain": 0},
+                {"rf_power": 20, "pa_gain": 1, "pwr_idx":  4, "dig_gain": 0},
+                {"rf_power": 21, "pa_gain": 1, "pwr_idx":  5, "dig_gain": 0},
+                {"rf_power": 22, "pa_gain": 1, "pwr_idx":  6, "dig_gain": 0},
+                {"rf_power": 23, "pa_gain": 1, "pwr_idx":  7, "dig_gain": 0},
+                {"rf_power": 24, "pa_gain": 1, "pwr_idx":  8, "dig_gain": 0},
+                {"rf_power": 25, "pa_gain": 1, "pwr_idx":  9, "dig_gain": 0},
+                {"rf_power": 26, "pa_gain": 1, "pwr_idx": 11, "dig_gain": 0},
                 {"rf_power": 27, "pa_gain": 1, "pwr_idx": 13, "dig_gain": 0}
             ]
         },
