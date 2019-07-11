@@ -103,9 +103,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define IMMEDIATE       0
 #define TIMESTAMPED     1
 #define ON_GPS          2
-//#define ON_EVENT      3
-//#define GPS_DELAYED   4
-//#define EVENT_DELAYED 5
 
 /* values available for 'select' in the status function */
 #define TX_STATUS       1

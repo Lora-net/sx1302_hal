@@ -179,6 +179,12 @@ int main(int argc, char ** argv)
         return -1;
     }
 
+    /* Board reset */
+    if (system("./reset_lgw.sh stop") != 0) {
+        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+        exit(EXIT_FAILURE);
+    }
+
     return 0;
 }
 

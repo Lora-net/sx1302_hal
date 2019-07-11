@@ -11,51 +11,55 @@
 # GPIO mapping has to be adapted with HW
 #
 
-IOT_SK_SX1302_RESET_PIN=23
-IOT_SK_SX1302_POWER_EN_PIN=18
-
-echo "Accessing CoreCellSX1302 reset pin through GPIO$IOT_SK_SX1302_RESET_PIN..."
-echo "Accessing CoreCellSX1302 power enable pin through GPIO$IOT_SK_SX1302_POWER_EN_PIN..."
+SX1302_RESET_PIN=23
+SX1302_POWER_EN_PIN=18
 
 WAIT_GPIO() {
     sleep 0.1
 }
 
-iot_sk_init() {
+init() {
     # setup GPIOs
-    echo "$IOT_SK_SX1302_RESET_PIN" > /sys/class/gpio/export; WAIT_GPIO
-    echo "$IOT_SK_SX1302_POWER_EN_PIN" > /sys/class/gpio/export; WAIT_GPIO
+    echo "$SX1302_RESET_PIN" > /sys/class/gpio/export; WAIT_GPIO
+    echo "$SX1302_POWER_EN_PIN" > /sys/class/gpio/export; WAIT_GPIO
 
     # set GPIOs as output
-    echo "out" > /sys/class/gpio/gpio$IOT_SK_SX1302_RESET_PIN/direction; WAIT_GPIO
-    echo "out" > /sys/class/gpio/gpio$IOT_SK_SX1302_POWER_EN_PIN/direction; WAIT_GPIO
-
-    # write output for SX1302 CoreCell power_enable and reset
-    echo "1" > /sys/class/gpio/gpio$IOT_SK_SX1302_POWER_EN_PIN/value; WAIT_GPIO
-
-    echo "1" > /sys/class/gpio/gpio$IOT_SK_SX1302_RESET_PIN/value; WAIT_GPIO
-    echo "0" > /sys/class/gpio/gpio$IOT_SK_SX1302_RESET_PIN/value; WAIT_GPIO
+    echo "out" > /sys/class/gpio/gpio$SX1302_RESET_PIN/direction; WAIT_GPIO
+    echo "out" > /sys/class/gpio/gpio$SX1302_POWER_EN_PIN/direction; WAIT_GPIO
 }
 
-iot_sk_term() {
+reset() {
+    echo "CoreCell reset through GPIO$SX1302_RESET_PIN..."
+    echo "CoreCell power enable through GPIO$SX1302_POWER_EN_PIN..."
+
+    # write output for SX1302 CoreCell power_enable and reset
+    echo "1" > /sys/class/gpio/gpio$SX1302_POWER_EN_PIN/value; WAIT_GPIO
+
+    echo "1" > /sys/class/gpio/gpio$SX1302_RESET_PIN/value; WAIT_GPIO
+    echo "0" > /sys/class/gpio/gpio$SX1302_RESET_PIN/value; WAIT_GPIO
+}
+
+term() {
     # cleanup all GPIOs
-    if [ -d /sys/class/gpio/gpio$IOT_SK_SX1302_RESET_PIN ]
+    if [ -d /sys/class/gpio/gpio$SX1302_RESET_PIN ]
     then
-        echo "$IOT_SK_SX1302_RESET_PIN" > /sys/class/gpio/unexport; WAIT_GPIO
+        echo "$SX1302_RESET_PIN" > /sys/class/gpio/unexport; WAIT_GPIO
     fi
-    if [ -d /sys/class/gpio/gpio$IOT_SK_SX1302_POWER_EN_PIN ]
+    if [ -d /sys/class/gpio/gpio$SX1302_POWER_EN_PIN ]
     then
-        echo "$IOT_SK_SX1302_POWER_EN_PIN" > /sys/class/gpio/unexport; WAIT_GPIO
+        echo "$SX1302_POWER_EN_PIN" > /sys/class/gpio/unexport; WAIT_GPIO
     fi
 }
 
 case "$1" in
     start)
-    iot_sk_term
-    iot_sk_init
+    term # just in case
+    init
+    reset
     ;;
     stop)
-    iot_sk_term
+    reset
+    term
     ;;
     *)
     echo "Usage: $0 {start|stop}"

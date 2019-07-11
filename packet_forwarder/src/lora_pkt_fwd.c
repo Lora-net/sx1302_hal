@@ -1627,7 +1627,10 @@ int main(int argc, char ** argv)
     }
 
     /* Board reset */
-    system("./reset_lgw.sh start");
+    if (system("./reset_lgw.sh stop") != 0) {
+        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+        exit(EXIT_FAILURE);
+    }
 
     MSG("INFO: Exiting packet forwarder program\n");
     exit(EXIT_SUCCESS);
