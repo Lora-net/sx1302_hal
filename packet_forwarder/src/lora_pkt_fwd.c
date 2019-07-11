@@ -517,15 +517,15 @@ static int parse_SX130x_configuration(const char * conf_file) {
                                 printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "pa_gain", j);
                                 txlut[i].lut[j].pa_gain = 0;
                             }
-                            /* DIG gain */
-                            val = json_object_dotget_value(conf_txgain_obj, "dig_gain");
-                            if (json_value_get_type(val) == JSONNumber) {
-                                txlut[i].lut[j].dig_gain = (uint8_t)json_value_get_number(val);
-                            } else {
-                                printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "dig_gain", j);
-                                txlut[i].lut[j].dig_gain = 0;
-                            }
                             if (sx1250_tx_lut == false) {
+                                /* DIG gain */
+                                val = json_object_dotget_value(conf_txgain_obj, "dig_gain");
+                                if (json_value_get_type(val) == JSONNumber) {
+                                    txlut[i].lut[j].dig_gain = (uint8_t)json_value_get_number(val);
+                                } else {
+                                    printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "dig_gain", j);
+                                    txlut[i].lut[j].dig_gain = 0;
+                                }
                                 /* DAC gain */
                                 val = json_object_dotget_value(conf_txgain_obj, "dac_gain");
                                 if (json_value_get_type(val) == JSONNumber) {
