@@ -41,14 +41,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param i2c_fd      Pointer to receive I2C port file descriptor index
 @return 0 if I2C port was open successfully, -1 else
 */
-int i2c_linuxdev_open( const char *path, uint8_t device_addr, int *i2c_fd );
+int i2c_linuxdev_open(const char *path, uint8_t device_addr, int *i2c_fd);
 
 /**
 @brief Close I2C port
 @param i2c_fd      I2C port file descriptor index
 @return 0 if I2C port was closed successfully, -1 else
 */
-int i2c_linuxdev_close( int i2c_fd );
+int i2c_linuxdev_close(int i2c_fd);
 
 /**
 @brief Read data from an I2C port
@@ -58,7 +58,7 @@ int i2c_linuxdev_close( int i2c_fd );
 @param data         Pointer to a buffer to store read data
 @return 0 if I2C data read is successful, -1 else
 */
-int i2c_linuxdev_read( int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t *data );
+int i2c_linuxdev_read(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t *data);
 
 /**
 @brief Write data to an I2C port
@@ -68,7 +68,7 @@ int i2c_linuxdev_read( int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_
 @param data         byte to write in the register
 @return 0 if I2C data write is successful, -1 else
 */
-int i2c_linuxdev_write( int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t data );
+int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t data);
 
 #endif
 
