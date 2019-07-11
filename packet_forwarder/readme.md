@@ -8,8 +8,7 @@
 SX1302 packet forwarder
 =======================
 
-1. Introduction
-----------------
+## 1. Introduction
 
 The packet forwarder is a program running on the host of a Lora gateway that
 forwards RF packets receive by the concentrator to a server through a IP/UDP
@@ -20,8 +19,7 @@ the network.
 To learn more about the network protocol between the gateway and the server,
 please read the PROTOCOL.TXT document.
 
-2. System schematic and definitions
-------------------------------------
+## 2. System schematic and definitions
 
 	((( Y )))
 	    |
@@ -55,8 +53,7 @@ forwarded by the gateway, and issue RF packets in response that the gateway
 will have to emit.
 
 
-3. Dependencies
-----------------
+## 3. Dependencies
 
 This program uses the Parson library (http://kgabis.github.com/parson/) by
 Krzysztof Gabis for JSON parsing.
@@ -74,29 +71,22 @@ This program follows the v1.3 version of the gateway-to-server protocol.
 The last dependency is the hardware concentrator (based on FPGA or SX130x
 chips) that must be matched with the proper version of the HAL.
 
-4. Usage
----------
+## 4. Usage
 
-* Pick the global_conf.json file from cfg/ directory that fit with your
-platform, region and feature need.
+* Pick the global_conf.json file that fit with your platform, region and feature
+need.
 * Update the JSON configuration (global and local) files, as explained below.
-* For IoT Starter Kit only, run:
-    ./reset_lgw.sh stop
-    ./reset_lgw.sh start
 * Run:
-    ./update_gwid.sh global_conf.json    (OPTIONAL)
-    ./lora_pkt_fwd
+    ./lora_pkt_fwd -c global_conf.json
 
 To stop the application, press Ctrl+C.
 Unless it is manually stopped or encounter a critical error, the program will
 run forever.
 
-There are no command line launch options.
-
 The way the program takes configuration files into account is the following:
  * if a specific configuration file is given as program argument, use the
   one specified.
- * if there is a global_conf.json parse it, look for the next file
+ * if there is a global_conf.json parse it.
 
 The global configuration file should be exactly the same throughout your
 network, contain all global parameters (parameters for "sensor" radio
@@ -117,8 +107,7 @@ display statistics on the RF packets received and sent, and the network
 datagrams received and sent.
 The program also send some statistics to the server in JSON format.
 
-5. "Just-In-Time" downlink scheduling
--------------------------------------
+## 5. "Just-In-Time" downlink scheduling
 
 The LoRa concentrator can have only one TX packet programmed for departure at a
 time. The actual departure of a downlink packet will be done based on its
@@ -149,31 +138,8 @@ sent.
 - A JiT thread, which regularly checks if there is a packet in the JiT queue
 ready to be programmed in the concentrator, based on current concentrator
 internal time.
-- A Timer synchronization thread to keep the concentrator clock and Unix clock
-synchronized so that host processor can determine if a packet with a given
-timestamp can be programmed in the concentrator or not.
 
-5.1. Concentrator vs Unix time synchronization
-
-In order for the host to know if an incoming downlink packet can or cannot be
-queued in JiT queue for later transmission, it has to check if the timestamp of
-the packet designates a time later than the current concentrator counter or if
-it is already too late to be passed to the concentrator.
-For this, a new thread has been added to the packet forwarder (thread_timersync)
-which will regularly:
-    - Get current Unix time
-    - Get current SX1302 counter
-    - Compute the offset between Unix and SX1302 clocks and store it
-Then a new function has been added to estimate the current concentrator counter
-at any time based on the current Unix time and offset computed by the timersync
-thread.
-
-In addition to this, the Concentrator vs Unix time synchronization is used by
-the JiT thread to determine if a packet in the JiT queue has to be sent to the
-concentrator for transmission.
-So basically it is used for queueing and dequeuing packets to/from the JiT queue.
-
-5.2. Concentrator vs GPS time synchronization
+### 5.1. Concentrator vs GPS time synchronization
 
 There are 2 cases for which we need to convert a GPS time to concentrator
 counter:
@@ -194,7 +160,7 @@ counter:
 We also need to convert a SX1302 counter value to GPS UTC time when we receive
 an uplink, in order to fill the “time” field of JSON “rxpk” structure.
 
-5.3. TX scheduling
+### 5.2. TX scheduling
 
 The JiT queue implemented is a static array of nodes, where each node contains:
     - the downlink packet, with its type (beacon, downlink class A, B or C)
@@ -219,7 +185,7 @@ The JiT thread will regularly check in the JiT queue if there is a packet to be
 sent soon.  If a packet is matching, it is dequeued and programmed in the
 concentrator TX buffer.
 
-5.4. Fine tuning parameters
+### 5.3. Fine tuning parameters
 
 There are few parameters of the JiT queue which could be tweaked to adapt to
 different system constraints.
