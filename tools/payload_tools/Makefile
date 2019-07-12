@@ -28,6 +28,7 @@ ifneq ($(strip $(TARGET_IP)),)
  ifneq ($(strip $(TARGET_DIR)),)
   ifneq ($(strip $(TARGET_USR)),)
 	@echo "---- Copying payload tools files to $(TARGET_IP):$(TARGET_DIR)"
+	@ssh $(TARGET_USR)@$(TARGET_IP) "mkdir -p $(TARGET_DIR)"
 	@scp payload_crc $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
 	@scp payload_diff $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
 	@scp payload_gen $(TARGET_USR)@$(TARGET_IP):$(TARGET_DIR)
