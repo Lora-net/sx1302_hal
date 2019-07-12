@@ -161,6 +161,11 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.0.1 ###
+
+* Packet Forwarder: Updated TX gain LUT in global_conf.json.sx1250 with proper
+calibration
+
 ### v1.0.0 ###
 
 * HAL: Initial official release for SX1302 CoreCell Reference Design.
