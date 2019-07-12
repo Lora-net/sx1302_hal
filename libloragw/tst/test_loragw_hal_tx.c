@@ -410,12 +410,6 @@ int main(int argc, char **argv)
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
-
     /* Configure the gateway */
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
@@ -455,6 +449,13 @@ int main(int argc, char **argv)
     }
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
+
+        /* connect, configure and start the LoRa concentrator */
         x = lgw_start();
         if (x != 0) {
             printf("ERROR: failed to start the gateway\n");
@@ -566,12 +567,12 @@ int main(int argc, char **argv)
             printf("ERROR: failed to stop the gateway\n");
             return EXIT_FAILURE;
         }
-    }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     printf("=========== Test End ===========\n");
