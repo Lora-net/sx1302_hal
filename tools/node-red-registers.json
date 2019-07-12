@@ -1,0 +1,930 @@
+[
+    {
+        "id": "bf64d63f.630868",
+        "type": "tab",
+        "label": "SX1302 register C header",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "d60daf5.ed6835",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/common.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 390,
+        "y": 160,
+        "wires": [
+            [
+                "ab571926.a8a0a8"
+            ]
+        ]
+    },
+    {
+        "id": "ab571926.a8a0a8",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 160,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "3e749686.017e32",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "common",
+        "topic": "common",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 160,
+        "wires": [
+            [
+                "d60daf5.ed6835"
+            ]
+        ]
+    },
+    {
+        "id": "a8c02e96.c069",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "Init",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 40,
+        "wires": [
+            [
+                "13cca583.8beb3a"
+            ]
+        ]
+    },
+    {
+        "id": "13cca583.8beb3a",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "Init global variables",
+        "func": "var reg_c = 'const struct lgw_reg_s loregs[LGW_TOTALREGS+1] = {' + '\\n';\n\nvar reg_desc;\nreg_desc  = '\\n/* -------------------------------------------------------------------------- */\\n';\nreg_desc +=   '/* --- REGISTER DESCRIPTIONS ------------------------------------------------\\n';\n\nflow.set('tx_top_macro', '');\nflow.set('reg_h', '');\nflow.set('reg_c', reg_c);\nflow.set('reg_desc', reg_desc);\nflow.set('reg_count', 0);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 290,
+        "y": 40,
+        "wires": [
+            [
+                "d040198e.3a7208"
+            ]
+        ]
+    },
+    {
+        "id": "d040198e.3a7208",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 500,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "12128a9a.ea5e35",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/agc_mcu.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 390,
+        "y": 220,
+        "wires": [
+            [
+                "d6c34db.5471fb"
+            ]
+        ]
+    },
+    {
+        "id": "d6c34db.5471fb",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 220,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "c7ba4afe.f6229",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "agc_mcu",
+        "topic": "agc_mcu",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 220,
+        "wires": [
+            [
+                "12128a9a.ea5e35"
+            ]
+        ]
+    },
+    {
+        "id": "917cf46c.ceaa48",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "Create files",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 940,
+        "wires": [
+            [
+                "67447ab8.c38edc"
+            ]
+        ]
+    },
+    {
+        "id": "67447ab8.c38edc",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "Write header file",
+        "func": "var reg_count = flow.get('reg_count') || 0;\n\nvar reg_h = flow.get('reg_h') || '';\nreg_h += '\\n#define LGW_TOTALREGS ' + reg_count + '\\n';\n\nvar reg_c = flow.get('reg_c') || '';\nreg_c += '    {0,0,0,0,0,0,0,0}\\n'\nreg_c += '};';\n\nvar reg_desc = flow.get('reg_desc') || '';\nreg_desc += \"\\n*/\";\n\nvar tx_top_macro = flow.get('tx_top_macro') || '';\n\n// write all to file\nvar file = reg_h + '\\n' + tx_top_macro + '\\n' + reg_c + '\\n' + reg_desc;\nmsg.payload = file;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 290,
+        "y": 940,
+        "wires": [
+            [
+                "b1b0d974.6ae61"
+            ]
+        ]
+    },
+    {
+        "id": "b1b0d974.6ae61",
+        "type": "file",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/sx1302_reg.h",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "x": 620,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "aae4ac70.472438",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1160,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "1450f6f8.1be259",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/rif_top_mux.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 420,
+        "y": 100,
+        "wires": [
+            [
+                "5c712585.37aeec"
+            ]
+        ]
+    },
+    {
+        "id": "5c712585.37aeec",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 700,
+        "y": 100,
+        "wires": [
+            [
+                "8bbc1d63.391468"
+            ]
+        ]
+    },
+    {
+        "id": "a48ebe9c.34b028",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "rif_top_mux",
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 120,
+        "y": 100,
+        "wires": [
+            [
+                "1450f6f8.1be259"
+            ]
+        ]
+    },
+    {
+        "id": "8bbc1d63.391468",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON Parse Base Addresses",
+        "func": "var reg_h = flow.get('reg_h') || '';\n\nvar prefix = 'SX1302_REG_';\nvar postfix = '_BASE_ADDR';\nvar line = '';\n\nfor(var item in msg.payload.map)\n{\n    var base_addr = msg.payload.map[item].addr;\n    line += '#define ' + prefix + item.toUpperCase() + postfix + ' 0x' + base_addr.toString(16) + '\\n'\n}\n//console.log(line);\n\nreg_h += line + '\\n';\n\nflow.set('reg_h', reg_h);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 920,
+        "y": 100,
+        "wires": [
+            [
+                "9494d0f2.75b628"
+            ]
+        ]
+    },
+    {
+        "id": "9494d0f2.75b628",
+        "type": "debug",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1160,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "2d9b9bf2.6b3bb4",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/clk_ctrl.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 280,
+        "wires": [
+            [
+                "7efa17e6.f8b68"
+            ]
+        ]
+    },
+    {
+        "id": "7efa17e6.f8b68",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 280,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "5883ebc9.2fede4",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "clk_ctrl",
+        "topic": "clk_ctrl",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 280,
+        "wires": [
+            [
+                "2d9b9bf2.6b3bb4"
+            ]
+        ]
+    },
+    {
+        "id": "54a46dd.945aa14",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/tx_top.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 340,
+        "wires": [
+            [
+                "5ae327f2.618788"
+            ]
+        ]
+    },
+    {
+        "id": "5ae327f2.618788",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 340,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "ca4d9728.057d68",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "tx_top_a",
+        "topic": "tx_top_a",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 340,
+        "wires": [
+            [
+                "54a46dd.945aa14"
+            ]
+        ]
+    },
+    {
+        "id": "50b73755.13ee",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/tx_top.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 400,
+        "wires": [
+            [
+                "ce78d3ce.e6bf18"
+            ]
+        ]
+    },
+    {
+        "id": "ce78d3ce.e6bf18",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 400,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "4791c4e5.60b12c",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "tx_top_b",
+        "topic": "tx_top_b",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 400,
+        "wires": [
+            [
+                "50b73755.13ee"
+            ]
+        ]
+    },
+    {
+        "id": "2efaa7ec.1e3158",
+        "type": "function",
+        "z": "bf64d63f.630868",
+        "name": "JSON to C header",
+        "func": "var reg_h = flow.get('reg_h') || '';\nvar reg_c = flow.get('reg_c') || '';\nvar reg_desc = flow.get('reg_desc') || '';\nvar reg_count = flow.get('reg_count') || 0;\nvar tx_top_macro = flow.get('tx_top_macro') || '';\n\nvar rif = msg.topic;\nvar prefix = 'SX1302_REG_';\nvar base_addr = prefix + rif.toUpperCase() + '_BASE_ADDR';\n\n// register definition\nvar page = '';\nvar addr = '';\nvar offs = '';\nvar sign = '';\nvar leng = '';\nvar rdon = '';\nvar dflt = '';\nvar chck = '';\nvar reg_comment = '';\nvar desc = '';\nvar flags;\n\nfor(var register in msg.payload)\n{\n    //console.log(register);\n    for(var field in msg.payload[register].fields)\n    {\n        //console.log(' ' + field);\n        page = '0';\n        addr = base_addr + '+' + msg.payload[register].addr;\n        offs = msg.payload[register].fields[field].pos;\n        if(msg.payload[register].fields[field].hasOwnProperty('signed'))\n        {\n            console.log(msg.payload[register].fields[field].signed);\n            if(msg.payload[register].fields[field].signed === true)\n            {\n                sign = '1';\n            }\n            else\n            {\n                sign = '0';\n            }\n        }\n        else\n        {\n            sign = '0';\n        }\n        leng = msg.payload[register].fields[field].width;\n        rdon = (msg.payload[register].fields[field].readonly === false) ? '0' : '1';\n        dflt = msg.payload[register].fields[field].value;\n        flags = msg.payload[register].fields[field].flags;\n        desc = msg.payload[register].fields[field].desc;\n        //desc = desc.replace(/(?:\\r\\n|\\r|\\n)/g, ' / ');\n        if (flags.length > 0)\n        {\n            for (var i_flag of flags) {\n                console.log(i_flag);\n            }\n            //if(['pulse','w0clr','w1clr','interrupt'].includes(flags))\n            if (flags.includes('pulse') || flags.includes('w0clr') || flags.includes('w1clr') || flags.includes('interrupt'))\n            {\n                console.log('non-checkable register');\n                check = 0;\n            }\n            else\n            {\n                check = 1;\n            }\n        }\n        else\n        {\n            check = 1;\n        }\n        reg_comment = (rif + '_' + register + '_' + field).toUpperCase();\n\n        reg_h += '#define ' + prefix + reg_comment + ' ' + reg_count + '\\n';\n        reg_c += '    '; // indent\n        reg_c += '{' + page + ',' + addr + ',' + offs + ',' + sign + ',' + leng + ',' + rdon + ',' + check + ',' + dflt + '}, // ' + reg_comment + '\\n';\n        reg_desc += '\\n' + reg_comment + ':\\n' + desc + '\\n';\n        \n        if (msg.topic === 'tx_top_a')\n        {\n            tx_top_macro += '#define ' + prefix + 'TX_TOP' + '_' + register.toUpperCase() + '_' + field.toUpperCase() + '(rf_chain) ((rf_chain == 0) ? \\\\\\n    ' + prefix + 'TX_TOP_A' + '_' + register.toUpperCase() + '_' + field.toUpperCase() + ' : \\\\\\n    ' + prefix + 'TX_TOP_B' + '_' + register.toUpperCase() + '_' + field.toUpperCase() + ')\\n';\n        }\n        \n        reg_count += 1;\n    }\n}\n\n//console.log(reg_h);\n//console.log(reg_c);\n\nflow.set('reg_count', reg_count);\nflow.set('reg_h', reg_h);\nflow.set('reg_c', reg_c);\nflow.set('reg_desc', reg_desc);\nflow.set('tx_top_macro', tx_top_macro);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 940,
+        "y": 280,
+        "wires": [
+            [
+                "aae4ac70.472438"
+            ]
+        ]
+    },
+    {
+        "id": "ab7535a2.47b2e8",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/gpio.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 370,
+        "y": 460,
+        "wires": [
+            [
+                "6017e95e.37841"
+            ]
+        ]
+    },
+    {
+        "id": "6017e95e.37841",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 460,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "626f34eb.dac1f4",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "gpio",
+        "topic": "gpio",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 460,
+        "wires": [
+            [
+                "ab7535a2.47b2e8"
+            ]
+        ]
+    },
+    {
+        "id": "f6871b6f.167d",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/timestamp.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 390,
+        "y": 520,
+        "wires": [
+            [
+                "d1c6c905.bbf6a"
+            ]
+        ]
+    },
+    {
+        "id": "d1c6c905.bbf6a",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 520,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "128c968f.34cc09",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "timestamp",
+        "topic": "timestamp",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 520,
+        "wires": [
+            [
+                "f6871b6f.167d"
+            ]
+        ]
+    },
+    {
+        "id": "38f6ab4d.eba4b4",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/rx_top.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 380,
+        "y": 580,
+        "wires": [
+            [
+                "f464e634.1500a8"
+            ]
+        ]
+    },
+    {
+        "id": "f464e634.1500a8",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 580,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "4dd5087.c34c178",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "rx_top",
+        "topic": "rx_top",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 580,
+        "wires": [
+            [
+                "38f6ab4d.eba4b4"
+            ]
+        ]
+    },
+    {
+        "id": "28e533a1.3ef5ac",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/arb_mcu.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 390,
+        "y": 640,
+        "wires": [
+            [
+                "3c2109da.3df84e"
+            ]
+        ]
+    },
+    {
+        "id": "3c2109da.3df84e",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 640,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "c3a46357.bf67c",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "arb_mcu",
+        "topic": "arb_mcu",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 640,
+        "wires": [
+            [
+                "28e533a1.3ef5ac"
+            ]
+        ]
+    },
+    {
+        "id": "b3ed4e4f.fbd358",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/radio_fe.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 390,
+        "y": 700,
+        "wires": [
+            [
+                "37f7e33f.14dc6c"
+            ]
+        ]
+    },
+    {
+        "id": "37f7e33f.14dc6c",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 660,
+        "y": 700,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "e9006ee1.8d154",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "radio_fe",
+        "topic": "radio_fe",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 110,
+        "y": 700,
+        "wires": [
+            [
+                "b3ed4e4f.fbd358"
+            ]
+        ]
+    },
+    {
+        "id": "7c16420a.7b8634",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/otp.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 360,
+        "y": 760,
+        "wires": [
+            [
+                "4e1e58e8.d72998"
+            ]
+        ]
+    },
+    {
+        "id": "4e1e58e8.d72998",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 650,
+        "y": 760,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "cdd63a9c.be8f4",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "otp",
+        "topic": "otp",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 100,
+        "y": 760,
+        "wires": [
+            [
+                "7c16420a.7b8634"
+            ]
+        ]
+    },
+    {
+        "id": "9ac5ddf6.e47048",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/rx_top_lora_service_fsk.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 500,
+        "y": 820,
+        "wires": [
+            [
+                "5a5536dc.db687"
+            ]
+        ]
+    },
+    {
+        "id": "5a5536dc.db687",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 800,
+        "y": 820,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "c5ffdcfa.19ea28",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "rx_top_lora_service_fsk",
+        "topic": "rx_top_lora_service_fsk",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 150,
+        "y": 820,
+        "wires": [
+            [
+                "9ac5ddf6.e47048"
+            ]
+        ]
+    },
+    {
+        "id": "b5897d4d.0628c",
+        "type": "file in",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "filename": "/home/mcoracin/SHARE/sx1302_reg/capture_ram.json",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "x": 410,
+        "y": 880,
+        "wires": [
+            [
+                "753bfa61.c8068c"
+            ]
+        ]
+    },
+    {
+        "id": "753bfa61.c8068c",
+        "type": "json",
+        "z": "bf64d63f.630868",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 680,
+        "y": 880,
+        "wires": [
+            [
+                "2efaa7ec.1e3158"
+            ]
+        ]
+    },
+    {
+        "id": "6ca97d0.d189b84",
+        "type": "inject",
+        "z": "bf64d63f.630868",
+        "name": "capture_ram",
+        "topic": "capture_ram",
+        "payload": "true",
+        "payloadType": "bool",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 120,
+        "y": 880,
+        "wires": [
+            [
+                "b5897d4d.0628c"
+            ]
+        ]
+    },
+    {
+        "id": "56ed912a.91d118",
+        "type": "trigger",
+        "z": "bf64d63f.630868",
+        "op1": "1",
+        "op2": "0",
+        "op1type": "val",
+        "op2type": "val",
+        "duration": "250",
+        "extend": "false",
+        "units": "ms",
+        "reset": "",
+        "bytopic": "all",
+        "name": "",
+        "x": 1020,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    }
+]
