@@ -33,7 +33,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define I2C_PORT_TEMP_SENSOR    0x39
+#define I2C_PORT_TEMP_SENSOR_1    0x39
+#define I2C_PORT_TEMP_SENSOR_2    0x3B
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
