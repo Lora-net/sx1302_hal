@@ -564,7 +564,7 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i, err, err_ID1,err_ID2;
+    int i, err, err_id_1,err_id_2;
     int reg_stat;
 
     if (CONTEXT_STARTED == true) {
@@ -714,9 +714,9 @@ int lgw_start(void) {
 #endif
 
     /* Open I2C */
-    err_ID1 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_1, &lgw_i2c_target);
-    err_ID2 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_2, &lgw_i2c_target);
-    if (((err_ID1 != 0) || (lgw_i2c_target <= 0)) && ((err_ID2 != 0) || (lgw_i2c_target <= 0))) {
+    err_id_1 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_1, &lgw_i2c_target);
+    err_id_2 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_2, &lgw_i2c_target);
+    if (((err_id_1 != 0) || (lgw_i2c_target <= 0)) && ((err_id_2 != 0) || (lgw_i2c_target <= 0))) {
         printf("ERROR: failed to open I2C device %s (err=%i)\n", I2C_DEVICE, err);
         return LGW_HAL_ERROR;
     }
