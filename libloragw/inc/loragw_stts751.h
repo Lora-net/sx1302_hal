@@ -33,8 +33,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define I2C_PORT_TEMP_SENSOR_1    0x39
-#define I2C_PORT_TEMP_SENSOR_2    0x3B
+#define I2C_PORT_TEMP_SENSOR_0    0x39  /* STTS751-0DP3F */
+#define I2C_PORT_TEMP_SENSOR_1    0x3B  /* STTS751-1DP3F */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
@@ -44,14 +44,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param TODO
 @return TODO
 */
-int lgw_stts751_configure(void);
+int lgw_stts751_configure(int i2c_fd, uint8_t i2c_addr);
 
 /**
 @brief TODO
 @param TODO
 @return TODO
 */
-int lgw_stts751_get_temperature(float * temperature);
+int lgw_stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature);
 
 #endif
 

@@ -179,8 +179,9 @@ static lgw_context_t lgw_context = {
 /* File handle to write debug logs */
 FILE * log_file = NULL;
 
-/* File descriptor to I2C linux device */
-int lgw_i2c_target = -1;
+/* I2C temperature sensor handles */
+static int     ts_fd = -1;
+static uint8_t ts_addr = 0xFF;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -564,7 +565,7 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i, err, err_id_1,err_id_2;
+    int i, err;
     int reg_stat;
 
     if (CONTEXT_STARTED == true) {
@@ -713,18 +714,21 @@ int lgw_start(void) {
     dbg_init_gpio();
 #endif
 
-    /* Open I2C */
-    err_id_1 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_1, &lgw_i2c_target);
-    err_id_2 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_2, &lgw_i2c_target);
-    if (((err_id_1 != 0) || (lgw_i2c_target <= 0)) && ((err_id_2 != 0) || (lgw_i2c_target <= 0))) {
-        printf("ERROR: failed to open I2C device %s (err=%i)\n", I2C_DEVICE, err);
-        return LGW_HAL_ERROR;
-    }
-
-    /* Configure the CoreCell temperature sensor */
-    if (lgw_stts751_configure() != LGW_I2C_SUCCESS) {
-        printf("ERROR: failed to configure temperature sensor\n");
-        return LGW_HAL_ERROR;
+    /* Try to configure temperature sensor STTS751-0DP3F */
+    ts_addr = I2C_PORT_TEMP_SENSOR_0;
+    i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+    err = lgw_stts751_configure(ts_fd, ts_addr);
+    if (err != LGW_I2C_SUCCESS) {
+        i2c_linuxdev_close(ts_fd);
+        ts_fd = -1;
+        /* Not found, try to configure temperature sensor STTS751-1DP3F */
+        ts_addr = I2C_PORT_TEMP_SENSOR_1;
+        i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+        err = lgw_stts751_configure(ts_fd, ts_addr);
+        if (err != LGW_I2C_SUCCESS) {
+            printf("ERROR: failed to configure the temperature sensor\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     /* set hal state */
@@ -753,10 +757,9 @@ int lgw_stop(void) {
     lgw_disconnect();
 
     DEBUG_MSG("INFO: Closing I2C\n");
-    err = i2c_linuxdev_close(lgw_i2c_target);
+    err = i2c_linuxdev_close(ts_fd);
     if (err != 0) {
         printf("ERROR: failed to close I2C device (err=%i)\n", err);
-        /* TODO: return error or not ? */
     }
 
     CONTEXT_STARTED = false;
@@ -790,7 +793,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Get the current temperature for further RSSI compensation : TODO */
-    res = lgw_stts751_get_temperature(&current_temperature);
+    res = lgw_stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;

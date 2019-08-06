@@ -22,6 +22,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
+#include <errno.h>      /* errno */
 
 #include <sys/ioctl.h>
 #include <linux/i2c.h>
@@ -55,18 +56,18 @@ int i2c_linuxdev_open(const char *path, uint8_t device_addr, int *i2c_fd) {
 
     /* Check input variables */
     if (path == NULL) {
-        DEBUG_MSG("ERROR: null pointer path");
+        DEBUG_MSG("ERROR: null pointer path\n");
         return LGW_I2C_ERROR;
     }
     if (i2c_fd == NULL) {
-        DEBUG_MSG("ERROR: null pointer i2c_fd");
+        DEBUG_MSG("ERROR: null pointer i2c_fd\n");
         return LGW_I2C_ERROR;
     }
 
     /* Open I2C device */
     dev = open(path, O_RDWR);
     if (dev < 0) {
-        DEBUG_PRINTF("ERROR: Failed to open I2C %s - %s", path, strerror(errno));
+        DEBUG_PRINTF("ERROR: Failed to open I2C %s - %s\n", path, strerror(errno));
         return LGW_I2C_ERROR;
     }
 
@@ -76,7 +77,7 @@ int i2c_linuxdev_open(const char *path, uint8_t device_addr, int *i2c_fd) {
         return LGW_I2C_ERROR;
     }
 
-    DEBUG_MSG("INFO: I2C port opened successfully");
+    DEBUG_PRINTF("INFO: I2C port opened successfully (%s, 0x%02X)\n", path, device_addr);
     *i2c_fd = dev; /* return file descriptor index */
 
     return LGW_I2C_SUCCESS;
@@ -105,7 +106,7 @@ int i2c_linuxdev_read(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t
     packets.nmsgs = 2;
 
     if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
-        DEBUG_PRINTF("ERROR: Read from I2C Device failed (%d, 0x%02x, 0x%02x) - %s", i2c_fd, device_addr, reg_addr, strerror(errno));
+        DEBUG_PRINTF("ERROR: Read from I2C Device failed (%d, 0x%02x, 0x%02x) - %s\n", i2c_fd, device_addr, reg_addr, strerror(errno));
         return LGW_I2C_ERROR;
     }
 
@@ -131,7 +132,7 @@ int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_
     packets.nmsgs = 1;
 
     if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
-        DEBUG_PRINTF("ERROR: Write to I2C Device failed (%d, 0x%02x, 0x%02x) - %s", i2c_fd, device_addr, reg_addr, strerror(errno));
+        DEBUG_PRINTF("ERROR: Write to I2C Device failed (%d, 0x%02x, 0x%02x) - %s\n", i2c_fd, device_addr, reg_addr, strerror(errno));
         return LGW_I2C_ERROR;
     }
 
@@ -145,10 +146,10 @@ int i2c_linuxdev_close(int i2c_fd) {
 
     i = close(i2c_fd);
     if (i == 0) {
-        DEBUG_MSG("INFO: I2C port closed successfully");
+        DEBUG_MSG("INFO: I2C port closed successfully\n");
         return LGW_I2C_SUCCESS;
     } else {
-        DEBUG_PRINTF("ERROR: Failed to close I2C - %s", strerror(errno));
+        DEBUG_PRINTF("ERROR: Failed to close I2C - %s\n", strerror(errno));
         return LGW_I2C_ERROR;
     }
 }
