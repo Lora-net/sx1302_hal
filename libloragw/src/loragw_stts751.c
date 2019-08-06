@@ -80,7 +80,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_stts751_configure(int i2c_fd, uint8_t i2c_addr) {
+int stts751_configure(int i2c_fd, uint8_t i2c_addr) {
     int err;
     uint8_t val;
 
@@ -150,7 +150,7 @@ int lgw_stts751_configure(int i2c_fd, uint8_t i2c_addr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature) {
+int stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature) {
     int err;
     uint8_t high_byte, low_byte;
     int8_t h;

@@ -446,6 +446,13 @@ int lgw_get_instcnt(uint32_t * inst_cnt_us);
 int lgw_get_eui(uint64_t * eui);
 
 /**
+@brief Return the temperature measured by the LoRa concentrator sensor
+@param temperature The temperature measured, in degree celcius
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_get_temperature(float * temperature);
+
+/**
 @brief Allow user to check the version/options of the library once compiled
 @return pointer on a human-readable null terminated string
 */

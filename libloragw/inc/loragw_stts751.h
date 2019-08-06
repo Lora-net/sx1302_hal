@@ -44,14 +44,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param TODO
 @return TODO
 */
-int lgw_stts751_configure(int i2c_fd, uint8_t i2c_addr);
+int stts751_configure(int i2c_fd, uint8_t i2c_addr);
 
 /**
 @brief TODO
 @param TODO
 @return TODO
 */
-int lgw_stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature);
+int stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature);
 
 #endif
 

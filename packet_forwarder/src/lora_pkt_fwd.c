@@ -1205,6 +1205,7 @@ int main(int argc, char ** argv)
     uint32_t trig_tstamp;
     uint32_t inst_tstamp;
     uint64_t eui;
+    float temperature;
 
     /* statistics variable */
     time_t t;
@@ -1582,6 +1583,12 @@ int main(int argc, char ** argv)
             printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
         } else {
             printf("# GPS sync is disabled\n");
+        }
+        i = lgw_get_temperature(&temperature);
+        if (i != LGW_HAL_SUCCESS) {
+            printf("### Concentrator temperature unknown ###\n");
+        } else {
+            printf("### Concentrator temperature: %.0f C ###\n", temperature);
         }
         printf("##### END #####\n");
 
