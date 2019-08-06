@@ -62,7 +62,7 @@ inc/config.h: ../VERSION library.cfg
 	# Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
-	@echo "	#define DEBUG_I2C	$(DEBUG_SPI)" >> $@
+	@echo "	#define DEBUG_I2C	$(DEBUG_I2C)" >> $@
 	@echo "	#define DEBUG_REG	$(DEBUG_REG)" >> $@
 	@echo "	#define DEBUG_HAL	$(DEBUG_HAL)" >> $@
 	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
