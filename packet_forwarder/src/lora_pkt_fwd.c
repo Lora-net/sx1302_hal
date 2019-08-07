@@ -333,7 +333,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "spidev_path");
     if (str != NULL) {
         strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
-        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0';
+        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     } else {
         MSG("ERROR: spidev path must be configured in %s\n", conf_file);
         return -1;

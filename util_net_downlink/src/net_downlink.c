@@ -239,12 +239,12 @@ int main( int argc, char **argv )
             case 'A':
                 fwd_uplink = true;
                 strncpy( serv_addr, optarg, sizeof serv_addr );
-                serv_addr[sizeof serv_addr - 1] = '\0';
+                serv_addr[sizeof serv_addr - 1] = '\0'; /* ensure string termination */
                 break;
 
             case 'F':
                 strncpy( serv_port_fwd, optarg, sizeof serv_port_fwd );
-                serv_port_fwd[sizeof serv_port_fwd - 1] = '\0';
+                serv_port_fwd[sizeof serv_port_fwd - 1] = '\0'; /* ensure string termination */
                 break;
 
             case 'f': /* -f <float,float>  target frequency in MHz */
@@ -377,7 +377,7 @@ int main( int argc, char **argv )
                 else
                 {
                     strncpy( thread_params.coding_rate, arg_s, sizeof thread_params.coding_rate );
-                    thread_params.coding_rate[sizeof thread_params.coding_rate - 1] = '\0';
+                    thread_params.coding_rate[sizeof thread_params.coding_rate - 1] = '\0'; /* ensure string termination */
                 }
                 break;
 
@@ -387,11 +387,11 @@ int main( int argc, char **argv )
                 {
                     case 2:
                         strncpy( thread_params.modulation_rf1, arg_s2, sizeof thread_params.modulation_rf1 );
-                        thread_params.modulation_rf1[sizeof thread_params.modulation_rf1 - 1] = '\0';
+                        thread_params.modulation_rf1[sizeof thread_params.modulation_rf1 - 1] = '\0'; /* ensure string termination */
                           FALL_THROUGH;
                     case 1:
                         strncpy( thread_params.modulation_rf0, arg_s, sizeof thread_params.modulation_rf0 );
-                        thread_params.modulation_rf0[sizeof thread_params.modulation_rf0 - 1] = '\0';
+                        thread_params.modulation_rf0[sizeof thread_params.modulation_rf0 - 1] = '\0'; /* ensure string termination */
                         break;
                     default:
                         parse_err = true;

@@ -234,6 +234,7 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
     strncpy(CONTEXT_SPI, conf->spidev_path, sizeof CONTEXT_SPI);
+    CONTEXT_SPI[sizeof CONTEXT_SPI - 1] = '\0'; /* ensure string termination */
 
     DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
                                                                                                                 CONTEXT_LWAN_PUBLIC,
@@ -557,8 +558,7 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 
     if (conf->log_file_name != NULL) {
         strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, sizeof CONTEXT_DEBUG.log_file_name);
-        CONTEXT_DEBUG.log_file_name[sizeof CONTEXT_DEBUG.log_file_name - 1] = '\0'; /* prove GCC that the
- string will be terminated to avoid compilation warning */
+        CONTEXT_DEBUG.log_file_name[sizeof CONTEXT_DEBUG.log_file_name - 1] = '\0'; /* ensure string termination */
     }
 
     return LGW_HAL_SUCCESS;
