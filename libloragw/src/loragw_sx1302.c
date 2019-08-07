@@ -2106,7 +2106,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             mod_bw = pkt_data->bandwidth;
             break;
         case MOD_CW:
-            /* Intended fall-through */
         case MOD_FSK:
             mod_bw = (0x01 << 7) | pkt_data->bandwidth;
             break;
