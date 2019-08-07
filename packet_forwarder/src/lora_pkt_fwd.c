@@ -333,6 +333,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "spidev_path");
     if (str != NULL) {
         strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
+        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0';
     } else {
         MSG("ERROR: spidev path must be configured in %s\n", conf_file);
         return -1;
@@ -774,6 +775,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "server_address");
     if (str != NULL) {
         strncpy(serv_addr, str, sizeof serv_addr);
+        serv_addr[sizeof serv_addr - 1] = '\0';
         MSG("INFO: server hostname or IP address is configured to \"%s\"\n", serv_addr);
     }
 
@@ -831,6 +833,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "gps_tty_path");
     if (str != NULL) {
         strncpy(gps_tty_path, str, sizeof gps_tty_path);
+        gps_tty_path[sizeof gps_tty_path - 1] = '\0';
         MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_tty_path);
     }
 
@@ -987,7 +990,8 @@ static int parse_debug_configuration(const char * conf_file) {
     /* Get log file configuration */
     str = json_object_get_string(conf_obj, "log_file");
     if (str != NULL) {
-        strncpy(debugconf.log_file_name, str, strlen(str));
+        strncpy(debugconf.log_file_name, str, sizeof debugconf.log_file_name);
+        debugconf.log_file_name[sizeof debugconf.log_file_name - 1] = '\0';
         MSG("INFO: setting debug log file name to %s\n", debugconf.log_file_name);
     }
 

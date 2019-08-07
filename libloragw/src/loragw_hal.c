@@ -556,7 +556,9 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
     }
 
     if (conf->log_file_name != NULL) {
-        strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, strlen(conf->log_file_name));
+        strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, sizeof CONTEXT_DEBUG.log_file_name);
+        CONTEXT_DEBUG.log_file_name[sizeof CONTEXT_DEBUG.log_file_name - 1] = '\0'; /* prove GCC that the
+ string will be terminated to avoid compilation warning */
     }
 
     return LGW_HAL_SUCCESS;
