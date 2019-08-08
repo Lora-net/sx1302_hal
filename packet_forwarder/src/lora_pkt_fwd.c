@@ -28,6 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>         /* C99 types */
 #include <stdbool.h>        /* bool type */
 #include <stdio.h>          /* printf, fprintf, snprintf, fopen, fputs */
+#include <inttypes.h>       /* PRIx64, PRIu64... */
 
 #include <string.h>         /* memset */
 #include <signal.h>         /* sigaction */
@@ -1393,7 +1394,7 @@ int main(int argc, char ** argv)
     if (i != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to get concentrator EUI\n");
     } else {
-        printf("INFO: concentrator EUI: 0x%016llX\n", eui);
+        printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
     }
 
     /* spawn threads to manage upstream and downstream */
@@ -1854,7 +1855,7 @@ void thread_up(void) {
                 j = lgw_cnt2gps(local_ref, p->count_us, &pkt_gps_time);
                 if (j == LGW_GPS_SUCCESS) {
                     pkt_gps_time_ms = pkt_gps_time.tv_sec * 1E3 + pkt_gps_time.tv_nsec / 1E6;
-                    j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"tmms\":%llu", pkt_gps_time_ms); /* GPS time in milliseconds since 06.Jan.1980 */
+                    j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"tmms\":%" PRIu64 "", pkt_gps_time_ms); /* GPS time in milliseconds since 06.Jan.1980 */
                     if (j > 0) {
                         buff_index += j;
                     } else {
@@ -3072,7 +3073,7 @@ void thread_gps(void) {
         /* blocking non-canonical read on serial port */
         ssize_t nb_char = read(gps_tty_fd, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
         if (nb_char <= 0) {
-            MSG("WARNING: [gps] read() returned value %d\n", nb_char);
+            MSG("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;
         }
         wr_idx += (size_t)nb_char;
@@ -3081,11 +3082,11 @@ void thread_gps(void) {
          * Scan buffer for UBX/NMEA sync chars and *
          * attempt to decode frame if one is found *
          *******************************************/
-        while(rd_idx < wr_idx) {
+        while (rd_idx < wr_idx) {
             size_t frame_size = 0;
 
             /* Scan buffer for UBX sync char */
-            if(serial_buff[rd_idx] == (char)LGW_GPS_UBX_SYNC_CHAR) {
+            if (serial_buff[rd_idx] == (char)LGW_GPS_UBX_SYNC_CHAR) {
 
                 /***********************
                  * Found UBX sync char *
@@ -3104,7 +3105,7 @@ void thread_gps(void) {
                         gps_process_sync();
                     }
                 }
-            } else if(serial_buff[rd_idx] == LGW_GPS_NMEA_SYNC_CHAR) {
+            } else if (serial_buff[rd_idx] == (char)LGW_GPS_NMEA_SYNC_CHAR) {
                 /************************
                  * Found NMEA sync char *
                  ************************/
@@ -3125,7 +3126,7 @@ void thread_gps(void) {
                 }
             }
 
-            if(frame_size > 0) {
+            if (frame_size > 0) {
                 /* At this point message is a checksum verified frame
                    we're processed or ignored. Remove frame from buffer */
                 rd_idx += frame_size;
@@ -3135,14 +3136,14 @@ void thread_gps(void) {
             }
         } /* ...for(rd_idx = 0... */
 
-        if(frame_end_idx) {
+        if (frame_end_idx) {
           /* Frames have been processed. Remove bytes to end of last processed frame */
           memcpy(serial_buff, &serial_buff[frame_end_idx], wr_idx - frame_end_idx);
           wr_idx -= frame_end_idx;
         } /* ...for(rd_idx = 0... */
 
         /* Prevent buffer overflow */
-        if((sizeof(serial_buff) - wr_idx) < LGW_GPS_MIN_MSG_SIZE) {
+        if ((sizeof(serial_buff) - wr_idx) < LGW_GPS_MIN_MSG_SIZE) {
             memcpy(serial_buff, &serial_buff[LGW_GPS_MIN_MSG_SIZE], wr_idx - LGW_GPS_MIN_MSG_SIZE);
             wr_idx -= LGW_GPS_MIN_MSG_SIZE;
         }

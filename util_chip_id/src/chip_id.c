@@ -27,6 +27,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>   /* PRIx64, PRIu64... */
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -188,7 +189,7 @@ int main(int argc, char **argv)
     if (x != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to get concentrator EUI\n");
     } else {
-        printf("\nINFO: concentrator EUI: 0x%016llX\n\n", eui);
+        printf("\nINFO: concentrator EUI: 0x%016" PRIx64 "\n\n", eui);
     }
 
     /* Stop the gateway */
