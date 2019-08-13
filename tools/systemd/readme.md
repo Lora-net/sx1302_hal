@@ -48,7 +48,7 @@ sudo systemctl restart rsyslog
 ### See the logs
 
 ```console
-sudo journalctl -u lora_pkt_fwd f
+sudo journalctl -u lora_pkt_fwd -f
 ```
 
 or
