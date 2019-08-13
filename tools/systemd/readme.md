@@ -13,7 +13,7 @@ How to auto-start the with systemd
 Update the lora_pkt_fwd.service file with proper paths and options, then
 
 ```console
-sudo cp lora_pkt_fwd.service /etc/system/system
+sudo cp lora_pkt_fwd.service /etc/systemd/system
 ```
 
 ### Enable the service for autostart with
