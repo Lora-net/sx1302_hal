@@ -1,0 +1,17 @@
+[Unit]
+Description=LoRa Packet Forwarder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/sx1302_hal/bin
+ExecStart=/home/pi/sx1302_hal/bin/lora_pkt_fwd -c /home/pi/sx1302_hal/bin/global_conf.json.sx1250
+Restart=always
+RestartSec=30
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lora_pkt_fwd
+
+[Install]
+WantedBy=multi-user.target
