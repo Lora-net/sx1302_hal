@@ -202,13 +202,36 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
     int32_t freq_reg;
     uint8_t buff[16];
 
-    /* Set Radio in Standby mode */
+    /* Set Radio in Standby for calibrations */
+    buff[0] = (uint8_t)STDBY_RC;
+    sx1250_write_command(rf_chain, SET_STANDBY, buff, 1);
+    wait_ms(10);
+
+    /* Get status to check Standby mode has been properly set */
+    buff[0] = 0x00;
+    sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
+    if ((uint8_t)(TAKE_N_BITS_FROM(buff[0], 4, 3)) != 0x02) {
+        printf("ERROR: Failed to set SX1250_%u in STANDBY_RC mode\n", rf_chain);
+        return -1;
+    }
+
+    /* Run all calibrations (TCXO) */
+    buff[0] = 0x7F;
+    sx1250_write_command(rf_chain, CALIBRATE, buff, 1);
+    wait_ms(10);
+
+    /* Set Radio in Standby with XOSC ON */
     buff[0] = (uint8_t)STDBY_XOSC;
     sx1250_write_command(rf_chain, SET_STANDBY, buff, 1);
     wait_ms(10);
 
+    /* Get status to check Standby mode has been properly set */
     buff[0] = 0x00;
     sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
+    if ((uint8_t)(TAKE_N_BITS_FROM(buff[0], 4, 3)) != 0x03) {
+        printf("ERROR: Failed to set SX1250_%u in STANDBY_XOSC mode\n", rf_chain);
+        return -1;
+    }
 
     /* Set Bitrate to maximum (to lower TX to FS switch time) */
     buff[0] = 0x06;
