@@ -71,9 +71,6 @@ inc/config.h: ../VERSION library.cfg
 	@echo "	#define DEBUG_RAD	$(DEBUG_RAD)" >> $@
 	@echo "	#define DEBUG_CAL	$(DEBUG_CAL)" >> $@
 	@echo "	#define DEBUG_SX1302	$(DEBUG_SX1302)" >> $@
-	# Configuration options
-	@echo "	#define BYPASS_FW_INIT	$(BYPASS_FW_INIT)" >> $@
-	@echo "	#define FPGA_BOARD_16_CH	$(FPGA_BOARD_16_CH)" >> $@
 	# end of file
 	@echo "#endif" >> $@
 	@echo "*** Configuration seems ok ***"

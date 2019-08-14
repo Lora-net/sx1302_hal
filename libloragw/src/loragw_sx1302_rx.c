@@ -81,15 +81,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define SX1302_PKT_TAIL_METADATA    14
 
 /* modem IDs */
-#if FPGA_BOARD_16_CH
 #define SX1302_LORA_MODEM_ID_MAX    15
 #define SX1302_LORA_STD_MODEM_ID    16
 #define SX1302_FSK_MODEM_ID         17
-#else
-#define SX1302_LORA_MODEM_ID_MAX    11
-#define SX1302_LORA_STD_MODEM_ID    12
-#define SX1302_FSK_MODEM_ID         13
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
