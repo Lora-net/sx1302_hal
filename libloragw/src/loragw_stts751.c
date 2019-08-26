@@ -95,7 +95,7 @@ int stts751_configure(int i2c_fd, uint8_t i2c_addr) {
     /* Get product ID  and test which sensor is mounted */
     err = i2c_linuxdev_read(i2c_fd, i2c_addr, STTS751_REG_PROD_ID, &val);
     if (err != 0) {
-        printf("ERROR: failed to read I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+        DEBUG_PRINTF("ERROR: failed to read I2C device 0x%02X (err=%i)\n", i2c_addr, err);
         return LGW_I2C_ERROR;
     }
     switch (val) {
@@ -113,7 +113,7 @@ int stts751_configure(int i2c_fd, uint8_t i2c_addr) {
     /* Get Manufacturer ID */
     err = i2c_linuxdev_read(i2c_fd, i2c_addr, STTS751_REG_MAN_ID, &val);
     if (err != 0) {
-        printf("ERROR: failed to read I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+        DEBUG_PRINTF("ERROR: failed to read I2C device 0x%02X (err=%i)\n", i2c_addr, err);
         return LGW_I2C_ERROR;
     }
     if (val != ST_MAN_ID) {
@@ -126,7 +126,7 @@ int stts751_configure(int i2c_fd, uint8_t i2c_addr) {
     /* Get revision number */
     err = i2c_linuxdev_read(i2c_fd, i2c_addr, STTS751_REG_REV_ID, &val);
     if (err != 0) {
-        printf("ERROR: failed to read I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+        DEBUG_PRINTF("ERROR: failed to read I2C device 0x%02X (err=%i)\n", i2c_addr, err);
         return LGW_I2C_ERROR;
     }
     DEBUG_PRINTF("INFO: Revision number: 0x%02X\n", val);
@@ -134,14 +134,14 @@ int stts751_configure(int i2c_fd, uint8_t i2c_addr) {
     /* Set conversion resolution to 12 bits */
     err = i2c_linuxdev_write(i2c_fd, i2c_addr, STTS751_REG_CONF, 0x8C); /* TODO: do not hardcode the whole byte */
     if (err != 0) {
-        printf("ERROR: failed to write I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+        DEBUG_PRINTF("ERROR: failed to write I2C device 0x%02X (err=%i)\n", i2c_addr, err);
         return LGW_I2C_ERROR;
     }
 
     /* Set conversion rate to 1 / second */
     err = i2c_linuxdev_write(i2c_fd, i2c_addr, STTS751_REG_RATE, 0x04);
     if (err != 0) {
-        printf("ERROR: failed to write I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+        DEBUG_PRINTF("ERROR: failed to write I2C device 0x%02X (err=%i)\n", i2c_addr, err);
         return LGW_I2C_ERROR;
     }
 
