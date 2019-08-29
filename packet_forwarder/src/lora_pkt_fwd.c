@@ -28,6 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>         /* C99 types */
 #include <stdbool.h>        /* bool type */
 #include <stdio.h>          /* printf, fprintf, snprintf, fopen, fputs */
+#include <inttypes.h>       /* PRIx64, PRIu64... */
 
 #include <string.h>         /* memset */
 #include <signal.h>         /* sigaction */
@@ -333,6 +334,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "spidev_path");
     if (str != NULL) {
         strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
+        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     } else {
         MSG("ERROR: spidev path must be configured in %s\n", conf_file);
         return -1;
@@ -774,6 +776,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "server_address");
     if (str != NULL) {
         strncpy(serv_addr, str, sizeof serv_addr);
+        serv_addr[sizeof serv_addr - 1] = '\0'; /* ensure string termination */
         MSG("INFO: server hostname or IP address is configured to \"%s\"\n", serv_addr);
     }
 
@@ -831,6 +834,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "gps_tty_path");
     if (str != NULL) {
         strncpy(gps_tty_path, str, sizeof gps_tty_path);
+        gps_tty_path[sizeof gps_tty_path - 1] = '\0'; /* ensure string termination */
         MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_tty_path);
     }
 
@@ -987,7 +991,8 @@ static int parse_debug_configuration(const char * conf_file) {
     /* Get log file configuration */
     str = json_object_get_string(conf_obj, "log_file");
     if (str != NULL) {
-        strncpy(debugconf.log_file_name, str, strlen(str));
+        strncpy(debugconf.log_file_name, str, sizeof debugconf.log_file_name);
+        debugconf.log_file_name[sizeof debugconf.log_file_name - 1] = '\0'; /* ensure string termination */
         MSG("INFO: setting debug log file name to %s\n", debugconf.log_file_name);
     }
 
@@ -1205,6 +1210,7 @@ int main(int argc, char ** argv)
     uint32_t trig_tstamp;
     uint32_t inst_tstamp;
     uint64_t eui;
+    float temperature;
 
     /* statistics variable */
     time_t t;
@@ -1388,7 +1394,7 @@ int main(int argc, char ** argv)
     if (i != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to get concentrator EUI\n");
     } else {
-        printf("INFO: concentrator EUI: 0x%016llX\n", eui);
+        printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
     }
 
     /* spawn threads to manage upstream and downstream */
@@ -1582,6 +1588,12 @@ int main(int argc, char ** argv)
             printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
         } else {
             printf("# GPS sync is disabled\n");
+        }
+        i = lgw_get_temperature(&temperature);
+        if (i != LGW_HAL_SUCCESS) {
+            printf("### Concentrator temperature unknown ###\n");
+        } else {
+            printf("### Concentrator temperature: %.0f C ###\n", temperature);
         }
         printf("##### END #####\n");
 
@@ -1843,7 +1855,7 @@ void thread_up(void) {
                 j = lgw_cnt2gps(local_ref, p->count_us, &pkt_gps_time);
                 if (j == LGW_GPS_SUCCESS) {
                     pkt_gps_time_ms = pkt_gps_time.tv_sec * 1E3 + pkt_gps_time.tv_nsec / 1E6;
-                    j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"tmms\":%llu", pkt_gps_time_ms); /* GPS time in milliseconds since 06.Jan.1980 */
+                    j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"tmms\":%" PRIu64 "", pkt_gps_time_ms); /* GPS time in milliseconds since 06.Jan.1980 */
                     if (j > 0) {
                         buff_index += j;
                     } else {
@@ -3061,7 +3073,7 @@ void thread_gps(void) {
         /* blocking non-canonical read on serial port */
         ssize_t nb_char = read(gps_tty_fd, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
         if (nb_char <= 0) {
-            MSG("WARNING: [gps] read() returned value %d\n", nb_char);
+            MSG("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;
         }
         wr_idx += (size_t)nb_char;
@@ -3070,11 +3082,11 @@ void thread_gps(void) {
          * Scan buffer for UBX/NMEA sync chars and *
          * attempt to decode frame if one is found *
          *******************************************/
-        while(rd_idx < wr_idx) {
+        while (rd_idx < wr_idx) {
             size_t frame_size = 0;
 
             /* Scan buffer for UBX sync char */
-            if(serial_buff[rd_idx] == (char)LGW_GPS_UBX_SYNC_CHAR) {
+            if (serial_buff[rd_idx] == (char)LGW_GPS_UBX_SYNC_CHAR) {
 
                 /***********************
                  * Found UBX sync char *
@@ -3093,7 +3105,7 @@ void thread_gps(void) {
                         gps_process_sync();
                     }
                 }
-            } else if(serial_buff[rd_idx] == LGW_GPS_NMEA_SYNC_CHAR) {
+            } else if (serial_buff[rd_idx] == (char)LGW_GPS_NMEA_SYNC_CHAR) {
                 /************************
                  * Found NMEA sync char *
                  ************************/
@@ -3114,7 +3126,7 @@ void thread_gps(void) {
                 }
             }
 
-            if(frame_size > 0) {
+            if (frame_size > 0) {
                 /* At this point message is a checksum verified frame
                    we're processed or ignored. Remove frame from buffer */
                 rd_idx += frame_size;
@@ -3124,14 +3136,14 @@ void thread_gps(void) {
             }
         } /* ...for(rd_idx = 0... */
 
-        if(frame_end_idx) {
+        if (frame_end_idx) {
           /* Frames have been processed. Remove bytes to end of last processed frame */
           memcpy(serial_buff, &serial_buff[frame_end_idx], wr_idx - frame_end_idx);
           wr_idx -= frame_end_idx;
         } /* ...for(rd_idx = 0... */
 
         /* Prevent buffer overflow */
-        if((sizeof(serial_buff) - wr_idx) < LGW_GPS_MIN_MSG_SIZE) {
+        if ((sizeof(serial_buff) - wr_idx) < LGW_GPS_MIN_MSG_SIZE) {
             memcpy(serial_buff, &serial_buff[LGW_GPS_MIN_MSG_SIZE], wr_idx - LGW_GPS_MIN_MSG_SIZE);
             wr_idx -= LGW_GPS_MIN_MSG_SIZE;
         }

@@ -27,6 +27,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>   /* PRIx64, PRIu64... */
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -146,17 +147,18 @@ int main(int argc, char **argv)
     }
 
     /* Configure the gateway */
-    memset( &boardconf, 0, sizeof boardconf);
+    memset(&boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
     strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
+    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = true; /* rf chain 0 needs to be enabled for calibration to work on sx1257 */
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
@@ -166,7 +168,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = (clocksource == 1) ? true : false;
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
@@ -187,7 +189,7 @@ int main(int argc, char **argv)
     if (x != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to get concentrator EUI\n");
     } else {
-        printf("\nINFO: concentrator EUI: 0x%016llX\n\n", eui);
+        printf("\nINFO: concentrator EUI: 0x%016" PRIx64 "\n\n", eui);
     }
 
     /* Stop the gateway */

@@ -273,6 +273,7 @@ int main(int argc, char **argv)
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
     strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
+    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -319,7 +320,7 @@ int main(int argc, char **argv)
         /* blocking non-canonical read on serial port */
         ssize_t nb_char = read(gps_tty_dev, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
         if (nb_char <= 0) {
-            printf("WARNING: [gps] read() returned value %d\n", nb_char);
+            printf("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;
         }
         wr_idx += (size_t)nb_char;
@@ -332,7 +333,7 @@ int main(int argc, char **argv)
             size_t frame_size = 0;
 
             /* Scan buffer for UBX sync char */
-            if (serial_buff[rd_idx] == LGW_GPS_UBX_SYNC_CHAR) {
+            if (serial_buff[rd_idx] == (char)LGW_GPS_UBX_SYNC_CHAR) {
 
                 /***********************
                  * Found UBX sync char *
@@ -352,7 +353,7 @@ int main(int argc, char **argv)
                         gps_process_sync();
                     }
                 }
-            } else if(serial_buff[rd_idx] == LGW_GPS_NMEA_SYNC_CHAR) {
+            } else if(serial_buff[rd_idx] == (char)LGW_GPS_NMEA_SYNC_CHAR) {
                 /************************
                  * Found NMEA sync char *
                  ************************/

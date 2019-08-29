@@ -35,6 +35,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 typedef enum {
+    CALIBRATE               = 0x89,
     CALIBRATE_IMAGE         = 0x98,
     CLR_IRQ_STATUS          = 0x02,
     STOP_TIMER_ON_PREAMBLE  = 0x9F,

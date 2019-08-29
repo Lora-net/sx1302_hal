@@ -24,6 +24,12 @@
 #define _XOPEN_SOURCE 500
 #endif
 
+#if defined(__GNUC__) && __GNUC__ >= 7
+ #define FALL_THROUGH __attribute__ ((fallthrough))
+#else
+ #define FALL_THROUGH ((void)0)
+#endif /* __GNUC__ >= 7 */
+
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf, fprintf, sprintf, fopen, fputs */
 #include <stdlib.h>     /* EXIT_* */
@@ -232,11 +238,13 @@ int main( int argc, char **argv )
 
             case 'A':
                 fwd_uplink = true;
-                strncpy( serv_addr, optarg, strlen( optarg ));
+                strncpy( serv_addr, optarg, sizeof serv_addr );
+                serv_addr[sizeof serv_addr - 1] = '\0'; /* ensure string termination */
                 break;
 
             case 'F':
-                strncpy( serv_port_fwd, optarg, strlen( optarg ));
+                strncpy( serv_port_fwd, optarg, sizeof serv_port_fwd );
+                serv_port_fwd[sizeof serv_port_fwd - 1] = '\0'; /* ensure string termination */
                 break;
 
             case 'f': /* -f <float,float>  target frequency in MHz */
@@ -252,7 +260,7 @@ int main( int argc, char **argv )
                         {
                             thread_params.freq_mhz[1] = arg_f2;
                         }
-                        /* No break */
+                        FALL_THROUGH;
                     case 1:
                         if( (arg_f < 30.0) || (arg_f > 3000.0) )
                         {
@@ -287,7 +295,7 @@ int main( int argc, char **argv )
                         {
                             thread_params.freq_step = arg_f_step;
                         }
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         if( (arg_u == 0) || (arg_u > 100) )
                         {
@@ -336,7 +344,7 @@ int main( int argc, char **argv )
                         {
                             thread_params.spread_factor[1] = (uint8_t)arg_u2;
                         }
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         if( (arg_u < 5) || (arg_u > 12) )
                         {
@@ -368,7 +376,8 @@ int main( int argc, char **argv )
                 }
                 else
                 {
-                    strncpy( thread_params.coding_rate, arg_s, strlen(arg_s));
+                    strncpy( thread_params.coding_rate, arg_s, sizeof thread_params.coding_rate );
+                    thread_params.coding_rate[sizeof thread_params.coding_rate - 1] = '\0'; /* ensure string termination */
                 }
                 break;
 
@@ -377,12 +386,12 @@ int main( int argc, char **argv )
                 switch( j )
                 {
                     case 2:
-                        strncpy( thread_params.modulation_rf1, arg_s2, strlen(arg_s2));
-                        thread_params.modulation_rf1[strlen(arg_s2)] = '\0';
-                        /* No break */
+                        strncpy( thread_params.modulation_rf1, arg_s2, sizeof thread_params.modulation_rf1 );
+                        thread_params.modulation_rf1[sizeof thread_params.modulation_rf1 - 1] = '\0'; /* ensure string termination */
+                          FALL_THROUGH;
                     case 1:
-                        strncpy( thread_params.modulation_rf0, arg_s, strlen(arg_s));
-                        thread_params.modulation_rf0[strlen(arg_s)] = '\0';
+                        strncpy( thread_params.modulation_rf0, arg_s, sizeof thread_params.modulation_rf0 );
+                        thread_params.modulation_rf0[sizeof thread_params.modulation_rf0 - 1] = '\0'; /* ensure string termination */
                         break;
                     default:
                         parse_err = true;
@@ -430,7 +439,7 @@ int main( int argc, char **argv )
                         {
                             thread_params.rf_power[1] = (int8_t)arg_i2;
                         }
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         if( (arg_i < -60) || (arg_i > 60) )
                         {
@@ -465,7 +474,7 @@ int main( int argc, char **argv )
                         {
                             thread_params.preamb_size[1] = (uint16_t)arg_u2;
                         }
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         if( (arg_u < 5) || (arg_u > 65535) )
                         {
@@ -500,7 +509,7 @@ int main( int argc, char **argv )
                         {
                             thread_params.pl_size[1] = (uint8_t)arg_u2;
                         }
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         if( arg_u > 255 )
                         {
@@ -532,7 +541,7 @@ int main( int argc, char **argv )
                 {
                     case 2:
                         thread_params.delay_ms[1] = (uint32_t)arg_u2;
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         thread_params.delay_ms[0] = (uint32_t)arg_u;
                         break;
@@ -553,7 +562,7 @@ int main( int argc, char **argv )
                 {
                     case 2:
                         thread_params.nb_loop[1] = (uint32_t)arg_u2;
-                        /* No break */
+                          FALL_THROUGH;
                     case 1:
                         thread_params.nb_loop[0] = (uint32_t)arg_u;
                         break;

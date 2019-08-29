@@ -161,6 +161,15 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.0.2 ###
+
+* Fixed compilation warnings reported by latest versions of GCC
+* Reworked handling of temperature sensor
+* Clean-up of unused files
+* Added instructions and configuration files for packet forwarder auto-start
+with systemd
+* Added SX1250 radio calibration at startup
+
 ### v1.0.1 ###
 
 * Packet Forwarder: Updated TX gain LUT in global_conf.json.sx1250 with proper

@@ -734,13 +734,8 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_0_MODEM_EN, 0xFF);
 
     /* Enable limited modems */
-#if FPGA_BOARD_16_CH
     DEBUG_MSG("Configuring 8 limited-SF modems\n");
     lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0xFF);
-#else
-    DEBUG_MSG("Configuring 4 limited-SF modems\n");
-    lgw_reg_w(SX1302_REG_OTP_MODEM_EN_1_MODEM_EN, 0x0F);
-#endif
 
     /* Configure coarse sync between correlators and modems */
     lgw_reg_w(SX1302_REG_RX_TOP_MODEM_SYNC_DELTA_MSB_MODEM_SYNC_DELTA, 0);
@@ -981,11 +976,6 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
         return -1;
     }
 
-#if BYPASS_FW_INIT
-    printf("Disable AGC init protocol\n");
-    sx1302_agc_mailbox_write(2, 0xF7);  /* To be done before fw starts */
-#endif
-
     /* Release control over AGC MCU */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_HOST_PROG, 0x00);
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
@@ -1089,11 +1079,6 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_HAL_ERROR;
     }
     DEBUG_PRINTF("AGC FW VERSION: %d\n", val);
-
-#if BYPASS_FW_INIT
-    printf("Bypass AGC init protocol\n");
-    return 0;
-#endif
 
     /* Configure Radio A gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
@@ -1396,11 +1381,6 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
         return -1;
     }
 
-#if BYPASS_FW_INIT
-    printf("Disable ARB init protocol\n");
-    sx1302_arb_debug_write(2, 0xF7); /* To be done before fw starts */
-#endif
-
     /* Release control over ARB MCU */
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_HOST_PROG, 0x00);
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x00);
@@ -1567,11 +1547,6 @@ int sx1302_arb_start(uint8_t version) {
         return LGW_HAL_ERROR;
     }
     DEBUG_PRINTF("ARB FW VERSION: %d\n", val);
-
-#if BYPASS_FW_INIT
-    printf("Bypass ARB init protocol\n");
-    return 0;
-#endif
 
     /* Enable/disable ARB detect/modem alloc stats for the specified SF */
     sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
@@ -2106,7 +2081,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             mod_bw = pkt_data->bandwidth;
             break;
         case MOD_CW:
-            /* Intended fall-through */
         case MOD_FSK:
             mod_bw = (0x01 << 7) | pkt_data->bandwidth;
             break;

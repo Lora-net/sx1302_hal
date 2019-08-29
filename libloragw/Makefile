@@ -62,7 +62,7 @@ inc/config.h: ../VERSION library.cfg
 	# Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
-	@echo "	#define DEBUG_I2C	$(DEBUG_SPI)" >> $@
+	@echo "	#define DEBUG_I2C	$(DEBUG_I2C)" >> $@
 	@echo "	#define DEBUG_REG	$(DEBUG_REG)" >> $@
 	@echo "	#define DEBUG_HAL	$(DEBUG_HAL)" >> $@
 	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
@@ -71,9 +71,6 @@ inc/config.h: ../VERSION library.cfg
 	@echo "	#define DEBUG_RAD	$(DEBUG_RAD)" >> $@
 	@echo "	#define DEBUG_CAL	$(DEBUG_CAL)" >> $@
 	@echo "	#define DEBUG_SX1302	$(DEBUG_SX1302)" >> $@
-	# Configuration options
-	@echo "	#define BYPASS_FW_INIT	$(BYPASS_FW_INIT)" >> $@
-	@echo "	#define FPGA_BOARD_16_CH	$(FPGA_BOARD_16_CH)" >> $@
 	# end of file
 	@echo "#endif" >> $@
 	@echo "*** Configuration seems ok ***"

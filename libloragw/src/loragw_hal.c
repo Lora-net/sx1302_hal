@@ -179,8 +179,9 @@ static lgw_context_t lgw_context = {
 /* File handle to write debug logs */
 FILE * log_file = NULL;
 
-/* File descriptor to I2C linux device */
-int lgw_i2c_target = -1;
+/* I2C temperature sensor handles */
+static int     ts_fd = -1;
+static uint8_t ts_addr = 0xFF;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -233,6 +234,7 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
     strncpy(CONTEXT_SPI, conf->spidev_path, sizeof CONTEXT_SPI);
+    CONTEXT_SPI[sizeof CONTEXT_SPI - 1] = '\0'; /* ensure string termination */
 
     DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
                                                                                                                 CONTEXT_LWAN_PUBLIC,
@@ -555,7 +557,8 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
     }
 
     if (conf->log_file_name != NULL) {
-        strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, strlen(conf->log_file_name));
+        strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, sizeof CONTEXT_DEBUG.log_file_name);
+        CONTEXT_DEBUG.log_file_name[sizeof CONTEXT_DEBUG.log_file_name - 1] = '\0'; /* ensure string termination */
     }
 
     return LGW_HAL_SUCCESS;
@@ -564,7 +567,7 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i, err, err_id_1,err_id_2;
+    int i, err;
     int reg_stat;
 
     if (CONTEXT_STARTED == true) {
@@ -713,18 +716,21 @@ int lgw_start(void) {
     dbg_init_gpio();
 #endif
 
-    /* Open I2C */
-    err_id_1 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_1, &lgw_i2c_target);
-    err_id_2 = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_TEMP_SENSOR_2, &lgw_i2c_target);
-    if (((err_id_1 != 0) || (lgw_i2c_target <= 0)) && ((err_id_2 != 0) || (lgw_i2c_target <= 0))) {
-        printf("ERROR: failed to open I2C device %s (err=%i)\n", I2C_DEVICE, err);
-        return LGW_HAL_ERROR;
-    }
-
-    /* Configure the CoreCell temperature sensor */
-    if (lgw_stts751_configure() != LGW_I2C_SUCCESS) {
-        printf("ERROR: failed to configure temperature sensor\n");
-        return LGW_HAL_ERROR;
+    /* Try to configure temperature sensor STTS751-0DP3F */
+    ts_addr = I2C_PORT_TEMP_SENSOR_0;
+    i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+    err = stts751_configure(ts_fd, ts_addr);
+    if (err != LGW_I2C_SUCCESS) {
+        i2c_linuxdev_close(ts_fd);
+        ts_fd = -1;
+        /* Not found, try to configure temperature sensor STTS751-1DP3F */
+        ts_addr = I2C_PORT_TEMP_SENSOR_1;
+        i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+        err = stts751_configure(ts_fd, ts_addr);
+        if (err != LGW_I2C_SUCCESS) {
+            printf("ERROR: failed to configure the temperature sensor\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     /* set hal state */
@@ -753,10 +759,9 @@ int lgw_stop(void) {
     lgw_disconnect();
 
     DEBUG_MSG("INFO: Closing I2C\n");
-    err = i2c_linuxdev_close(lgw_i2c_target);
+    err = i2c_linuxdev_close(ts_fd);
     if (err != 0) {
         printf("ERROR: failed to close I2C device (err=%i)\n", err);
-        /* TODO: return error or not ? */
     }
 
     CONTEXT_STARTED = false;
@@ -790,7 +795,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Get the current temperature for further RSSI compensation : TODO */
-    res = lgw_stts751_get_temperature(&current_temperature);
+    res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
@@ -944,6 +949,8 @@ int lgw_abort_tx(uint8_t rf_chain) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
+    CHECK_NULL(trig_cnt_us);
+
     *trig_cnt_us = sx1302_timestamp_counter(true);
 
     return LGW_HAL_SUCCESS;
@@ -952,6 +959,8 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_instcnt(uint32_t* inst_cnt_us) {
+    CHECK_NULL(inst_cnt_us);
+
     *inst_cnt_us = sx1302_timestamp_counter(false);
 
     return LGW_HAL_SUCCESS;
@@ -960,9 +969,23 @@ int lgw_get_instcnt(uint32_t* inst_cnt_us) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_eui(uint64_t* eui) {
+    CHECK_NULL(eui);
+
     if (sx1302_get_eui(eui) != LGW_REG_SUCCESS) {
         return LGW_HAL_ERROR;
     }
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_get_temperature(float* temperature) {
+    CHECK_NULL(temperature);
+
+    if (stts751_get_temperature(ts_fd, ts_addr, temperature) != LGW_I2C_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
+
     return LGW_HAL_SUCCESS;
 }
 
