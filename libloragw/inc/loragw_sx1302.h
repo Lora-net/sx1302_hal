@@ -365,10 +365,10 @@ uint16_t sx1302_rx_buffer_write_ptr_addr(void);
 
 /**
 @brief Check if any data to be fetched from the SX1302 RX buffer and fetch it if any.
-@param nb_bytes A pointer to allocated memory to hold the number of bytes fetched
+@param nb_pkt A pointer to allocated memory to hold the number of packet fetched
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_fetch(uint16_t * nb_bytes);
+int sx1302_fetch(uint8_t * nb_pkt);
 
 /**
 @brief Parse and return the next packet available in the fetched RX buffer.

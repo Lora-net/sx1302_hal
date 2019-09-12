@@ -1570,7 +1570,7 @@ int sx1302_arb_start(uint8_t version) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_fetch(uint16_t * nb_bytes) {
+int sx1302_fetch(uint8_t * nb_pkt) {
     int err;
 
     /* Initialize RX buffer */
@@ -1587,8 +1587,8 @@ int sx1302_fetch(uint16_t * nb_bytes) {
         return LGW_REG_ERROR;
     }
 
-    /* Return the number of bytes fetched */
-    *nb_bytes = rx_buffer.buffer_size;
+    /* Return the number of packet fetched */
+    *nb_pkt = rx_buffer.buffer_pkt_nb;
 
     return LGW_REG_SUCCESS;
 }

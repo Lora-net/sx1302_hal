@@ -72,6 +72,7 @@ typedef struct rx_buffer_s {
     uint8_t buffer[4096];   /*!> byte array to hald the data fetched from the RX buffer */
     uint16_t buffer_size;   /*!> The number of bytes currently stored in the buffer */
     int buffer_index;       /*!> Current parsing index in the buffer */
+    uint8_t buffer_pkt_nb;
 } rx_buffer_t;
 
 /* -------------------------------------------------------------------------- */

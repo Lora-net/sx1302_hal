@@ -108,6 +108,7 @@ int rx_buffer_new(rx_buffer_t * self) {
     memset(self->buffer, 0, sizeof self->buffer);
     self->buffer_size = 0;
     self->buffer_index = 0;
+    self->buffer_pkt_nb = 0;
 
     return LGW_REG_SUCCESS;
 }
@@ -121,6 +122,7 @@ int rx_buffer_del(rx_buffer_t * self) {
     /* Reset index & size */
     self->buffer_size = 0;
     self->buffer_index = 0;
+    self->buffer_pkt_nb = 0;
 
     return LGW_REG_SUCCESS;
 }
@@ -158,6 +160,29 @@ int rx_buffer_fetch(rx_buffer_t * self) {
         }
         DEBUG_MSG("\n");
 
+    }
+
+    /* Parse buffer to get number of packet fetched */
+    uint8_t payload_len;
+    uint16_t next_pkt_idx;
+    int idx = 0;
+    while (idx < self->buffer_size) {
+        if ((self->buffer[idx] != SX1302_PKT_SYNCWORD_BYTE_0) || (self->buffer[idx + 1] != SX1302_PKT_SYNCWORD_BYTE_1)) {
+            printf("ERROR: syncword not found in rx_buffer\n");
+            return LGW_REG_ERROR;
+        }
+        /* One packet found in the buffer */
+        self->buffer_pkt_nb += 1;
+
+        /* Compute the number of bytes for thsi packet */
+        payload_len = SX1302_PKT_PAYLOAD_LENGTH(self->buffer, idx);
+        next_pkt_idx =  SX1302_PKT_HEAD_METADATA +
+                        payload_len +
+                        SX1302_PKT_TAIL_METADATA +
+                        (2 * SX1302_PKT_NUM_TS_METRICS(self->buffer, idx + payload_len));
+
+        /* Move to next packet */
+        idx += (int)next_pkt_idx;
     }
 
     /* Initialize the current buffer index to iterate on */

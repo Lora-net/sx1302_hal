@@ -772,7 +772,7 @@ int lgw_stop(void) {
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int res;
-    uint16_t sz = 0;
+    uint8_t  nb_pkt_fetched = 0;
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_dropped = 0;
     float current_temperature, rssi_temperature_offset;
@@ -785,45 +785,43 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Get packets from SX1302, if any */
-    res = sx1302_fetch(&sz);
+    res = sx1302_fetch(&nb_pkt_fetched);
     if (res != LGW_REG_SUCCESS) {
         printf("ERROR: failed to fetch packets from SX1302\n");
         return LGW_HAL_ERROR;
     }
-    if (sz == 0) {
+    if (nb_pkt_fetched == 0) {
         return 0;
     }
+    if (nb_pkt_fetched > max_pkt) {
+        nb_pkt_dropped = nb_pkt_fetched - max_pkt;
+        printf("WARNING: not enough space allocated, %d packet(s) will be dropped\n", nb_pkt_dropped);
+    }
 
-    /* Get the current temperature for further RSSI compensation : TODO */
+    /* Apply RSSI temperature compensation */
     res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
     }
-    DEBUG_PRINTF("INFO: current temperature is %f C\n", current_temperature);
 
     /* Iterate on the RX buffer to get parsed packets */
-    res = LGW_REG_SUCCESS;
-    while ((res == LGW_REG_SUCCESS) && (nb_pkt_found <= max_pkt)) {
+    for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
+        /* Get packet and move to next one */
         res = sx1302_parse(&lgw_context, &pkt_data[nb_pkt_found]);
-        if (res == LGW_REG_SUCCESS) {
-            /* we found a packet and parsed it */
-            if ((nb_pkt_found + 1) > max_pkt) {
-                printf("WARNING: no space left, dropping packet\n");
-                nb_pkt_dropped += 1;
-                continue;
-            }
-            /* Appli RSSI offset calibrated for the board */
-            pkt_data[nb_pkt_found].rssic += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
-            pkt_data[nb_pkt_found].rssis += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
-            /* Apply RSSI temperature compensation */
-            rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
-            pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
-            pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
-            DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
-            /* Next packet */
-            nb_pkt_found += 1;
+        if (res != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to parse fetched packet %d, aborting...\n", nb_pkt_found);
+            return LGW_HAL_ERROR;
         }
+
+        /* Appli RSSI offset calibrated for the board */
+        pkt_data[nb_pkt_found].rssic += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
+        pkt_data[nb_pkt_found].rssis += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
+
+        rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
+        pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
+        pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
+        DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB (current temperature %.1f C)\n", rssi_temperature_offset, current_temperature);
     }
 
     DEBUG_PRINTF("INFO: nb pkt found:%u dropped:%u\n", nb_pkt_found, nb_pkt_dropped);
