@@ -41,6 +41,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param t number of milliseconds to wait.
 */
 void wait_ms(unsigned long t);
+void wait_us(unsigned long t);
 
 #endif
 

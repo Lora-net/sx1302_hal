@@ -1115,6 +1115,7 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS+1] = {
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
 void *lgw_spi_target = NULL; /*! generic pointer to the SPI device */
+void *sx1261_lgw_spi_target = NULL;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -1236,6 +1237,30 @@ int lgw_connect(const char * spidev_path) {
     return LGW_REG_SUCCESS;
 }
 
+int lgw_connect_sx1261(const char * spidev_path) {
+    int spi_stat = LGW_SPI_SUCCESS; 
+
+    /* check SPI link status */
+    if (spidev_path == NULL) {
+        DEBUG_MSG("ERROR: SPIDEV PATH IS NOT SET\n");
+        return LGW_REG_ERROR;
+    }
+    if (sx1261_lgw_spi_target != NULL) {
+        DEBUG_MSG("WARNING: concentrator was already connected\n");
+        lgw_spi_close(sx1261_lgw_spi_target);
+    }
+
+    /* open the SPI link */
+    spi_stat = lgw_spi_open(spidev_path, &sx1261_lgw_spi_target);
+    if (spi_stat != LGW_SPI_SUCCESS) {
+        DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
+        return LGW_REG_ERROR;
+    }
+
+
+    DEBUG_MSG("Note: success connecting the sx1261\n");
+    return LGW_REG_SUCCESS;
+}
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Concentrator disconnect */

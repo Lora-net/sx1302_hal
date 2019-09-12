@@ -35,8 +35,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
                                         /* TODO: get this value from HAL? */
 #define TX_MARGIN_DELAY         1000    /* Packet overlap margin in microseconds */
                                         /* TODO: How much margin should we take? */
-#define TX_JIT_DELAY            30000   /* Pre-delay to program packet for TX in microseconds */
-#define TX_MAX_ADVANCE_DELAY    ((JIT_NUM_BEACON_IN_QUEUE + 1) * 128 * 1E6) /* Maximum advance delay accepted for a TX packet, compared to current time */
+#define TX_JIT_DELAY            50000   /* Pre-delay to program packet for TX in microseconds */
+#define TX_MAX_ADVANCE_DELAY    ((JIT_NUM_BEACON_IN_QUEUE + 1) * 256 * 1E6) /* Maximum advance delay accepted for a TX packet, compared to current time */
 
 #define BEACON_GUARD            3000000 /* Interval where no ping slot can be placed,
                                             to ensure beacon can be sent */

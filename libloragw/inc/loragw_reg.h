@@ -1437,6 +1437,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_connect(const char * spidev_path);
+int lgw_connect_sx1261(const char * spidev_path);
 
 /**
 @brief Disconnect LoRa concentrator by closing SPI link

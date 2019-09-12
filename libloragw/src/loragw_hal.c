@@ -38,6 +38,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_spi.h"
 #include "loragw_i2c.h"
 #include "loragw_sx1250.h"
+#include "loragw_sx1261.h"
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 #include "loragw_stts751.h"
@@ -100,8 +101,10 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 #include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
-#include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
-#include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
+//#include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
+#include "agc_sx1250_lbt.var"
+#include "agc_sx125x_lbt.var"
+//#include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
 
 /*
 The following static variable holds the gateway configuration provided by the
@@ -580,6 +583,20 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
+    lgw_connect_sx1261("/dev/spidev0.1");
+    sx1261_load_pram();
+    
+    i = sx1261_setup(868100000); //100 kHz step
+    wait_ms(1);
+    if (i == LGW_HAL_SUCCESS) {
+        printf("INFO: [main] sx1261 started at 866 MHz, LBT can be started\n");
+    } else {
+        printf("ERROR: [main] failed to start the sx1261\n");
+        return LGW_HAL_ERROR;
+    } 
+
+    sx1261_start_lbt( 5000, -70);
+
     /* Calibrate radios */
     err = sx1302_radio_calibrate(&CONTEXT_RF_CHAIN[0], CONTEXT_BOARD.clksrc, &CONTEXT_TX_GAIN_LUT[0]);
     if (err != LGW_REG_SUCCESS) {
@@ -897,7 +914,18 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
     }
+    int i;
+    i = sx1261_setup(pkt_data->freq_hz); //100 kHz step
+    wait_ms(1);
+    if (i == LGW_HAL_SUCCESS) {
+        printf("INFO: [main] sx1261 started at %.3f MHz, LBT can be started\n",(pkt_data->freq_hz)/1e6);
+    } else {
+        printf("ERROR: [main] failed to start the sx1261\n");
+        return LGW_HAL_ERROR;
+    } 
 
+    sx1261_start_lbt( 5000, -70);
+    wait_ms(20);
     return sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
 }
 

@@ -959,7 +959,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0x7f); /* GPIO output direction */
 
     /* Take control over AGC MCU */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x01);
@@ -1353,9 +1353,9 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
 int sx1302_arb_load_firmware(const uint8_t *firmware) {
     uint8_t fw_check[MCU_FW_SIZE];
-    int32_t gpio_sel = MCU_ARB;
+    //int32_t gpio_sel = MCU_ARB;
     int32_t val;
-
+/*
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
@@ -1364,7 +1364,7 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF);*/ /* GPIO output direction */
 
     /* Take control over ARB MCU */
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x01);
@@ -1931,6 +1931,7 @@ uint8_t sx1302_tx_status(uint8_t rf_chain) {
         return TX_STATUS_UNKNOWN;
     }
 
+    printf("NOTE: TX STATUS 0x%02X\n", read_value);
     if (read_value == 0x80) {
         return TX_FREE;
     } else if ((read_value == 0x30) || (read_value == 0x50) || (read_value == 0x60) || (read_value == 0x70)) {
@@ -2285,6 +2286,25 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             return LGW_REG_ERROR;
     }
 
+    int32_t read_value;
+    uint8_t status= 0x00;
+    uint8_t cpt = 0;
+    while ((status & (1<<pkt_data->rf_chain)) == 0x00) {
+        cpt = cpt +1;
+        lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_MCU_AGC_STATUS, &read_value);
+        printf("%d : MCU_AGC_STATUS : 0x%x\n",cpt, read_value);
+        status = read_value;
+        wait_ms(1);
+
+    }
+
+        /* Clear AGC Transmit status*/
+        sx1302_agc_mailbox_write(0, 0xff); 
+        sx1302_agc_mailbox_write(0, 0x00); 
+        lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_MCU_AGC_STATUS, &read_value);
+        printf("MCU_AGC_STATUS : 0x%x\n", read_value);
+        status = read_value;
+       
     return LGW_REG_SUCCESS;
 }
 

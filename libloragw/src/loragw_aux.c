@@ -57,4 +57,20 @@ void wait_ms(unsigned long a) {
     return;
 }
 
+void wait_us(unsigned long a) {
+    struct timespec dly;
+    struct timespec rem;
+
+    dly.tv_sec = a / 1000000;
+    dly.tv_nsec = ((long)a % 1000) * 1000;
+
+    DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
+
+    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
+        clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
+        DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
+    }
+    return;
+}
+
 /* --- EOF ------------------------------------------------------------------ */
