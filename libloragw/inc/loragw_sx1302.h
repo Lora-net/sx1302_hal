@@ -350,28 +350,15 @@ void sx1302_arb_print_debug_stats(void);
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
-*/
-uint16_t sx1302_rx_buffer_read_ptr_addr(void);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-uint16_t sx1302_rx_buffer_write_ptr_addr(void);
-
-/**
-@brief Check if any data to be fetched from the SX1302 RX buffer and fetch it if any.
-@param nb_pkt A pointer to allocated memory to hold the number of packet fetched
+@brief Get the number of packets available in rx_buffer and fetch data from ...
+@brief ... the SX1302 if rx_buffer is empty.
+@param  nb_pkt A pointer to allocated memory to hold the number of packet fetched
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_fetch(uint8_t * nb_pkt);
 
 /**
-@brief Parse and return the next packet available in the fetched RX buffer.
+@brief Parse and return the next packet available in rx_buffer.
 @param context      Gateway configuration context
 @param p            The structure to get the packet parsed
 @return LGW_REG_SUCCESS if a packet could be parsed, LGW_REG_ERROR otherwise
