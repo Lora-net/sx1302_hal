@@ -210,6 +210,9 @@ void sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
     if (conf_ts != NULL) {
         timestamp_counter_mode(conf_ts->enable_precision_ts, conf_ts->max_ts_metrics, conf_ts->nb_symbols);
     }
+
+    /* Initialize RX buffer */
+    rx_buffer_new(&rx_buffer);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1573,18 +1576,23 @@ int sx1302_arb_start(uint8_t version) {
 int sx1302_fetch(uint8_t * nb_pkt) {
     int err;
 
-    /* Initialize RX buffer */
-    err = rx_buffer_new(&rx_buffer);
-    if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to initialize RX buffer\n");
-        return LGW_REG_ERROR;
-    }
+    /* Fetch packets from sx1302 if no more left in RX buffer */
+    if (rx_buffer.buffer_pkt_nb == 0) {
+        /* Initialize RX buffer */
+        err = rx_buffer_new(&rx_buffer);
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: Failed to initialize RX buffer\n");
+            return LGW_REG_ERROR;
+        }
 
-    /* Fetch RX buffer if any data available */
-    err = rx_buffer_fetch(&rx_buffer);
-    if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to fetch RX buffer\n");
-        return LGW_REG_ERROR;
+        /* Fetch RX buffer if any data available */
+        err = rx_buffer_fetch(&rx_buffer);
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: Failed to fetch RX buffer\n");
+            return LGW_REG_ERROR;
+        }
+    } else {
+        printf("Note: remaining %u packets in RX buffer, do not fetch sx1302 yet...\n", rx_buffer.buffer_pkt_nb);
     }
 
     /* Return the number of packet fetched */

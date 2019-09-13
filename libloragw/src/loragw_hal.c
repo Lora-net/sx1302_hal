@@ -774,7 +774,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int res;
     uint8_t  nb_pkt_fetched = 0;
     uint16_t nb_pkt_found = 0;
-    uint16_t nb_pkt_dropped = 0;
+    uint16_t nb_pkt_left = 0;
     float current_temperature, rssi_temperature_offset;
 
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
@@ -794,8 +794,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         return 0;
     }
     if (nb_pkt_fetched > max_pkt) {
-        nb_pkt_dropped = nb_pkt_fetched - max_pkt;
-        printf("WARNING: not enough space allocated, %d packet(s) will be dropped\n", nb_pkt_dropped);
+        nb_pkt_left = nb_pkt_fetched - max_pkt;
+        printf("WARNING: not enough space allocated, fetched %d packet(s), %d will be left in RX buffer\n", nb_pkt_fetched, nb_pkt_left);
     }
 
     /* Apply RSSI temperature compensation */
@@ -824,7 +824,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB (current temperature %.1f C)\n", rssi_temperature_offset, current_temperature);
     }
 
-    DEBUG_PRINTF("INFO: nb pkt found:%u dropped:%u\n", nb_pkt_found, nb_pkt_dropped);
+    DEBUG_PRINTF("INFO: nb pkt found:%u left:%u\n", nb_pkt_found, nb_pkt_left);
 
     return nb_pkt_found;
 }
