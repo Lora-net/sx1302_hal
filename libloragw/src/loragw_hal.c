@@ -31,6 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <time.h>
 #include <unistd.h>     /* symlink, unlink */
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -451,7 +452,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf) {
                 CONTEXT_FSK.sync_word_size = conf->sync_word_size;
                 CONTEXT_FSK.sync_word = conf->sync_word;
             }
-            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain,
+            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*" PRIu64 "\n", if_chain,
                                                                                                                         CONTEXT_IF_CHAIN[if_chain].enable,
                                                                                                                         CONTEXT_IF_CHAIN[if_chain].freq_hz,
                                                                                                                         CONTEXT_FSK.bandwidth,
