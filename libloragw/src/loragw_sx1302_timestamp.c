@@ -191,42 +191,31 @@ int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uin
 
 uint32_t timestamp_counter_correction(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length) {
     int32_t val;
-    uint32_t sf = (uint32_t)datarate, cr = (uint32_t)coderate, bw_pow, ppm;
+    uint32_t sf = (uint32_t)datarate, cr = (uint32_t)coderate, bw_pow;
     uint32_t clk_period;
     uint32_t nb_nibble, nb_nibble_in_hdr, nb_nibble_in_last_block;
     uint32_t dft_peak_en, nb_iter;
     uint32_t demap_delay, decode_delay, fft_delay_state3, fft_delay, delay_x;
     uint32_t timestamp_correction;
+    uint32_t ppm = SET_PPM_ON(bandwidth, datarate) ? 1 : 0;
 
-    /* determine if 'PPM mode' is on */
-    if (SET_PPM_ON(bandwidth, datarate)) {
-        ppm = 1;
-    } else {
-        ppm = 0;
-    }
-
-    /* timestamp correction code, base delay */
     switch (bandwidth)
     {
         case BW_125KHZ:
             bw_pow = 1;
-            delay_x = 16000000 / bw_pow + 2031250;
             break;
         case BW_250KHZ:
             bw_pow = 2;
-            delay_x = 16000000 / bw_pow + 2031250;
             break;
         case BW_500KHZ:
             bw_pow = 4;
-            delay_x = 16000000 / bw_pow + 2031250;
             break;
         default:
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", bandwidth);
-            delay_x = 0;
-            bw_pow = 0;
-            break;
+            return 0;
     }
-    clk_period = 250000;
+    clk_period = 250000 / bw_pow;
+    delay_x = 16000000 / bw_pow + 2031250;
 
     nb_nibble = (payload_length + 2 * crc_en) * 2 + 5;
 
