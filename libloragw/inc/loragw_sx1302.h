@@ -371,9 +371,10 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p);
 @param radio_type   The type of radio for this RF chain
 @param modulation   The modulation used for the TX
 @param bandwidth    The bandwidth used for the TX
+@param delay        The TX start delay calculated and applied
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth);
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint16_t * delay);
 
 /**
 @brief Compute the offset to be applied on RSSI for temperature compensation
