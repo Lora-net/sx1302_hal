@@ -210,6 +210,9 @@ void sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
     if (conf_ts != NULL) {
         timestamp_counter_mode(conf_ts->enable_precision_ts, conf_ts->max_ts_metrics, conf_ts->nb_symbols);
     }
+
+    /* Initialize RX buffer */
+    rx_buffer_new(&rx_buffer);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1570,25 +1573,30 @@ int sx1302_arb_start(uint8_t version) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_fetch(uint16_t * nb_bytes) {
+int sx1302_fetch(uint8_t * nb_pkt) {
     int err;
 
-    /* Initialize RX buffer */
-    err = rx_buffer_new(&rx_buffer);
-    if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to initialize RX buffer\n");
-        return LGW_REG_ERROR;
+    /* Fetch packets from sx1302 if no more left in RX buffer */
+    if (rx_buffer.buffer_pkt_nb == 0) {
+        /* Initialize RX buffer */
+        err = rx_buffer_new(&rx_buffer);
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: Failed to initialize RX buffer\n");
+            return LGW_REG_ERROR;
+        }
+
+        /* Fetch RX buffer if any data available */
+        err = rx_buffer_fetch(&rx_buffer);
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: Failed to fetch RX buffer\n");
+            return LGW_REG_ERROR;
+        }
+    } else {
+        printf("Note: remaining %u packets in RX buffer, do not fetch sx1302 yet...\n", rx_buffer.buffer_pkt_nb);
     }
 
-    /* Fetch RX buffer if any data available */
-    err = rx_buffer_fetch(&rx_buffer);
-    if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to fetch RX buffer\n");
-        return LGW_REG_ERROR;
-    }
-
-    /* Return the number of bytes fetched */
-    *nb_bytes = rx_buffer.buffer_size;
+    /* Return the number of packet fetched */
+    *nb_pkt = rx_buffer.buffer_pkt_nb;
 
     return LGW_REG_SUCCESS;
 }
@@ -1833,7 +1841,7 @@ uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth) {
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint16_t * delay) {
     uint16_t tx_start_delay = TX_START_DELAY_DEFAULT * 32;
     uint16_t radio_bw_delay = 0;
     uint16_t filter_delay = 0;
@@ -1841,6 +1849,8 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
     int32_t bw_hz = lgw_bw_getval(bandwidth);
     int32_t val;
     uint8_t chirp_low_pass = 0;
+
+    CHECK_NULL(delay);
 
     /* Adjust with radio type and bandwidth */
     switch (radio_type) {
@@ -1895,6 +1905,9 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
     /* Configure the SX1302 with the calculated delay */
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 8));
     lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_LSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 0));
+
+    /* return tx_start_delay */
+    *delay = tx_start_delay;
 
     return LGW_REG_SUCCESS;
 }
@@ -2013,6 +2026,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     uint8_t pow_index;
     uint8_t mod_bw;
     uint8_t pa_en;
+    uint16_t tx_start_delay;
 
     /* CHeck input parameters */
     CHECK_NULL(tx_lut);
@@ -2244,7 +2258,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     }
 
     /* Set TX start delay */
-    sx1302_tx_set_start_delay(pkt_data->rf_chain, radio_type, pkt_data->modulation, pkt_data->bandwidth);
+    sx1302_tx_set_start_delay(pkt_data->rf_chain, radio_type, pkt_data->modulation, pkt_data->bandwidth, &tx_start_delay);
 
     /* Write payload in transmit buffer */
     lgw_reg_w(SX1302_REG_TX_TOP_TX_CTRL_WRITE_BUFFER(pkt_data->rf_chain), 0x01);
@@ -2265,8 +2279,8 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(pkt_data->rf_chain), 0x01);
             break;
         case TIMESTAMPED:
-            count_us = pkt_data->count_us * 32;
-            DEBUG_PRINTF("--> programming trig delay at %u (%u)\n", pkt_data->count_us, count_us);
+            count_us = pkt_data->count_us * 32 - tx_start_delay;
+            DEBUG_PRINTF("--> programming trig delay at %u (%u)\n", pkt_data->count_us - (tx_start_delay / 32), count_us);
 
             lgw_reg_w(SX1302_REG_TX_TOP_TIMER_TRIG_BYTE0_TIMER_DELAYED_TRIG(pkt_data->rf_chain), (uint8_t)((count_us >>  0) & 0x000000FF));
             lgw_reg_w(SX1302_REG_TX_TOP_TIMER_TRIG_BYTE1_TIMER_DELAYED_TRIG(pkt_data->rf_chain), (uint8_t)((count_us >>  8) & 0x000000FF));

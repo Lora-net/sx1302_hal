@@ -54,16 +54,16 @@ typedef struct timestamp_counter_s {
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Initialize the timestamp_counter instance
+@param self     Pointer to the counter handler
+@return N/A
 */
 void timestamp_counter_new(timestamp_counter_t * self);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Reset the timestamp_counter instance
+@param self     Pointer to the counter handler
+@return N/A
 */
 void timestamp_counter_delete(timestamp_counter_t * self);
 
@@ -106,9 +106,14 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps);
 uint32_t timestamp_counter_correction(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, uint32_t crc_en, uint16_t payload_length);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Configure the SX1302 to output legacy timestamp or precision timestamp
+@note  Legacy timestamp gives a timestamp latched at the end of the packet
+@note  Precision timestamp gives a timestamp latched at the end of the header
+@note  and additionally supplies metrics every N symbols troughout the payload.
+@param enable_precision_ts  A boolean to enable precision timestamp output.
+@param max_ts_metrics       The number of timestamp metrics to be returned when precision timestamp is enabled
+@param nb_symbols           The sampling rate of timestamp metrics
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uint8_t nb_symbols);
 
