@@ -77,6 +77,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_FSK             lgw_context.fsk_cfg
 #define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
 #define CONTEXT_TIMESTAMP       lgw_context.timestamp_cfg
+#define CONTEXT_LBT             lgw_context.lbt_cfg
 #define CONTEXT_DEBUG           lgw_context.debug_cfg
 
 /* -------------------------------------------------------------------------- */
@@ -541,6 +542,18 @@ int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
+    CHECK_NULL(conf);
+
+    CONTEXT_LBT.enable = conf->enable;
+    CONTEXT_LBT.lbt_threshold = conf->lbt_threshold;
+    CONTEXT_LBT.lbt_duration = conf->lbt_duration;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
     int i;
 
@@ -589,7 +602,7 @@ int lgw_start(void) {
     i = sx1261_setup(868100000); //100 kHz step
     wait_ms(1);
     if (i == LGW_HAL_SUCCESS) {
-        printf("INFO: [main] sx1261 started at 866 MHz, LBT can be started\n");
+        printf("INFO: [main] sx1261 started at 868.1 MHz, LBT can be started\n");
     } else {
         printf("ERROR: [main] failed to start the sx1261\n");
         return LGW_HAL_ERROR;
@@ -924,7 +937,9 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         return LGW_HAL_ERROR;
     } 
 
-    sx1261_start_lbt( 5000, -70);
+    //sx1261_start_lbt( 5000, -70);
+    printf("INFO: [main] sx1261 set LBT to %d µsec level %d dBm\n",CONTEXT_LBT.lbt_duration, CONTEXT_LBT.lbt_threshold);
+    sx1261_start_lbt( CONTEXT_LBT.lbt_duration    , CONTEXT_LBT.lbt_threshold);
     wait_ms(20);
     return sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
 }

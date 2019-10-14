@@ -304,12 +304,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_txgain_obj;
     JSON_Object *conf_ts_obj;
+    JSON_Object *conf_lbt_obj;
     JSON_Array *conf_txlut_array;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
     struct lgw_conf_timestamp_s tsconf;
+    struct lgw_conf_lbt_s lbtconf  ;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
 
@@ -419,6 +421,44 @@ static int parse_SX130x_configuration(const char * conf_file) {
         }
     }
 
+    /* set LBT configuration */
+    conf_lbt_obj = json_object_get_object(conf_obj, "listen_before_talk");
+    if (conf_lbt_obj == NULL) {
+        MSG("INFO: %s does not contain a JSON object for LBT\n", conf_file);
+    } else {
+        val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
+        if (json_value_get_type(val) == JSONBoolean) {
+            lbtconf.enable = (bool)json_value_get_boolean(val);
+        } else {
+            MSG("WARNING: Data type for lbt.enable seems wrong, please check\n");
+            lbtconf.enable = false;
+        }
+        if (lbtconf.enable == true) {
+            val = json_object_get_value(conf_lbt_obj, "lbt_threshold"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                lbtconf.lbt_threshold = (int8_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for lbt.lbt_threshold seems wrong, please check\n");
+                lbtconf.lbt_threshold = 0;
+            }
+            val = json_object_get_value(conf_lbt_obj, "lbt_duration"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                lbtconf.lbt_duration = (uint32_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for lbt.duration seems wrong, please check\n");
+                lbtconf.lbt_duration = 0;
+            }
+            MSG("INFO: Configuring LBT: lbt_threshold:%d, lbt_duration:%u\n", lbtconf.lbt_threshold, lbtconf.lbt_duration);
+
+            /* all parameters parsed, submitting configuration to the HAL */
+            if (lgw_lbt_setconf(&lbtconf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure precision timestamp\n");
+                return -1;
+            }
+        } else {
+            MSG("INFO: NO LBT\n");
+        }
+    }
     /* set configuration for RF chains */
     for (i = 0; i < LGW_RF_CHAIN_NB; ++i) {
         memset(&rfconf, 0, sizeof rfconf); /* initialize configuration structure */
