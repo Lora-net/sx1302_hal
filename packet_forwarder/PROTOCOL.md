@@ -41,7 +41,7 @@ losses (no retries).
 	+- - - - - - - - - - - - - - - -+
 
 __Concentrator__: radio RX/TX board, based on Semtech multichannel modems
-(SX130x), transceivers (SX135x) and/or low-power stand-alone modems (SX127x).
+(SX130x), transceivers (SX125x) and/or low-power stand-alone modems (SX127x).
 
 __Host__: embedded computer on which the packet forwarder is run. Drives the
 concentrator through a SPI link.
