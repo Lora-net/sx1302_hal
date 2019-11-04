@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hd:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hd:k:r:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
