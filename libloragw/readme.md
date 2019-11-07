@@ -362,7 +362,18 @@ To debug your application, it might help to compile the loragw_hal function
 with the debug messages activated (set DEBUG_HAL=1 in library.cfg).
 It then send a lot of details, including detailed error messages to *stderr*.
 
-## 6. License
+## 6. Notes
+
+### 6.1. Spreading factor SF5 & SF6
+
+The sx1302 supports SF5 and SF6 spreading factors, and the HAL also. But it is
+important to note that the only syncword supported for SF5 and SF6 is 0x12
+(also known as "private").
+
+This is true whatever how of the "lorawan_public" field of lgw_conf_board_s is
+set.
+
+## 7. License
 
 Copyright (c) 2019, SEMTECH S.A.
 All rights reserved.
