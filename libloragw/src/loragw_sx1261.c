@@ -30,7 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_sx1261.h"
-#include "pram.h"
+#include "pram_lbt_scan.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -155,6 +155,7 @@ int sx1261_read_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size)
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 
 int sx1261_calibrate(uint32_t freq_hz) {
     uint8_t buff[16];
@@ -347,7 +348,7 @@ int sx1261_start_lbt( int scan_time_us, int threshold_dbm) {
     uint8_t threshold_reg;
     threshold_reg = -2*threshold_dbm;
     nb_scan = scan_time_us >>1;
-    buff[0] = 10; //intervall8us => 125*8 = 1000 µs
+    buff[0] = 32; //intervall8us => 
     buff[1] = (nb_scan>>8) & 0xFF;  //nbScans MSB
     buff[2] = nb_scan & 0xFF; //nbScans LSB
     buff[3] = threshold_reg; //threshold
@@ -357,6 +358,51 @@ int sx1261_start_lbt( int scan_time_us, int threshold_dbm) {
     return 0;
 
 }
+int sx1261_spectral_scan(int nb_scan) {
+    
+    uint16_t k;
+    uint8_t buff[20];
+    buff[0] = (nb_scan>>8) & 0xFF;  //nbScans MSB
+    buff[1] = nb_scan & 0xFF; //nbScans LSB
+    buff[2] = 240; //-80
+    buff[3] = 120;  //-60
+    buff[4] = 80;  //-40
+    sx1261_write_command( 0x9b, buff, 5);
+    printf("START SCAN\n");
+
+    wait_ms(10);
+
+    buff[0] = 0x04;
+    buff[1] = 0x00;
+    buff[2] = 0x00;
+    buff[3] = 0x00;
+    buff[4] = 0x00;
+    buff[5] = 0x00;
+    buff[6] = 0x00;
+    buff[7] = 0x00;
+    buff[8] = 0x00;
+    buff[9] = 0x00;
+    buff[10] = 0x00;
+    buff[11] = 0x00;
+    buff[12] = 0x00;
+    buff[13] = 0x00;
+    buff[14] = 0x00;
+    buff[15] = 0x00;
+    buff[16] = 0x00;
+    buff[17] = 0x00;
+    sx1261_read_command( SX1261_READ_REGISTER, buff, 18);
+    printf(" @0x400 ");
+    
+    for(k=0; k< 18; k++) {
+        printf("0x%x ", buff[k]);
+    }
+
+    printf("\n");
+
+    return 0;
+}
+
+
 int sx1261_setup( uint32_t freq_hz) {
     int32_t freq_reg;
     uint8_t buff[32];

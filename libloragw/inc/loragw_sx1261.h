@@ -98,7 +98,7 @@ int sx1261_calibrate(uint32_t freq_hz);
 int sx1261_setup(uint32_t freq_hz);
 int sx1261_load_pram(void);
 int sx1261_start_lbt( int scan_time_us, int threshold_dbm);
-
+int sx1261_spectral_scan(int nb_scan) ;
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

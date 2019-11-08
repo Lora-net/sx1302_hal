@@ -594,7 +594,7 @@ int lgw_start(void) {
         printf("ERROR: [main] failed to start the sx1261\n");
         return LGW_HAL_ERROR;
     } 
-
+    sx1261_spectral_scan(200);
     sx1261_start_lbt( 5000, -70);
 
     /* Calibrate radios */
