@@ -297,6 +297,16 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz) {
     buff[2] = 0xFF;
     sx1250_write_command(rf_chain, SET_RX, buff, 3); /* Rx Continuous */
 
+    /* For CN490 band, configure the radio in Single input instead of
+    Differential input to avoid getting noise from DIO4 */
+    if (freq_hz < 550E6) {
+        printf("INFO: CN490: configuring SX1250_%u with single input\n", rf_chain);
+        buff[0] = 0x08;
+        buff[1] = 0xE2;
+        buff[2] = 0x0D;
+        sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3);
+    }
+
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x0B;
