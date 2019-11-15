@@ -237,6 +237,7 @@ int main(int argc, char **argv)
             lgw_get_trigcnt(&counter);
         }
         wait_ms(10);
+        printf("%u\n", counter);
     }
 
     /* Stop the gateway */
