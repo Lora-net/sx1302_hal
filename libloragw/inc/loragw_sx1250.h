@@ -95,7 +95,7 @@ int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *da
 int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
 int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz);
-int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz);
+int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode);
 
 #endif
 

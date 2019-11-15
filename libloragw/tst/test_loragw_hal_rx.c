@@ -67,15 +67,16 @@ static void sig_handler(int sigio) {
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf( " -r <uint>     Radio type (1255, 1257, 1250)\n");
-    printf( " -a <float>    Radio A RX frequency in MHz\n");
-    printf( " -b <float>    Radio B RX frequency in MHz\n");
-    printf( " -n <uint>     Number of packet received with CRC OK for each HAL start/stop loop\n");
-    printf( " -z <uint>     Size of the RX packet array to be passed to lgw_receive()\n");
-    printf( " -m <uint>     Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
+    printf(" -a <float>    Radio A RX frequency in MHz\n");
+    printf(" -b <float>    Radio B RX frequency in MHz\n");
+    printf(" -n <uint>     Number of packet received with CRC OK for each HAL start/stop loop\n");
+    printf(" -z <uint>     Size of the RX packet array to be passed to lgw_receive()\n");
+    printf(" -m <uint>     Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]\n");
+    printf(" -j            Set radio in single input mode (SX1250 only)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -97,6 +98,7 @@ int main(int argc, char **argv)
     uint8_t clocksource = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
     uint8_t max_rx_pkt = 16;
+    bool single_input_mode = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -136,7 +138,7 @@ int main(int argc, char **argv)
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:k:r:n:z:m:")) != -1) {
+    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -169,6 +171,9 @@ int main(int argc, char **argv)
                 } else {
                     clocksource = (uint8_t)arg_u;
                 }
+                break;
+            case 'j': /* Set radio in single input mode */
+                single_input_mode = true;
                 break;
             case 'a': /* <float> Radio A RX frequency in MHz */
                 i = sscanf(optarg, "%lf", &arg_d);
@@ -250,6 +255,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -260,6 +266,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;

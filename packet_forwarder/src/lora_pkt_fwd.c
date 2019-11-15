@@ -464,6 +464,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
             } else {
                 MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257 or SX1250)\n", str);
             }
+            snprintf(param_name, sizeof param_name, "radio_%i.single_input_mode", i);
+            val = json_object_dotget_value(conf_obj, param_name);
+            if (json_value_get_type(val) == JSONBoolean) {
+                rfconf.single_input_mode = (bool)json_value_get_boolean(val);
+            } else {
+                rfconf.single_input_mode = false;
+            }
+
             snprintf(param_name, sizeof param_name, "radio_%i.tx_enable", i);
             val = json_object_dotget_value(conf_obj, param_name);
             if (json_value_get_type(val) == JSONBoolean) {
@@ -574,7 +582,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
+            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, single input mode %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.single_input_mode);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {

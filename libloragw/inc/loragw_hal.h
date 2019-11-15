@@ -170,12 +170,13 @@ struct lgw_rssi_tcomp_s {
 @brief Configuration structure for a RF chain
 */
 struct lgw_conf_rxrf_s {
-    bool                    enable;         /*!> enable or disable that RF chain */
-    uint32_t                freq_hz;        /*!> center frequency of the radio in Hz */
-    float                   rssi_offset;    /*!> Board-specific RSSI correction factor */
-    struct lgw_rssi_tcomp_s rssi_tcomp;     /*!> Board-specific RSSI temperature compensation coefficients */
-    lgw_radio_type_t        type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
-    bool                    tx_enable;      /*!> enable or disable TX on that RF chain */
+    bool                    enable;             /*!> enable or disable that RF chain */
+    uint32_t                freq_hz;            /*!> center frequency of the radio in Hz */
+    float                   rssi_offset;        /*!> Board-specific RSSI correction factor */
+    struct lgw_rssi_tcomp_s rssi_tcomp;         /*!> Board-specific RSSI temperature compensation coefficients */
+    lgw_radio_type_t        type;               /*!> Radio type for that RF chain (SX1255, SX1257....) */
+    bool                    tx_enable;          /*!> enable or disable TX on that RF chain */
+    bool                    single_input_mode;  /*!> Configure the radio in single or differential input mode (SX1250 only) */
 };
 
 /**
