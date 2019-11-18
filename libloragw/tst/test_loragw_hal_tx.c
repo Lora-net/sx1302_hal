@@ -167,7 +167,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
