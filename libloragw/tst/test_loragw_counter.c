@@ -192,6 +192,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = false;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -202,6 +203,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = false;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;
@@ -235,6 +237,7 @@ int main(int argc, char **argv)
             lgw_get_trigcnt(&counter);
         }
         wait_ms(10);
+        printf("%u\n", counter);
     }
 
     /* Stop the gateway */

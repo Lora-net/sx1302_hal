@@ -161,6 +161,13 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.0.4 ###
+
+* Added missing LICENSE.TXT file
+* HAL & Packet Forwarder: added support for sx1250-based reference design for
+CN490 region
+* Packet Forwarder: disabled beaconing by default
+
 ### v1.0.3 ###
 
 * HAL: Fixed scheduled downlink time precision by taking the tx start delay into

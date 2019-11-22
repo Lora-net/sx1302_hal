@@ -291,13 +291,15 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf) {
     CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_e = conf->rssi_tcomp.coeff_e;
     CONTEXT_RF_CHAIN[rf_chain].type = conf->type;
     CONTEXT_RF_CHAIN[rf_chain].tx_enable = conf->tx_enable;
+    CONTEXT_RF_CHAIN[rf_chain].single_input_mode = conf->single_input_mode;
 
-    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n",  rf_chain,
+    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d single_input_mode:%d\n",  rf_chain,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].enable,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].freq_hz,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].rssi_offset,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].type,
-                                                                                                                CONTEXT_RF_CHAIN[rf_chain].tx_enable);
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].tx_enable,
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].single_input_mode);
 
     return LGW_HAL_SUCCESS;
 }
@@ -594,7 +596,7 @@ int lgw_start(void) {
             sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
             switch (CONTEXT_RF_CHAIN[i].type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz);
+                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz, CONTEXT_RF_CHAIN[i].single_input_mode);
                     break;
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:

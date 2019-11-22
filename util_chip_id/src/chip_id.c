@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hd:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hd:k:r:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -163,6 +163,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = false;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -173,6 +174,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = false;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;

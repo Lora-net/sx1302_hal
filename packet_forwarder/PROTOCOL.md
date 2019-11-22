@@ -41,7 +41,7 @@ losses (no retries).
 	+- - - - - - - - - - - - - - - -+
 
 __Concentrator__: radio RX/TX board, based on Semtech multichannel modems
-(SX130x), transceivers (SX135x) and/or low-power stand-alone modems (SX127x).
+(SX130x), transceivers (SX125x) and/or low-power stand-alone modems (SX127x).
 
 __Host__: embedded computer on which the packet forwarder is run. Drives the
 concentrator through a SPI link.
@@ -224,21 +224,23 @@ That object contains the status of the gateway, with the following fields:
  ackr | number | Percentage of upstream datagrams that were acknowledged
  dwnb | number | Number of downlink datagrams received (unsigned integer)
  txnb | number | Number of packets emitted (unsigned integer)
+ temp | number | Current temperature in degree celcius (float)
 
 Example (white-spaces, indentation and newlines added for readability):
 
 ``` json
 {"stat":{
-	"time":"2014-01-12 08:59:28 GMT",
-	"lati":46.24000,
-	"long":3.25230,
-	"alti":145,
-	"rxnb":2,
-	"rxok":2,
-	"rxfw":2,
-	"ackr":100.0,
-	"dwnb":2,
-	"txnb":2
+    "time":"2014-01-12 08:59:28 GMT",
+    "lati":46.24000,
+    "long":3.25230,
+    "alti":145,
+    "rxnb":2,
+    "rxok":2,
+    "rxfw":2,
+    "ackr":100.0,
+    "dwnb":2,
+    "txnb":2,
+    "temp": 23.2
 }}
 ```
 
