@@ -429,7 +429,7 @@ int main(int argc, char **argv)
 
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = true; /* rf chain 0 needs to be enabled for calibration to work on sx1257 */
-    rfconf.freq_hz = 868500000; /* dummy */
+    rfconf.freq_hz = ft;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
     rfconf.single_input_mode = single_input_mode;
@@ -440,7 +440,7 @@ int main(int argc, char **argv)
 
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = (((rf_chain == 1) || (clocksource == 1)) ? true : false);
-    rfconf.freq_hz = 868500000; /* dummy */
+    rfconf.freq_hz = ft;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
     rfconf.single_input_mode = single_input_mode;
