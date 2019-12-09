@@ -2084,7 +2084,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 8) & 0xFF);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 0) & 0xFF);
 
-
+    /*LC TODO : Add and update json for LBT configuration */
     sx1302_agc_mailbox_write(3, 0xf0); 
     wait_ms(1);
     
