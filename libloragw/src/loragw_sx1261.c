@@ -156,7 +156,6 @@ int sx1261_read_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size)
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
 int sx1261_calibrate(uint32_t freq_hz) {
     uint8_t buff[16];
 
@@ -347,14 +346,19 @@ int sx1261_start_lbt( int scan_time_us, int threshold_dbm) {
     int nb_scan;
     uint8_t threshold_reg;
     threshold_reg = -2*threshold_dbm;
-    nb_scan = scan_time_us >>1;
-    buff[0] = 32; //intervall8us => 
+    nb_scan = scan_time_us/8.2;
+    printf("nb_scan : %d\n",nb_scan);
+    buff[0] = 11; //intervall_rssi_read (10 => 7.68 �sec,11 => 8.2 �sec, 12 => 8.68 �sec)
     buff[1] = (nb_scan>>8) & 0xFF;  //nbScans MSB
     buff[2] = nb_scan & 0xFF; //nbScans LSB
     buff[3] = threshold_reg; //threshold
     buff[4] = 3;  //gpioId
     sx1261_write_command( 0x9a, buff, 5);
     printf("START LBT\n");
+    sx1261_read_command( SX1261_GET_STATUS, buff, 1);
+    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
+    sx1261_read_command( SX1261_GET_STATUS, buff, 1);
+    printf("%s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
     return 0;
 
 }
@@ -408,7 +412,7 @@ int sx1261_setup( uint32_t freq_hz) {
     uint8_t buff[32];
        
     /* Set Radio in Standby mode */
-    buff[0] = (uint8_t)SX1261_STDBY_XOSC;
+    buff[0] = (uint8_t)SX1261_STDBY_RC;
     sx1261_write_command( SX1261_SET_STANDBY, buff, 1);
     wait_ms(10);
 
@@ -427,6 +431,7 @@ int sx1261_setup( uint32_t freq_hz) {
     buff[2] = (uint8_t)(freq_reg >> 8);
     buff[3] = (uint8_t)(freq_reg >> 0);
     sx1261_write_command( SX1261_SET_RF_FREQUENCY, buff, 4);
+    printf("freq_hz : %d\n",freq_hz);
     /* Set PacketType */
 
     /* Set modulation param LoRa */
