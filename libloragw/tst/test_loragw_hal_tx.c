@@ -433,7 +433,7 @@ int main(int argc, char **argv)
     }
 
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = (((rf_chain == 1) || (clocksource == 1)) ? true : false);
+    rfconf.enable = true;//(((rf_chain == 1) || (clocksource == 1)) ? true : false);
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
