@@ -1998,6 +1998,14 @@ int sx1302_tx_configure(lgw_radio_type_t radio_type) {
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
     lgw_reg_w(SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
 
+    //uint32_t freq_reg;
+    //freq_reg = SX1302_FREQ_TO_REG(867500000); /* TODO: AGC fw to be updated for sx1255 */
+    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_H_FREQ_RF(0), (freq_reg >> 16) & 0xFF);
+    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(0), (freq_reg >> 8) & 0xFF);
+    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(0), (freq_reg >> 0) & 0xFF);
+    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_H_FREQ_RF(1), (freq_reg >> 16) & 0xFF);
+    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(1), (freq_reg >> 8) & 0xFF);
+    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(1), (freq_reg >> 0) & 0xFF);
     return LGW_REG_SUCCESS;
 }
 
@@ -2076,6 +2084,13 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 8) & 0xFF);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 0) & 0xFF);
 
+
+    sx1302_agc_mailbox_write(3, 0xf0); 
+    wait_ms(1);
+    
+    sx1302_agc_mailbox_write(3, 0xf1); 
+
+    wait_ms(10);
     /* Set AGC bandwidth and modulation type*/
     switch (pkt_data->modulation) {
         case MOD_LORA:
