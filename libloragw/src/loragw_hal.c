@@ -44,6 +44,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_stts751.h"
 #include "loragw_debug.h"
 
+
 /* -------------------------------------------------------------------------- */
 /* --- DEBUG CONSTANTS ------------------------------------------------------ */
 
@@ -103,7 +104,8 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 
 #include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
 //#include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
-#include "agc_sx1250_lbt.var"
+#include "agc_sx1250_lbt_261119_6.var"
+//#include "agc_sx1250_lbt.var"
 #include "agc_sx125x_lbt.var"
 //#include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
 
@@ -596,19 +598,24 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    lgw_connect_sx1261("/dev/spidev0.1");
-    sx1261_load_pram();
     
-    i = sx1261_setup(868100000); //100 kHz step
-    wait_ms(1);
-    if (i == LGW_HAL_SUCCESS) {
-        printf("INFO: [main] sx1261 started at 868.1 MHz, LBT can be started\n");
-    } else {
-        printf("ERROR: [main] failed to start the sx1261\n");
-        return LGW_HAL_ERROR;
-    } 
-    sx1261_spectral_scan(200);
-    sx1261_start_lbt( 5000, -70);
+    if (CONTEXT_LBT.enable) {
+        lgw_connect_sx1261("/dev/spidev0.1");
+        sx1261_load_pram();
+        i = sx1261_setup(864900000); //100 kHz step
+        wait_ms(1);
+        if (i == LGW_HAL_SUCCESS) {
+            printf("INFO: [main] sx1261 started at 868.1 MHz, LBT can be started\n");
+        } else {
+            printf("ERROR: [main] failed to start the sx1261\n");
+            return LGW_HAL_ERROR;
+        } 
+        sx1261_spectral_scan(200);
+        sx1261_start_lbt( 5000, -70);
+    }
+
+
+
 
     /* Calibrate radios */
     err = sx1302_radio_calibrate(&CONTEXT_RF_CHAIN[0], CONTEXT_BOARD.clksrc, &CONTEXT_TX_GAIN_LUT[0]);
@@ -623,7 +630,7 @@ int lgw_start(void) {
             sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
             switch (CONTEXT_RF_CHAIN[i].type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz);
+                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,true);
                     break;
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:
@@ -636,7 +643,7 @@ int lgw_start(void) {
             sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].type);
         }
     }
-
+  
     /* Select the radio which provides the clock to the sx1302 */
     sx1302_radio_clock_select(CONTEXT_BOARD.clksrc);
 
@@ -710,6 +717,10 @@ int lgw_start(void) {
     /* enable GPS */
     sx1302_gps_enable(true);
 
+
+
+
+
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
     char timestamp_str[40];
@@ -759,7 +770,7 @@ int lgw_start(void) {
         err = stts751_configure(ts_fd, ts_addr);
         if (err != LGW_I2C_SUCCESS) {
             printf("ERROR: failed to configure the temperature sensor\n");
-            return LGW_HAL_ERROR;
+            //return LGW_HAL_ERROR;
         }
     }
 
@@ -806,7 +817,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_dropped = 0;
     float current_temperature, rssi_temperature_offset;
-
+    uint8_t val;
+    
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
     res = sx1302_update();
@@ -877,6 +889,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
         return LGW_HAL_ERROR;
     }
+    
 
     /* check input variables */
     if (CONTEXT_RF_CHAIN[pkt_data->rf_chain].tx_enable == false) {
@@ -927,20 +940,22 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
     }
-    int i;
-    i = sx1261_setup(pkt_data->freq_hz); //100 kHz step
-    wait_ms(1);
-    if (i == LGW_HAL_SUCCESS) {
-        printf("INFO: [main] sx1261 started at %.3f MHz, LBT can be started\n",(pkt_data->freq_hz)/1e6);
-    } else {
-        printf("ERROR: [main] failed to start the sx1261\n");
-        return LGW_HAL_ERROR;
-    } 
+    
+    if (CONTEXT_LBT.enable) {
+        int i;
+        i = sx1261_setup(pkt_data->freq_hz); //100 kHz step
+        wait_ms(1);
+        if (i == LGW_HAL_SUCCESS) {
+            printf("INFO: [main] sx1261 started at %.3f MHz, LBT can be started\n",(pkt_data->freq_hz)/1e6);
+        } else {
+            printf("ERROR: [main] failed to start the sx1261\n");
+            return LGW_HAL_ERROR;
+        } 
 
-    //sx1261_start_lbt( 5000, -70);
-    printf("INFO: [main] sx1261 set LBT to %d µsec level %d dBm\n",CONTEXT_LBT.lbt_duration, CONTEXT_LBT.lbt_threshold);
-    sx1261_start_lbt( CONTEXT_LBT.lbt_duration    , CONTEXT_LBT.lbt_threshold);
-    wait_ms(20);
+        printf("INFO: [main] sx1261 set LBT to %d µsec level %d dBm\n",CONTEXT_LBT.lbt_duration, CONTEXT_LBT.lbt_threshold);
+        sx1261_start_lbt( CONTEXT_LBT.lbt_duration    , CONTEXT_LBT.lbt_threshold);
+        wait_ms(20);
+    }
     return sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
 }
 
