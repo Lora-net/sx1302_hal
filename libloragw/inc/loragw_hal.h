@@ -299,6 +299,8 @@ struct lgw_conf_timestamp_s {
 struct lgw_conf_lbt_s {
     bool enable;
     int8_t lbt_threshold;
+    int8_t radio_type;
+    int8_t radio_id;
     uint32_t lbt_duration;
 };
 /**

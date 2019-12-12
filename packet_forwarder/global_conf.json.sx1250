@@ -10,6 +10,13 @@
             "max_ts_metrics": 255,
             "nb_symbols": 1
         },
+        "listen_before_talk": {
+            "enable": true,
+            "radio_type": "sx1261", /* or sx1250 */
+            "radio_id": 2, /*0 => SX1250_0, 1 => SX1250_1, 2 => SX1261 */
+            "lbt_threshold": -70,
+            "lbt_duration": 5000
+        },
         "radio_0": {
             "enable": true,
             "type": "SX1250",

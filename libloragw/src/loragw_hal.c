@@ -548,6 +548,8 @@ int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
     CHECK_NULL(conf);
 
     CONTEXT_LBT.enable = conf->enable;
+    CONTEXT_LBT.radio_type = conf->radio_type;
+    CONTEXT_LBT.radio_id = conf->radio_id;
     CONTEXT_LBT.lbt_threshold = conf->lbt_threshold;
     CONTEXT_LBT.lbt_duration = conf->lbt_duration;
 
@@ -599,7 +601,7 @@ int lgw_start(void) {
     }
 
     
-    if (CONTEXT_LBT.enable) {
+    if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == 2)) {
         lgw_connect_sx1261("/dev/spidev0.1");
         sx1261_load_pram();
         i = sx1261_setup(864900000); //100 kHz step
@@ -615,14 +617,22 @@ int lgw_start(void) {
     }
 
 
-
-
+    /*Check that clksrc and lbt used radio are not in conflict */
+    if ((CONTEXT_LBT.enable) && ( (CONTEXT_LBT.radio_id == 0) || (CONTEXT_LBT.radio_id == 1) ) && (CONTEXT_RF_CHAIN[CONTEXT_LBT.radio_id].type != LGW_RADIO_TYPE_SX1250) ){
+        printf("ERROR: LBT configured with radio_%d but it's not SX1250\n",CONTEXT_LBT.radio_id);
+        return LGW_HAL_ERROR;
+    }
+    if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == CONTEXT_BOARD.clksrc)) {
+        printf("ERROR: LBT configured with radio_%d but it's used at SX1302 clock source\n",CONTEXT_LBT.radio_id);
+        return LGW_HAL_ERROR;        
+    }
     /* Calibrate radios */
     err = sx1302_radio_calibrate(&CONTEXT_RF_CHAIN[0], CONTEXT_BOARD.clksrc, &CONTEXT_TX_GAIN_LUT[0]);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: radio calibration failed\n");
         return LGW_HAL_ERROR;
     }
+    
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
@@ -630,8 +640,13 @@ int lgw_start(void) {
             sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
             switch (CONTEXT_RF_CHAIN[i].type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,true);
-                    break;
+                    if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == i)){
+                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,true);
+                        break;
+                    } else {
+                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,false);
+                        break;
+                    }
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:
                     sx125x_setup(i, CONTEXT_BOARD.clksrc, true, CONTEXT_RF_CHAIN[i].type, CONTEXT_RF_CHAIN[i].freq_hz);

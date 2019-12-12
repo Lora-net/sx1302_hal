@@ -434,6 +434,36 @@ static int parse_SX130x_configuration(const char * conf_file) {
             lbtconf.enable = false;
         }
         if (lbtconf.enable == true) {
+            
+            str = json_object_dotget_string(conf_lbt_obj, "radio_type");
+            if (!strncmp(str, "SX1250", 6)) {
+                lbtconf.radio_type = 0;
+            } else if (!strncmp(str, "SX1261", 6)) {
+                lbtconf.radio_type = 1;
+            } else {
+                MSG("WARNING: invalid radio type: %s (should be SX1261 or SX1250)\n", str);
+            }
+            val = json_object_get_value(conf_lbt_obj, "radio_id"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                lbtconf.radio_id = (int8_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for lbt.radio_id seems wrong, please check\n");
+                lbtconf.radio_id = -1;
+                return -1;
+            }
+            if ((lbtconf.radio_id<0) || (lbtconf.radio_id>2) ) {
+                MSG("WARNING: Data type for lbt.radio_id seems wrong, please check\n");
+                return -1;
+            }
+            if ((lbtconf.radio_type == 0) && (lbtconf.radio_id == 2)) {
+                MSG("WARNING: Data type for lbt.radio_id does not match radio type, please check\n");
+                return -1;
+            }
+            if ((lbtconf.radio_type == 1) && (lbtconf.radio_id != 2)) {
+                MSG("WARNING: Data type for lbt.radio_id does not match radio type, please check\n");
+                return -1;
+            }
+
             val = json_object_get_value(conf_lbt_obj, "lbt_threshold"); /* fetch value (if possible) */
             if (json_value_get_type(val) == JSONNumber) {
                 lbtconf.lbt_threshold = (int8_t)json_value_get_number(val);
