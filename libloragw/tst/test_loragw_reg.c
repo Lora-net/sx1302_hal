@@ -92,7 +92,7 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(spidev_path, 1 );
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to connect\n");
         return -1;

@@ -174,7 +174,7 @@ int main(int argc, char **argv)
         capture_ram_buffer[i] = i%256;
     }
 
-    reg_stat = lgw_connect(spidev_path);
+    reg_stat = lgw_connect(spidev_path, 1 );
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
             sx1302_radio_reset(i, rf_radio_type[i]);
             switch (radio_type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    sx1250_setup(i, rf_rx_freq[i]);
+                    sx1250_setup(i, rf_rx_freq[i], false);
                     break;
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:

@@ -31,6 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <time.h>
 #include <unistd.h>     /* symlink, unlink */
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -69,7 +70,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 #define CONTEXT_STARTED         lgw_context.is_started
-#define CONTEXT_SPI             lgw_context.board_cfg.spidev_path
+#define CONTEXT_IF              lgw_context.board_cfg.dev_path
+#define CONTEXT_SPI_NOT_USB     lgw_context.board_cfg.spi_not_usb
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
@@ -103,8 +105,8 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 #include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
-//#include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
-#include "agc_sx1250_lbt_261119_6.var"
+#include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
+//#include "agc_sx1250_lbt_261119_6.var"
 //#include "agc_sx1250_lbt.var"
 #include "agc_sx125x_lbt.var"
 //#include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
@@ -118,7 +120,8 @@ the _start and _send functions assume they are valid.
 */
 static lgw_context_t lgw_context = {
     .is_started = false,
-    .board_cfg.spidev_path = "/dev/spidev0.0",
+    .board_cfg.dev_path = "/dev/spidev0.0",
+    .board_cfg.spi_not_usb = 1,
     .board_cfg.lorawan_public = true,
     .board_cfg.clksrc = 0,
     .board_cfg.full_duplex = false,
@@ -239,13 +242,15 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_LWAN_PUBLIC = conf->lorawan_public;
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
-    strncpy(CONTEXT_SPI, conf->spidev_path, sizeof CONTEXT_SPI);
-    CONTEXT_SPI[sizeof CONTEXT_SPI - 1] = '\0'; /* ensure string termination */
+    strncpy(CONTEXT_IF, conf->dev_path, sizeof CONTEXT_IF);
+    CONTEXT_IF[sizeof CONTEXT_IF - 1] = '\0'; /* ensure string termination */
+    CONTEXT_BOARD.spi_not_usb = conf->spi_not_usb;
 
-    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
-                                                                                                                CONTEXT_LWAN_PUBLIC,
-                                                                                                                CONTEXT_BOARD.clksrc,
-                                                                                                                CONTEXT_BOARD.full_duplex);
+    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_IF,
+                                                                                                                                
+                                                                                                                                CONTEXT_LWAN_PUBLIC,
+                                                                                                                                CONTEXT_BOARD.clksrc,
+                                                                                                                                CONTEXT_BOARD.full_duplex);
 
     return LGW_HAL_SUCCESS;
 }
@@ -296,13 +301,15 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf) {
     CONTEXT_RF_CHAIN[rf_chain].rssi_tcomp.coeff_e = conf->rssi_tcomp.coeff_e;
     CONTEXT_RF_CHAIN[rf_chain].type = conf->type;
     CONTEXT_RF_CHAIN[rf_chain].tx_enable = conf->tx_enable;
+    CONTEXT_RF_CHAIN[rf_chain].single_input_mode = conf->single_input_mode;
 
-    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n",  rf_chain,
+    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d single_input_mode:%d\n",  rf_chain,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].enable,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].freq_hz,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].rssi_offset,
                                                                                                                 CONTEXT_RF_CHAIN[rf_chain].type,
-                                                                                                                CONTEXT_RF_CHAIN[rf_chain].tx_enable);
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].tx_enable,
+                                                                                                                CONTEXT_RF_CHAIN[rf_chain].single_input_mode);
 
     return LGW_HAL_SUCCESS;
 }
@@ -457,7 +464,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf) {
                 CONTEXT_FSK.sync_word_size = conf->sync_word_size;
                 CONTEXT_FSK.sync_word = conf->sync_word;
             }
-            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain,
+            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*" PRIu64 "\n", if_chain,
                                                                                                                         CONTEXT_IF_CHAIN[if_chain].enable,
                                                                                                                         CONTEXT_IF_CHAIN[if_chain].freq_hz,
                                                                                                                         CONTEXT_FSK.bandwidth,
@@ -594,7 +601,7 @@ int lgw_start(void) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(CONTEXT_SPI);
+    reg_stat = lgw_connect(CONTEXT_IF,  CONTEXT_BOARD.spi_not_usb );
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -640,11 +647,13 @@ int lgw_start(void) {
             sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
             switch (CONTEXT_RF_CHAIN[i].type) {
                 case LGW_RADIO_TYPE_SX1250:
+                    printf("Setup SX1250 \n");
                     if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == i)){
-                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,true);
+
+                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,CONTEXT_RF_CHAIN[i].single_input_mode,true);
                         break;
                     } else {
-                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,false);
+                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,CONTEXT_RF_CHAIN[i].single_input_mode,false);
                         break;
                     }
                 case LGW_RADIO_TYPE_SX1255:
@@ -718,10 +727,11 @@ int lgw_start(void) {
     if (sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_BOARD.full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-    DEBUG_MSG("Loading ARB fw\n");
+    printf("Loading ARB fw\n");
     if (sx1302_arb_load_firmware(arb_firmware) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
+    printf("Start ARB fw\n");
     if (sx1302_arb_start(FW_VERSION_ARB) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
@@ -813,7 +823,6 @@ int lgw_stop(void) {
 
     DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
-
     DEBUG_MSG("INFO: Closing I2C\n");
     err = i2c_linuxdev_close(ts_fd);
     if (err != 0) {
@@ -828,11 +837,10 @@ int lgw_stop(void) {
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int res;
-    uint16_t sz = 0;
+    uint8_t  nb_pkt_fetched = 0;
     uint16_t nb_pkt_found = 0;
-    uint16_t nb_pkt_dropped = 0;
+    uint16_t nb_pkt_left = 0;
     float current_temperature, rssi_temperature_offset;
-    uint8_t val;
     
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
@@ -842,48 +850,48 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Get packets from SX1302, if any */
-    res = sx1302_fetch(&sz);
+    //printf("sx1302_fetch\n");
+    res = sx1302_fetch(&nb_pkt_fetched);
+    //printf("nb packet : %d\n",nb_pkt_fetched);
     if (res != LGW_REG_SUCCESS) {
         printf("ERROR: failed to fetch packets from SX1302\n");
         return LGW_HAL_ERROR;
     }
-    if (sz == 0) {
+    if (nb_pkt_fetched == 0) {
         return 0;
     }
+    if (nb_pkt_fetched > max_pkt) {
+        nb_pkt_left = nb_pkt_fetched - max_pkt;
+        printf("WARNING: not enough space allocated, fetched %d packet(s), %d will be left in RX buffer\n", nb_pkt_fetched, nb_pkt_left);
+    }
 
-    /* Get the current temperature for further RSSI compensation : TODO */
-    res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
+    /* Apply RSSI temperature compensation */
+    /*res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
-    }
-    DEBUG_PRINTF("INFO: current temperature is %f C\n", current_temperature);
-
+    }*/
+    current_temperature = 0;
     /* Iterate on the RX buffer to get parsed packets */
-    res = LGW_REG_SUCCESS;
-    while ((res == LGW_REG_SUCCESS) && (nb_pkt_found <= max_pkt)) {
+    for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
+        /* Get packet and move to next one */
         res = sx1302_parse(&lgw_context, &pkt_data[nb_pkt_found]);
-        if (res == LGW_REG_SUCCESS) {
-            /* we found a packet and parsed it */
-            if ((nb_pkt_found + 1) > max_pkt) {
-                printf("WARNING: no space left, dropping packet\n");
-                nb_pkt_dropped += 1;
-                continue;
-            }
-            /* Appli RSSI offset calibrated for the board */
-            pkt_data[nb_pkt_found].rssic += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
-            pkt_data[nb_pkt_found].rssis += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
-            /* Apply RSSI temperature compensation */
-            rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
-            pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
-            pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
-            DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB\n", rssi_temperature_offset);
-            /* Next packet */
-            nb_pkt_found += 1;
+        if (res != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to parse fetched packet %d, aborting...\n", nb_pkt_found);
+            return LGW_HAL_ERROR;
         }
+
+        /* Appli RSSI offset calibrated for the board */
+        pkt_data[nb_pkt_found].rssic += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
+        pkt_data[nb_pkt_found].rssis += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
+
+        rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
+        pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
+        pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
+        DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB (current temperature %.1f C)\n", rssi_temperature_offset, current_temperature);
     }
 
-    DEBUG_PRINTF("INFO: nb pkt found:%u dropped:%u\n", nb_pkt_found, nb_pkt_dropped);
+    DEBUG_PRINTF("INFO: nb pkt found:%u left:%u\n", nb_pkt_found, nb_pkt_left);
 
     return nb_pkt_found;
 }

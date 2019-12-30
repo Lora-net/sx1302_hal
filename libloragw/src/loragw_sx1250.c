@@ -28,6 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_spi.h"
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 #include "loragw_aux.h"
 #include "loragw_sx1250.h"
 #include "pram_lbt_scan_sx1250.h"
@@ -57,14 +58,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
 extern void *lgw_spi_target; /*! generic pointer to the SPI device */
-
+extern int mcu_fd;
+extern int spi_en, usb_en;
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
     int spi_device;
     int cmd_size = 2; /* header + op_code */
-    uint8_t out_buf[cmd_size + size];
+    uint8_t out_buf[cmd_size + size +1];
+    uint8_t in_buf[cmd_size + size + 1 + 4];
     uint8_t command_size;
     struct spi_ioc_transfer k;
     int a, i;
@@ -73,35 +76,54 @@ int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *da
     wait_ms(WAIT_BUSY_SX1250_MS);
 
     /* check input variables */
-    CHECK_NULL(lgw_spi_target);
+    //CHECK_NULL(lgw_spi_target);
 
     spi_device = *(int *)lgw_spi_target; /* must check that spi_target is not null beforehand */
 
-    /* prepare frame to be sent */
-    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
-    out_buf[1] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        out_buf[cmd_size + i] = data[i];
-    }
-    command_size = cmd_size + size;
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    if (spi_en == 1) {
+            /* prepare frame to be sent */
+        out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+        out_buf[1] = (uint8_t)op_code;
+        for(i = 0; i < (int)size; i++) {
+            out_buf[cmd_size + i] = data[i];
+        }
+        command_size = cmd_size + size;
 
-    /* determine return code */
-    if (a != (int)k.len) {
+        /* I/O transaction */
+        memset(&k, 0, sizeof(k)); /* clear k */
+        k.tx_buf = (unsigned long) out_buf;
+        k.len = command_size;
+        k.speed_hz = SPI_SPEED;
+        k.cs_change = 0;
+        k.bits_per_word = 8;
+        a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+
+        /* determine return code */
+        if (a != (int)k.len) {
+            DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
+            return LGW_SPI_ERROR;
+        } else {
+            DEBUG_MSG("Note: SPI write success\n");
+            return LGW_SPI_SUCCESS;
+        }
+    } else if (usb_en == 1) {
+        /* prepare frame to be sent */
+        out_buf[0] = 0;
+        out_buf[1] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+        out_buf[2] = (uint8_t)op_code;
+        for(i = 0; i < (int)size; i++) {
+            out_buf[cmd_size+1 + i] = data[i];
+        }
+        command_size = size+3;
+        a = mcu_spi_access(mcu_fd,out_buf,command_size,in_buf);
+        return LGW_SPI_SUCCESS;
+    } else
+    {
         DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
         return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI write success\n");
-        return LGW_SPI_SUCCESS;
     }
+    
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -109,9 +131,9 @@ int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *da
 int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
     int spi_device;
     int cmd_size = 2; /* header + op_code + NOP */
-    uint8_t out_buf[cmd_size + size];
+    uint8_t out_buf[cmd_size + size +1];
+    uint8_t in_buf[cmd_size + size + 1 + 4];
     uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
     struct spi_ioc_transfer k;
     int a, i;
 
@@ -119,36 +141,57 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
     wait_ms(WAIT_BUSY_SX1250_MS);
 
     /* check input variables */
-    CHECK_NULL(lgw_spi_target);
+    //CHECK_NULL(lgw_spi_target);
     CHECK_NULL(data);
 
     spi_device = *(int *)lgw_spi_target; /* must check that spi_target is not null beforehand */
 
-    /* prepare frame to be sent */
-    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
-    out_buf[1] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        out_buf[cmd_size + i] = data[i];
-    }
-    command_size = cmd_size + size;
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    if (spi_en == 1) {
+        /* prepare frame to be sent */
+        out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+        out_buf[1] = (uint8_t)op_code;
+        for(i = 0; i < (int)size; i++) {
+            out_buf[cmd_size + i] = data[i];
+        }
+        command_size = cmd_size + size;
 
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI read success\n");
-        //*data = in_buf[command_size - 1];
-        memcpy(data, in_buf + cmd_size, size);
+        /* I/O transaction */
+        memset(&k, 0, sizeof(k)); /* clear k */
+        k.tx_buf = (unsigned long) out_buf;
+        k.rx_buf = (unsigned long) in_buf;
+        k.len = command_size;
+        k.cs_change = 0;
+        a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+
+        /* determine return code */
+        if (a != (int)k.len) {
+            DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+            return LGW_SPI_ERROR;
+        } else {
+            DEBUG_MSG("Note: SPI read success\n");
+            //*data = in_buf[command_size - 1];
+            memcpy(data, in_buf + cmd_size, size);
+            return LGW_SPI_SUCCESS;
+        }
+    } else if (usb_en == 1) {
+        /* prepare frame to be sent */
+        out_buf[0] = 0;
+        out_buf[1] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+        out_buf[2] = (uint8_t)op_code;
+        for(i = 0; i < (int)size; i++) {
+            out_buf[cmd_size+1 + i] = data[i];
+        }
+        command_size = size+3;
+        a = mcu_spi_access(mcu_fd,out_buf,command_size,in_buf);
+        
+            memcpy(data, in_buf + 4+3, size);
+        //*data = in_buf[command_size+4 - size];
         return LGW_SPI_SUCCESS;
+    } else
+    {
+        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
+        return LGW_SPI_ERROR;
     }
 }
 
@@ -517,7 +560,7 @@ int sx1250_read_lbt(uint8_t rf_chain)
     return 0;
 }
 
-int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool load_pram) {
+int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode, bool load_pram) {
     int32_t freq_reg;
     uint8_t buff[32];
     uint16_t k;
@@ -532,6 +575,7 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool load_pram) {
     sx1250_read_command(rf_chain, GET_STATUS, buff, 1);
     if ((uint8_t)(TAKE_N_BITS_FROM(buff[0], 4, 3)) != 0x02) {
         printf("ERROR: Failed to set SX1250_%u in STANDBY_RC mode\n", rf_chain);
+        while(1) {}
         return -1;
     }
 
@@ -729,21 +773,6 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool load_pram) {
     buff[2] = 0x00;
     buff[3] = 0x00;
     buff[4] = 0x00;
-    buff[5] = 0x00;
-    sx1250_read_command(rf_chain, READ_REGISTER, buff, 6);
-    
-    printf("Freq Offset : ");
-    for(k=0; k< 6; k++) {
-        printf("%d ", buff[k]);
-    }
-    printf("\n");
-
-    /* Set frequency offset to 0 */
-    buff[0] = 0x08;
-    buff[1] = 0x8F;
-    buff[2] = 0x00;
-    buff[3] = 0x00;
-    buff[4] = 0x00;
     sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 5);
 
     /* Set Tx and Rx FIFO address base*/
@@ -761,6 +790,15 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool load_pram) {
     buff[1] = 0xFF;
     buff[2] = 0xFF;
     sx1250_write_command(rf_chain, SET_RX, buff, 3); /* Rx Continuous */
+
+    /* Select single input or differential input mode */
+    if (single_input_mode == true) {
+        printf("INFO: Configuring SX1250_%u in single input mode\n", rf_chain);
+        buff[0] = 0x08;
+        buff[1] = 0xE2;
+        buff[2] = 0x0D;
+        sx1250_write_command(rf_chain, WRITE_REGISTER, buff, 3);
+    }
 
     buff[0] = 0x05;
     buff[1] = 0x87;

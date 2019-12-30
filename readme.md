@@ -161,6 +161,23 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.0.4 ###
+
+* Added missing LICENSE.TXT file
+* HAL & Packet Forwarder: added support for sx1250-based reference design for
+CN490 region
+* Packet Forwarder: disabled beaconing by default
+
+### v1.0.3 ###
+
+* HAL: Fixed scheduled downlink time precision by taking the tx start delay into
+account.
+* HAL: Fixed timestamp correction calculation for BW250 & BW500
+* HAL: Fixed possible buffer overflow in lgw_receive() function
+* HAL: Keep packet received in RX buffer when the buffer allocated to receive
+the packets is too small. Remaining packets will be fetched on the next
+lgw_receive calls (aligned on SX1301 behaviour).
+
 ### v1.0.2 ###
 
 * Fixed compilation warnings reported by latest versions of GCC

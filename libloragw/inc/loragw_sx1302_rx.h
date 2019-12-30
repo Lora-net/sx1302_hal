@@ -72,36 +72,38 @@ typedef struct rx_buffer_s {
     uint8_t buffer[4096];   /*!> byte array to hald the data fetched from the RX buffer */
     uint16_t buffer_size;   /*!> The number of bytes currently stored in the buffer */
     int buffer_index;       /*!> Current parsing index in the buffer */
+    uint8_t buffer_pkt_nb;
 } rx_buffer_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Initialize the rx_buffer instance
+@param self     A pointer to a rx_buffer handler
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int rx_buffer_new(rx_buffer_t * self);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Reset the rx_buffer instance
+@param self     A pointer to a rx_buffer handler
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int rx_buffer_del(rx_buffer_t * self);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Fetch packets from the SX1302 internal RX buffer, and count packets available.
+@param self     A pointer to a rx_buffer handler
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int rx_buffer_fetch(rx_buffer_t * self);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Parse the rx_buffer and return the first packet available in the given structure.
+@param self     A pointer to a rx_buffer handler
+@param pkt      A pointer to the structure to receive the packet parsed
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt);
 

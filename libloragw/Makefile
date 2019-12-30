@@ -85,7 +85,7 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_i2c.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_sx1302.o $(OBJDIR)/loragw_cal.o $(OBJDIR)/loragw_debug.o $(OBJDIR)/loragw_hal.o $(OBJDIR)/loragw_stts751.o $(OBJDIR)/loragw_gps.o $(OBJDIR)/loragw_sx1302_timestamp.o $(OBJDIR)/loragw_sx1302_rx.o $(OBJDIR)/loragw_sx1261.o
+libloragw.a: $(OBJDIR)/loragw_spi.o $(OBJDIR)/loragw_i2c.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_sx1250.o $(OBJDIR)/loragw_mcu.o $(OBJDIR)/loragw_sx125x.o $(OBJDIR)/loragw_sx1302.o $(OBJDIR)/loragw_cal.o $(OBJDIR)/loragw_debug.o $(OBJDIR)/loragw_hal.o $(OBJDIR)/loragw_stts751.o $(OBJDIR)/loragw_gps.o $(OBJDIR)/loragw_sx1302_timestamp.o $(OBJDIR)/loragw_sx1302_rx.o $(OBJDIR)/loragw_sx1261.o
 	$(AR) rcs $@ $^
 
 ### test programs

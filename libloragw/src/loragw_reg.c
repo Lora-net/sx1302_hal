@@ -24,6 +24,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 
 #include "loragw_spi.h"
+#include "loragw_mcu.h"
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
@@ -1116,8 +1117,10 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS+1] = {
 
 void *lgw_spi_target = NULL; /*! generic pointer to the SPI device */
 void *sx1261_lgw_spi_target = NULL;
-
-/* -------------------------------------------------------------------------- */
+int mcu_fd;
+int spi_en, usb_en;
+/* ------------------------------------
+int mcu_fd;-------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 int reg_w_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value) {
@@ -1196,43 +1199,153 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
     return spi_stat;
 }
 
+
+
+int reg_w_align32_usb(int usb_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value) {
+    int spi_stat = LGW_REG_SUCCESS;
+    int i, size_byte;
+    uint8_t buf[4] = "\x00\x00\x00\x00";
+
+    if ((r.leng == 8) && (r.offs == 0)) {
+        /* direct write */
+        spi_stat += lgw_usb_w(usb_target, spi_mux_target, r.addr, (uint8_t)reg_value);
+    } else if ((r.offs + r.leng) <= 8) {
+        /* single-byte read-modify-write, offs:[0-7], leng:[1-7] */
+        spi_stat += lgw_usb_r(usb_target, spi_mux_target, r.addr, &buf[0]);
+        buf[1] = ((1 << r.leng) - 1) << r.offs; /* bit mask */
+        buf[2] = ((uint8_t)reg_value) << r.offs; /* new data offsetted */
+        buf[3] = (~buf[1] & buf[0]) | (buf[1] & buf[2]); /* mixing old & new data */
+        spi_stat += lgw_usb_w(usb_target, spi_mux_target, r.addr, buf[3]);
+    } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
+        /* multi-byte direct write routine */
+        size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
+        for (i=0; i<size_byte; ++i) {
+            /* big endian register file for a file on N bytes
+            Least significant byte is stored in buf[0], most one in buf[N-1] */
+            buf[i] = (uint8_t)(0x000000FF & reg_value);
+            reg_value = (reg_value >> 8);
+        }
+        spi_stat += lgw_usb_wb(usb_target, spi_mux_target, r.addr, buf, size_byte); /* write the register in one burst */
+    } else {
+        /* register spanning multiple memory bytes but with an offset */
+        DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
+        return LGW_REG_ERROR;
+    }
+
+    return spi_stat;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int reg_r_align32_usb(int usb_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
+    int spi_stat = LGW_SPI_SUCCESS;
+    uint8_t bufu[4] = "\x00\x00\x00\x00";
+    int8_t *bufs = (int8_t *)bufu;
+    int i, size_byte;
+    uint32_t u = 0;
+
+    if ((r.offs + r.leng) <= 8) {
+        /* read one byte, then shift and mask bits to get reg value with sign extension if needed */
+        spi_stat += lgw_usb_r(usb_target, spi_mux_target, r.addr, &bufu[0]);
+        bufu[1] = bufu[0] << (8 - r.leng - r.offs); /* left-align the data */
+        if (r.sign == true) {
+            bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension (ARITHMETIC right shift) */
+            *reg_value = (int32_t)bufs[2]; /* signed pointer -> 32b sign extension */
+        } else {
+            bufu[2] = bufu[1] >> (8 - r.leng); /* right align the data, no sign extension */
+            *reg_value = (int32_t)bufu[2]; /* unsigned pointer -> no sign extension */
+        }
+    } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
+        size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
+        spi_stat += lgw_usb_rb(usb_target, spi_mux_target, r.addr, bufu, size_byte);
+        u = 0;
+        for (i=(size_byte-1); i>=0; --i) {
+            u = (uint32_t)bufu[i] + (u << 8); /* transform a 4-byte array into a 32 bit word */
+        }
+        if (r.sign == true) {
+            u = u << (32 - r.leng); /* left-align the data */
+            *reg_value = (int32_t)u >> (32 - r.leng); /* right-align the data with sign extension (ARITHMETIC right shift) */
+        } else {
+            *reg_value = (int32_t)u; /* unsigned value -> return 'as is' */
+        }
+    } else {
+        /* register spanning multiple memory bytes but with an offset */
+        DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
+        return LGW_REG_ERROR;
+    }
+
+    return spi_stat;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(const char * spidev_path) {
+int lgw_connect(const char * dev_path, int spi_not_usb) {
     int spi_stat = LGW_SPI_SUCCESS;
+    int usb_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
+    bool spi_notusb;
+    s_ping_info gw_info;
+    /* */
 
+    
     /* check SPI link status */
-    if (spidev_path == NULL) {
-        DEBUG_MSG("ERROR: SPIDEV PATH IS NOT SET\n");
-        return LGW_REG_ERROR;
-    }
-    if (lgw_spi_target != NULL) {
-        DEBUG_MSG("WARNING: concentrator was already connected\n");
-        lgw_spi_close(lgw_spi_target);
-    }
+    if (dev_path == NULL) {
+        DEBUG_MSG("ERROR: DEV PATH IS NOT SET\n");
+    } 
 
-    /* open the SPI link */
-    spi_stat = lgw_spi_open(spidev_path, &lgw_spi_target);
-    if (spi_stat != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
-        return LGW_REG_ERROR;
-    }
 
-    /* check SX1302 version */
-    spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, loregs[SX1302_REG_COMMON_VERSION_VERSION].addr, &u);
-    if (spi_stat != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
-        return LGW_REG_ERROR;
-    }
-    if (u != loregs[SX1302_REG_COMMON_VERSION_VERSION].dflt) {
-        DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
-        return LGW_REG_ERROR;
-    }
-    DEBUG_PRINTF("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
+    if (spi_not_usb == 1) {
+        printf("OPEN SPI INTERFACE\n");
+        spi_en = 1;
+        usb_en = 0;
+        /* open the SPI link */
+        spi_stat = lgw_spi_open(dev_path, &lgw_spi_target);
+        if (spi_stat != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
+            return LGW_REG_ERROR;
+        }
 
+        /* check SX1302 version */
+        spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, loregs[SX1302_REG_COMMON_VERSION_VERSION].addr, &u);
+        if (spi_stat != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+            return LGW_REG_ERROR;
+        }
+        if (u != loregs[SX1302_REG_COMMON_VERSION_VERSION].dflt) {
+            DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
+            return LGW_REG_ERROR;
+        }
+        printf("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
+    }
+    else // mode USB
+    {
+        printf("OPEN USB INTERFACE\n");
+        spi_en = 0;
+        usb_en = 1;
+        mcu_fd = mcu_open(dev_path);        //mcu_fd = mcu_open("/dev/ttyACM0");
+        if (mcu_ping(mcu_fd, &gw_info) != 0) {
+            return LGW_REG_ERROR;
+        }
+        /* APPLY RESET */
+        mcu_gpio_write(mcu_fd,0,1,1); /*   set PA1 : POWER_EN*/
+        mcu_gpio_write(mcu_fd,0,2,1); /*   set PA2 : SX1302_RESET active*/
+        mcu_gpio_write(mcu_fd,0,2,0); /* unset PA2 : SX1302_RESET inactive*/
+
+        //mcu_reset(mcu_fd, true);
+
+        usb_stat = lgw_usb_r(mcu_fd ,LGW_SPI_MUX_TARGET_SX1302, loregs[SX1302_REG_COMMON_VERSION_VERSION].addr, &u);
+        if (usb_stat != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+            return LGW_REG_ERROR;
+        }
+        if (u != loregs[SX1302_REG_COMMON_VERSION_VERSION].dflt) {
+            DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
+            return LGW_REG_ERROR;
+        }
+        DEBUG_PRINTF("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
+    }
     DEBUG_MSG("Note: success connecting the concentrator\n");
     return LGW_REG_SUCCESS;
 }
@@ -1265,6 +1378,7 @@ int lgw_connect_sx1261(const char * spidev_path) {
 
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
+    mcu_close(mcu_fd);
     if (lgw_spi_target != NULL) {
         lgw_spi_close(lgw_spi_target);
         lgw_spi_target = NULL;
@@ -1290,10 +1404,10 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    /*if ((lgw_spi_target == NULL) && (mcu_fd == -1) ) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
-    }
+    }*/
 
     /* get register struct from the struct array */
     r = loregs[register_id];
@@ -1303,9 +1417,16 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
         DEBUG_MSG("ERROR: TRYING TO WRITE A READ-ONLY REGISTER\n");
         return LGW_REG_ERROR;
     }
-
-    spi_stat += reg_w_align32(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
-
+    if (spi_en == 1) {
+        spi_stat += reg_w_align32(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
+    }
+    else if (usb_en == 1)    {
+        spi_stat += reg_w_align32_usb(mcu_fd, LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
+    } else {
+        DEBUG_MSG("ERROR: SPI KO and USB KO\n");
+        return LGW_REG_ERROR;
+    }
+    
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
@@ -1329,16 +1450,24 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    /*if (lgw_spi_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
-    }
+    }*/
 
     /* get register struct from the struct array */
     r = loregs[register_id];
 
-    spi_stat += reg_r_align32(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
 
+    if (spi_en == 1) {
+        spi_stat += reg_r_align32(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
+    }
+    else if (usb_en == 1)    {
+        spi_stat += reg_r_align32_usb(mcu_fd, LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
+    } else {
+        DEBUG_MSG("ERROR: SPI KO and USB KO\n");
+        return LGW_REG_ERROR;
+    }
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
@@ -1366,10 +1495,10 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    /*if (lgw_spi_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
-    }
+    }*/
 
     /* get register struct from the struct array */
     r = loregs[register_id];
@@ -1381,8 +1510,11 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* do the burst write */
-    spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
-
+    if (usb_en) {
+        spi_stat += lgw_usb_wb(mcu_fd, LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
+    } else if (spi_en) {
+        spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
+    }
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
         return LGW_REG_ERROR;
@@ -1410,17 +1542,22 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    /*if (lgw_spi_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
-    }
+    }*/
 
     /* get register struct from the struct array */
     r = loregs[register_id];
 
     /* do the burst read */
-    spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
 
+    if (usb_en) {
+        spi_stat += lgw_usb_rb(mcu_fd, LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
+
+    } else if (spi_en) {
+        spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
+    }
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");
         return LGW_REG_ERROR;
@@ -1437,7 +1574,7 @@ int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
     uint16_t addr = mem_addr;
     uint16_t sz_todo = size;
     uint16_t chunk_size;
-    const uint16_t CHUNK_SIZE_MAX = 1024;
+    const uint16_t CHUNK_SIZE_MAX = 128;
 
     /* check input parameters */
     CHECK_NULL(data);
@@ -1447,19 +1584,22 @@ int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
-        return LGW_REG_ERROR;
-    }
+    /*if (lgw_spi_target == NULL) {
+        printf("ERROR: CONCENTRATOR UNCONNECTED\n");
+        //return LGW_REG_ERROR;
+    }*/
 
     /* write memory by chunks */
     while (sz_todo > 0) {
         /* full or partial chunk ? */
         chunk_size = (sz_todo > CHUNK_SIZE_MAX) ? CHUNK_SIZE_MAX : sz_todo;
 
-        /* do the burst write */
-        spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
-
+        /* do the burst write */                
+        if (usb_en) {
+            spi_stat += lgw_usb_wb(mcu_fd, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+        } else if (spi_en) {
+            spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+        }
         /* prepare for next write */
         addr += chunk_size;
         sz_todo -= chunk_size;
@@ -1482,7 +1622,7 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) 
     uint16_t addr = mem_addr;
     uint16_t sz_todo = size;
     uint16_t chunk_size;
-    const uint16_t CHUNK_SIZE_MAX = 1024;
+    const uint16_t CHUNK_SIZE_MAX = 128;
 
     /* check input parameters */
     CHECK_NULL(data);
@@ -1492,10 +1632,10 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) 
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
-        return LGW_REG_ERROR;
-    }
+    /*if (lgw_spi_target == NULL) {
+        printf("ERROR: CONCENTRATOR UNCONNECTED\n");
+        //return LGW_REG_ERROR;
+    }*/
 
     /* read memory by chunks */
     while (sz_todo > 0) {
@@ -1503,8 +1643,16 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) 
         chunk_size = (sz_todo > CHUNK_SIZE_MAX) ? CHUNK_SIZE_MAX : sz_todo;
 
         /* do the burst read */
-        spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
-
+        //spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+         
+        if (usb_en) {
+            spi_stat += lgw_usb_rb(mcu_fd, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+        } else if (spi_en) {
+            spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+        } else {
+            DEBUG_MSG("ERROR: SPI KO and USB KO\n");
+            return LGW_REG_ERROR;
+        }
         /* do not increment the address when the target memory is in FIFO mode (auto-increment) */
         if (fifo_mode == false) {
             addr += chunk_size;

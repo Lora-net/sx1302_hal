@@ -80,6 +80,7 @@ void usage(void) {
     printf(" -t <uint>  TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger\n");
     printf(" -p <int>   RF power in dBm\n");
     printf(" -i         Send LoRa packet using inverted modulation polarity\n");
+    printf(" -j         Set radio in single input mode (SX1250 only)\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain SX125x:[0..3], SX1250:[0,1]\n");
     printf(" --dig  <uint> sx1302 digital gain for sx125x [0..3]\n");
@@ -131,6 +132,7 @@ int main(int argc, char **argv)
     uint16_t preamble = 8;
     bool invert_pol = false;
     bool no_header = false;
+    bool single_input_mode = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -165,7 +167,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -173,6 +175,9 @@ int main(int argc, char **argv)
                 break;
             case 'i': /* Send packet using inverted modulation polarity */
                 invert_pol = true;
+                break;
+            case 'j': /* Set radio in single input mode */
+                single_input_mode = true;
                 break;
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
@@ -415,8 +420,8 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    strncpy(boardconf.dev_path, spidev_path, sizeof boardconf.dev_path);
+    boardconf.dev_path[sizeof boardconf.dev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -424,9 +429,10 @@ int main(int argc, char **argv)
 
     memset( &rfconf, 0, sizeof rfconf);
     rfconf.enable = true; /* rf chain 0 needs to be enabled for calibration to work on sx1257 */
-    rfconf.freq_hz = 868500000; /* dummy */
+    rfconf.freq_hz = ft;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -437,6 +443,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = 868500000; /* dummy */
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;

@@ -103,6 +103,7 @@ void usage(void) {
     printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
+    printf(" -j        Set radio in single input mode (SX1250 only)\n");
     printf(" -f <float> Radio TX frequency in MHz\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain [0..3]\n");
@@ -465,6 +466,7 @@ int main(int argc, char **argv)
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+    bool single_input_mode = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -490,7 +492,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hf:k:r:c:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hjf:k:r:c:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -541,6 +543,10 @@ int main(int argc, char **argv)
                 } else {
                     rf_chain = (uint8_t)arg_u;
                 }
+                break;
+
+            case 'j':
+                single_input_mode = true;
                 break;
 
             case 'f': /* <float> Radio TX frequency in MHz */
@@ -604,8 +610,8 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    strncpy(boardconf.dev_path, spidev_path, sizeof boardconf.dev_path);
+    boardconf.dev_path[sizeof boardconf.dev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -616,6 +622,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = ft;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -626,6 +633,7 @@ int main(int argc, char **argv)
     rfconf.freq_hz = ft;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;
@@ -642,7 +650,7 @@ int main(int argc, char **argv)
     fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(spidev_path, 1 );
     if (x != 0) {
         printf("ERROR: failed to connect the gateway\n");
         return EXIT_FAILURE;

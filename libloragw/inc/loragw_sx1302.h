@@ -350,28 +350,15 @@ void sx1302_arb_print_debug_stats(void);
 uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
-*/
-uint16_t sx1302_rx_buffer_read_ptr_addr(void);
-
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
-uint16_t sx1302_rx_buffer_write_ptr_addr(void);
-
-/**
-@brief Check if any data to be fetched from the SX1302 RX buffer and fetch it if any.
-@param nb_bytes A pointer to allocated memory to hold the number of bytes fetched
+@brief Get the number of packets available in rx_buffer and fetch data from ...
+@brief ... the SX1302 if rx_buffer is empty.
+@param  nb_pkt A pointer to allocated memory to hold the number of packet fetched
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_fetch(uint16_t * nb_bytes);
+int sx1302_fetch(uint8_t * nb_pkt);
 
 /**
-@brief Parse and return the next packet available in the fetched RX buffer.
+@brief Parse and return the next packet available in rx_buffer.
 @param context      Gateway configuration context
 @param p            The structure to get the packet parsed
 @return LGW_REG_SUCCESS if a packet could be parsed, LGW_REG_ERROR otherwise
@@ -384,9 +371,10 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p);
 @param radio_type   The type of radio for this RF chain
 @param modulation   The modulation used for the TX
 @param bandwidth    The bandwidth used for the TX
+@param delay        The TX start delay calculated and applied
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth);
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint16_t * delay);
 
 /**
 @brief Compute the offset to be applied on RSSI for temperature compensation

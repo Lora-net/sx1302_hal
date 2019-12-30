@@ -26,6 +26,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>  /* printf fprintf */
 #include <time.h>   /* clock_nanosleep */
 
+#include <stdint.h>  /* C99 types */
+#include <stdbool.h> /* bool type */
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -72,5 +75,38 @@ void wait_us(unsigned long a) {
     }
     return;
 }
+
+
+
+uint32_t bytes_be_to_uint32_le(const uint8_t * bytes) {
+    uint32_t val = 0;
+
+    if (bytes != NULL) {
+        /* Big endian to Little Endian */
+        val  = (uint32_t)(bytes[0] << 24);
+        val |= (uint32_t)(bytes[1] << 16);
+        val |= (uint32_t)(bytes[2] << 8);
+        val |= (uint32_t)(bytes[3] << 0);
+    }
+
+    return val;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int32_t bytes_be_to_int32_le(const uint8_t * bytes) {
+    int32_t val = 0;
+
+    if (bytes != NULL) {
+        /* Big endian to Little Endian */
+        val  = (int32_t)(bytes[0] << 24);
+        val |= (int32_t)(bytes[1] << 16);
+        val |= (int32_t)(bytes[2] << 8);
+        val |= (int32_t)(bytes[3] << 0);
+    }
+
+    return val;
+}
+
 
 /* --- EOF ------------------------------------------------------------------ */

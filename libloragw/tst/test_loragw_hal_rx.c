@@ -67,13 +67,17 @@ static void sig_handler(int sigio) {
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
-    printf( " -a <float> Radio A RX frequency in MHz\n");
-    printf( " -b <float> Radio B RX frequency in MHz\n");
-    printf( " -n <uint> number of packet received with CRC OK for each HAL start/stop loop\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
+    printf(" -a <float>    Radio A RX frequency in MHz\n");
+    printf(" -b <float>    Radio B RX frequency in MHz\n");
+    printf(" -o <float>    RSSI Offset to be applied in dB\n");
+    printf(" -n <uint>     Number of packet received with CRC OK for each HAL start/stop loop\n");
+    printf(" -z <uint>     Size of the RX packet array to be passed to lgw_receive()\n");
+    printf(" -m <uint>     Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]\n");
+    printf(" -j            Set radio in single input mode (SX1250 only)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -94,31 +98,49 @@ int main(int argc, char **argv)
     unsigned int arg_u;
     uint8_t clocksource = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+    uint8_t max_rx_pkt = 16;
+    bool single_input_mode = false;
+    float rssi_offset = 0.0;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
-    struct lgw_pkt_rx_s rxpkt[16];
 
-    unsigned long nb_pkt_crc_ok = 0, nb_loop = 1, cnt_loop;
+    unsigned long nb_pkt_crc_ok = 0, nb_loop = 0, cnt_loop;
     int nb_pkt;
 
-    const int32_t channel_if[9] = {
+    uint8_t channel_mode = 0; /* LoRaWAN-like */
+
+    const int32_t channel_if_mode0[9] = {
         -400000,
         -200000,
         0,
         -400000,
         -200000,
         0,
-        200000,
-        400000,
-        -200000 /* lora service */
+        -400000,
+        -200000,
+        -400000 /* lora service */
     };
 
-    const uint8_t channel_rfchain[9] = { 1, 1, 1, 0, 0, 0, 0, 0, 1 };
+    const int32_t channel_if_mode1[9] = {
+        -400000,
+        -400000,
+        -400000,
+        -400000,
+        -400000,
+        -400000,
+        -400000,
+        -400000,
+        -400000 /* lora service */
+    };
+
+    const uint8_t channel_rfchain_mode0[9] = { 1, 1, 1, 0, 0, 0, 0, 0, 1 };
+
+    const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:k:r:n:")) != -1) {
+    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -152,6 +174,9 @@ int main(int argc, char **argv)
                     clocksource = (uint8_t)arg_u;
                 }
                 break;
+            case 'j': /* Set radio in single input mode */
+                single_input_mode = true;
+                break;
             case 'a': /* <float> Radio A RX frequency in MHz */
                 i = sscanf(optarg, "%lf", &arg_d);
                 if (i != 1) {
@@ -179,6 +204,33 @@ int main(int argc, char **argv)
                     nb_loop = arg_u;
                 }
                 break;
+            case 'z': /* <uint> Size of the RX packet array to be passed to lgw_receive() */
+                i = sscanf(optarg, "%u", &arg_u);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -z argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    max_rx_pkt = arg_u;
+                }
+                break;
+            case 'm':
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 1)) {
+                    printf("ERROR: argument parsing of -m argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    channel_mode = arg_u;
+                }
+                break;
+            case 'o': /* <float> RSSI offset in dB */
+                i = sscanf(optarg, "%lf", &arg_d);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    rssi_offset = (float)arg_d;
+                }
+                break;
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -201,8 +253,8 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    strncpy(boardconf.dev_path, spidev_path, sizeof boardconf.dev_path);
+    boardconf.dev_path[sizeof boardconf.dev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -213,7 +265,9 @@ int main(int argc, char **argv)
     rfconf.enable = true;
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
+    rfconf.rssi_offset = rssi_offset;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -223,7 +277,9 @@ int main(int argc, char **argv)
     rfconf.enable = true;
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
+    rfconf.rssi_offset = rssi_offset;
     rfconf.tx_enable = false;
+    rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;
@@ -231,16 +287,40 @@ int main(int argc, char **argv)
 
     /* set configuration for LoRa multi-SF channels (bandwidth cannot be set) */
     memset(&ifconf, 0, sizeof(ifconf));
-    for (i = 0; i < 9; i++) {
+    for (i = 0; i < 8; i++) {
         ifconf.enable = true;
-        ifconf.rf_chain = channel_rfchain[i];
-        ifconf.freq_hz = channel_if[i];
+        if (channel_mode == 0) {
+            ifconf.rf_chain = channel_rfchain_mode0[i];
+            ifconf.freq_hz = channel_if_mode0[i];
+        } else if (channel_mode == 1) {
+            ifconf.rf_chain = channel_rfchain_mode1[i];
+            ifconf.freq_hz = channel_if_mode1[i];
+        } else {
+            printf("ERROR: channel mode not supported\n");
+            return EXIT_FAILURE;
+        }
         ifconf.datarate = DR_LORA_SF7;
         if (lgw_rxif_setconf(i, &ifconf) != LGW_HAL_SUCCESS) {
             printf("ERROR: failed to configure rxif %d\n", i);
             return EXIT_FAILURE;
         }
     }
+
+    /* set configuration for LoRa Service channel */
+    memset(&ifconf, 0, sizeof(ifconf));
+    ifconf.rf_chain = channel_rfchain_mode0[i];
+    ifconf.freq_hz = channel_if_mode0[i];
+    ifconf.datarate = DR_LORA_SF7;
+    ifconf.bandwidth = BW_250KHZ;
+    if (lgw_rxif_setconf(8, &ifconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxif for LoRa service channel\n");
+        return EXIT_FAILURE;
+    }
+
+    /* set the buffer size to hold received packets */
+    struct lgw_pkt_rx_s rxpkt[max_rx_pkt];
+    printf("INFO: rxpkt buffer size is set to %u\n", max_rx_pkt);
+    printf("INFO: Select channel mode %u\n", channel_mode);
 
     /* Loop until user quits */
     cnt_loop = 0;
@@ -264,14 +344,13 @@ int main(int argc, char **argv)
         /* Loop until we have enough packets with CRC OK */
         printf("Waiting for packets...\n");
         nb_pkt_crc_ok = 0;
-        while ((nb_pkt_crc_ok < nb_loop) && (quit_sig != 1) && (exit_sig != 1)) {
+        while (((nb_pkt_crc_ok < nb_loop) || nb_loop == 0) && (quit_sig != 1) && (exit_sig != 1)) {
             /* fetch N packets */
             nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
 
             if (nb_pkt == 0) {
                 wait_ms(10);
             } else {
-                printf("Received %d packets\n", nb_pkt);
                 for (i = 0; i < nb_pkt; i++) {
                     if (rxpkt[i].status == STAT_CRC_OK) {
                         nb_pkt_crc_ok += 1;
@@ -294,6 +373,7 @@ int main(int argc, char **argv)
                     }
                     printf("\n");
                 }
+                printf("Received %d packets (total:%lu)\n", nb_pkt, nb_pkt_crc_ok);
             }
         }
 

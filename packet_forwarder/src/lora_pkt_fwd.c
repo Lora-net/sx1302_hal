@@ -314,7 +314,6 @@ static int parse_SX130x_configuration(const char * conf_file) {
     struct lgw_conf_lbt_s lbtconf  ;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
-
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
@@ -333,15 +332,26 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
-    str = json_object_get_string(conf_obj, "spidev_path");
+    str = json_object_get_string(conf_obj, "dev_path");
     if (str != NULL) {
-        strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
-        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+        strncpy(boardconf.dev_path, str, sizeof boardconf.dev_path);
+        boardconf.dev_path[sizeof boardconf.dev_path - 1] = '\0'; /* ensure string termination */
     } else {
         MSG("ERROR: spidev path must be configured in %s\n", conf_file);
-        return -1;
+        //return -1;
     }
 
+
+    str = json_object_dotget_string(conf_obj, "interface");
+    if (!strncmp(str, "spi", 3)) {
+        boardconf.spi_not_usb = 1;
+    } else if (!strncmp(str, "usb", 3)) {
+        boardconf.spi_not_usb = 0;
+    } else {
+        MSG("WARNING: invalid interface: %s (should be spi or usb)\n", str);
+    }
+
+    
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
@@ -363,7 +373,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: spidev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.spidev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: dev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.dev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
@@ -534,6 +544,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
             } else {
                 MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257 or SX1250)\n", str);
             }
+            snprintf(param_name, sizeof param_name, "radio_%i.single_input_mode", i);
+            val = json_object_dotget_value(conf_obj, param_name);
+            if (json_value_get_type(val) == JSONBoolean) {
+                rfconf.single_input_mode = (bool)json_value_get_boolean(val);
+            } else {
+                rfconf.single_input_mode = false;
+            }
+
             snprintf(param_name, sizeof param_name, "radio_%i.tx_enable", i);
             val = json_object_dotget_value(conf_obj, param_name);
             if (json_value_get_type(val) == JSONBoolean) {
@@ -644,7 +662,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
+            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, single input mode %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.single_input_mode);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
@@ -1670,9 +1688,9 @@ int main(int argc, char ** argv)
         /* generate a JSON report (will be sent to server by upstream thread) */
         pthread_mutex_lock(&mx_stat_rep);
         if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
         } else {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
         }
         report_ready = true;
         pthread_mutex_unlock(&mx_stat_rep);

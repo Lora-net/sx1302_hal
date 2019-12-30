@@ -1,0 +1,9 @@
+*/*.a
+*/obj/
+*.swp
+bin/
+libloragw/inc/config.h
+libloragw/test_loragw_*
+packet_forwarder/lora_pkt_fwd
+util_chip_id/chip_id
+util_net_downlink/net_downlink

@@ -112,7 +112,7 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(spidev_path, 1 );
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to connect to the concentrator using SPI %s\n", spidev_path);
         return EXIT_FAILURE;
