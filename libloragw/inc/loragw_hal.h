@@ -150,8 +150,8 @@ struct lgw_conf_board_s {
     bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
     uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
     bool    full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
-    char    dev_path[64];   /*!> Path to access the SPI device to connect to the SX1302 */
-    uint8_t  spi_not_usb;        /*!>*/
+    char    com_path[64];   /*!> Path to access the SPI device to connect to the SX1302 */
+    //uint8_t  spi_not_usb;        /*!>*/
 };
 
 /**

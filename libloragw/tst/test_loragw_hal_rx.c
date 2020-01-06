@@ -70,6 +70,7 @@ void usage(void) {
     printf("Available options:\n");
     printf(" -h print this help\n");
     printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -d <path>     use Linux device driver\n");
     printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
     printf(" -a <float>    Radio A RX frequency in MHz\n");
     printf(" -b <float>    Radio B RX frequency in MHz\n");
@@ -86,8 +87,8 @@ void usage(void) {
 int main(int argc, char **argv)
 {
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * com_path = com_path_default;
 
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -139,8 +140,9 @@ int main(int argc, char **argv)
 
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+    
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
+    while ((i = getopt (argc, argv, "hja:d:b:k:r:n:z:m:o:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -172,6 +174,11 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     clocksource = (uint8_t)arg_u;
+                }
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
                 }
                 break;
             case 'j': /* Set radio in single input mode */
@@ -253,8 +260,8 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.dev_path, spidev_path, sizeof boardconf.dev_path);
-    boardconf.dev_path[sizeof boardconf.dev_path - 1] = '\0'; /* ensure string termination */
+    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
+    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;

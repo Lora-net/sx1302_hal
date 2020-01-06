@@ -62,9 +62,8 @@ int main(int argc, char ** argv)
     uint8_t reg_max;
 
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
-
+    const char com_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * com_path = com_path_default;
     /* Parse command line options */
     while ((i = getopt(argc, argv, "hd:")) != -1) {
         switch (i) {
@@ -75,7 +74,7 @@ int main(int argc, char ** argv)
 
             case 'd':
                 if (optarg != NULL) {
-                    spidev_path = optarg;
+                    com_path = optarg;
                 }
                 break;
 
@@ -92,7 +91,8 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
-    x = lgw_connect(spidev_path, 1 );
+    x = lgw_connect(com_path );
+    
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to connect\n");
         return -1;

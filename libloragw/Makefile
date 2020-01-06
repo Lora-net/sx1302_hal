@@ -60,6 +60,7 @@ inc/config.h: ../VERSION library.cfg
 	@echo "Release version   : $(LIBLORAGW_VERSION)"
 	@echo "	#define LIBLORAGW_VERSION	"\"$(LIBLORAGW_VERSION)\""" >> $@
 	# Debug options
+	@echo "	#define COM_USB  	$(COM_USB)"   >> $@
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
 	@echo "	#define DEBUG_I2C	$(DEBUG_I2C)" >> $@

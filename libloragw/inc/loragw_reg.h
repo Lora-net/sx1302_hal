@@ -1438,7 +1438,7 @@ int reg_w_align32_usb(int usb_target, uint8_t spi_mux_target, struct lgw_reg_s r
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 //int lgw_connect(const char * spidev_path, const char * usbdev_path);
-int lgw_connect(const char * dev_path, int spi_not_usb) ;
+int lgw_connect(const char * dev_path) ;
 int lgw_connect_sx1261(const char * spidev_path);
 
 /**

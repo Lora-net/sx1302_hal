@@ -70,8 +70,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 #define CONTEXT_STARTED         lgw_context.is_started
-#define CONTEXT_IF              lgw_context.board_cfg.dev_path
-#define CONTEXT_SPI_NOT_USB     lgw_context.board_cfg.spi_not_usb
+#define CONTEXT_COM_PATH        lgw_context.board_cfg.com_path
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
@@ -120,8 +119,7 @@ the _start and _send functions assume they are valid.
 */
 static lgw_context_t lgw_context = {
     .is_started = false,
-    .board_cfg.dev_path = "/dev/spidev0.0",
-    .board_cfg.spi_not_usb = 1,
+    .board_cfg.com_path = "/dev/spidev0.0",
     .board_cfg.lorawan_public = true,
     .board_cfg.clksrc = 0,
     .board_cfg.full_duplex = false,
@@ -242,15 +240,14 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_LWAN_PUBLIC = conf->lorawan_public;
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
-    strncpy(CONTEXT_IF, conf->dev_path, sizeof CONTEXT_IF);
-    CONTEXT_IF[sizeof CONTEXT_IF - 1] = '\0'; /* ensure string termination */
-    CONTEXT_BOARD.spi_not_usb = conf->spi_not_usb;
+    strncpy(CONTEXT_COM_PATH, conf->com_path, sizeof CONTEXT_COM_PATH);
+    CONTEXT_COM_PATH[sizeof CONTEXT_COM_PATH - 1] = '\0'; /* ensure string termination */
 
-    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_IF,
-                                                                                                                                
-                                                                                                                                CONTEXT_LWAN_PUBLIC,
-                                                                                                                                CONTEXT_BOARD.clksrc,
-                                                                                                                                CONTEXT_BOARD.full_duplex);
+    //DEBUG_PRINTF("Note: board configuration: com_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",     CONTEXT_COM_PATH,          
+    printf("Note: board configuration: com_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",     CONTEXT_COM_PATH,                                                                                                                           
+                                                                                                                CONTEXT_LWAN_PUBLIC,
+                                                                                                                CONTEXT_BOARD.clksrc,
+                                                                                                                CONTEXT_BOARD.full_duplex);
 
     return LGW_HAL_SUCCESS;
 }
@@ -596,12 +593,12 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 int lgw_start(void) {
     int i, err;
     int reg_stat;
-
+    
     if (CONTEXT_STARTED == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(CONTEXT_IF,  CONTEXT_BOARD.spi_not_usb );
+    reg_stat = lgw_connect(CONTEXT_COM_PATH);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -609,6 +606,7 @@ int lgw_start(void) {
 
     
     if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == 2)) {
+        
         lgw_connect_sx1261("/dev/spidev0.1");
         sx1261_load_pram();
         i = sx1261_setup(864900000); //100 kHz step

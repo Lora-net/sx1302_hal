@@ -332,24 +332,24 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
-    str = json_object_get_string(conf_obj, "dev_path");
+    str = json_object_get_string(conf_obj, "com_path");
     if (str != NULL) {
-        strncpy(boardconf.dev_path, str, sizeof boardconf.dev_path);
-        boardconf.dev_path[sizeof boardconf.dev_path - 1] = '\0'; /* ensure string termination */
+        strncpy(boardconf.com_path, str, sizeof boardconf.com_path);
+        boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     } else {
         MSG("ERROR: spidev path must be configured in %s\n", conf_file);
         //return -1;
     }
 
 
-    str = json_object_dotget_string(conf_obj, "interface");
+    /*str = json_object_dotget_string(conf_obj, "interface");
     if (!strncmp(str, "spi", 3)) {
         boardconf.spi_not_usb = 1;
     } else if (!strncmp(str, "usb", 3)) {
         boardconf.spi_not_usb = 0;
     } else {
         MSG("WARNING: invalid interface: %s (should be spi or usb)\n", str);
-    }
+    }*/
 
     
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
@@ -373,7 +373,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: dev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.dev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: com_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.com_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");

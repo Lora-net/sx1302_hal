@@ -28,6 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_spi.h"
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 #include "loragw_aux.h"
 #include "loragw_sx1261.h"
 #include "pram_lbt_scan.h"
@@ -58,16 +59,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
 extern void *sx1261_lgw_spi_target; /*! generic pointer to the SPI device */
-
+extern int  mcu_fd;
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int sx1261_write_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
     int cmd_size = 1; /*  op_code */
     uint8_t out_buf[cmd_size + size];
+    uint8_t in_buf[cmd_size + size + 4 ];
     uint8_t command_size;
-    struct spi_ioc_transfer k;
     int a, i;
 
     /* wait BUSY */
@@ -75,12 +75,35 @@ int sx1261_write_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size
     wait_us(WAIT_BUSY_SX1261_US);
 
     /* check input variables */
-    CHECK_NULL(sx1261_lgw_spi_target);
 
+#if COM_USB == 1
+
+    out_buf[0] = 1;
+    out_buf[1] = (uint8_t)op_code;
+    for(i = 0; i < (int)size; i++) {
+        out_buf[cmd_size + 1 + i] = data[i];
+    }
+    command_size = 1+ cmd_size + size;
+    //printf("USB write burst @ 0x%4x size : %x\n", address, size);
+    a = mcu_spi_access(mcu_fd,out_buf,command_size,in_buf);
+
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB WRITE FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB write success\n");
+        return 0;
+    }
+#else
+    int spi_device;
+    struct spi_ioc_transfer k;
+
+    CHECK_NULL(sx1261_lgw_spi_target);
     spi_device = *(int *)sx1261_lgw_spi_target; /* must check that spi_target is not null beforehand */
 
     /* prepare frame to be sent */
-    
+
     out_buf[0] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
@@ -104,23 +127,45 @@ int sx1261_write_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size
         DEBUG_MSG("Note: SPI write success\n");
         return LGW_SPI_SUCCESS;
     }
+#endif
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_read_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
     int cmd_size = 1; /* header + op_code + NOP */
     uint8_t out_buf[cmd_size + size];
     uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
+    //uint8_t in_buf[ARRAY_SIZE(out_buf)];
+    uint8_t in_buf[cmd_size + size + 4 ];
     int a, i;
 
     /* wait BUSY */
     //wait_ms(WAIT_BUSY_SX1261_MS);
     wait_us(WAIT_BUSY_SX1261_US);
 
+#if COM_USB == 1
+    out_buf[0] = 1;
+    out_buf[1] = (uint8_t)op_code;
+    for(i = 0; i < (int)size; i++) {
+        out_buf[cmd_size + 1 + i] = data[i];
+    }
+    command_size = 1+ cmd_size + size;
+    //printf("USB write burst @ 0x%4x size : %x\n", address, size);
+    a = mcu_spi_access(mcu_fd,out_buf,command_size,in_buf);
+
+    memcpy(data, in_buf + 4+cmd_size, size);
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB WRITE FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB write success\n");
+        return 0;
+    }
+#else
+    int spi_device;
+    struct spi_ioc_transfer k;
     /* check input variables */
     CHECK_NULL(sx1261_lgw_spi_target);
     CHECK_NULL(data);
@@ -152,6 +197,7 @@ int sx1261_read_command( sx1261_op_code_t op_code, uint8_t *data, uint16_t size)
         memcpy(data, in_buf + cmd_size, size);
         return LGW_SPI_SUCCESS;
     }
+#endif
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -202,7 +248,7 @@ int sx1261_calibrate(uint32_t freq_hz) {
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-int sx1261_load_pram (void) {
+int sx1261_load_pram ( void) {
     uint8_t buff[32];
     uint16_t k;
 
@@ -287,6 +333,7 @@ int sx1261_load_pram (void) {
     printf(" @0x610 d: 0x%x 0x%x \n", buff[2], buff[3]);
 
     
+    printf(" PRAM_COUNT : %d \n", PRAM_COUNT);
     for(uint16_t i=0; i< PRAM_COUNT; i++)
     {
         uint32_t val = pram[i];
