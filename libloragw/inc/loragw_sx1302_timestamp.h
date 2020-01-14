@@ -86,6 +86,14 @@ void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt
 uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us);
 
 /**
+@brief Convert the 27-bits packet timestamp to a 32-bits counter which wraps on a uint32_t.
+@param self     Pointer to the counter handler
+@param cnt_us   The packet 27-bits counter to be expanded
+@return the 32-bits counter
+*/
+uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t cnt_us);
+
+/**
 @brief Reads the SX1302 internal counter register, and return the 32-bits 1 MHz counter
 @param self     Pointer to the counter handler
 @param pps      Set to true to expand the counter based on the PPS trig wrapping status

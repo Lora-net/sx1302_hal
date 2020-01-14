@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
+#include <assert.h>     /* assert */
 
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_reg.h"
@@ -117,20 +118,42 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
     int x;
     uint8_t buff[4];
     uint32_t counter_us_raw_27bits_now;
+    int32_t msb;
 
     /* Get the 32MHz timestamp counter - 4 bytes */
-    /* step of 31.25 ns */
-    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS : SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP, &buff[0], 4);
+    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
+                                   SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP,
+                                   &buff[0], 4);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter value\n");
         return 0;
     }
 
-    counter_us_raw_27bits_now  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    counter_us_raw_27bits_now |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
-    counter_us_raw_27bits_now /= 32; /* scale to 1MHz */
+    /* Workaround concentrator chip issue:
+        - read MSB again
+        - if MSB changed, read the full counter gain
+     */
+    x = lgw_reg_r((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
+                                  SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP,
+                                  &msb);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to get timestamp counter MSB value\n");
+        return 0;
+    }
+    if (msb != buff[0]) {
+        x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
+                                       SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP,
+                                       &buff[0], 4);
+        if (x != LGW_REG_SUCCESS) {
+            printf("ERROR: Failed to get timestamp counter value\n");
+            return 0;
+        }
+    }
+
+    counter_us_raw_27bits_now = (buff[0]<<24) | (buff[1]<<16) | (buff[2]<<8) | buff[3];
+
+    /* Scale to 1MHz */
+    counter_us_raw_27bits_now /= 32;
 
     /* Update counter wrapping status */
     timestamp_counter_update(self, pps, counter_us_raw_27bits_now);
@@ -158,6 +181,31 @@ uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t
     */
     printf("%u,%u,%u\n", cnt_us, counter_us_32bits, (pps == true) ? self->counter_us_raw_27bits_pps_wrap : self->counter_us_raw_27bits_inst_wrap);
 #endif
+
+    return counter_us_32bits;
+}
+
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t pkt_cnt_us) {
+    uint32_t counter_us_32bits;
+
+    /* Check if counter has wrapped since the packet has been received in the sx1302 internal FIFO */
+    /* If the sx1302 counter was greater than the pkt timestamp, it means that the internal counter
+        hasn't rolled over since the packet has been received by the sx1302
+        case 1: --|-P--|----|--R-|----|--||-|----|-- : use current wrap status counter
+        case 2: --|-P-||-|-R--|-- : use previous wrap status counter
+        P : packet received in sx1302 internal FIFO
+        R : read packet from sx1302 internal FIFO
+        | : last update internal counter ref value.
+        ||: sx1302 internal counter rollover (wrap)
+    */
+    if (self->counter_us_raw_27bits_inst_prev >= pkt_cnt_us) {
+        counter_us_32bits = (self->counter_us_raw_27bits_inst_wrap << 27) | pkt_cnt_us;
+    } else {
+        counter_us_32bits = ((self->counter_us_raw_27bits_inst_wrap - 1) << 27) | pkt_cnt_us;
+    }
 
     return counter_us_32bits;
 }
