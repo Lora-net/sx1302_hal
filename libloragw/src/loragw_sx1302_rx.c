@@ -277,13 +277,6 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
 
-#if 0
-    /* Scale packet timestamp to 1 MHz (microseconds) */
-    pkt->timestamp_cnt /= 32;
-    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
-    pkt->timestamp_cnt = timestamp_counter_expand(&counter_us, false, pkt->timestamp_cnt);
-#endif
-
     DEBUG_MSG   ("-----------------\n");
     DEBUG_PRINTF("  modem:      %u\n", pkt->modem_id);
     DEBUG_PRINTF("  chan:       %u\n", pkt->rx_channel_in);
