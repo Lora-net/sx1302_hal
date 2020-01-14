@@ -25,7 +25,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types*/
-#include <stdbool.h>       /* boolean type */
+#include <stdbool.h>    /* boolean type */
 
 
 #include "config.h"     /* library configuration options (dynamically generated) */
@@ -41,13 +41,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /**
 @struct timestamp_counter_s
-@brief context to maintain the internal counters (inst and pps trig) wrapping
+@brief context to maintain the internal counters (inst and pps trig) rollover status
 */
+struct timestamp_info_s {
+    uint32_t counter_us_27bits_ref;     /* reference value (last read) */
+    uint8_t  counter_us_27bits_wrap;    /* rollover/wrap status */
+};
 typedef struct timestamp_counter_s {
-    uint32_t counter_us_raw_27bits_inst_prev;
-    uint32_t counter_us_raw_27bits_pps_prev;
-    uint8_t  counter_us_raw_27bits_inst_wrap;
-    uint8_t  counter_us_raw_27bits_pps_wrap;
+    struct timestamp_info_s inst; /* holds current reference of the instantaneous counter */
+    struct timestamp_info_s pps;  /* holds current reference of the pps-trigged counter */
 } timestamp_counter_t;
 
 /* -------------------------------------------------------------------------- */
