@@ -132,14 +132,23 @@ int rx_buffer_del(rx_buffer_t * self) {
 int rx_buffer_fetch(rx_buffer_t * self) {
     int i, res;
     uint8_t buff[2];
+    int32_t msb;
 
     /* Check input params */
     CHECK_NULL(self);
 
     /* Check if there is data in the FIFO */
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    self->buffer_size  = (uint16_t)((buff[0] << 8) & 0xFF00);
-    self->buffer_size |= (uint16_t)((buff[1] << 0) & 0x00FF);
+    /* Workaround concentrator chip issue:
+        - read MSB again
+        - if MSB changed, read the full size gain
+     */
+    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, &msb);
+    if (buff[0] != (uint8_t)msb) {
+        lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    }
+
+    self->buffer_size  = (buff[0] << 8) | (buff[1] << 0);
 
     /* Fetch bytes from fifo if any */
     if (self->buffer_size > 0) {
