@@ -325,7 +325,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     /* Move buffer index toward next message */
     self->buffer_index += (SX1302_PKT_HEAD_METADATA + pkt->rxbytenb_modem + SX1302_PKT_TAIL_METADATA + (2 * pkt->num_ts_metrics_stored));
 
-    /* Update the umber of packets currently stored in the rx_buffer */
+    /* Update the number of packets currently stored in the rx_buffer */
     self->buffer_pkt_nb -= 1;
 
     return LGW_REG_SUCCESS;
