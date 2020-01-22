@@ -132,14 +132,23 @@ int rx_buffer_del(rx_buffer_t * self) {
 int rx_buffer_fetch(rx_buffer_t * self) {
     int i, res;
     uint8_t buff[2];
+    int32_t msb;
 
     /* Check input params */
     CHECK_NULL(self);
 
     /* Check if there is data in the FIFO */
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    self->buffer_size  = (uint16_t)((buff[0] << 8) & 0xFF00);
-    self->buffer_size |= (uint16_t)((buff[1] << 0) & 0x00FF);
+    /* Workaround concentrator chip issue:
+        - read MSB again
+        - if MSB changed, read the full size gain
+     */
+    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, &msb);
+    if (buff[0] != (uint8_t)msb) {
+        lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    }
+
+    self->buffer_size  = (buff[0] << 8) | (buff[1] << 0);
 
     /* Fetch bytes from fifo if any */
     if (self->buffer_size > 0) {
@@ -277,13 +286,6 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
 
-#if 0
-    /* Scale packet timestamp to 1 MHz (microseconds) */
-    pkt->timestamp_cnt /= 32;
-    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
-    pkt->timestamp_cnt = timestamp_counter_expand(&counter_us, false, pkt->timestamp_cnt);
-#endif
-
     DEBUG_MSG   ("-----------------\n");
     DEBUG_PRINTF("  modem:      %u\n", pkt->modem_id);
     DEBUG_PRINTF("  chan:       %u\n", pkt->rx_channel_in);
@@ -323,7 +325,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     /* Move buffer index toward next message */
     self->buffer_index += (SX1302_PKT_HEAD_METADATA + pkt->rxbytenb_modem + SX1302_PKT_TAIL_METADATA + (2 * pkt->num_ts_metrics_stored));
 
-    /* Update the umber of packets currently stored in the rx_buffer */
+    /* Update the number of packets currently stored in the rx_buffer */
     self->buffer_pkt_nb -= 1;
 
     return LGW_REG_SUCCESS;

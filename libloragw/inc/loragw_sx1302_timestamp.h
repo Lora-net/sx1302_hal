@@ -25,7 +25,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types*/
-#include <stdbool.h>       /* boolean type */
+#include <stdbool.h>    /* boolean type */
 
 
 #include "config.h"     /* library configuration options (dynamically generated) */
@@ -41,13 +41,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /**
 @struct timestamp_counter_s
-@brief context to maintain the internal counters (inst and pps trig) wrapping
+@brief context to maintain the internal counters (inst and pps trig) rollover status
 */
+struct timestamp_info_s {
+    uint32_t counter_us_27bits_ref;     /* reference value (last read) */
+    uint8_t  counter_us_27bits_wrap;    /* rollover/wrap status */
+};
 typedef struct timestamp_counter_s {
-    uint32_t counter_us_raw_27bits_inst_prev;
-    uint32_t counter_us_raw_27bits_pps_prev;
-    uint8_t  counter_us_raw_27bits_inst_wrap;
-    uint8_t  counter_us_raw_27bits_pps_wrap;
+    struct timestamp_info_s inst; /* holds current reference of the instantaneous counter */
+    struct timestamp_info_s pps;  /* holds current reference of the pps-trigged counter */
 } timestamp_counter_t;
 
 /* -------------------------------------------------------------------------- */
@@ -84,6 +86,14 @@ void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt
 @return the 32-bits counter
 */
 uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us);
+
+/**
+@brief Convert the 27-bits packet timestamp to a 32-bits counter which wraps on a uint32_t.
+@param self     Pointer to the counter handler
+@param cnt_us   The packet 27-bits counter to be expanded
+@return the 32-bits counter
+*/
+uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t cnt_us);
 
 /**
 @brief Reads the SX1302 internal counter register, and return the 32-bits 1 MHz counter
