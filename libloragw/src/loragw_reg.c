@@ -1281,6 +1281,17 @@ int reg_r_align32_usb(int usb_target, uint8_t spi_mux_target, struct lgw_reg_s r
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
+
+int lgw_get_temp( float * temperature ) {
+    
+#if COM_USB == 1
+    mcu_get_status(mcu_fd, temperature);
+    return LGW_REG_SUCCESS;
+#else
+    return LGW_REG_ERROR;
+#endif
+}
+
 int lgw_connect(const char * dev_path) {
 #if COM_USB == 1
     int usb_stat = LGW_SPI_SUCCESS;
@@ -1305,6 +1316,7 @@ int lgw_connect(const char * dev_path) {
     if (mcu_ping(mcu_fd, &gw_info) != 0) {
         return LGW_REG_ERROR;
     }
+    //mcu_get_status(mcu_fd);
     /* APPLY RESET */
     mcu_gpio_write(mcu_fd,0,1,1); /*   set PA1 : POWER_EN*/
     mcu_gpio_write(mcu_fd,0,2,1); /*   set PA2 : SX1302_RESET active*/

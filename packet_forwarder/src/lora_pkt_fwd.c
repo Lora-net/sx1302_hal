@@ -1677,7 +1677,9 @@ int main(int argc, char ** argv)
         } else {
             printf("# GPS sync is disabled\n");
         }
+        pthread_mutex_lock(&mx_concent);
         i = lgw_get_temperature(&temperature);
+        pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
             printf("### Concentrator temperature unknown ###\n");
         } else {

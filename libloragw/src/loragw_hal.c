@@ -780,6 +780,7 @@ int lgw_start(void) {
     dbg_init_gpio();
 #endif
 
+#if COM_USB == 0
     /* Try to configure temperature sensor STTS751-0DP3F */
     ts_addr = I2C_PORT_TEMP_SENSOR_0;
     i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
@@ -796,7 +797,7 @@ int lgw_start(void) {
             //return LGW_HAL_ERROR;
         }
     }
-
+#endif
     /* set hal state */
     CONTEXT_STARTED = true;
 
@@ -821,12 +822,13 @@ int lgw_stop(void) {
 
     DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
+#if COM_USB ==0
     DEBUG_MSG("INFO: Closing I2C\n");
     err = i2c_linuxdev_close(ts_fd);
     if (err != 0) {
         printf("ERROR: failed to close I2C device (err=%i)\n", err);
     }
-
+#endif
     CONTEXT_STARTED = false;
     return LGW_HAL_SUCCESS;
 }
@@ -864,12 +866,19 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Apply RSSI temperature compensation */
-    /*res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
+
+#if COM_USB == 1
+    lgw_get_temp(&current_temperature);
+    printf("current temperature : %3.1f °C\n", current_temperature);
+#else
+    res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
-    }*/
-    current_temperature = 0;
+    }
+#endif
+    
+    //current_temperature = 0;
     /* Iterate on the RX buffer to get parsed packets */
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
         /* Get packet and move to next one */
@@ -1060,12 +1069,16 @@ int lgw_get_eui(uint64_t* eui) {
 
 int lgw_get_temperature(float* temperature) {
     CHECK_NULL(temperature);
+#if COM_USB
 
+    lgw_get_temp(temperature);
+    return LGW_HAL_SUCCESS;
+#else
     if (stts751_get_temperature(ts_fd, ts_addr, temperature) != LGW_I2C_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-
     return LGW_HAL_SUCCESS;
+#endif
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

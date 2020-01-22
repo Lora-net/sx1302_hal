@@ -1491,6 +1491,7 @@ TODO
 */
 int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode);
 
+int lgw_get_temp( float * temperature ) ;
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

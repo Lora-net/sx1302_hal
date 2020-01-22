@@ -280,25 +280,13 @@ int mcu_open(const char * tty_path);
 
 int mcu_close(int fd);
 
-//int mcu_get_status(int fd, s_status * status);
-
-//int mcu_get_tx_status(int fd, e_tx_msg_status * status);
+int mcu_get_status(int fd , float * temperature);
 
 int mcu_ping(int fd, s_ping_info * info);
-
-//int mcu_prepare_tx(int fd, const struct lgw_pkt_tx_s * pkt_data, bool blocking);
-
-//int mcu_config_rx(int fd, uint8_t channel, const struct lgw_conf_channel_rx_s * conf);
-
-//int mcu_receive(int fd, uint8_t max_pkt, struct lgw_pkt_rx_s * pkt, uint8_t * nb_pkt);
-
 int mcu_reset(int fd, bool reset_mcu);
 
 int mcu_boot(int fd);
 
-//int mcu_read_register(int fd, uint8_t radio_idx, uint16_t addr, uint8_t * value);
-
-//int mcu_write_register(int fd, uint8_t radio_idx, uint16_t addr, const uint8_t value);
 
 uint8_t mcu_get_nb_rx_radio(void);
 

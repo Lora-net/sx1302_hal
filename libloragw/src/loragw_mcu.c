@@ -164,15 +164,17 @@ int write_req(int fd, e_order_cmd cmd, uint16_t size, const uint8_t * payload) {
 
     DEBUG_PRINTF("\nINFO: write_req 0x%02X (%s) done, id:0x%02X\n", cmd, cmd_get_str(cmd), buf_w[0]);
 
-#if DEBUG_VERBOSE
+#if 0
     int i;
+    printf("write_buf : ");
     for (i = 0; i < 4; i++) {
-        DEBUG_PRINTF("%02X ", buf_w[i]);
+        printf("%02X ", buf_w[i]);
     }
+    printf("write_payload : ");
     for (i = 0; i < size; i++) {
-        DEBUG_PRINTF("%02X ", payload[i]);
+        printf("%02X ", payload[i]);
     }
-    DEBUG_MSG("\n");
+    printf("\n");
 #endif
 
     return 0;
@@ -200,11 +202,14 @@ int read_ack(int fd, uint8_t * buf, size_t buf_size) {
     }
 
     /* debug print */
+#if 0
+    printf("read header : ");
     for (i = 0; i < (int)(HEADER_CMD_SIZE); i++) {
-        DEBUG_PRINTF("%02X ", buf[i]);
+        printf("%02X ", buf[i]);
     }
-    DEBUG_MSG("\n");
+    printf("\n");
 
+#endif
     /* Get remaining payload size (metadata + pkt payload) */
     size  = (size_t)buf[CMD_OFFSET__SIZE_MSB] << 8;
     size |= (size_t)buf[CMD_OFFSET__SIZE_LSB] << 0;
@@ -225,16 +230,19 @@ int read_ack(int fd, uint8_t * buf, size_t buf_size) {
                 perror("ERROR: Unable to read /dev/ttyACMx - ");
                 return -1;
             } else {
-                //printf("INFO: read %d bytes from gateway\n", n);
+                DEBUG_PRINTF("INFO: read %d bytes from gateway\n", n);
                 nb_read += n;
             }
         } while ((nb_read - HEADER_CMD_SIZE) < (int)size); /* we want to read only the expected payload, not more */
 
         /* debug print */
-        /*for (i = HEADER_CMD_SIZE; i < (int)(HEADER_CMD_SIZE + size); i++) {
+#if 0
+        printf("read buffer : ");
+        for (i = HEADER_CMD_SIZE; i < (int)(HEADER_CMD_SIZE + size); i++) {
             printf("%02X ", buf[i]);
         }
-        printf("\n");*/
+        printf("\n");
+#endif
     }
 
     return nb_read;
@@ -242,12 +250,12 @@ int read_ack(int fd, uint8_t * buf, size_t buf_size) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int decode_ack_get_status(const uint8_t * payload, s_status * status) {
+int decode_ack_get_status(const uint8_t * payload, float * temperature) {//}, s_status * status) {
     int i;
-    int16_t temperature;
+    //int16_t temperature;
 
     /* sanity checks */
-    if ((payload == NULL) || (status == NULL)) {
+    if ((payload == NULL) ) {
         printf("ERROR: invalid parameter\n");
         return -1;
     }
@@ -256,43 +264,12 @@ int decode_ack_get_status(const uint8_t * payload, s_status * status) {
         printf("ERROR: wrong ACK type for GET_STATUS (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_GET_STATUS, cmd_get_type(payload));
         return -1;
     }
+    /*printf("ACK_GET_STATUS : \n");
+    for (i = 0; i < 10; i++) {
+        printf("    payload[%d]:  %x\n", i, payload[i]);
+    }*/
 
-    /* payload info */
-    status->system_time_ms = bytes_be_to_uint32_le(&payload[HEADER_CMD_SIZE + ACK_GET_STATUS__SYSTEM_TIME_31_24]);
-
-    status->precise_time_us = bytes_be_to_uint32_le(&payload[HEADER_CMD_SIZE + ACK_GET_STATUS__PRECISE_TIMER_31_24]);
-
-    status->pps_status = (e_pps_status)payload[HEADER_CMD_SIZE + ACK_GET_STATUS__PPS_STATUS];
-
-    status->pps_time_us = bytes_be_to_uint32_le(&payload[HEADER_CMD_SIZE + ACK_GET_STATUS__PPS_TIME_31_24]);
-
-    temperature = (int16_t)(payload[HEADER_CMD_SIZE + ACK_GET_STATUS__TEMPERATURE_15_8] << 8) |
-                  (int16_t)(payload[HEADER_CMD_SIZE + ACK_GET_STATUS__TEMPERATURE_7_0]  << 0);
-    status->temperature = (float)temperature / 100.0;
-
-    for (i = 0; i < nb_radio_rx; i++) {
-        status->rx_crc_ok[i]   = (uint16_t)(payload[HEADER_CMD_SIZE + ACK_GET_STATUS__RX_STATUS + (4 * i) + 0] << 8);
-        status->rx_crc_ok[i]  |= (uint16_t)(payload[HEADER_CMD_SIZE + ACK_GET_STATUS__RX_STATUS + (4 * i) + 1] << 0);
-
-        status->rx_crc_err[i]  = (uint16_t)(payload[HEADER_CMD_SIZE + ACK_GET_STATUS__RX_STATUS + (4 * i) + 2] << 8);
-        status->rx_crc_err[i] |= (uint16_t)(payload[HEADER_CMD_SIZE + ACK_GET_STATUS__RX_STATUS + (4 * i) + 3] << 0);
-    }
-
-#if DEBUG_VERBOSE
-    DEBUG_MSG   ("## ACK_GET_STATUS\n");
-    DEBUG_PRINTF("   id:            0x%02X\n", cmd_get_id(payload));
-    DEBUG_PRINTF("   size:          %u\n", cmd_get_size(payload));
-    DEBUG_PRINTF("   sys_time:      %u\n", status->system_time_ms);
-    DEBUG_PRINTF("   precise_time:  %u\n", status->precise_time_us);
-    DEBUG_PRINTF("   pps_status:    0x%02X\n", status->pps_status);
-    DEBUG_PRINTF("   pps_time:      %u\n", status->pps_time_us);
-    DEBUG_PRINTF("   temperature:   %.1f\n", status->temperature);
-    for (i = 0; i < nb_radio_rx; i++) {
-        DEBUG_PRINTF("   rx_crc_ok[%d]:  %u\n", i, status->rx_crc_ok[i]);
-        DEBUG_PRINTF("   rx_crc_err[%d]: %u\n", i, status->rx_crc_err[i]);
-    }
-#endif
-
+    *temperature = (float) (payload[8]*256 + payload[9])/100;
     return 0;
 }
 
@@ -485,7 +462,6 @@ int mcu_close(int fd) {
 
 int mcu_ping(int fd, s_ping_info * info) {
     CHECK_NULL(info);
-
     if (write_req(fd, ORDER_ID__REQ_PING, 0, NULL) != 0) {
         printf("ERROR: failed to write PING request\n");
         return -1;
@@ -498,6 +474,29 @@ int mcu_ping(int fd, s_ping_info * info) {
 
     if (decode_ack_ping(buf_ack, info) != 0) {
         printf("ERROR: invalid PING ack\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int mcu_get_status(int fd, float * temperature) { //}, s_status * status) {
+
+    if (write_req(fd, ORDER_ID__REQ_GET_STATUS, 0, NULL) != 0) {
+        printf("ERROR: failed to write GET_STATUS request\n");
+        return -1;
+    }
+
+    printf("NOTE: GET_STATUS read ack\n");
+    if (read_ack(fd, buf_ack, sizeof buf_ack) < 0) {
+        printf("ERROR: failed to read GET_STATUS ack\n");
+        return -1;
+    }
+
+    printf("NOTE: GET_STATUS decode ack\n");
+    if (decode_ack_get_status(buf_ack, temperature) != 0) { //, status) != 0) {
+        printf("ERROR: invalid GET_STATUS ack\n");
         return -1;
     }
 
