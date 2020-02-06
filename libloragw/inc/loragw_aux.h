@@ -41,10 +41,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param t number of milliseconds to wait.
 */
 void wait_ms(unsigned long t);
-void wait_us(unsigned long t);
-
-uint32_t bytes_be_to_uint32_le(const uint8_t * bytes);
-int32_t bytes_be_to_int32_le(const uint8_t * bytes);
 
 #endif
 

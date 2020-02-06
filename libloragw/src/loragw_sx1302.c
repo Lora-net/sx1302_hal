@@ -962,7 +962,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0x7f); /* GPIO output direction */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
 
     /* Take control over AGC MCU */
     lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x01);
@@ -970,7 +970,6 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
 
     /* Write AGC fw in AGC MEM */
-
     lgw_mem_wb(AGC_MEM_ADDR, firmware, MCU_FW_SIZE);
 
     /* Read back and check */
@@ -1067,7 +1066,7 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
 int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
     uint8_t val;
     struct agc_gain_params_s agc_params;
-    printf("Start AGC \n");
+
     /* Check parameters */
     if ((radio_type != LGW_RADIO_TYPE_SX1255) && (radio_type != LGW_RADIO_TYPE_SX1257) && (radio_type != LGW_RADIO_TYPE_SX1250)) {
         DEBUG_MSG("ERROR: invalid radio type\n");
@@ -1357,9 +1356,9 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
 int sx1302_arb_load_firmware(const uint8_t *firmware) {
     uint8_t fw_check[MCU_FW_SIZE];
-    //int32_t gpio_sel = MCU_ARB;
+    int32_t gpio_sel = MCU_ARB;
     int32_t val;
-/*
+
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
@@ -1368,7 +1367,7 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
     lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF);*/ /* GPIO output direction */
+    lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
 
     /* Take control over ARB MCU */
     lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x01);
@@ -1950,7 +1949,6 @@ uint8_t sx1302_tx_status(uint8_t rf_chain) {
         return TX_STATUS_UNKNOWN;
     }
 
-    printf("NOTE: TX STATUS 0x%02X\n", read_value);
     if (read_value == 0x80) {
         return TX_FREE;
     } else if ((read_value == 0x30) || (read_value == 0x50) || (read_value == 0x60) || (read_value == 0x70)) {
@@ -2024,14 +2022,6 @@ int sx1302_tx_configure(lgw_radio_type_t radio_type) {
     lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
     lgw_reg_w(SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_CLK_EDGE, 0x00); /* Data on rising edge */
 
-    //uint32_t freq_reg;
-    //freq_reg = SX1302_FREQ_TO_REG(867500000); /* TODO: AGC fw to be updated for sx1255 */
-    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_H_FREQ_RF(0), (freq_reg >> 16) & 0xFF);
-    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(0), (freq_reg >> 8) & 0xFF);
-    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(0), (freq_reg >> 0) & 0xFF);
-    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_H_FREQ_RF(1), (freq_reg >> 16) & 0xFF);
-    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(1), (freq_reg >> 8) & 0xFF);
-    //lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(1), (freq_reg >> 0) & 0xFF);
     return LGW_REG_SUCCESS;
 }
 
@@ -2111,13 +2101,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 8) & 0xFF);
     lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_L_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 0) & 0xFF);
 
-    /*LC TODO : Add and update json for LBT configuration */
-    sx1302_agc_mailbox_write(3, 0xf0); 
-    wait_ms(1);
-    
-    sx1302_agc_mailbox_write(3, 0xf1); 
-
-    wait_ms(10);
     /* Set AGC bandwidth and modulation type*/
     switch (pkt_data->modulation) {
         case MOD_LORA:
@@ -2328,25 +2311,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             return LGW_REG_ERROR;
     }
 
-    int32_t read_value;
-    uint8_t status= 0x00;
-    uint8_t cpt = 0;
-    while ((status & (1<<pkt_data->rf_chain)) == 0x00) {
-        cpt = cpt +1;
-        lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_MCU_AGC_STATUS, &read_value);
-        printf("%d : MCU_AGC_STATUS : 0x%x\n",cpt, read_value);
-        status = read_value;
-        wait_ms(1);
-
-    }
-
-        /* Clear AGC Transmit status*/
-        sx1302_agc_mailbox_write(0, 0xff); 
-        sx1302_agc_mailbox_write(0, 0x00); 
-        lgw_reg_r(SX1302_REG_AGC_MCU_MCU_AGC_STATUS_MCU_AGC_STATUS, &read_value);
-        printf("MCU_AGC_STATUS : 0x%x\n", read_value);
-        status = read_value;
-       
     return LGW_REG_SUCCESS;
 }
 

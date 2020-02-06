@@ -82,8 +82,8 @@ int main(int argc, char **argv)
     uint64_t eui;
 
     /* SPI interfaces */
-    const char com_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * com_path = com_path_default;
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
 
     /* Parameter parsing */
     int option_index = 0;
@@ -91,7 +91,6 @@ int main(int argc, char **argv)
         {0, 0, 0, 0}
     };
 
-    printf("START CHIP_ID tool\n");
     /* parse command line options */
     while ((i = getopt_long (argc, argv, "hd:k:r:", long_options, &option_index)) != -1) {
         switch (i) {
@@ -101,7 +100,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'd':
-                com_path = optarg;
+                spidev_path = optarg;
                 break;
 
             case 'r': /* <uint> Radio type */
@@ -147,14 +146,13 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    printf("NOTE: lgw_board_setconf\n");
     /* Configure the gateway */
     memset(&boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
-    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
+    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
+    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -166,7 +164,6 @@ int main(int argc, char **argv)
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
     rfconf.single_input_mode = false;
-    printf("NOTE: lgw_rxrf_setconf\n");
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
         return EXIT_FAILURE;
@@ -178,16 +175,14 @@ int main(int argc, char **argv)
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
     rfconf.single_input_mode = false;
-    printf("NOTE: lgw_rxrf_setconf\n");
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
         return EXIT_FAILURE;
     }
 
-    printf("NOTE: lgw_start\n");
     x = lgw_start();
     if (x != 0) {
-        printf("ERROR: failed to start the fucking gateway\n");
+        printf("ERROR: failed to start the gateway\n");
         return EXIT_FAILURE;
     }
 

@@ -150,8 +150,7 @@ struct lgw_conf_board_s {
     bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
     uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
     bool    full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
-    char    com_path[64];   /*!> Path to access the SPI device to connect to the SX1302 */
-    //uint8_t  spi_not_usb;        /*!>*/
+    char    spidev_path[64];/*!> Path to access the SPI device to connect to the SX1302 */
 };
 
 /**
@@ -298,13 +297,6 @@ struct lgw_conf_timestamp_s {
     uint8_t nb_symbols;
 };
 
-struct lgw_conf_lbt_s {
-    bool enable;
-    int8_t lbt_threshold;
-    int8_t radio_type;
-    int8_t radio_id;
-    uint32_t lbt_duration;
-};
 /**
 @struct lgw_context_s
 @brief Configuration context shared across modules
@@ -322,7 +314,6 @@ typedef struct lgw_context_s {
     struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
     /* Misc */
     struct lgw_conf_timestamp_s timestamp_cfg;
-    struct lgw_conf_lbt_s       lbt_cfg;
     /* Debug */
     struct lgw_conf_debug_s     debug_cfg;
 } lgw_context_t;
@@ -366,13 +357,6 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf);
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf);
-
-/**
-@brief Configure the lbt
-@param pointer to structure defining the config to be applied
-@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
-*/
-int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf);
 
 /**
 @brief Configure the debug context

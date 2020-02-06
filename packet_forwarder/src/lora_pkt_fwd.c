@@ -304,16 +304,15 @@ static int parse_SX130x_configuration(const char * conf_file) {
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_txgain_obj;
     JSON_Object *conf_ts_obj;
-    JSON_Object *conf_lbt_obj;
     JSON_Array *conf_txlut_array;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
     struct lgw_conf_timestamp_s tsconf;
-    struct lgw_conf_lbt_s lbtconf  ;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
+
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
@@ -332,26 +331,15 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
-    str = json_object_get_string(conf_obj, "com_path");
+    str = json_object_get_string(conf_obj, "spidev_path");
     if (str != NULL) {
-        strncpy(boardconf.com_path, str, sizeof boardconf.com_path);
-        boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
+        strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
+        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     } else {
         MSG("ERROR: spidev path must be configured in %s\n", conf_file);
-        //return -1;
+        return -1;
     }
 
-
-    /*str = json_object_dotget_string(conf_obj, "interface");
-    if (!strncmp(str, "spi", 3)) {
-        boardconf.spi_not_usb = 1;
-    } else if (!strncmp(str, "usb", 3)) {
-        boardconf.spi_not_usb = 0;
-    } else {
-        MSG("WARNING: invalid interface: %s (should be spi or usb)\n", str);
-    }*/
-
-    
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
@@ -373,7 +361,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: com_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.com_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: spidev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.spidev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
@@ -431,74 +419,6 @@ static int parse_SX130x_configuration(const char * conf_file) {
         }
     }
 
-    /* set LBT configuration */
-    conf_lbt_obj = json_object_get_object(conf_obj, "listen_before_talk");
-    if (conf_lbt_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object for LBT\n", conf_file);
-    } else {
-        val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
-        if (json_value_get_type(val) == JSONBoolean) {
-            lbtconf.enable = (bool)json_value_get_boolean(val);
-        } else {
-            MSG("WARNING: Data type for lbt.enable seems wrong, please check\n");
-            lbtconf.enable = false;
-        }
-        if (lbtconf.enable == true) {
-            
-            str = json_object_dotget_string(conf_lbt_obj, "radio_type");
-            if (!strncmp(str, "SX1250", 6)) {
-                lbtconf.radio_type = 0;
-            } else if (!strncmp(str, "SX1261", 6)) {
-                lbtconf.radio_type = 1;
-            } else {
-                MSG("WARNING: invalid radio type: %s (should be SX1261 or SX1250)\n", str);
-            }
-            val = json_object_get_value(conf_lbt_obj, "radio_id"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                lbtconf.radio_id = (int8_t)json_value_get_number(val);
-            } else {
-                MSG("WARNING: Data type for lbt.radio_id seems wrong, please check\n");
-                lbtconf.radio_id = -1;
-                return -1;
-            }
-            if ((lbtconf.radio_id<0) || (lbtconf.radio_id>2) ) {
-                MSG("WARNING: Data type for lbt.radio_id seems wrong, please check\n");
-                return -1;
-            }
-            if ((lbtconf.radio_type == 0) && (lbtconf.radio_id == 2)) {
-                MSG("WARNING: Data type for lbt.radio_id does not match radio type, please check\n");
-                return -1;
-            }
-            if ((lbtconf.radio_type == 1) && (lbtconf.radio_id != 2)) {
-                MSG("WARNING: Data type for lbt.radio_id does not match radio type, please check\n");
-                return -1;
-            }
-
-            val = json_object_get_value(conf_lbt_obj, "lbt_threshold"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                lbtconf.lbt_threshold = (int8_t)json_value_get_number(val);
-            } else {
-                MSG("WARNING: Data type for lbt.lbt_threshold seems wrong, please check\n");
-                lbtconf.lbt_threshold = 0;
-            }
-            val = json_object_get_value(conf_lbt_obj, "lbt_duration"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                lbtconf.lbt_duration = (uint32_t)json_value_get_number(val);
-            } else {
-                MSG("WARNING: Data type for lbt.duration seems wrong, please check\n");
-                lbtconf.lbt_duration = 0;
-            }
-            MSG("INFO: Configuring LBT: lbt_threshold:%d, lbt_duration:%u\n", lbtconf.lbt_threshold, lbtconf.lbt_duration);
-
-            /* all parameters parsed, submitting configuration to the HAL */
-            if (lgw_lbt_setconf(&lbtconf) != LGW_HAL_SUCCESS) {
-                MSG("ERROR: Failed to configure precision timestamp\n");
-                return -1;
-            }
-        } else {
-            MSG("INFO: NO LBT\n");
-        }
-    }
     /* set configuration for RF chains */
     for (i = 0; i < LGW_RF_CHAIN_NB; ++i) {
         memset(&rfconf, 0, sizeof rfconf); /* initialize configuration structure */

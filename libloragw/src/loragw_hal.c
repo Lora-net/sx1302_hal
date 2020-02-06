@@ -39,12 +39,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_spi.h"
 #include "loragw_i2c.h"
 #include "loragw_sx1250.h"
-#include "loragw_sx1261.h"
 #include "loragw_sx125x.h"
 #include "loragw_sx1302.h"
 #include "loragw_stts751.h"
 #include "loragw_debug.h"
-
 
 /* -------------------------------------------------------------------------- */
 /* --- DEBUG CONSTANTS ------------------------------------------------------ */
@@ -70,7 +68,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 #define CONTEXT_STARTED         lgw_context.is_started
-#define CONTEXT_COM_PATH        lgw_context.board_cfg.com_path
+#define CONTEXT_SPI             lgw_context.board_cfg.spidev_path
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
@@ -79,7 +77,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_FSK             lgw_context.fsk_cfg
 #define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
 #define CONTEXT_TIMESTAMP       lgw_context.timestamp_cfg
-#define CONTEXT_LBT             lgw_context.lbt_cfg
 #define CONTEXT_DEBUG           lgw_context.debug_cfg
 
 /* -------------------------------------------------------------------------- */
@@ -105,10 +102,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 
 #include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
 #include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
-//#include "agc_sx1250_lbt_261119_6.var"
-//#include "agc_sx1250_lbt.var"
-#include "agc_sx125x_lbt.var"
-//#include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
+#include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
 
 /*
 The following static variable holds the gateway configuration provided by the
@@ -119,7 +113,7 @@ the _start and _send functions assume they are valid.
 */
 static lgw_context_t lgw_context = {
     .is_started = false,
-    .board_cfg.com_path = "/dev/spidev0.0",
+    .board_cfg.spidev_path = "/dev/spidev0.0",
     .board_cfg.lorawan_public = true,
     .board_cfg.clksrc = 0,
     .board_cfg.full_duplex = false,
@@ -240,11 +234,10 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_LWAN_PUBLIC = conf->lorawan_public;
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
-    strncpy(CONTEXT_COM_PATH, conf->com_path, sizeof CONTEXT_COM_PATH);
-    CONTEXT_COM_PATH[sizeof CONTEXT_COM_PATH - 1] = '\0'; /* ensure string termination */
+    strncpy(CONTEXT_SPI, conf->spidev_path, sizeof CONTEXT_SPI);
+    CONTEXT_SPI[sizeof CONTEXT_SPI - 1] = '\0'; /* ensure string termination */
 
-    //DEBUG_PRINTF("Note: board configuration: com_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",     CONTEXT_COM_PATH,          
-    printf("Note: board configuration: com_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",     CONTEXT_COM_PATH,                                                                                                                           
+    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
                                                                                                                 CONTEXT_LWAN_PUBLIC,
                                                                                                                 CONTEXT_BOARD.clksrc,
                                                                                                                 CONTEXT_BOARD.full_duplex);
@@ -548,20 +541,6 @@ int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
-    CHECK_NULL(conf);
-
-    CONTEXT_LBT.enable = conf->enable;
-    CONTEXT_LBT.radio_type = conf->radio_type;
-    CONTEXT_LBT.radio_id = conf->radio_id;
-    CONTEXT_LBT.lbt_threshold = conf->lbt_threshold;
-    CONTEXT_LBT.lbt_duration = conf->lbt_duration;
-
-    return LGW_HAL_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
     int i;
 
@@ -593,51 +572,23 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 int lgw_start(void) {
     int i, err;
     int reg_stat;
-    
+
     if (CONTEXT_STARTED == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(CONTEXT_COM_PATH);
+    reg_stat = lgw_connect(CONTEXT_SPI);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
     }
 
-    
-    if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == 2)) {
-        
-        lgw_connect_sx1261("/dev/spidev0.1");
-        sx1261_load_pram();
-        i = sx1261_setup(864900000); //100 kHz step
-        wait_ms(1);
-        if (i == LGW_HAL_SUCCESS) {
-            printf("INFO: [main] sx1261 started at 868.1 MHz, LBT can be started\n");
-        } else {
-            printf("ERROR: [main] failed to start the sx1261\n");
-            return LGW_HAL_ERROR;
-        } 
-        sx1261_spectral_scan(200);
-        sx1261_start_lbt( 5000, -70);
-    }
-
-
-    /*Check that clksrc and lbt used radio are not in conflict */
-    if ((CONTEXT_LBT.enable) && ( (CONTEXT_LBT.radio_id == 0) || (CONTEXT_LBT.radio_id == 1) ) && (CONTEXT_RF_CHAIN[CONTEXT_LBT.radio_id].type != LGW_RADIO_TYPE_SX1250) ){
-        printf("ERROR: LBT configured with radio_%d but it's not SX1250\n",CONTEXT_LBT.radio_id);
-        return LGW_HAL_ERROR;
-    }
-    if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == CONTEXT_BOARD.clksrc)) {
-        printf("ERROR: LBT configured with radio_%d but it's used at SX1302 clock source\n",CONTEXT_LBT.radio_id);
-        return LGW_HAL_ERROR;        
-    }
     /* Calibrate radios */
     err = sx1302_radio_calibrate(&CONTEXT_RF_CHAIN[0], CONTEXT_BOARD.clksrc, &CONTEXT_TX_GAIN_LUT[0]);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: radio calibration failed\n");
         return LGW_HAL_ERROR;
     }
-    
 
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
@@ -645,15 +596,8 @@ int lgw_start(void) {
             sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
             switch (CONTEXT_RF_CHAIN[i].type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    printf("Setup SX1250 \n");
-                    if ((CONTEXT_LBT.enable) && (CONTEXT_LBT.radio_id == i)){
-
-                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,CONTEXT_RF_CHAIN[i].single_input_mode,true);
-                        break;
-                    } else {
-                        sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz,CONTEXT_RF_CHAIN[i].single_input_mode,false);
-                        break;
-                    }
+                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz, CONTEXT_RF_CHAIN[i].single_input_mode);
+                    break;
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:
                     sx125x_setup(i, CONTEXT_BOARD.clksrc, true, CONTEXT_RF_CHAIN[i].type, CONTEXT_RF_CHAIN[i].freq_hz);
@@ -665,7 +609,7 @@ int lgw_start(void) {
             sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].type);
         }
     }
-  
+
     /* Select the radio which provides the clock to the sx1302 */
     sx1302_radio_clock_select(CONTEXT_BOARD.clksrc);
 
@@ -725,11 +669,10 @@ int lgw_start(void) {
     if (sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_BOARD.full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-    printf("Loading ARB fw\n");
+    DEBUG_MSG("Loading ARB fw\n");
     if (sx1302_arb_load_firmware(arb_firmware) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
-    printf("Start ARB fw\n");
     if (sx1302_arb_start(FW_VERSION_ARB) != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
@@ -739,10 +682,6 @@ int lgw_start(void) {
 
     /* enable GPS */
     sx1302_gps_enable(true);
-
-
-
-
 
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
@@ -780,7 +719,6 @@ int lgw_start(void) {
     dbg_init_gpio();
 #endif
 
-#if COM_USB == 0
     /* Try to configure temperature sensor STTS751-0DP3F */
     ts_addr = I2C_PORT_TEMP_SENSOR_0;
     i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
@@ -794,10 +732,10 @@ int lgw_start(void) {
         err = stts751_configure(ts_fd, ts_addr);
         if (err != LGW_I2C_SUCCESS) {
             printf("ERROR: failed to configure the temperature sensor\n");
-            //return LGW_HAL_ERROR;
+            return LGW_HAL_ERROR;
         }
     }
-#endif
+
     /* set hal state */
     CONTEXT_STARTED = true;
 
@@ -822,13 +760,13 @@ int lgw_stop(void) {
 
     DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
-#if COM_USB ==0
+
     DEBUG_MSG("INFO: Closing I2C\n");
     err = i2c_linuxdev_close(ts_fd);
     if (err != 0) {
         printf("ERROR: failed to close I2C device (err=%i)\n", err);
     }
-#endif
+
     CONTEXT_STARTED = false;
     return LGW_HAL_SUCCESS;
 }
@@ -841,7 +779,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_left = 0;
     float current_temperature, rssi_temperature_offset;
-    
+
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
     res = sx1302_update();
@@ -850,9 +788,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Get packets from SX1302, if any */
-    //printf("sx1302_fetch\n");
     res = sx1302_fetch(&nb_pkt_fetched);
-    //printf("nb packet : %d\n",nb_pkt_fetched);
     if (res != LGW_REG_SUCCESS) {
         printf("ERROR: failed to fetch packets from SX1302\n");
         return LGW_HAL_ERROR;
@@ -866,19 +802,12 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Apply RSSI temperature compensation */
-
-#if COM_USB == 1
-    lgw_get_temp(&current_temperature);
-    printf("current temperature : %3.1f °C\n", current_temperature);
-#else
     res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
     }
-#endif
-    
-    //current_temperature = 0;
+
     /* Iterate on the RX buffer to get parsed packets */
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
         /* Get packet and move to next one */
@@ -919,7 +848,6 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
         return LGW_HAL_ERROR;
     }
-    
 
     /* check input variables */
     if (CONTEXT_RF_CHAIN[pkt_data->rf_chain].tx_enable == false) {
@@ -970,22 +898,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
     }
-    
-    if (CONTEXT_LBT.enable) {
-        int i;
-        i = sx1261_setup(pkt_data->freq_hz); //100 kHz step
-        wait_ms(1);
-        if (i == LGW_HAL_SUCCESS) {
-            printf("INFO: [main] sx1261 started at %.3f MHz, LBT can be started\n",(pkt_data->freq_hz)/1e6);
-        } else {
-            printf("ERROR: [main] failed to start the sx1261\n");
-            return LGW_HAL_ERROR;
-        } 
 
-        printf("INFO: [main] sx1261 set LBT to %d µsec level %d dBm\n",CONTEXT_LBT.lbt_duration, CONTEXT_LBT.lbt_threshold);
-        sx1261_start_lbt( CONTEXT_LBT.lbt_duration    , CONTEXT_LBT.lbt_threshold);
-        wait_ms(20);
-    }
     return sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
 }
 
@@ -1069,16 +982,12 @@ int lgw_get_eui(uint64_t* eui) {
 
 int lgw_get_temperature(float* temperature) {
     CHECK_NULL(temperature);
-#if COM_USB
 
-    lgw_get_temp(temperature);
-    return LGW_HAL_SUCCESS;
-#else
     if (stts751_get_temperature(ts_fd, ts_addr, temperature) != LGW_I2C_SUCCESS) {
         return LGW_HAL_ERROR;
     }
+
     return LGW_HAL_SUCCESS;
-#endif
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

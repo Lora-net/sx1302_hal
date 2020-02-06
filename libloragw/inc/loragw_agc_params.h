@@ -61,7 +61,7 @@ const struct agc_gain_params_s agc_params_sx1250 = {
 };
 
 const struct agc_gain_params_s agc_params_sx125x = {
-    .ana_min = 1,
+    .ana_min = 0,
     .ana_max = 9,
     .ana_thresh_l = 16,
     .ana_thresh_h = 35,

@@ -144,8 +144,8 @@ int main(int argc, char **argv)
     bool trig_delay = false;
 
     /* SPI interfaces */
-    const char com_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * com_path = com_path_default;
+    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
+    const char * spidev_path = spidev_path_default;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -420,8 +420,8 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
-    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
+    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
+    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -439,8 +439,8 @@ int main(int argc, char **argv)
     }
 
     memset( &rfconf, 0, sizeof rfconf);
-    rfconf.enable = true;//(((rf_chain == 1) || (clocksource == 1)) ? true : false);
-    rfconf.freq_hz = 868500000; /* dummy */
+    rfconf.enable = (((rf_chain == 1) || (clocksource == 1)) ? true : false);
+    rfconf.freq_hz = ft;
     rfconf.type = radio_type;
     rfconf.tx_enable = false;
     rfconf.single_input_mode = single_input_mode;

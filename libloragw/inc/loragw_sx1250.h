@@ -35,36 +35,36 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 typedef enum {
+    CALIBRATE               = 0x89,
+    CALIBRATE_IMAGE         = 0x98,
     CLR_IRQ_STATUS          = 0x02,
-    SET_DIO_IRQ_PARAMS      = 0x08,
-    WRITE_REGISTER          = 0x0D,
-    WRITE_BUFFER            = 0x0E,
+    STOP_TIMER_ON_PREAMBLE  = 0x9F,
+    SET_RFSWITCHMODE        = 0x9D,
     GET_IRQ_STATUS          = 0x12,
     GET_RX_BUFFER_STATUS    = 0x13,
     GET_PACKET_STATUS       = 0x14,
-    GET_DEVICE_ERRORS       = 0x17,
     READ_BUFFER             = 0x1E,
     READ_REGISTER           = 0x1D,
+    SET_DIO_IRQ_PARAMS      = 0x08,
+    SET_MODULATION_PARAMS   = 0x8B,
+    SET_PA_CONFIG           = 0x95,
+    SET_PACKET_PARAMS       = 0x8C,
+    SET_PACKET_TYPE         = 0x8A,
+    SET_RF_FREQUENCY        = 0x86,
+    SET_BUFFER_BASE_ADDRESS = 0x8F,
+    SET_SLEEP               = 0x84,
     SET_STANDBY             = 0x80,
     SET_RX                  = 0x82,
     SET_TX                  = 0x83,
-    SET_SLEEP               = 0x84,
-    SET_RF_FREQUENCY        = 0x86,
-    CALIBRATE               = 0x89,
-    SET_PACKET_TYPE         = 0x8A,
-    SET_MODULATION_PARAMS   = 0x8B,
-    SET_PACKET_PARAMS       = 0x8C,
     SET_TX_PARAMS           = 0x8E,
-    SET_BUFFER_BASE_ADDRESS = 0x8F,
-    SET_PA_CONFIG           = 0x95,
-    SET_REGULATORMODE       = 0x96,
-    CALIBRATE_IMAGE         = 0x98,
-    SET_RFSWITCHMODE        = 0x9D,
-    STOP_TIMER_ON_PREAMBLE  = 0x9F,
-    GET_STATUS              = 0xC0,
-    SET_FS                  = 0xC1,
+    WRITE_BUFFER            = 0x0E,
+    WRITE_REGISTER          = 0x0D,
     SET_TXCONTINUOUSWAVE    = 0xD1,
-    SET_TXCONTINUOUSPREAMBLE= 0xD2
+    SET_TXCONTINUOUSPREAMBLE= 0xD2,
+    GET_STATUS              = 0xC0,
+    SET_REGULATORMODE       = 0x96,
+    SET_FS                  = 0xC1,
+    GET_DEVICE_ERRORS       = 0x17
 } sx1250_op_code_t;
 
 typedef enum {
@@ -95,11 +95,8 @@ int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *da
 int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
 int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz);
-int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode, bool load_pram);
-int sx1250_load_pram (uint8_t rf_chain);
-int sx1250_set_lbt(uint8_t rf_chain, uint32_t freq_hz) ;
-int sx1250_read_lbt (uint8_t rf_chain);
-int sx1250_start_lbt(uint8_t rf_chain, int scan_time_us, int threshold_dbm);
+int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

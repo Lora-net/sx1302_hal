@@ -10,11 +10,6 @@
             "max_ts_metrics": 255,
             "nb_symbols": 1
         },
-        "listen_before_talk": {
-            "enable": true,
-            "lbt_threshold": -70,
-            "lbt_duration": 5000
-        },
         "radio_0": {
             "enable": true,
             "type": "SX1257",
