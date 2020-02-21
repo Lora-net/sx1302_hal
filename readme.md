@@ -169,6 +169,7 @@ conditions.
 bytes in RX buffer...)
 * HAL: Fixed potential endless loop in sx1302_tx_abort() in SPI access fails.
 * Packet Forwarder: Added global_conf.json.sx1250.US915 for US915 band
+* test_hal_rx: added command line to specify RSSI offset to be applied
 
 ### v1.0.4 ###
 
