@@ -1400,7 +1400,7 @@ int sx1302_arb_status(uint8_t* status) {
     int32_t val;
 
     if (lgw_reg_r(SX1302_REG_ARB_MCU_MCU_ARB_STATUS_MCU_ARB_STATUS, &val) != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to get AGC status\n");
+        printf("ERROR: Failed to get ARB status\n");
         return LGW_HAL_ERROR;
     }
 
