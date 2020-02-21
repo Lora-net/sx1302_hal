@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    
     /* parse command line options */
     while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
         switch (i) {
