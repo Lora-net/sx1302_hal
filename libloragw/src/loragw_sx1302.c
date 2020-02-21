@@ -1812,10 +1812,15 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         timestamp_correction = 0;
     }
 
-    /* Scale packet timestamp to 1 MHz (microseconds) */
+    /* Update counter reference / wrap status before expanding */
+    timestamp_counter_get(&counter_us, false);
+
+    /* Scale 32 MHz packet timestamp to 1 MHz (microseconds) */
     p->count_us = pkt.timestamp_cnt / 32;
+
     /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
-    p->count_us = timestamp_counter_expand(&counter_us, false, p->count_us);
+    p->count_us = timestamp_pkt_expand(&counter_us, p->count_us);
+
     /* Packet timestamp corrected */
     p->count_us = p->count_us - timestamp_correction;
 
@@ -1940,7 +1945,7 @@ uint8_t sx1302_tx_status(uint8_t rf_chain) {
 
     err = lgw_reg_r(SX1302_REG_TX_TOP_TX_FSM_STATUS_TX_STATUS(rf_chain), &read_value);
     if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to read TX STATUS");
+        printf("ERROR: Failed to read TX STATUS\n");
         return TX_STATUS_UNKNOWN;
     }
 
@@ -1967,13 +1972,20 @@ uint8_t sx1302_rx_status(uint8_t rf_chain) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_tx_abort(uint8_t rf_chain) {
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(rf_chain), 0x00);
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(rf_chain), 0x00);
-    lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_GPS(rf_chain), 0x00);
+    int err;
+    uint8_t tx_status;
+
+    err  = lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(rf_chain), 0x00);
+    err |= lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(rf_chain), 0x00);
+    err |= lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_GPS(rf_chain), 0x00);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to stop TX trigger\n");
+        return err;
+    }
 
     do {
         wait_ms(1);
-    } while (sx1302_tx_status(rf_chain) != TX_FREE);
+    } while ((tx_status = sx1302_tx_status(rf_chain)) != TX_FREE && tx_status != TX_STATUS_UNKNOWN);
 
     return LGW_REG_SUCCESS;
 }

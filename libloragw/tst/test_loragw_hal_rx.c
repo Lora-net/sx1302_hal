@@ -73,6 +73,7 @@ void usage(void) {
     printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
     printf(" -a <float>    Radio A RX frequency in MHz\n");
     printf(" -b <float>    Radio B RX frequency in MHz\n");
+    printf(" -o <float>    RSSI Offset to be applied in dB\n");
     printf(" -n <uint>     Number of packet received with CRC OK for each HAL start/stop loop\n");
     printf(" -z <uint>     Size of the RX packet array to be passed to lgw_receive()\n");
     printf(" -m <uint>     Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]\n");
@@ -99,6 +100,7 @@ int main(int argc, char **argv)
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
     uint8_t max_rx_pkt = 16;
     bool single_input_mode = false;
+    float rssi_offset = 0.0;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -138,7 +140,7 @@ int main(int argc, char **argv)
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:")) != -1) {
+    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -220,6 +222,15 @@ int main(int argc, char **argv)
                     channel_mode = arg_u;
                 }
                 break;
+            case 'o': /* <float> RSSI offset in dB */
+                i = sscanf(optarg, "%lf", &arg_d);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    rssi_offset = (float)arg_d;
+                }
+                break;
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -254,6 +265,7 @@ int main(int argc, char **argv)
     rfconf.enable = true;
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
+    rfconf.rssi_offset = rssi_offset;
     rfconf.tx_enable = false;
     rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
@@ -265,6 +277,7 @@ int main(int argc, char **argv)
     rfconf.enable = true;
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
+    rfconf.rssi_offset = rssi_offset;
     rfconf.tx_enable = false;
     rfconf.single_input_mode = single_input_mode;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {

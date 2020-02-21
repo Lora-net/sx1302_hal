@@ -161,6 +161,16 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.0.5 ###
+
+* HAL: Fixed packet timestamp issue which was "jumping in time" in specific
+conditions.
+* HAL: Workaround hardware issue when reading 32-bits registers (timestamp, nb
+bytes in RX buffer...)
+* HAL: Fixed potential endless loop in sx1302_tx_abort() in SPI access fails.
+* Packet Forwarder: Added global_conf.json.sx1250.US915 for US915 band
+* test_hal_rx: added command line to specify RSSI offset to be applied
+
 ### v1.0.4 ###
 
 * Added missing LICENSE.TXT file
