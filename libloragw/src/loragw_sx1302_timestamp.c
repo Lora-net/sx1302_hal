@@ -24,7 +24,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
 #include <memory.h>     /* memset */
-#include <assert.h>     /* assert */
 
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_reg.h"
@@ -155,7 +154,6 @@ uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t
         > set datafile separator comma
         > plot for [col=1:2:1] 'log_count.txt' using col with lines
     */
-    //printf("%u,%u,%u\n", cnt_us, counter_us_32bits, (pps == true) ? self->counter_us_raw_27bits_pps_wrap : self->counter_us_raw_27bits_inst_wrap);
     printf("%u,%u,%u\n", cnt_us, counter_us_32bits, tinfo->counter_us_27bits_wrap);
 #endif
 
