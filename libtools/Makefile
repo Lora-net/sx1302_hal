@@ -7,7 +7,7 @@ CROSS_COMPILE ?=
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 
-CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I.
+CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I. -Wno-strict-aliasing
 
 OBJDIR = obj
 INCLUDES = $(wildcard inc/*.h)
@@ -16,12 +16,13 @@ INCLUDES = $(wildcard inc/*.h)
 
 ### general build targets
 
-all: libtinymt32.a libparson.a libbase64.a
+all: libtinymt32.a libparson.a libbase64.a libcursor.a
 
 clean:
 	rm -f libtinymt32.a
 	rm -f libparson.a
 	rm -f libbase64.a
+	rm -f libcursor.a
 	rm -f $(OBJDIR)/*.o
 
 ### library module target
@@ -41,6 +42,9 @@ libparson.a:  $(OBJDIR)/parson.o
 	$(AR) rcs $@ $^
 
 libbase64.a:  $(OBJDIR)/base64.o
+	$(AR) rcs $@ $^
+
+libcursor.a:  $(OBJDIR)/cursor.o $(OBJDIR)/packing.o
 	$(AR) rcs $@ $^
 
 ### test programs
