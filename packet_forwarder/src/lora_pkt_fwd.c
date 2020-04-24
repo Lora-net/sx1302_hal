@@ -205,7 +205,6 @@ static uint32_t meas_nb_beacon_rejected = 0; /* count beacon rejected for queuin
 static pthread_mutex_t mx_meas_gps = PTHREAD_MUTEX_INITIALIZER; /* control access to the GPS statistics */
 static bool gps_coord_valid; /* could we get valid GPS coordinates ? */
 static struct coord_s meas_gps_coord; /* GPS position of the gateway */
-static struct coord_s meas_gps_err; /* GPS position of the gateway */
 
 static pthread_mutex_t mx_stat_rep = PTHREAD_MUTEX_INITIALIZER; /* control access to the status report */
 static bool report_ready = false; /* true when there is a new report to send to the server */
@@ -1212,7 +1211,7 @@ int main(int argc, char ** argv)
 
     /* GPS coordinates variables */
     bool coord_ok = false;
-    struct coord_s cp_gps_coord = {0.0, 0.0, 0};
+    struct coord_s cp_gps_coord = {0.0, 0.0, 0.0, 0.0, 0, 0};
 
     /* SX1302 data variables */
     uint32_t trig_tstamp;
@@ -3017,8 +3016,9 @@ void thread_jit(void) {
 static void gps_process_sync(void) {
     struct timespec gps_time;
     struct timespec utc;
+    struct timespec utc_acc;
     uint32_t trig_tstamp; /* concentrator timestamp associated with PPM pulse */
-    int i = lgw_gps_get(&utc, &gps_time, NULL, NULL);
+    int i = lgw_gps_get(&utc, &utc_acc, &gps_time, NULL);
 
     /* get GPS time for synchronization */
     if (i != LGW_GPS_SUCCESS) {
@@ -3037,7 +3037,7 @@ static void gps_process_sync(void) {
 
     /* try to update time reference with the new GPS time & timestamp */
     pthread_mutex_lock(&mx_timeref);
-    i = lgw_gps_sync(&time_reference_gps, trig_tstamp, utc, gps_time);
+    i = lgw_gps_sync(&time_reference_gps, trig_tstamp, utc, utc_acc, gps_time);
     pthread_mutex_unlock(&mx_timeref);
     if (i != LGW_GPS_SUCCESS) {
         MSG("WARNING: [gps] GPS out of sync, keeping previous time reference\n");
@@ -3047,15 +3047,13 @@ static void gps_process_sync(void) {
 static void gps_process_coords(void) {
     /* position variable */
     struct coord_s coord;
-    struct coord_s gpserr;
-    int    i = lgw_gps_get(NULL, NULL, &coord, &gpserr);
+    int    i = lgw_gps_get(NULL, NULL, NULL, &coord);
 
     /* update gateway coordinates */
     pthread_mutex_lock(&mx_meas_gps);
     if (i == LGW_GPS_SUCCESS) {
         gps_coord_valid = true;
         meas_gps_coord = coord;
-        meas_gps_err = gpserr;
         // TODO: report other GPS statistics (typ. signal quality & integrity)
     } else {
         gps_coord_valid = false;

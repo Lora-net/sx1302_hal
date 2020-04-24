@@ -724,7 +724,7 @@ int lgw_start(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_stop(void) {
-    int i, err;
+    int i;
 
     DEBUG_MSG("INFO: aborting TX\n");
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
