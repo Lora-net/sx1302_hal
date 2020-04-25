@@ -29,6 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>        /* bool type */
 #include <stdio.h>          /* printf, fprintf, snprintf, fopen, fputs */
 #include <inttypes.h>       /* PRIx64, PRIu64... */
+#include <assert.h>
 
 #include <string.h>         /* memset */
 #include <signal.h>         /* sigaction */
@@ -158,9 +159,9 @@ static bool xtal_correct_ok = false; /* set true when XTAL correction is stable 
 static double xtal_correct = 1.0;
 
 /* GPS configuration and synchronization */
-static char gps_tty_path[64] = "\0"; /* path of the TTY port GPS is connected on */
-static int gps_tty_fd = -1; /* file descriptor of the GPS TTY port */
-static bool gps_enabled = false; /* is GPS enabled on that gateway ? */
+static char gps_dev_path[64] = "\0"; /* path of the TTY/I2C device GPS is connected on */
+static int gps_dev_fd = -1; /* file descriptor of the GPS TTY port */
+static enum { gps_dev_none = 0, gps_dev_tty = gps_interface_tty, gps_dev_i2c = gps_interface_i2c } gps_dev = gps_dev_none; /* GPS bus in use */
 
 /* GPS time reference */
 static pthread_mutex_t mx_timeref = PTHREAD_MUTEX_INITIALIZER; /* control access to GPS time reference */
@@ -268,7 +269,8 @@ static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lu
 void thread_up(void);
 void thread_down(void);
 void thread_jit(void);
-void thread_gps(void);
+void thread_gps_tty(void);
+void thread_gps_i2c(void);
 void thread_valid(void);
 
 /* -------------------------------------------------------------------------- */
@@ -837,12 +839,24 @@ static int parse_gateway_configuration(const char * conf_file) {
     }
     MSG("INFO: packets received with no CRC will%s be forwarded\n", (fwd_nocrc_pkt ? "" : " NOT"));
 
-    /* GPS module TTY path (optional) */
+    /* GPS module TTY or I2C path (optional) */
+    if (json_object_get_string(conf_obj, "gps_tty_path") && json_object_get_string(conf_obj, "gps_i2c_path")) {
+        MSG("ERROR: 'gps_i2c_path' and 'gps_tty_path' are mutually exclusive, pick only one\n");
+        exit(EXIT_FAILURE);
+    }
     str = json_object_get_string(conf_obj, "gps_tty_path");
     if (str != NULL) {
-        strncpy(gps_tty_path, str, sizeof gps_tty_path);
-        gps_tty_path[sizeof gps_tty_path - 1] = '\0'; /* ensure string termination */
-        MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_tty_path);
+        strncpy(gps_dev_path, str, sizeof gps_dev_path);
+        gps_dev_path[sizeof gps_dev_path - 1] = '\0'; /* ensure string termination */
+        gps_dev = gps_dev_tty;
+        MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_dev_path);
+    }
+    str = json_object_get_string(conf_obj, "gps_i2c_path");
+    if (str != NULL) {
+        strncpy(gps_dev_path, str, sizeof gps_dev_path);
+        gps_dev_path[sizeof gps_dev_path - 1] = '\0'; /* ensure string termination */
+        gps_dev = gps_dev_i2c;
+        MSG("INFO: GPS I2C path is configured to \"%s\"\n", gps_dev_path);
     }
 
     /* get reference coordinates */
@@ -1283,15 +1297,14 @@ int main(int argc, char ** argv)
     }
 
     /* Start GPS a.s.a.p., to allow it to lock */
-    if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
-        i = lgw_gps_enable(gps_tty_path, "ubx7", 0, &gps_tty_fd); /* HAL only supports u-blox 7 for now */
+    if (gps_dev) {
+        i = lgw_gps_enable(gps_dev_path, gps_dev, "ubx7", 0, &gps_dev_fd); /* HAL only supports u-blox 7 for now */
         if (i != LGW_GPS_SUCCESS) {
-            printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
-            gps_enabled = false;
+            printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_dev_path);
+            gps_dev = gps_dev_none;
             gps_ref_valid = false;
         } else {
-            printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
-            gps_enabled = true;
+            printf("INFO: [main] port %s open for GPS synchronization\n", gps_dev_path);
             gps_ref_valid = false;
         }
     }
@@ -1422,10 +1435,14 @@ int main(int argc, char ** argv)
     }
 
     /* spawn thread to manage GPS */
-    if (gps_enabled == true) {
-        i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
+    if (gps_dev) {
+        if (gps_dev == gps_dev_tty) {
+            i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps_tty, NULL);
+        } else if (gps_dev == gps_dev_i2c) {
+            i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps_i2c, NULL);
+        }
         if (i != 0) {
-            MSG("ERROR: [main] impossible to create GPS thread\n");
+            MSG("ERROR: [main] impossible to create gps thread\n");
             exit(EXIT_FAILURE);
         }
         i = pthread_create( &thrid_valid, NULL, (void * (*)(void *))thread_valid, NULL);
@@ -1528,7 +1545,7 @@ int main(int argc, char ** argv)
         }
 
         /* access GPS statistics, copy them */
-        if (gps_enabled == true) {
+        if (gps_dev) {
             pthread_mutex_lock(&mx_meas_gps);
             coord_ok = gps_coord_valid;
             cp_gps_coord = meas_gps_coord;
@@ -1579,7 +1596,7 @@ int main(int argc, char ** argv)
         printf("#--------\n");
         jit_print_queue (&jit_queue[1], false, DEBUG_LOG);
         printf("### [GPS] ###\n");
-        if (gps_enabled == true) {
+        if (gps_dev) {
             /* no need for mutex, display is not critical */
             if (gps_ref_valid == true) {
                 printf("# Valid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
@@ -1606,7 +1623,7 @@ int main(int argc, char ** argv)
 
         /* generate a JSON report (will be sent to server by upstream thread) */
         pthread_mutex_lock(&mx_stat_rep);
-        if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
+        if (((gps_dev) && (coord_ok == true)) || (gps_fake_enable == true)) {
             snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
         } else {
             snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
@@ -1619,11 +1636,11 @@ int main(int argc, char ** argv)
     pthread_join(thrid_up, NULL);
     pthread_cancel(thrid_down); /* don't wait for downstream thread */
     pthread_cancel(thrid_jit); /* don't wait for jit thread */
-    if (gps_enabled == true) {
+    if (gps_dev) {
         pthread_cancel(thrid_gps); /* don't wait for GPS thread */
         pthread_cancel(thrid_valid); /* don't wait for validation thread */
 
-        i = lgw_gps_disable(gps_tty_fd);
+        i = lgw_gps_disable(gps_dev_fd, gps_dev);
         if (i == LGW_HAL_SUCCESS) {
             MSG("INFO: GPS closed successfully\n");
         } else {
@@ -1734,7 +1751,7 @@ void thread_up(void) {
         }
 
         /* get a copy of GPS time reference (avoid 1 mutex per packet) */
-        if ((nb_pkt > 0) && (gps_enabled == true)) {
+        if ((nb_pkt > 0) && (gps_dev)) {
             pthread_mutex_lock(&mx_timeref);
             ref_ok = gps_ref_valid;
             local_ref = time_reference_gps;
@@ -2613,7 +2630,7 @@ void thread_down(void) {
                         json_value_free(root_val);
                         continue;
                     }
-                    if (gps_enabled == true) {
+                    if (gps_dev) {
                         pthread_mutex_lock(&mx_timeref);
                         if (gps_ref_valid == true) {
                             local_ref = time_reference_gps;
@@ -3061,7 +3078,13 @@ static void gps_process_coords(void) {
     pthread_mutex_unlock(&mx_meas_gps);
 }
 
-void thread_gps(void) {
+void thread_gps_i2c(void) {
+
+    assert(false);
+    MSG("\nINFO: End of GPS thread\n");
+}
+
+void thread_gps_tty(void) {
     /* serial variables */
     char serial_buff[128]; /* buffer to receive GPS data */
     size_t wr_idx = 0;     /* pointer to end of chars in buffer */
@@ -3077,7 +3100,7 @@ void thread_gps(void) {
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port */
-        ssize_t nb_char = read(gps_tty_fd, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
+        ssize_t nb_char = read(gps_dev_fd, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
         if (nb_char <= 0) {
             MSG("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;
@@ -3161,7 +3184,6 @@ void thread_gps(void) {
 /* --- THREAD 5: CHECK TIME REFERENCE AND CALCULATE XTAL CORRECTION --------- */
 
 void thread_valid(void) {
-
     /* GPS reference validation variables */
     long gps_ref_age = 0;
     bool ref_valid_local = false;
