@@ -4,7 +4,7 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+  (C)2019 Semtech
 
 Description:
     Library of functions to manage a GNSS module (typically GPS) for accurate
@@ -12,7 +12,6 @@ Description:
     A limited set of module brands/models are supported.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Michael Coracin
 */
 
 
@@ -24,11 +23,16 @@ Maintainer: Michael Coracin
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
+#include <errno.h>
 
 #include <time.h>       /* struct timespec */
 #include <fcntl.h>      /* open */
 #include <termios.h>    /* tcflush */
 #include <math.h>       /* modf */
+
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -42,10 +46,12 @@ Maintainer: Michael Coracin
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_GPS == 1
     #define DEBUG_MSG(args...)  fprintf(stderr, args)
+    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define DEBUG_ARRAY(a,b,c)  for(a=0;a<b;++a) fprintf(stderr,"%x.",c[a]);fprintf(stderr,"end\n")
     #define CHECK_NULL(a)       if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_GPS_ERROR;}
 #else
     #define DEBUG_MSG(args...)
+    #define DEBUG_PRINTF(fmt, args...)
     #define DEBUG_ARRAY(a,b,c)  for(a=0;a!=0;){}
     #define CHECK_NULL(a)       if(a==NULL){return LGW_GPS_ERROR;}
 #endif
@@ -117,6 +123,10 @@ static bool validate_nmea_checksum(const char *serial_buff, int buff_size);
 static bool match_label(const char *s, char *label, int size, char wildcard);
 
 static int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx);
+
+static int lgw_gps_enable_tty(char *path, char *gps_family, speed_t target_brate, int *fd_ptr);
+
+static int lgw_gps_enable_i2c(char *path, int *fd_ptr);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -263,10 +273,7 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
     return j;
 }
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
-
-int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *fd_ptr) {
+static int lgw_gps_enable_tty(char *tty_path, char *gps_family, speed_t target_brate, int *fd_ptr) {
     int i;
     struct termios ttyopt; /* serial port options */
     int gps_tty_dev; /* file descriptor to the serial port of the GNSS module */
@@ -413,15 +420,100 @@ int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *
     return LGW_GPS_SUCCESS;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+static int lgw_gps_enable_i2c(char *path, int *fd_ptr) {
+    /* Disable all protocols on UART */
+    uint8_t const msg_cfg_prt_uart[] = {0xb5, 0x62, 0x06, 0x00,
+                                        0x14, 0x00, 0x01, 0x00,
+                                        0x00, 0x00, 0xc0, 0x08,
+                                        0x00, 0x00, 0x80, 0x25,
+                                        0x00, 0x00, 0x01, 0x00,
+                                        0x00, 0x00, 0x00, 0x00,
+                                        0x00, 0x00, 0x89, 0x73};
+    /* Configure I2C port to be ubx protocol only. */
+    uint8_t const msg_cfg_prt_i2c[] = {0xb5, 0x62, 0x06, 0x00,
+                                       0x14, 0x00, 0x00, 0x00,
+                                       0xb5, 0x00, 0x84, 0x00,
+                                       0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x01, 0x00,
+                                       0x01, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x55, 0x50};
+    /* Enable NAV-PVT */
+    uint8_t const msg_enable_pvt[] = {0xb5, 0x62, 0x06, 0x01,
+                                      0x03, 0x00, 0x01, 0x07,
+                                      0x01, 0x13, 0x51};
+    /* Enable NAV-TIMEGPS */
+    uint8_t const msg_enable_timegps[] = {0xb5, 0x62, 0x06, 0x01,
+                                          0x03, 0x00, 0x01, 0x20,
+                                          0x01, 0x2c, 0x83};
 
-int lgw_gps_disable(int fd) {
+    int gps_i2c_dev = open(path, O_RDWR);
+    if (gps_i2c_dev <= 0) {
+        DEBUG_MSG("ERROR: I2C PORT FAIL TO OPEN, CHECK PATH AND ACCESS RIGHTS\n");
+        return LGW_GPS_ERROR;
+    }
+
+    if (ioctl(gps_i2c_dev, I2C_SLAVE, 0x42) < 0) {
+        fprintf(stderr, "ERROR: failed to set I2C slave addr\n");
+        return LGW_GPS_ERROR;
+    }
+
+    ssize_t w = write(gps_i2c_dev, msg_cfg_prt_uart, sizeof(msg_cfg_prt_uart));
+    if (w != sizeof(msg_cfg_prt_uart)) {
+        fprintf(stderr, "ERROR: failed to configure uart port\n");
+        return LGW_GPS_ERROR;
+    }
+
+    w = write(gps_i2c_dev, msg_cfg_prt_i2c, sizeof(msg_cfg_prt_i2c));
+    if (w != sizeof(msg_cfg_prt_i2c)) {
+        fprintf(stderr, "ERROR: failed to configure i2c port\n");
+        return LGW_GPS_ERROR;
+    }
+
+    w = write(gps_i2c_dev, msg_enable_pvt, sizeof(msg_enable_pvt));
+    if (w != sizeof(msg_enable_pvt)) {
+        fprintf(stderr, "ERROR: failed to configure enable NAV-PVT messages\n");
+        return LGW_GPS_ERROR;
+    }
+
+    w = write(gps_i2c_dev, msg_enable_timegps, sizeof(msg_enable_timegps));
+    if (w != sizeof(msg_enable_timegps)) {
+        fprintf(stderr, "ERROR: failed to configure enable NAV-TIMEGPS messages\n");
+        return LGW_GPS_ERROR;
+    }
+
+    *fd_ptr = gps_i2c_dev;
+
+    return LGW_GPS_SUCCESS;
+}
+
+/* -------------------------------------------------------------------------- */
+/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+int lgw_gps_enable(char* path, enum gps_interface iface, char* gps_family, speed_t target_brate, int* fd_ptr) {
+    switch (iface) {
+    case gps_interface_tty:
+        return lgw_gps_enable_tty(path, gps_family, target_brate, fd_ptr);
+        break;
+    case gps_interface_i2c:
+        return lgw_gps_enable_i2c(path, fd_ptr);
+        break;
+    default:
+        DEBUG_MSG("ERROR: invalid GPS interface %d\n", iface);
+    };
+    return LGW_GPS_ERROR;
+}
+
+int lgw_gps_disable(int fd, enum gps_interface iface) {
     int i;
+
+    if (iface == gps_interface_i2c) {
+        return LGW_GPS_SUCCESS;
+    }
 
     /* restore serial ports parameters */
     i = tcsetattr(fd, TCSANOW, &ttyopt_restore);
     if (i){
-        DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION\n");
+        DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION - %s\n", strerror(errno));
         return LGW_GPS_ERROR;
     }
     tcflush(fd, TCIOFLUSH);

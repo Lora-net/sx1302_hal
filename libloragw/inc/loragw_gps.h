@@ -88,6 +88,15 @@ enum gps_msg {
     UBX_NAV_PVT      /*!> Position velocity and time */
 };
 
+/**
+@enum gps_bus
+@brief Type of bus to use for GPS
+*/
+enum gps_interface {
+    gps_interface_tty = 1, /*!> TTY (UART) */
+    gps_interface_i2c = 2  /*!> I2CDev */
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
@@ -104,21 +113,23 @@ enum gps_msg {
 /**
 @brief Configure a GPS module
 
-@param tty_path path to the TTY connected to the GPS
-@param gps_familly parameter (eg. ubx6 for uBlox gen.6)
+@param path path to the device connected to the GPS
+@param iface bus type for this device
+@param gps_family parameter (eg. ubx6 for uBlox gen.6)
 @param target_brate target baudrate for communication (0 keeps default target baudrate)
 @param fd_ptr pointer to a variable to receive file descriptor on GPS tty
 @return success if the function was able to connect and configure a GPS module
 */
-int lgw_gps_enable(char* tty_path, char* gps_familly, speed_t target_brate, int* fd_ptr);
+int lgw_gps_enable(char* path, enum gps_interface iface, char* gps_family, speed_t target_brate, int* fd_ptr);
 
 /**
 @brief Restore GPS serial configuration and close serial device
 
 @param fd file descriptor on GPS tty
+@param iface bus type for this device
 @return success if the function was able to complete
 */
-int lgw_gps_disable(int fd);
+int lgw_gps_disable(int fd, enum gps_interface iface);
 
 /**
 @brief Parse messages coming from the GPS system (or other GNSS)
@@ -167,11 +178,11 @@ int lgw_gps_get(struct timespec *utc, struct timespec *utc_acc, struct timespec 
 
 /**
 @brief Get time and position information from the serial GPS last message received
-@param utc UTC time, with ns precision (leap seconds are ignored)
-@param gps_time timestamp of last time pulse from the GPS module converted to the UNIX epoch
-       (leap seconds are ignored)
-@param loc location information
-@param err location error estimate if supported
+@param ref time reference structure required for time conversion
+@param count_us internal timestamp counter of the LoRa concentrator
+@param utc pointer to store UTC time, with ns precision (leap seconds ignored)
+@param utc_acc UTC time accuracy estimate
+@param gps_time timestamp of last time pulse from the GPS module converted to the UNIX epoch (leap seconds are ignored)
 @return success if timestamp was read and time reference could be refreshed
 
 Set systime to 0 in ref to trigger initial synchronization.

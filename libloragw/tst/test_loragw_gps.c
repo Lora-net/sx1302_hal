@@ -260,7 +260,7 @@ int main(int argc, char **argv)
     }
 
     /* Open and configure GPS */
-    i = lgw_gps_enable("/dev/ttyS0", "ubx7", 0, &gps_tty_dev);
+    i = lgw_gps_enable("/dev/ttyS0", gps_interface_tty, "ubx7", 0, &gps_tty_dev);
     if (i != LGW_GPS_SUCCESS) {
         printf("ERROR: Failed to enable GPS\n");
         exit(EXIT_FAILURE);
@@ -401,7 +401,7 @@ int main(int argc, char **argv)
 
     /* clean up before leaving */
     if (exit_sig == 1) {
-        lgw_gps_disable(gps_tty_dev);
+        lgw_gps_disable(gps_tty_dev, gps_interface_tty);
         lgw_stop();
     }
 
