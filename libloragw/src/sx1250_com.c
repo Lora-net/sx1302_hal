@@ -17,16 +17,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types */
-#include <stdio.h>      /* printf fprintf */
-#include <stdlib.h>     /* malloc free */
-#include <unistd.h>     /* lseek, close */
-#include <fcntl.h>      /* open */
-#include <string.h>     /* memset */
 
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
-
-#include "loragw_sx1250.h"
 #include "sx1250_com.h"
 #include "sx1250_spi.h"
 
@@ -42,14 +33,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1250_com_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    return sx1250_spi_w(rf_chain, op_code, data, size);
+int sx1250_com_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+    return sx1250_spi_w(com_target, spi_mux_target, op_code, data, size);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1250_com_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    return sx1250_spi_r(rf_chain, op_code, data, size);
+int sx1250_com_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+    return sx1250_spi_r(com_target, spi_mux_target, op_code, data, size);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

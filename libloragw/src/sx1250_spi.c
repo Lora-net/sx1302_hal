@@ -27,7 +27,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <linux/spi/spidev.h>
 
 #include "loragw_spi.h"
-#include "loragw_com.h"
 #include "loragw_aux.h"
 #include "sx1250_spi.h"
 
@@ -53,13 +52,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
-extern void *lgw_com_target; /*! generic pointer to the COM device */
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1250_spi_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
+int sx1250_spi_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+    int com_device;
     int cmd_size = 2; /* header + op_code */
     uint8_t out_buf[cmd_size + size];
     uint8_t command_size;
@@ -70,12 +67,13 @@ int sx1250_spi_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint
     wait_ms(WAIT_BUSY_SX1250_MS);
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
+    CHECK_NULL(com_target);
+    CHECK_NULL(data);
 
-    spi_device = *(int *)lgw_com_target; /* must check that spi_target is not null beforehand */
+    com_device = *(int *)com_target;
 
     /* prepare frame to be sent */
-    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+    out_buf[0] = spi_mux_target;
     out_buf[1] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
@@ -89,7 +87,7 @@ int sx1250_spi_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint
     k.speed_hz = SPI_SPEED;
     k.cs_change = 0;
     k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    a = ioctl(com_device, SPI_IOC_MESSAGE(1), &k);
 
     /* determine return code */
     if (a != (int)k.len) {
@@ -103,8 +101,8 @@ int sx1250_spi_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1250_spi_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
+int sx1250_spi_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+    int com_device;
     int cmd_size = 2; /* header + op_code + NOP */
     uint8_t out_buf[cmd_size + size];
     uint8_t command_size;
@@ -116,13 +114,13 @@ int sx1250_spi_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint
     wait_ms(WAIT_BUSY_SX1250_MS);
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    spi_device = *(int *)lgw_com_target; /* must check that spi_target is not null beforehand */
+    com_device = *(int *)com_target;
 
     /* prepare frame to be sent */
-    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+    out_buf[0] = spi_mux_target;
     out_buf[1] = (uint8_t)op_code;
     for(i = 0; i < (int)size; i++) {
         out_buf[cmd_size + i] = data[i];
@@ -135,7 +133,7 @@ int sx1250_spi_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint
     k.rx_buf = (unsigned long) in_buf;
     k.len = command_size;
     k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    a = ioctl(com_device, SPI_IOC_MESSAGE(1), &k);
 
     /* determine return code */
     if (a != (int)k.len) {

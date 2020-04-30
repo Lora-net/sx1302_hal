@@ -116,7 +116,7 @@ extern void *lgw_com_target; /*! generic pointer to the COM device */
 
 int sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
 
-    int spi_stat;
+    int com_stat;
     struct radio_reg_s reg;
     uint8_t mask;
     uint8_t r;
@@ -137,24 +137,24 @@ int sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
 
     if ((reg.leng == 8) && (reg.offs == 0)){
         /* direct write */
-        spi_stat = sx125x_com_w(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, data);
+        com_stat = sx125x_com_w(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, data);
     } else {
         /* read-modify-write */
-        spi_stat = sx125x_com_r(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
+        com_stat = sx125x_com_r(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
         mask = ((1 << reg.leng) - 1) << reg.offs;
         w = (r & ~mask) | ((data << reg.offs) & mask);
-        spi_stat |= sx125x_com_w(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, w);
+        com_stat |= sx125x_com_w(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, w);
     }
 
     /* Check that we can read what we have written */
     sx125x_reg_r(idx, &val_check, rf_chain);
     if (val_check != data) {
         printf("ERROR: sx125x register %d write failed (w:%u r:%u)!!\n", idx, data, val_check);
-        spi_stat = LGW_COM_ERROR;
+        com_stat = LGW_COM_ERROR;
     }
 
-    if (spi_stat != LGW_COM_SUCCESS) {
-        DEBUG_MSG("ERROR: SPI ERROR DURING RADIO REGISTER WRITE\n");
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: COM ERROR DURING RADIO REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
         return LGW_REG_SUCCESS;
@@ -165,7 +165,7 @@ int sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
 
 int sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain) {
 
-    int spi_stat;
+    int com_stat;
     struct radio_reg_s reg;
     uint8_t mask;
     uint8_t r;
@@ -182,12 +182,12 @@ int sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain) {
 
     reg = sx125x_regs[idx];
 
-    spi_stat = sx125x_com_r(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
+    com_stat = sx125x_com_r(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
     mask = ((1 << reg.leng) - 1) << reg.offs;
     *data = (r & mask) >> reg.offs;
 
-    if (spi_stat != LGW_COM_SUCCESS) {
-        DEBUG_MSG("ERROR: SPI ERROR DURING RADIO REGISTER READ\n");
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: COM ERROR DURING RADIO REGISTER READ\n");
         return LGW_REG_ERROR;
     } else {
         return LGW_REG_SUCCESS;

@@ -35,7 +35,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_sx1250.h"
 #include "loragw_sx1302.h"
-#include "sx1250_com.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -137,14 +136,14 @@ int main(int argc, char ** argv)
 
     /* Set Radio in Standby mode */
     test_buff[0] = (uint8_t)STDBY_XOSC;
-    sx1250_com_w(0, SET_STANDBY, test_buff, 1);
-    sx1250_com_w(1, SET_STANDBY, test_buff, 1);
+    sx1250_reg_w(SET_STANDBY, test_buff, 1, 0);
+    sx1250_reg_w(SET_STANDBY, test_buff, 1, 1);
     wait_ms(10);
 
     test_buff[0] = 0x00;
-    sx1250_com_r(0, GET_STATUS, test_buff, 1);
+    sx1250_reg_r(GET_STATUS, test_buff, 1, 0);
     printf("Radio0: get_status: 0x%02X\n", test_buff[0]);
-    sx1250_com_r(1, GET_STATUS, test_buff, 1);
+    sx1250_reg_r(GET_STATUS, test_buff, 1, 1);
     printf("Radio1: get_status: 0x%02X\n", test_buff[0]);
 
     /* databuffer R/W stress test */
@@ -154,7 +153,7 @@ int main(int argc, char ** argv)
         test_buff[2] = rand() & 0xFF;
         test_buff[3] = rand() & 0xFF;
         test_val = (test_buff[0] << 24) | (test_buff[1] << 16) | (test_buff[2] << 8) | (test_buff[3] << 0);
-        sx1250_com_w(0, SET_RF_FREQUENCY, test_buff, 4);
+        sx1250_reg_w(SET_RF_FREQUENCY, test_buff, 4, 0);
 
         read_buff[0] = 0x08;
         read_buff[1] = 0x8B;
@@ -163,7 +162,7 @@ int main(int argc, char ** argv)
         read_buff[4] = 0x00;
         read_buff[5] = 0x00;
         read_buff[6] = 0x00;
-        sx1250_com_r(0, READ_REGISTER, read_buff, 7);
+        sx1250_reg_r(READ_REGISTER, read_buff, 7, 0);
         read_val = (read_buff[3] << 24) | (read_buff[4] << 16) | (read_buff[5] << 8) | (read_buff[6] << 0);
 
         printf("Cycle %i > ", cycle_number);

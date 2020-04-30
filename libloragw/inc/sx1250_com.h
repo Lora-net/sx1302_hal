@@ -36,8 +36,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1250_com_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1250_com_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_com_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_com_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
 #endif
 

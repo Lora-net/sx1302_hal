@@ -22,6 +22,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types*/
 
 #include "sx1250_defs.h"
+
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
@@ -36,8 +37,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1250_spi_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1250_spi_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_spi_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_spi_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
 #endif
 

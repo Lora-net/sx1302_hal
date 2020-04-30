@@ -23,13 +23,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
-
 #include "sx1250_com.h"
-#include "loragw_reg.h"
-#include "loragw_aux.h"
 #include "loragw_sx1250.h"
+#include "loragw_com.h"
+#include "loragw_aux.h"
+#include "loragw_reg.h"
+#include "loragw_hal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -51,14 +50,54 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
+extern void *lgw_com_target; /*! generic pointer to the COM device */
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+int sx1250_reg_w(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t rf_chain) {
+    int com_stat;
+
+    /* checking input parameters */
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        return LGW_REG_ERROR;
+    }
+
+    com_stat = sx1250_com_w(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), op_code, data, size);
+
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: COM ERROR DURING RADIO REGISTER WRITE\n");
+        return LGW_REG_ERROR;
+    } else {
+        return LGW_REG_SUCCESS;
+    }
+}
+
+int sx1250_reg_r(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t rf_chain) {
+    int com_stat;
+
+    /* checking input parameters */
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        return LGW_REG_ERROR;
+    }
+
+    com_stat = sx1250_com_r(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), op_code, data, size);
+
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: COM ERROR DURING RADIO REGISTER READ\n");
+        return LGW_REG_ERROR;
+    } else {
+        return LGW_REG_SUCCESS;
+    }
+}
 
 int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
     uint8_t buff[16];
 
     buff[0] = 0x00;
-    sx1250_com_r(rf_chain, GET_STATUS, buff, 1);
+    sx1250_reg_r(GET_STATUS, buff, 1, rf_chain);
 
     /* Run calibration */
     if ((freq_hz > 430E6) && (freq_hz < 440E6)) {
@@ -80,7 +119,7 @@ int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
         printf("ERROR: failed to calibrate sx1250 radio, frequency range not supported (%u)\n", freq_hz);
         return -1;
     }
-    sx1250_com_w(rf_chain, CALIBRATE_IMAGE, buff, 2);
+    sx1250_reg_w(CALIBRATE_IMAGE, buff, 2, rf_chain);
 
     /* Wait for calibration to complete */
     wait_ms(10);
@@ -88,7 +127,7 @@ int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
     buff[0] = 0x00;
     buff[1] = 0x00;
     buff[2] = 0x00;
-    sx1250_com_r(rf_chain, GET_DEVICE_ERRORS, buff, 3);
+    sx1250_reg_r(GET_DEVICE_ERRORS, buff, 3, rf_chain);
     if (TAKE_N_BITS_FROM(buff[2], 4, 1) != 0) {
         printf("ERROR: sx1250 Image Calibration Error\n");
         return -1;
@@ -105,12 +144,12 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode) {
 
     /* Set Radio in Standby for calibrations */
     buff[0] = (uint8_t)STDBY_RC;
-    sx1250_com_w(rf_chain, SET_STANDBY, buff, 1);
+    sx1250_reg_w(SET_STANDBY, buff, 1, rf_chain);
     wait_ms(10);
 
     /* Get status to check Standby mode has been properly set */
     buff[0] = 0x00;
-    sx1250_com_r(rf_chain, GET_STATUS, buff, 1);
+    sx1250_reg_r(GET_STATUS, buff, 1, rf_chain);
     if ((uint8_t)(TAKE_N_BITS_FROM(buff[0], 4, 3)) != 0x02) {
         printf("ERROR: Failed to set SX1250_%u in STANDBY_RC mode\n", rf_chain);
         return -1;
@@ -118,17 +157,17 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode) {
 
     /* Run all calibrations (TCXO) */
     buff[0] = 0x7F;
-    sx1250_com_w(rf_chain, CALIBRATE, buff, 1);
+    sx1250_reg_w(CALIBRATE, buff, 1, rf_chain);
     wait_ms(10);
 
     /* Set Radio in Standby with XOSC ON */
     buff[0] = (uint8_t)STDBY_XOSC;
-    sx1250_com_w(rf_chain, SET_STANDBY, buff, 1);
+    sx1250_reg_w(SET_STANDBY, buff, 1, rf_chain);
     wait_ms(10);
 
     /* Get status to check Standby mode has been properly set */
     buff[0] = 0x00;
-    sx1250_com_r(rf_chain, GET_STATUS, buff, 1);
+    sx1250_reg_r(GET_STATUS, buff, 1, rf_chain);
     if ((uint8_t)(TAKE_N_BITS_FROM(buff[0], 4, 3)) != 0x03) {
         printf("ERROR: Failed to set SX1250_%u in STANDBY_XOSC mode\n", rf_chain);
         return -1;
@@ -138,43 +177,43 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode) {
     buff[0] = 0x06;
     buff[1] = 0xA1;
     buff[2] = 0x01;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3);
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain);
     buff[0] = 0x06;
     buff[1] = 0xA2;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3);
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain);
     buff[0] = 0x06;
     buff[1] = 0xA3;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3);
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain);
 
     /* Configure DIO for Rx */
     buff[0] = 0x05;
     buff[1] = 0x82;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3); /* Drive strength to min */
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain); /* Drive strength to min */
     buff[0] = 0x05;
     buff[1] = 0x83;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3); /* Input enable, all disabled */
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain); /* Input enable, all disabled */
     buff[0] = 0x05;
     buff[1] = 0x84;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3); /* No pull up */
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain); /* No pull up */
     buff[0] = 0x05;
     buff[1] = 0x85;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3); /* No pull down */
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain); /* No pull down */
     buff[0] = 0x05;
     buff[1] = 0x80;
     buff[2] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3); /* Output enable, all enabled */
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain); /* Output enable, all enabled */
 
     /* Set fix gain (??) */
     buff[0] = 0x08;
     buff[1] = 0xB6;
     buff[2] = 0x2A;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3);
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain);
 
     /* Set frequency */
     freq_reg = SX1250_FREQ_TO_REG(freq_hz);
@@ -182,7 +221,7 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode) {
     buff[1] = (uint8_t)(freq_reg >> 16);
     buff[2] = (uint8_t)(freq_reg >> 8);
     buff[3] = (uint8_t)(freq_reg >> 0);
-    sx1250_com_w(rf_chain, SET_RF_FREQUENCY, buff, 4);
+    sx1250_reg_w(SET_RF_FREQUENCY, buff, 4, rf_chain);
 
     /* Set frequency offset to 0 */
     buff[0] = 0x08;
@@ -190,13 +229,13 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode) {
     buff[2] = 0x00;
     buff[3] = 0x00;
     buff[4] = 0x00;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 5);
+    sx1250_reg_w(WRITE_REGISTER, buff, 5, rf_chain);
 
     /* Set Radio in Rx mode, necessary to give a clock to SX1302 */
     buff[0] = 0xFF;
     buff[1] = 0xFF;
     buff[2] = 0xFF;
-    sx1250_com_w(rf_chain, SET_RX, buff, 3); /* Rx Continuous */
+    sx1250_reg_w(SET_RX, buff, 3, rf_chain); /* Rx Continuous */
 
     /* Select single input or differential input mode */
     if (single_input_mode == true) {
@@ -204,13 +243,13 @@ int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode) {
         buff[0] = 0x08;
         buff[1] = 0xE2;
         buff[2] = 0x0D;
-        sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3);
+        sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain);
     }
 
     buff[0] = 0x05;
     buff[1] = 0x87;
     buff[2] = 0x0B;
-    sx1250_com_w(rf_chain, WRITE_REGISTER, buff, 3); /* FPGA_MODE_RX */
+    sx1250_reg_w(WRITE_REGISTER, buff, 3, rf_chain); /* FPGA_MODE_RX */
 
     return 0;
 }

@@ -37,7 +37,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 int sx125x_spi_r(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
-
 int sx125x_spi_w(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t data);
 
 #endif
