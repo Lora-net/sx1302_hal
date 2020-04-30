@@ -506,21 +506,19 @@ int lgw_gps_enable(char* path, enum gps_interface iface, char* gps_family, speed
 int lgw_gps_disable(int fd, enum gps_interface iface) {
     int i;
 
-    if (iface == gps_interface_i2c) {
-        return LGW_GPS_SUCCESS;
+    if (iface == gps_interface_tty) {
+        /* restore serial ports parameters */
+        i = tcsetattr(fd, TCSANOW, &ttyopt_restore);
+        if (i){
+            DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION - %s\n", strerror(errno));
+            return LGW_GPS_ERROR;
+        }
+        tcflush(fd, TCIOFLUSH);
     }
-
-    /* restore serial ports parameters */
-    i = tcsetattr(fd, TCSANOW, &ttyopt_restore);
-    if (i){
-        DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION - %s\n", strerror(errno));
-        return LGW_GPS_ERROR;
-    }
-    tcflush(fd, TCIOFLUSH);
 
     i = close(fd);
     if (i) {
-        DEBUG_MSG("ERROR: TTY PORT FAIL TO CLOSE\n");
+        DEBUG_MSG("ERROR: GPS PORT FAIL TO CLOSE\n");
         return LGW_GPS_ERROR;
     }
 
