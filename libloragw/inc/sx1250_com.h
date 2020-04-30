@@ -13,17 +13,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-#ifndef _LORAGW_SX1250_H
-#define _LORAGW_SX1250_H
+#ifndef _SX1250_COM_H
+#define _SX1250_COM_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types*/
-#include <stdbool.h>    /* bool type */
 
 #include "sx1250_defs.h"
-
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
@@ -38,8 +36,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz);
-int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode);
+int sx1250_com_w(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_com_r(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
 #endif
 

@@ -35,10 +35,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define SPI_SPEED       2000000
 
-#define LGW_SPI_MUX_TARGET_SX1302   0x00
-#define LGW_SPI_MUX_TARGET_RADIOA   0x01
-#define LGW_SPI_MUX_TARGET_RADIOB   0x02
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 

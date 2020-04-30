@@ -32,6 +32,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <time.h>
 
 #include "loragw_spi.h"
+#include "loragw_com.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 

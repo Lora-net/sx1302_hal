@@ -7,24 +7,22 @@
   (C)2019 Semtech
 
 Description:
-    Functions used to handle LoRa concentrator SX1250 radios.
+    Functions used to handle LoRa concentrator SX1255/SX1257 radios SPI access.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
-#ifndef _LORAGW_SX1250_H
-#define _LORAGW_SX1250_H
+#ifndef _SX125X_COM_H
+#define _SX125X_COM_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>     /* C99 types*/
+#include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
-#include "sx1250_defs.h"
-
-#include "config.h"     /* library configuration options (dynamically generated) */
+/* -------------------------------------------------------------------------- */
+/* --- INTERNAL SHARED TYPES ------------------------------------------------ */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
@@ -33,14 +31,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
-/* --- PUBLIC TYPES --------------------------------------------------------- */
+/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz);
-int sx1250_setup(uint8_t rf_chain, uint32_t freq_hz, bool single_input_mode);
+int sx125x_com_r(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
+
+int sx125x_com_w(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t data);
 
 #endif
-
 /* --- EOF ------------------------------------------------------------------ */
