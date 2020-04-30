@@ -45,7 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
+int lgw_spi_open(const char * com_path, void **com_target_ptr);
 
 /**
 @brief LoRa concentrator SPI close
@@ -53,7 +53,7 @@ int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-int lgw_spi_close(void *spi_target);
+int lgw_spi_close(void *com_target);
 
 /**
 @brief LoRa concentrator SPI single-byte write
@@ -62,7 +62,7 @@ int lgw_spi_close(void *spi_target);
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
+int lgw_spi_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI single-byte read
@@ -71,7 +71,7 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
+int lgw_spi_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write
@@ -81,7 +81,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
+int lgw_spi_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read
@@ -91,7 +91,7 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+int lgw_spi_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
 #endif
 

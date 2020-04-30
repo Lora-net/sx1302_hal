@@ -44,27 +44,27 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr);
  * 
 */
 
-int lgw_usb_close(void *usb_target);
+int lgw_usb_close(void *com_target);
 
 /**
  *
 */
-int lgw_usb_w(void *usb_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
+int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
 
 /**
  *
 */
-int lgw_usb_r(void *usb_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
+int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 
 /**
  *
 */
-int lgw_usb_wb(void *usb_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
+int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
  *
 */
-int lgw_usb_rb(void *usb_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
 #endif
 

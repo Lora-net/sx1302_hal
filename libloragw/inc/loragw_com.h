@@ -36,13 +36,23 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_SPI_MUX_TARGET_RADIOB   0x02
 
 /* -------------------------------------------------------------------------- */
+/* --- PUBLIC TYPES --------------------------------------------------------- */
+
+typedef enum com_type_e {
+    LGW_COM_SPI,
+    LGW_COM_USB,
+    LGW_COM_UNKNOWN
+} lgw_com_type_t;
+
+
+/* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
  * 
 */
 
-int lgw_com_open(const char *com_path, void **com_target_ptr);
+int lgw_com_open(lgw_com_type_t com_type, const char *com_path, void **com_target_ptr);
 
 /**
  * 

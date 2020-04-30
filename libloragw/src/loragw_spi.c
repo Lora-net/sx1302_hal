@@ -56,14 +56,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* SPI initialization and configuration */
-int lgw_spi_open(const char * spidev_path, void **spi_target_ptr) {
+int lgw_spi_open(const char * com_path, void **com_target_ptr) {
     int *spi_device = NULL;
     int dev;
     int a=0, b=0;
     int i;
 
     /* check input variables */
-    CHECK_NULL(spi_target_ptr); /* cannot be null, must point on a void pointer (*spi_target_ptr can be null) */
+    CHECK_NULL(com_path);
+    CHECK_NULL(com_target_ptr);
 
     /* allocate memory for the device descriptor */
     spi_device = malloc(sizeof(int));
@@ -73,9 +74,9 @@ int lgw_spi_open(const char * spidev_path, void **spi_target_ptr) {
     }
 
     /* open SPI device */
-    dev = open(spidev_path, O_RDWR);
+    dev = open(com_path, O_RDWR);
     if (dev < 0) {
-        DEBUG_PRINTF("ERROR: failed to open SPI device %s\n", spidev_path);
+        DEBUG_PRINTF("ERROR: failed to open SPI device %s\n", com_path);
         return LGW_SPI_ERROR;
     }
 
@@ -123,7 +124,7 @@ int lgw_spi_open(const char * spidev_path, void **spi_target_ptr) {
     }
 
     *spi_device = dev;
-    *spi_target_ptr = (void *)spi_device;
+    *com_target_ptr = (void *)spi_device;
     DEBUG_MSG("Note: SPI port opened and configured ok\n");
     return LGW_SPI_SUCCESS;
 }
@@ -131,17 +132,17 @@ int lgw_spi_open(const char * spidev_path, void **spi_target_ptr) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* SPI release */
-int lgw_spi_close(void *spi_target) {
+int lgw_spi_close(void *com_target) {
     int spi_device;
     int a;
 
     /* check input variables */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(com_target);
 
     /* close file & deallocate file descriptor */
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *(int *)com_target; /* must check that spi_target is not null beforehand */
     a = close(spi_device);
-    free(spi_target);
+    free(com_target);
 
     /* determine return code */
     if (a < 0) {
@@ -156,7 +157,7 @@ int lgw_spi_close(void *spi_target) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple write */
-int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
+int lgw_spi_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
     int spi_device;
     uint8_t out_buf[4];
     uint8_t command_size;
@@ -164,9 +165,9 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
     int a;
 
     /* check input variables */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(com_target);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *(int *)com_target; /* must check that spi_target is not null beforehand */
 
     /* prepare frame to be sent */
     out_buf[0] = spi_mux_target;
@@ -197,7 +198,7 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple read */
-int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
+int lgw_spi_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
     int spi_device;
     uint8_t out_buf[5];
     uint8_t command_size;
@@ -206,10 +207,10 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
     int a;
 
     /* check input variables */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     /* prepare frame to be sent */
     out_buf[0] = spi_mux_target;
@@ -241,7 +242,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
+int lgw_spi_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int spi_device;
     uint8_t command[3];
     uint8_t command_size;
@@ -251,14 +252,14 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const
     int i;
 
     /* check input parameters */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
     if (size == 0) {
         DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
         return LGW_SPI_ERROR;
     }
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     /* prepare command byte */
     command[0] = spi_mux_target;
@@ -296,7 +297,7 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) read */
-int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
+int lgw_spi_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
     int spi_device;
     uint8_t command[4];
     uint8_t command_size;
@@ -306,14 +307,14 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8
     int i;
 
     /* check input parameters */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
     if (size == 0) {
         DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
         return LGW_SPI_ERROR;
     }
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     /* prepare command byte */
     command[0] = spi_mux_target;

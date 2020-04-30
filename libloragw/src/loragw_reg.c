@@ -1214,7 +1214,7 @@ int lgw_connect(const char * com_path) {
     }
 
     /* open the COM link */
-    com_stat = lgw_com_open(com_path, &lgw_com_target);
+    com_stat = lgw_com_open(LGW_COM_USB, com_path, &lgw_com_target);
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;
