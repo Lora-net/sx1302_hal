@@ -635,8 +635,34 @@ int lgw_usb_close(void *com_target) {
 
 /* Simple write */
 int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
-    /* TODO */
-    return LGW_USB_ERROR;
+    int usb_device;
+    uint8_t command_size = 5;
+    uint8_t out_buf[command_size];
+    uint8_t in_buf[command_size];
+    int a;
+
+    /* check input variables */
+    CHECK_NULL(com_target);
+    CHECK_NULL(data);
+
+    usb_device = *(int *)com_target;
+
+    /* prepare frame to be sent */
+    out_buf[0] = 0;
+    out_buf[1] = spi_mux_target;
+    out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
+    out_buf[3] =        ((address >> 0) & 0xFF);
+    out_buf[4] = data;
+    a = mcu_spi_access(usb_device, out_buf, command_size, in_buf);
+
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB WRITE FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB write success\n");
+        return 0;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
