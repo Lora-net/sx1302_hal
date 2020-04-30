@@ -141,8 +141,8 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 
 int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz);
 
-int lgw_sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain);
-int lgw_sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain);
+int sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain);
+int sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain);
 
 #endif
 /* --- EOF ------------------------------------------------------------------ */

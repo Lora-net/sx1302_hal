@@ -44,8 +44,8 @@ struct lgw_reg_s {
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED FUNCTIONS -------------------------------------------- */
 
-int reg_w_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value);
-int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value);
+int reg_w_align32(void *com_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value);
+int reg_r_align32(void *com_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value);
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
@@ -1432,14 +1432,14 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief Connect LoRa concentrator by opening SPI link
-@param spidev_path path to the SPI device to be used to connect to the SX1302
+@brief Connect LoRa concentrator by opening COM link
+@param com_path path to the COM device to be used to connect to the SX1302
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
-int lgw_connect(const char * spidev_path);
+int lgw_connect(const char * com_path);
 
 /**
-@brief Disconnect LoRa concentrator by closing SPI link
+@brief Disconnect LoRa concentrator by closing COM link
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_disconnect(void);
