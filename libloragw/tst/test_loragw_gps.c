@@ -84,13 +84,14 @@ static void gps_process_sync(void) {
     uint32_t ppm_tstamp;
     struct timespec ppm_gps;
     struct timespec ppm_utc;
+    struct timespec ppm_utc_acc;
 
     /* variables for timestamp <-> GPS time conversions */
     uint32_t x, z;
     struct timespec y;
 
     /* get GPS time for synchronization */
-    int i = lgw_gps_get(&ppm_utc, &ppm_gps, NULL, NULL);
+    int i = lgw_gps_get(&ppm_utc, &ppm_utc_acc, &ppm_gps, NULL);
     if (i != LGW_GPS_SUCCESS) {
         printf("    No valid reference GPS time available, synchronization impossible.\n");
         return;
@@ -104,7 +105,7 @@ static void gps_process_sync(void) {
     }
 
     /* try to update synchronize time reference with the new GPS & timestamp */
-    i = lgw_gps_sync(&ppm_ref, ppm_tstamp, ppm_utc, ppm_gps);
+    i = lgw_gps_sync(&ppm_ref, ppm_tstamp, ppm_utc, ppm_utc_acc, ppm_gps);
     if (i != LGW_GPS_SUCCESS) {
         printf("    Synchronization error.\n");
         return;
@@ -153,14 +154,13 @@ static void gps_process_sync(void) {
 static void gps_process_coords(void) {
     /* position variable */
     struct coord_s coord;
-    struct coord_s gpserr;
-    int    i = lgw_gps_get(NULL, NULL, &coord, &gpserr);
+    int    i = lgw_gps_get(NULL, NULL, NULL, &coord);
 
     /* update gateway coordinates */
     if (i == LGW_GPS_SUCCESS) {
         printf("\n");
         printf("# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", coord.lat, coord.lon, coord.alt);
-        printf("# GPS err:         latitude %.5f, longitude %.5f, altitude %i m\n", gpserr.lat, gpserr.lon, gpserr.alt);
+        printf("# GPS err:         horizontal %.1f m, vertical %.1f m\n", coord.eha, coord.eva);
     }
 }
 
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
     }
 
     /* Open and configure GPS */
-    i = lgw_gps_enable("/dev/ttyS0", "ubx7", 0, &gps_tty_dev);
+    i = lgw_gps_enable("/dev/ttyS0", gps_interface_tty, "ubx7", 0, &gps_tty_dev);
     if (i != LGW_GPS_SUCCESS) {
         printf("ERROR: Failed to enable GPS\n");
         exit(EXIT_FAILURE);
@@ -401,7 +401,7 @@ int main(int argc, char **argv)
 
     /* clean up before leaving */
     if (exit_sig == 1) {
-        lgw_gps_disable(gps_tty_dev);
+        lgw_gps_disable(gps_tty_dev, gps_interface_tty);
         lgw_stop();
     }
 

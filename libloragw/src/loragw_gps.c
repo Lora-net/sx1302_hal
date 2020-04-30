@@ -30,9 +30,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <termios.h>    /* tcflush */
 #include <math.h>       /* modf */
 
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
+
+#include <assert.h>
 #include <stdlib.h>
 
 #include "loragw_gps.h"
+#include "cursor/cursor.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -51,6 +57,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 #define TRACE()         fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
+#define CSR_RES(eXpr_)                                                         \
+    do {                                                                       \
+        enum cursor_res vAl_ = (eXpr_);                                        \
+        if (cursor_res_err_buf_exhausted == (vAl_)) {                          \
+            return INCOMPLETE;                                                 \
+        }                                                                      \
+        assert(vAl_ == cursor_res_ok);                                         \
+    } while (0)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -58,8 +73,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PLUS_10PPM          1.00001
 #define MINUS_10PPM         0.99999
 #define DEFAULT_BAUDRATE    B9600
-
-#define UBX_MSG_NAVTIMEGPS_LEN  16
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -77,6 +90,7 @@ static bool gps_time_ok = false;
 static int16_t gps_week = 0; /* GPS week number of the navigation epoch */
 static uint32_t gps_iTOW = 0; /* GPS time of week in milliseconds */
 static int32_t gps_fTOW = 0; /* Fractional part of iTOW (+/-500000) in nanosec */
+static uint32_t gps_tAcc = 0;   /* Time accuracy estimate */
 
 static short gps_dla = 0; /* degrees of latitude */
 static double gps_mla = 0.0; /* minutes of latitude */
@@ -84,8 +98,13 @@ static char gps_ola = 0; /* orientation (N-S) of latitude */
 static short gps_dlo = 0; /* degrees of longitude */
 static double gps_mlo = 0.0; /* minutes of longitude */
 static char gps_olo = 0; /* orientation (E-W) of longitude */
-static short gps_alt = 0; /* altitude */
+static int32_t gps_lat = 0; /* latitude */
+static int32_t gps_lon = 0; /* longitude */
+static int32_t gps_alt = 0; /* altitude */
 static bool gps_pos_ok = false;
+static uint32_t gps_hAcc = 0;   /* horizontal accuracy estimate (mm) */
+static uint32_t gps_vAcc = 0;   /* vertical accuracy estimate (mm) */
+static uint8_t  gps_numSV = 0;  /* number of satellites used in the position fix */
 
 static char gps_mod = 'N'; /* GPS mode (N no fix, A autonomous, D differential) */
 static short gps_sat = 0; /* number of satellites used for fix */
@@ -104,6 +123,10 @@ static bool validate_nmea_checksum(const char *serial_buff, int buff_size);
 static bool match_label(const char *s, char *label, int size, char wildcard);
 
 static int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx);
+
+static int lgw_gps_enable_tty(char *path, char *gps_family, speed_t target_brate, int *fd_ptr);
+
+static int lgw_gps_enable_i2c(char *path, int *fd_ptr);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -250,19 +273,41 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
     return j;
 }
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
-
-int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *fd_ptr) {
+static int lgw_gps_enable_tty(char *tty_path, char *gps_family, speed_t target_brate, int *fd_ptr) {
     int i;
     struct termios ttyopt; /* serial port options */
     int gps_tty_dev; /* file descriptor to the serial port of the GNSS module */
-    uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
+    /* TODO: implement proper types with proper serializers below. */
+    uint8_t const ubx_cmd_cfg_msgs[] = {
+                    0xB5, 0x62, /* UBX Sync Chars */
+                    0x06, 0x01, /* CFG-MSG Class/ID */
+                    0x08, 0x00, /* Payload length */
+                    0x01, 0x07, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-PVT output on serial */
+                    0x19, 0xe5, /* Checksum */
+                    /* --- */
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
                     0x08, 0x00, /* Payload length */
                     0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
-                    0x32, 0x94 }; /* Checksum */
+                    0x32, 0x94, /* Checksum */
+    };
+
+    uint8_t const ubx_cmd_prt[] = {
+                    0xB5, 0x62, /* UBX Sync Chars */
+                    0x06, 0x00, /* CFG-MSG Class/ID */
+                    0x14, 0x00, /* Payload length */
+                    0x01,       /* UART 1 */
+                    0x00,       /* reserved0 */
+                    0x00, 0x80, /* Disable TX ready */
+                    0xD0, 0x08, 0x00, 0x00, /* 1 stop bit, no parity bits, 8bit char */
+                    0x80, 0x25, 0x00, 0x00, /* 9600 baud */
+                    0x01, 0x00, /* Inproto mask, UBX only */
+                    0x01, 0x00, /* Outproto mask, UBX only */
+                    0x00, 0x00, /* flags */
+                    0x00, 0x00, /* reserved5 */
+                    0x1A, 0xF9  /* checksum */
+    };
+
     ssize_t num_written;
 
     /* check input parameters */
@@ -336,11 +381,9 @@ int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *
     ttyopt.c_lflag &= ~ECHO;   /* do not echo back every character typed */
     ttyopt.c_lflag &= ~ECHOE;  /* does not erase the last character in current line */
     ttyopt.c_lflag &= ~ECHOK;  /* do not echo NL after KILL character */
-
-    /* settings for non-canonical mode
-       read will block for until the lesser of VMIN or requested chars have been received */
-    ttyopt.c_cc[VMIN]  = LGW_GPS_MIN_MSG_SIZE;
-    ttyopt.c_cc[VTIME] = 0;
+    /* `read()`ing the GPS TTY should return when one of these conditions is true: */
+    ttyopt.c_cc[VMIN] = LGW_GPS_MIN_MSG_SIZE; /* a minimum number of bytes are received */
+    ttyopt.c_cc[VTIME] = 1;                   /* 100 ms after at the most recent byte is received (unit is tenths of a second) */
 
     /* set new serial ports parameters */
     i = tcsetattr(gps_tty_dev, TCSANOW, &ttyopt);
@@ -350,10 +393,19 @@ int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *
     }
     tcflush(gps_tty_dev, TCIOFLUSH);
 
-    /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
+    /* Configure UART for UBX protocol only */
     /* This is a binary message, serial port has to be properly configured to handle this */
-    num_written = write (gps_tty_dev, ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
-    if (num_written != UBX_MSG_NAVTIMEGPS_LEN) {
+    num_written = write (gps_tty_dev, ubx_cmd_prt, sizeof(ubx_cmd_prt));
+    if (num_written != sizeof(ubx_cmd_prt)) {
+        DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
+    }
+
+    sleep(1);
+    tcflush(gps_tty_dev, TCIOFLUSH);
+
+    /* Configure GPS to report NAV-TIMEGPS and NAV-PVT messages */
+    num_written = write (gps_tty_dev, ubx_cmd_cfg_msgs, sizeof(ubx_cmd_cfg_msgs));
+    if (num_written != sizeof(ubx_cmd_cfg_msgs)) {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }
 
@@ -368,22 +420,107 @@ int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *
     return LGW_GPS_SUCCESS;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+static int lgw_gps_enable_i2c(char *path, int *fd_ptr) {
+    /* Disable all protocols on UART */
+    uint8_t const msg_cfg_prt_uart[] = {0xb5, 0x62, 0x06, 0x00,
+                                        0x14, 0x00, 0x01, 0x00,
+                                        0x00, 0x00, 0xc0, 0x08,
+                                        0x00, 0x00, 0x80, 0x25,
+                                        0x00, 0x00, 0x01, 0x00,
+                                        0x00, 0x00, 0x00, 0x00,
+                                        0x00, 0x00, 0x89, 0x73};
+    /* Configure I2C port to be ubx protocol only. */
+    uint8_t const msg_cfg_prt_i2c[] = {0xb5, 0x62, 0x06, 0x00,
+                                       0x14, 0x00, 0x00, 0x00,
+                                       0xb5, 0x00, 0x84, 0x00,
+                                       0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x01, 0x00,
+                                       0x01, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x55, 0x50};
+    /* Enable NAV-PVT */
+    uint8_t const msg_enable_pvt[] = {0xb5, 0x62, 0x06, 0x01,
+                                      0x03, 0x00, 0x01, 0x07,
+                                      0x01, 0x13, 0x51};
+    /* Enable NAV-TIMEGPS */
+    uint8_t const msg_enable_timegps[] = {0xb5, 0x62, 0x06, 0x01,
+                                          0x03, 0x00, 0x01, 0x20,
+                                          0x01, 0x2c, 0x83};
 
-int lgw_gps_disable(int fd) {
+    int gps_i2c_dev = open(path, O_RDWR);
+    if (gps_i2c_dev <= 0) {
+        DEBUG_MSG("ERROR: I2C PORT FAIL TO OPEN, CHECK PATH AND ACCESS RIGHTS\n");
+        return LGW_GPS_ERROR;
+    }
+
+    if (ioctl(gps_i2c_dev, I2C_SLAVE, 0x42) < 0) {
+        fprintf(stderr, "ERROR: failed to set I2C slave addr\n");
+        return LGW_GPS_ERROR;
+    }
+
+    ssize_t w = write(gps_i2c_dev, msg_cfg_prt_uart, sizeof(msg_cfg_prt_uart));
+    if (w != sizeof(msg_cfg_prt_uart)) {
+        fprintf(stderr, "ERROR: failed to configure uart port\n");
+        return LGW_GPS_ERROR;
+    }
+
+    w = write(gps_i2c_dev, msg_cfg_prt_i2c, sizeof(msg_cfg_prt_i2c));
+    if (w != sizeof(msg_cfg_prt_i2c)) {
+        fprintf(stderr, "ERROR: failed to configure i2c port\n");
+        return LGW_GPS_ERROR;
+    }
+
+    w = write(gps_i2c_dev, msg_enable_pvt, sizeof(msg_enable_pvt));
+    if (w != sizeof(msg_enable_pvt)) {
+        fprintf(stderr, "ERROR: failed to configure enable NAV-PVT messages\n");
+        return LGW_GPS_ERROR;
+    }
+
+    w = write(gps_i2c_dev, msg_enable_timegps, sizeof(msg_enable_timegps));
+    if (w != sizeof(msg_enable_timegps)) {
+        fprintf(stderr, "ERROR: failed to configure enable NAV-TIMEGPS messages\n");
+        return LGW_GPS_ERROR;
+    }
+
+    *fd_ptr = gps_i2c_dev;
+
+    return LGW_GPS_SUCCESS;
+}
+
+/* -------------------------------------------------------------------------- */
+/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+int lgw_gps_enable(char* path, enum gps_interface iface, char* gps_family, speed_t target_brate, int* fd_ptr) {
+    switch (iface) {
+    case gps_interface_tty:
+        return lgw_gps_enable_tty(path, gps_family, target_brate, fd_ptr);
+        break;
+    case gps_interface_i2c:
+        return lgw_gps_enable_i2c(path, fd_ptr);
+        break;
+    default:
+        DEBUG_MSG("ERROR: invalid GPS interface %d\n", iface);
+    };
+    return LGW_GPS_ERROR;
+}
+
+int lgw_gps_disable(int fd, enum gps_interface iface) {
     int i;
+
+    if (iface == gps_interface_i2c) {
+        return LGW_GPS_SUCCESS;
+    }
 
     /* restore serial ports parameters */
     i = tcsetattr(fd, TCSANOW, &ttyopt_restore);
-    if (i != 0){
+    if (i){
         DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION - %s\n", strerror(errno));
         return LGW_GPS_ERROR;
     }
     tcflush(fd, TCIOFLUSH);
 
     i = close(fd);
-    if (i != 0) {
-        DEBUG_PRINTF("ERROR: TTY PORT FAIL TO CLOSE - %s\n", strerror(errno));
+    if (i) {
+        DEBUG_MSG("ERROR: TTY PORT FAIL TO CLOSE\n");
         return LGW_GPS_ERROR;
     }
 
@@ -392,13 +529,214 @@ int lgw_gps_disable(int fd) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-enum gps_msg lgw_parse_ubx(const char *serial_buff, size_t buff_size, size_t *msg_size) {
-    bool valid = 0;    /* iTOW, fTOW and week validity */
-    unsigned int payload_length;
-    uint8_t ck_a, ck_b;
-    uint8_t ck_a_rcv, ck_b_rcv;
-    unsigned int i;
+/**
+ * ## Notes
+ *
+ * - Important: Users are recommended to check the `gnssFixOK` flag in
+ *   the UBX-NAV-PVT pr the NMEA valid flag. Fixes not marked valid
+ *   should not normally be used.
+ */
+struct ubx_nav_pvt {
+    /* GPS time of week of the navigation epoch
+     * -
+     * ms */
+    uint32_t iTOW;
+    /* Year (UTC)
+     * -
+     * y */
+    uint16_t year;
+    /* Month, range 1..12 (UTC)
+     * -
+     * month */
+    uint8_t  month;
+    /* Day of month, range 1..31 (UTC)
+     * -
+     * d */
+    uint8_t  day;
+    /* Hour of day, range 0..23 (UTC)
+     * -
+     * h */
+    uint8_t  hour;
+    /* Minute of hour, range 0..59 (UTC)
+     * -
+     * min */
+    uint8_t  min;
+    /* Seconds of minute, range 0..60 (UTC)
+     * -
+     * s */
+    uint8_t  sec;
+    /* Validity flags
+     * -
+     * - */
+    uint8_t  valid;
+    /* Time accuracy estimate (UTC)
+     * -
+     * ns */
+    uint32_t tAcc;
+    /* Fraction of second, range -1e9 .. 1e9 (UTC)
+     * -
+     * ns */
+    int32_t  nano;
+    /* GNSSfix Type:
+    * - 0: no fix
+    * - 1: dead reckoning only
+    * - 2: 2D-fix
+    * - 3: 3D-fix
+    * - 4: GNSS + dead reckoning combined 5: time only fix */
+    uint8_t  fixType;
+    /* Fix status flags */
+    uint8_t  flags;
+    uint8_t  reserved1;
+    /* Number of satellites used in Nav Solution */
+    uint8_t  numSV;
+    /* Longitude
+     * 1e-7
+     * deg */
+    int32_t  lon;
+    /* Latitude
+     * 1e-7
+     * deg */
+    int32_t  lat;
+    /* Height above ellipsoid
+     * -
+     * mm */
+    int32_t  height;
+    /* Height above mean sea level
+     * -
+     * mm */
+    int32_t  hMSL;
+    /* Horizontal accuracy estimate
+     * -
+     * mm */
+    uint32_t hAcc;
+    /* Vertical accuracy estimate
+     * -
+     * mm */
+    uint32_t vAcc;
+    /* NED north velocity
+     * -
+     * mm/s */
+    int32_t  velN;
+    /* NED east velocity
+     * -
+     * mm/s */
+    int32_t  velE;
+    /* NED down velocity
+     * -
+     * mm/s */
+    int32_t  velD;
+    /* Ground Speed (2-D)
+     * -
+     * mm/s */
+    int32_t  gSpeed;
+    /* Heading of motion (2-D)
+     * 1e-5
+     * deg */
+    int32_t  headMot;
+    /* Speed accuracy estimate
+     * -
+     * mm/s */
+    uint32_t sAcc;
+    /* Heading accuracy estimate (both motion and vehicle)
+     * 1e-5
+     * deg */
+    uint32_t headAcc;
+    /* Position DOP
+     * 0.01
+     * - */
+    uint16_t pDOP;
+    uint16_t reserved2;
+    uint32_t reserved3;
+};
+_Static_assert(sizeof(struct ubx_nav_pvt) == 84, "");
 
+enum ubx_nav_pvt_fix_type {
+    ubx_nav_pvt_fix_type_none = 0,
+    ubx_nav_pvt_fix_type_dead_reckoning,
+    ubx_nav_pvt_fix_type_2d,
+    ubx_nav_pvt_fix_type_3d,
+    ubx_nav_pvt_fix_type_gnss_with_dead_reckoning,
+    ubx_nav_pvt_fix_type_time,
+};
+
+static bool ubx_nav_pvt_valid_date(struct ubx_nav_pvt * msg) {
+    return !!(msg->valid & 1);
+}
+
+static bool ubx_nav_pvt_valid_time(struct ubx_nav_pvt * msg) {
+    return !!(msg->valid & (1 << 1));
+}
+
+static bool ubx_nav_pvt_fully_resolved(struct ubx_nav_pvt * msg) {
+    return !!(msg->valid & (1 << 2));
+}
+
+static bool ubx_nav_pvt_valid_fix(struct ubx_nav_pvt * msg) {
+    return !!(msg->flags & 1);
+}
+
+static void lgw_parse_ubx_nav_pvt(struct cursor * csr, struct ubx_nav_pvt * out) {
+    assert(cursor_remaining(csr) >= 84);
+    cursor_unpack_le_u32(csr, &out->iTOW);
+    cursor_unpack_le_u16(csr, &out->year);
+    cursor_unpack_le_u8(csr,  &out->month);
+    cursor_unpack_le_u8(csr,  &out->day);
+    cursor_unpack_le_u8(csr,  &out->hour);
+    cursor_unpack_le_u8(csr,  &out->min);
+    cursor_unpack_le_u8(csr,  &out->sec);
+    cursor_unpack_le_u8(csr,  &out->valid);
+    cursor_unpack_le_u32(csr, &out->tAcc);
+    cursor_unpack_le_i32(csr, &out->nano);
+    cursor_unpack_le_u8(csr,  &out->fixType);
+    cursor_unpack_le_u8(csr,  &out->flags);
+    cursor_unpack_le_u8(csr,  &out->reserved1);
+    cursor_unpack_le_u8(csr,  &out->numSV);
+    cursor_unpack_le_i32(csr, &out->lon);
+    cursor_unpack_le_i32(csr, &out->lat);
+    cursor_unpack_le_i32(csr, &out->height);
+    cursor_unpack_le_i32(csr, &out->hMSL);
+    cursor_unpack_le_u32(csr, &out->hAcc);
+    cursor_unpack_le_u32(csr, &out->vAcc);
+    cursor_unpack_le_i32(csr, &out->velN);
+    cursor_unpack_le_i32(csr, &out->velE);
+    cursor_unpack_le_i32(csr, &out->velD);
+    cursor_unpack_le_i32(csr, &out->gSpeed);
+    cursor_unpack_le_i32(csr, &out->headMot);
+    cursor_unpack_le_u32(csr, &out->sAcc);
+    cursor_unpack_le_u32(csr, &out->headAcc);
+    cursor_unpack_le_u16(csr, &out->pDOP);
+    cursor_unpack_le_u16(csr, &out->reserved2);
+    cursor_unpack_le_u32(csr, &out->reserved3);
+}
+
+struct ubx_nav_timegps {
+    uint32_t iTOW;
+    int32_t  fTOW;
+    int16_t  week;
+    int8_t   leapS;
+    uint8_t  valid;
+    uint32_t tAcc;
+};
+
+static bool ubx_nav_time_valid_week(struct ubx_nav_timegps * msg) {
+    return !!(msg->valid & (1 << 1));
+}
+
+static bool ubx_nav_time_valid_tow(struct ubx_nav_timegps * msg) {
+    return !!(msg->valid & 1);
+}
+
+static void lgw_parse_ubx_nav_timegps(struct cursor * csr, struct ubx_nav_timegps * out) {
+    assert(cursor_remaining(csr) >= 16);
+    cursor_unpack_le_u32(csr, &out->iTOW);
+    cursor_unpack_le_i32(csr, &out->fTOW);
+    cursor_unpack_le_i16(csr, &out->week);
+    cursor_unpack_le_i8(csr,  &out->leapS);
+    cursor_unpack_le_u8(csr,  &out->valid);
+    cursor_unpack_le_u32(csr, &out->tAcc);
+}
+
+enum gps_msg lgw_parse_ubx(const char *serial_buff, size_t buff_size, size_t *msg_size) {
     *msg_size = 0; /* ensure msg_size alway receives a value */
 
     /* check input parameters */
@@ -406,99 +744,145 @@ enum gps_msg lgw_parse_ubx(const char *serial_buff, size_t buff_size, size_t *ms
         return IGNORED;
     }
     if (buff_size < 8) {
-        DEBUG_MSG("ERROR: TOO SHORT TO BE A VALID UBX MESSAGE\n");
         return IGNORED;
     }
 
     /* display received serial data and checksum */
-    DEBUG_MSG("Note: parsing UBX frame> ");
-    for (i=0; i<buff_size; i++) {
-        DEBUG_MSG("%02x ", serial_buff[i]);
+    if (0) {
+        DEBUG_MSG("Note: parsing UBX frame> ");
+        for (size_t i=0; i<buff_size; i++) {
+            DEBUG_MSG("%02x ", serial_buff[i]);
+        }
+        DEBUG_MSG("\n");
     }
-    DEBUG_MSG("\n");
+
+    struct cursor csr = cursor_new((char *)serial_buff, buff_size);
+
+    uint16_t ubx_sync = 0;
+    CSR_RES(cursor_unpack_be_u16(&csr, &ubx_sync));
 
     /* Check for UBX sync chars 0xB5 0x62 */
-    if ((serial_buff[0] == (char)0xB5) && (serial_buff[1] == (char)0x62)) {
+    if (ubx_sync != 0xB562) {
+        return IGNORED;
+    }
 
-        /* Get payload length to compute message size */
-        payload_length  = (uint8_t)serial_buff[4];
-        payload_length |= (uint8_t)serial_buff[5] << 8;
-        *msg_size = 6 + payload_length + 2; /* header + payload + checksum */
+    uint8_t msg_class = 0;
+    uint8_t msg_id = 0;
+    CSR_RES(cursor_unpack_le_u8(&csr, &msg_class));
+    CSR_RES(cursor_unpack_le_u8(&csr, &msg_id));
 
-        /* check for complete message in buffer */
-        if(*msg_size <= buff_size) {
-            /* Validate checksum of message */
-            ck_a_rcv = serial_buff[*msg_size-2]; /* received checksum */
-            ck_b_rcv = serial_buff[*msg_size-1]; /* received checksum */
-            /* Use 8-bit Fletcher Algorithm to compute checksum of actual payload */
-            ck_a = 0; ck_b = 0;
-            for (i=0; i<(4 + payload_length); i++) {
-                ck_a = ck_a + serial_buff[i+2];
-                ck_b = ck_b + ck_a;
-            }
-
-            /* Compare checksums and parse if OK */
-            if ((ck_a == ck_a_rcv) && (ck_b == ck_b_rcv)) {
-                /* Check for Class 0x01 (NAV) and ID 0x20 (NAV-TIMEGPS) */
-                if ((serial_buff[2] == 0x01) && (serial_buff[3] == 0x20)) {
-                    /* Check validity of information */
-                    valid = serial_buff[17] & 0x3; /* towValid, weekValid */
-                    if (valid) {
-                        /* Parse buffer to extract GPS time */
-                        /* Warning: payload byte ordering is Little Endian */
-                        gps_iTOW =  (uint8_t)serial_buff[6];
-                        gps_iTOW |= (uint8_t)serial_buff[7] << 8;
-                        gps_iTOW |= (uint8_t)serial_buff[8] << 16;
-                        gps_iTOW |= (uint8_t)serial_buff[9] << 24; /* GPS time of week, in ms */
-
-                        gps_fTOW =  (uint8_t)serial_buff[10];
-                        gps_fTOW |= (uint8_t)serial_buff[11] << 8;
-                        gps_fTOW |= (uint8_t)serial_buff[12] << 16;
-                        gps_fTOW |= (uint8_t)serial_buff[13] << 24; /* Fractional part of iTOW, in ns */
-
-                        gps_week =  (uint8_t)serial_buff[14];
-                        gps_week |= (uint8_t)serial_buff[15] << 8; /* GPS week number */
-
-                        gps_time_ok = true;
-#if 0
-                        /* For debug */
-                        {
-                            short ubx_gps_hou = 0; /* hours (0-23) */
-                            short ubx_gps_min = 0; /* minutes (0-59) */
-                            short ubx_gps_sec = 0; /* seconds (0-59) */
-
-                            /* Format GPS time in hh:mm:ss based on iTOW */
-                            ubx_gps_sec = (gps_iTOW / 1000) % 60;
-                            ubx_gps_min = (gps_iTOW / 1000 / 60) % 60;
-                            ubx_gps_hou = (gps_iTOW / 1000 / 60 / 60) % 24;
-                            printf("  GPS time = %02d:%02d:%02d\n", ubx_gps_hou, ubx_gps_min, ubx_gps_sec);
-                        }
-#endif
-                    } else { /* valid */
-                        gps_time_ok = false;
-                    }
-
-                    return UBX_NAV_TIMEGPS;
-                } else if ((serial_buff[2] == 0x05) && (serial_buff[3] == 0x00)) {
-                    DEBUG_MSG("NOTE: UBX ACK-NAK received\n");
-                    return IGNORED;
-                } else if ((serial_buff[2] == 0x05) && (serial_buff[3] == 0x01)) {
-                    DEBUG_MSG("NOTE: UBX ACK-ACK received\n");
-                    return IGNORED;
-                } else { /* not a supported message */
-                    DEBUG_MSG("ERROR: UBX message is not supported (%02x %02x)\n", serial_buff[2], serial_buff[3]);
-                    return IGNORED;
-                }
-            } else { /* checksum failed */
-                DEBUG_MSG("ERROR: UBX message is corrupted, checksum failed\n");
-                return INVALID;
-            }
-        } else { /* message contains less bytes than indicated by header */
-            DEBUG_MSG("ERROR: UBX message incomplete\n");
+    /* Get payload length to compute message size */
+    uint16_t payload_length;
+    {
+        CSR_RES(cursor_unpack_le_u16(&csr, &payload_length));
+        /* header + payload + checksum */
+        *msg_size = 6 + payload_length + 2;
+        if(*msg_size > buff_size) {
+            /* message contains less bytes than indicated by header */
             return INCOMPLETE;
         }
-    } else { /* Not a UBX message */
-        /* Ignore messages which are not UBX ones for now */
+    }
+
+    /* Validate checksum of message */
+    {
+        uint8_t ck_a, ck_b;
+        uint8_t ck_a_rcv = serial_buff[*msg_size-2]; /* received checksum */
+        uint8_t ck_b_rcv = serial_buff[*msg_size-1]; /* received checksum */
+        /* Use 8-bit Fletcher Algorithm to compute checksum of actual payload */
+        ck_a = 0; ck_b = 0;
+        for (int i=0; i<(4 + payload_length); i++) {
+            ck_a = ck_a + serial_buff[i+2];
+            ck_b = ck_b + ck_a;
+        }
+
+        /* Compare checksums and exit if not OK */
+        if ((ck_a != ck_a_rcv) && (ck_b != ck_b_rcv)) {
+            DEBUG_MSG("ERROR: UBX message is corrupted, checksum failed\n");
+            return INVALID;
+        }
+    }
+
+    /* Check for Class 0x01 (NAV) and ID 0x20 (NAV-TIMEGPS) */
+    if (msg_class == 0x01 && msg_id == 0x20) {
+        DEBUG_MSG("NOTE: NAV-TIMEGPS\n");
+        struct ubx_nav_timegps msg;
+        lgw_parse_ubx_nav_timegps(&csr, &msg);
+
+        gps_iTOW = msg.iTOW;
+        gps_fTOW = msg.fTOW;
+        gps_week = msg.week;
+        gps_tAcc = msg.tAcc;
+        gps_time_ok = ubx_nav_time_valid_tow(&msg);
+
+        /* For debug */
+        if (0) {
+            short ubx_gps_hou = 0; /* hours (0-23) */
+            short ubx_gps_min = 0; /* minutes (0-59) */
+            short ubx_gps_sec = 0; /* seconds (0-59) */
+
+            /* Format GPS time in hh:mm:ss based on iTOW */
+            ubx_gps_sec = (gps_iTOW / 1000) % 60;
+            ubx_gps_min = (gps_iTOW / 1000 / 60) % 60;
+            ubx_gps_hou = (gps_iTOW / 1000 / 60 / 60) % 24;
+            printf("  GPS time %02d:%02d:%02d\n", ubx_gps_hou, ubx_gps_min, ubx_gps_sec);
+            printf("  valid    0x%02x\n", msg.valid);
+            printf("    week     %u\n", ubx_nav_time_valid_week(&msg));
+            printf("    time     %u\n", ubx_nav_time_valid_tow(&msg));
+            printf("  estimated accuracy:\n");
+            printf("    time:    %u ns\n", msg.tAcc);
+        }
+        return UBX_NAV_TIMEGPS;
+    } else if (msg_class == 0x01 && msg_id == 0x07) {
+        DEBUG_MSG("NOTE: UBX NAV-PVT\n");
+        struct ubx_nav_pvt msg;
+        lgw_parse_ubx_nav_pvt(&csr, &msg);
+
+        gps_yea = msg.year;
+        gps_mon = msg.month;
+        gps_day = msg.day;
+        gps_hou = msg.hour;
+        gps_min = msg.min;
+        gps_sec = msg.sec;
+        gps_fra = msg.nano * 1e-9f; /* fractions of seconds (<1) */
+        gps_lat = msg.lat;
+        gps_lon = msg.lon;
+        gps_alt = msg.hMSL;
+        gps_hAcc = msg.hAcc;
+        gps_vAcc = msg.vAcc;
+        gps_numSV = msg.numSV;
+        gps_pos_ok = ubx_nav_pvt_valid_fix(&msg);
+
+        /* For debug */
+        if (0) {
+            short ubx_gps_hou = 0; /* hours (0-23) */
+            short ubx_gps_min = 0; /* minutes (0-59) */
+            short ubx_gps_sec = 0; /* seconds (0-59) */
+
+            /* Format GPS time in hh:mm:ss based on iTOW */
+            ubx_gps_sec = (msg.iTOW / 1000) % 60;
+            ubx_gps_min = (msg.iTOW / 1000 / 60) % 60;
+            ubx_gps_hou = (msg.iTOW / 1000 / 60 / 60) % 24;
+            printf("  GPS time %02d:%02d:%02d\n", ubx_gps_hou, ubx_gps_min, ubx_gps_sec);
+            printf("  numSV    %u\n", msg.numSV);
+            printf("  valid    0x%02x\n", msg.valid);
+            printf("    utc date %u\n", ubx_nav_pvt_valid_date(&msg));
+            printf("    utc time %u\n", ubx_nav_pvt_valid_time(&msg));
+            printf("    resolved %u\n", ubx_nav_pvt_fully_resolved(&msg));
+            printf("  flags    0x%02x\n", msg.flags);
+            printf("    fix      %u\n", ubx_nav_pvt_valid_fix(&msg));
+            printf("  estimated accuracy:\n");
+            printf("    horz:    %f m\n", (float)msg.hAcc/1000.0);
+            printf("    vert:    %f m\n", (float)msg.vAcc/1000.0);
+        }
+        return UBX_NAV_PVT;
+    } else if ((serial_buff[2] == 0x05) && (serial_buff[3] == 0x00)) {
+        DEBUG_MSG("NOTE: UBX ACK-NAK of clsID 0x%02x, msgID 0x%02x received\n", serial_buff[6], serial_buff[7]);
+        return IGNORED;
+    } else if ((serial_buff[2] == 0x05) && (serial_buff[3] == 0x01)) {
+        DEBUG_MSG("NOTE: UBX ACK-ACK of clsID 0x%02x, msgID 0x%02x received\n", serial_buff[6], serial_buff[7]);
+        return IGNORED;
+    } else { /* not a supported message */
+        DEBUG_MSG("ERROR: UBX message is not supported (%02x %02x)\n", serial_buff[2], serial_buff[3]);
         return IGNORED;
     }
 }
@@ -582,7 +966,7 @@ enum gps_msg lgw_parse_nmea(const char *serial_buff, int buff_size) {
         gps_ola = *(parser_buf + str_index[3]);
         j = sscanf(parser_buf + str_index[4], "%3hd%10lf", &gps_dlo, &gps_mlo);
         gps_olo = *(parser_buf + str_index[5]);
-        k = sscanf(parser_buf + str_index[9], "%hd", &gps_alt);
+        k = sscanf(parser_buf + str_index[9], "%d", &gps_alt);
         if ((i == 2) && (j == 2) && (k == 1) && ((gps_ola=='N')||(gps_ola=='S')) && ((gps_olo=='E')||(gps_olo=='W'))) {
             gps_pos_ok = true;
             DEBUG_MSG("Note: Valid GGA sentence, %d sat, lat %02ddeg %06.3fmin %c, lon %03ddeg%06.3fmin %c, alt %d\n", gps_sat, gps_dla, gps_mla, gps_ola, gps_dlo, gps_mlo, gps_olo, gps_alt);
@@ -593,14 +977,13 @@ enum gps_msg lgw_parse_nmea(const char *serial_buff, int buff_size) {
         }
         return NMEA_GGA;
     } else {
-        DEBUG_MSG("Note: ignored NMEA sentence\n"); /* quite verbose */
         return IGNORED;
     }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s *loc, struct coord_s *err) {
+int lgw_gps_get(struct timespec *utc, struct timespec *utc_acc, struct timespec *gps_time, struct coord_s *loc) {
     struct tm x;
     time_t y;
     double intpart, fractpart;
@@ -642,20 +1025,25 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
         /* Fractional part in nanoseconds */
         gps_time->tv_nsec = (long)(fractpart * 1E9);
     }
+    if (utc_acc != NULL) {
+        if (!gps_time_ok) {
+            DEBUG_MSG("ERROR: NO VALID TIME TO RETURN\n");
+            return LGW_GPS_ERROR;
+        }
+        utc_acc->tv_sec = (time_t)0;
+        utc_acc->tv_nsec = (long)gps_tAcc;
+    }
     if (loc != NULL) {
         if (!gps_pos_ok) {
             DEBUG_MSG("ERROR: NO VALID POSITION TO RETURN\n");
             return LGW_GPS_ERROR;
         }
-        loc->lat = ((double)gps_dla + (gps_mla/60.0)) * ((gps_ola == 'N')?1.0:-1.0);
-        loc->lon = ((double)gps_dlo + (gps_mlo/60.0)) * ((gps_olo == 'E')?1.0:-1.0);
-        loc->alt = gps_alt;
-    }
-    if (err != NULL) {
-        DEBUG_MSG("Warning: localization error processing not implemented yet\n");
-        err->lat = 0.0;
-        err->lon = 0.0;
-        err->alt = 0;
+        loc->lat = (double)gps_lat * 1e-7d;
+        loc->lon = (double)gps_lon * 1e-7d;
+        loc->alt = gps_alt/1000;
+        loc->eha = gps_hAcc / 1000.0;
+        loc->eva = gps_vAcc / 1000.0;
+        loc->nsv = gps_numSV;
     }
 
     return LGW_GPS_SUCCESS;
@@ -663,7 +1051,7 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struct timespec gps_time) {
+int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struct timespec utc_acc, struct timespec gps_time) {
     double cnt_diff; /* internal concentrator time difference (in seconds) */
     double utc_diff; /* UTC time difference (in seconds) */
     double slope; /* time slope between new reference and old reference (for sanity check) */
@@ -700,6 +1088,8 @@ int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struc
         ref->count_us = count_us;
         ref->utc.tv_sec = utc.tv_sec;
         ref->utc.tv_nsec = utc.tv_nsec;
+        ref->utc_acc.tv_sec = utc_acc.tv_sec;
+        ref->utc_acc.tv_nsec = utc_acc.tv_nsec;
         ref->gps.tv_sec = gps_time.tv_sec;
         ref->gps.tv_nsec = gps_time.tv_nsec;
         ref->xtal_err = slope;
