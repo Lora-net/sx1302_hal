@@ -31,7 +31,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>     /* getopt, access */
 #include <time.h>
 
-#include "loragw_spi.h"
 #include "loragw_com.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
@@ -42,13 +41,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define BUFF_SIZE           1024
+#define BUFF_SIZE_SPI       1024
+#define BUFF_SIZE_USB       256 // TODO: 512 total transfer max ?
 
 #define SX1302_AGC_MCU_MEM  0x0000
 #define SX1302_REG_COMMON   0x5600
 #define SX1302_REG_AGC_MCU  0x5780
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- GLOBAL VARIABLES ----------------------------------------------------- */
@@ -71,19 +71,20 @@ int main(int argc, char ** argv)
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     uint8_t data = 0;
-    uint8_t test_buff[BUFF_SIZE];
-    uint8_t read_buff[BUFF_SIZE];
+    uint8_t test_buff[BUFF_SIZE_SPI];
+    uint8_t read_buff[BUFF_SIZE_SPI];
     int cycle_number = 0;
-    int i;
+    int i, x;
     uint16_t size;
+    lgw_com_type_t com_type = LGW_COM_SPI;
 
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
-    void *spi_target = NULL;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    void *com_target = NULL;
 
     /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:")) != -1) {
+    while ((i = getopt(argc, argv, "hd:u")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -92,8 +93,12 @@ int main(int argc, char ** argv)
 
             case 'd':
                 if (optarg != NULL) {
-                    spidev_path = optarg;
+                    com_path = optarg;
                 }
+                break;
+
+            case 'u':
+                com_type = LGW_COM_USB;
                 break;
 
             default:
@@ -112,15 +117,17 @@ int main(int argc, char ** argv)
     sigaction( SIGTERM, &sigact, NULL );
 
     /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    printf("Beginning of test for loragw_spi.c\n");
-    i = lgw_spi_open(spidev_path, &spi_target);
-    if (i != 0) {
-        printf("ERROR: failed to open SPI device %s\n", spidev_path);
+    printf("Beginning of test for loragw_com.c\n");
+    x = lgw_com_open(com_type, com_path, &com_target);
+    if (x != 0) {
+        printf("ERROR: failed to open COM device %s\n", com_path);
         return -1;
     }
 
@@ -133,38 +140,72 @@ int main(int argc, char ** argv)
     /* burst R/W test, large bursts >> LGW_BURST_CHUNK */
     /* TODO */
 
-    lgw_spi_r(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_COMMON + 6, &data);
+    x = lgw_com_r(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_COMMON + 6, &data);
+    if (x != 0) {
+        printf("ERROR (%d): failed to read register\n", __LINE__);
+        return -1;
+    }
     printf("SX1302 version: 0x%02X\n", data);
 
-    lgw_spi_r(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, &data);
-    lgw_spi_w(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, 0x06); /* mcu_clear, host_prog */
+    x = lgw_com_r(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, &data);
+    if (x != 0) {
+        printf("ERROR (%d): failed to read register\n", __LINE__);
+        return -1;
+    }
+    x = lgw_com_w(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, 0x06); /* mcu_clear, host_prog */
+    if (x != 0) {
+        printf("ERROR (%d): failed to write register\n", __LINE__);
+        return -1;
+    }
 
     srand(time(NULL));
 
     /* databuffer R/W stress test */
     while ((quit_sig != 1) && (exit_sig != 1)) {
-        size = rand() % BUFF_SIZE;
+        size = rand() % ((com_type == LGW_COM_SPI) ? BUFF_SIZE_SPI : BUFF_SIZE_USB);
         for (i = 0; i < size; ++i) {
             test_buff[i] = rand() & 0xFF;
         }
-        printf("Cycle %i > ", cycle_number);
-        lgw_spi_wb(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, size);
-        lgw_spi_rb(spi_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, size);
+        printf("Cycle %i (size:%u)> ", cycle_number, size);
+
+        /* Write burst with random data */
+        x = lgw_com_wb(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, size);
+        if (x != 0) {
+            printf("ERROR (%d): failed to write burst\n", __LINE__);
+            return -1;
+        }
+
+        /* Read back */
+        x = lgw_com_rb(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, size);
+        if (x != 0) {
+            printf("ERROR (%d): failed to read burst\n", __LINE__);
+            return -1;
+        }
+
+        /* Compare read / write buffers */
         for (i=0; ((i<size) && (test_buff[i] == read_buff[i])); ++i);
         if (i != size) {
             printf("error during the buffer comparison\n");
+
+            /* Print what has been written */
             printf("Written values:\n");
             for (i=0; i<size; ++i) {
                 printf(" %02X ", test_buff[i]);
                 if (i%16 == 15) printf("\n");
             }
             printf("\n");
+
+            /* Print what has been read back */
             printf("Read values:\n");
             for (i=0; i<size; ++i) {
                 printf(" %02X ", read_buff[i]);
                 if (i%16 == 15) printf("\n");
             }
             printf("\n");
+
+            /* exit */
+            lgw_com_close(com_target);
+            printf("End of test for loragw_com.c\n");
             return EXIT_FAILURE;
         } else {
             printf("did a %i-byte R/W on a data buffer with no error\n", size);
@@ -172,13 +213,15 @@ int main(int argc, char ** argv)
         }
     }
 
-    lgw_spi_close(spi_target);
-    printf("End of test for loragw_spi.c\n");
+    lgw_com_close(com_target);
+    printf("End of test for loragw_com.c\n");
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     return 0;
@@ -203,7 +246,8 @@ static void usage(void) {
     printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" -h            print this help\n");
     printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
+    printf("               => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -u            set COM type as USB (default is SPI)\n");
 }
 
 /* --- EOF ------------------------------------------------------------------ */
