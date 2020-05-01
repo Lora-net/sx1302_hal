@@ -37,7 +37,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_COM == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+    //#define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr, fmt, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_USB_ERROR;}
 #else
     #define DEBUG_MSG(str)
@@ -53,8 +54,8 @@ const char mcu_version_string[] = "00.01.00";
 #define DEBUG_VERBOSE 1
 
 #define HEADER_CMD_SIZE 4
-#define WRITE_SIZE_MAX 280
-#define READ_SIZE_MAX 500
+#define WRITE_SIZE_MAX  (1024 + HEADER_CMD_SIZE + 5)
+#define READ_SIZE_MAX   (1024 + HEADER_CMD_SIZE + 5)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -332,6 +333,7 @@ int read_ack(int fd, uint8_t * buf, size_t buf_size) {
     }
 
 #if DEBUG_VERBOSE
+    printf("read_ack(hdr):");
     /* debug print */
     for (i = 0; i < (int)(HEADER_CMD_SIZE); i++) {
         printf("%02X ", buf[i]);
@@ -365,6 +367,7 @@ int read_ack(int fd, uint8_t * buf, size_t buf_size) {
 
 #if DEBUG_VERBOSE
         /* debug print */
+        printf("read_ack(pld):");
         for (i = HEADER_CMD_SIZE; i < (int)(HEADER_CMD_SIZE + size); i++) {
             printf("%02X ", buf[i]);
         }
@@ -643,7 +646,6 @@ int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 
     /* check input variables */
     CHECK_NULL(com_target);
-    CHECK_NULL(data);
 
     usb_device = *(int *)com_target;
 
@@ -697,7 +699,6 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
     } else {
         DEBUG_MSG("Note: USB read success\n");
         *data = in_buf[command_size - 1]; /* the last byte contains the register value */
-        printf("MUX TARGET %d: USB_READ @ 0x%x : 0x%x\n", spi_mux_target, address, *data);
         return 0;
     }
 }
@@ -706,16 +707,79 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 
 /* Burst (multiple-byte) write */
 int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
-    /* TODO */
-    return LGW_USB_ERROR;
+    int usb_device;
+    uint16_t command_size = size + 4;
+    uint8_t in_buf[command_size];
+    int i;
+    int a;
+
+    printf("%s\n", __FUNCTION__);
+
+    /* check input parameters */
+    CHECK_NULL(com_target);
+    CHECK_NULL(data);
+
+    usb_device = *(int *)com_target;
+
+    /* prepare command byte */
+    buf_req[0] = 0;
+    buf_req[1] = spi_mux_target;
+    buf_req[2] = 0x80 | ((address >> 8) & 0x7F);
+    buf_req[3] =        ((address >> 0) & 0xFF);
+    for (i = 0; i < size; i++) {
+        buf_req[i + 4] = data[i];
+    }
+    a = mcu_spi_access(usb_device, buf_req, command_size, in_buf);
+
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB WRITE BURST FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB write burst success\n");
+        return 0;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) read */
 int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
-    /* TODO */
-    return LGW_USB_ERROR;
+    int usb_device;
+    uint16_t command_size = size + 5;
+    uint8_t in_buf[command_size];
+    int i;
+    int a;
+
+    printf("%s\n", __FUNCTION__);
+
+    /* check input parameters */
+    CHECK_NULL(com_target);
+    CHECK_NULL(data);
+
+    usb_device = *(int *)com_target;
+
+    /* prepare command byte */
+    buf_req[0] = 0;
+    buf_req[1] = spi_mux_target;
+    buf_req[2] = 0x00 | ((address >> 8) & 0x7F);
+    buf_req[3] =        ((address >> 0) & 0xFF);
+    buf_req[4] = 0x00;
+    for (i = 0; i < size; i++) {
+        buf_req[i + 5] = 0;
+    }
+
+    a = mcu_spi_access(usb_device, buf_req, command_size, in_buf);
+
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB READ BURST FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB read burst success\n");
+        memcpy(data, in_buf + 5, size);
+        return 0;
+    }
 }
 
 /* --- EOF ------------------------------------------------------------------ */
