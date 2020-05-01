@@ -62,6 +62,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 
 static void sig_handler(int sigio);
 static void usage(void);
+static void exit_failure(void *com_target);
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
@@ -128,7 +129,7 @@ int main(int argc, char ** argv)
     x = lgw_com_open(com_type, com_path, &com_target);
     if (x != 0) {
         printf("ERROR: failed to open COM device %s\n", com_path);
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
     /* normal R/W test */
@@ -143,19 +144,19 @@ int main(int argc, char ** argv)
     x = lgw_com_r(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_COMMON + 6, &data);
     if (x != 0) {
         printf("ERROR (%d): failed to read register\n", __LINE__);
-        return -1;
+        exit_failure(com_target);
     }
     printf("SX1302 version: 0x%02X\n", data);
 
     x = lgw_com_r(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, &data);
     if (x != 0) {
         printf("ERROR (%d): failed to read register\n", __LINE__);
-        return -1;
+        exit_failure(com_target);
     }
     x = lgw_com_w(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, 0x06); /* mcu_clear, host_prog */
     if (x != 0) {
         printf("ERROR (%d): failed to write register\n", __LINE__);
-        return -1;
+        exit_failure(com_target);
     }
 
     srand(time(NULL));
@@ -172,14 +173,14 @@ int main(int argc, char ** argv)
         x = lgw_com_wb(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, size);
         if (x != 0) {
             printf("ERROR (%d): failed to write burst\n", __LINE__);
-            return -1;
+            exit_failure(com_target);
         }
 
         /* Read back */
         x = lgw_com_rb(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, size);
         if (x != 0) {
             printf("ERROR (%d): failed to read burst\n", __LINE__);
-            return -1;
+            exit_failure(com_target);
         }
 
         /* Compare read / write buffers */
@@ -204,9 +205,7 @@ int main(int argc, char ** argv)
             printf("\n");
 
             /* exit */
-            lgw_com_close(com_target);
-            printf("End of test for loragw_com.c\n");
-            return EXIT_FAILURE;
+            exit_failure(com_target);
         } else {
             printf("did a %i-byte R/W on a data buffer with no error\n", size);
             ++cycle_number;
@@ -214,6 +213,7 @@ int main(int argc, char ** argv)
     }
 
     lgw_com_close(com_target);
+    com_target = NULL;
     printf("End of test for loragw_com.c\n");
 
     if (com_type == LGW_COM_SPI) {
@@ -236,6 +236,18 @@ static void sig_handler(int sigio) {
     } else if((sigio == SIGINT) || (sigio == SIGTERM)) {
         exit_sig = 1;
     }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+static void exit_failure(void * com_target) {
+    if (com_target != NULL) {
+        lgw_com_close(com_target);
+    }
+
+    printf("End of test for loragw_com.c\n");
+
+    exit(EXIT_FAILURE);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
