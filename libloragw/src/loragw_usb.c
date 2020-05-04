@@ -224,8 +224,7 @@ int lgw_usb_close(void *com_target) {
 int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
     int usb_device;
     uint8_t command_size = 5;
-    uint8_t out_buf[command_size];
-    uint8_t in_buf[command_size];
+    uint8_t in_out_buf[command_size];
     int a;
 
     /* check input variables */
@@ -234,12 +233,12 @@ int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
     usb_device = *(int *)com_target;
 
     /* prepare frame to be sent */
-    out_buf[0] = 0;
-    out_buf[1] = spi_mux_target;
-    out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
-    out_buf[3] =        ((address >> 0) & 0xFF);
-    out_buf[4] = data;
-    a = mcu_spi_access(usb_device, out_buf, command_size, in_buf);
+    in_out_buf[0] = 0;
+    in_out_buf[1] = spi_mux_target;
+    in_out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
+    in_out_buf[3] =        ((address >> 0) & 0xFF);
+    in_out_buf[4] = data;
+    a = mcu_spi_access(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -257,8 +256,7 @@ int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
     int usb_device;
     uint8_t command_size = 6;
-    uint8_t out_buf[command_size];
-    uint8_t in_buf[command_size];
+    uint8_t in_out_buf[command_size];
     int a;
 
     /* check input variables */
@@ -268,13 +266,13 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
     usb_device = *(int *)com_target;
 
     /* prepare frame to be sent */
-    out_buf[0] = 0;
-    out_buf[1] = spi_mux_target;
-    out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
-    out_buf[3] =        ((address >> 0) & 0xFF);
-    out_buf[4] = 0x00;
-    out_buf[5] = 0x00;
-    a = mcu_spi_access(usb_device, out_buf, command_size, in_buf);
+    in_out_buf[0] = 0;
+    in_out_buf[1] = spi_mux_target;
+    in_out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
+    in_out_buf[3] =        ((address >> 0) & 0xFF);
+    in_out_buf[4] = 0x00;
+    in_out_buf[5] = 0x00;
+    a = mcu_spi_access(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -282,7 +280,7 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
         return -1;
     } else {
         DEBUG_MSG("Note: USB read success\n");
-        *data = in_buf[command_size - 1]; /* the last byte contains the register value */
+        *data = in_out_buf[command_size - 1]; /* the last byte contains the register value */
         return 0;
     }
 }
@@ -293,7 +291,7 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int usb_device;
     uint16_t command_size = size + 4;
-    uint8_t in_buf[command_size];
+    uint8_t in_out_buf[command_size];
     int i;
     int a;
 
@@ -306,14 +304,14 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
     usb_device = *(int *)com_target;
 
     /* prepare command byte */
-    buf_req[0] = 0;
-    buf_req[1] = spi_mux_target;
-    buf_req[2] = 0x80 | ((address >> 8) & 0x7F);
-    buf_req[3] =        ((address >> 0) & 0xFF);
+    in_out_buf[0] = 0;
+    in_out_buf[1] = spi_mux_target;
+    in_out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
+    in_out_buf[3] =        ((address >> 0) & 0xFF);
     for (i = 0; i < size; i++) {
-        buf_req[i + 4] = data[i];
+        in_out_buf[i + 4] = data[i];
     }
-    a = mcu_spi_access(usb_device, buf_req, command_size, in_buf);
+    a = mcu_spi_access(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -331,7 +329,7 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
     int usb_device;
     uint16_t command_size = size + 5;
-    uint8_t in_buf[command_size];
+    uint8_t in_out_buf[command_size];
     int i;
     int a;
 
@@ -344,16 +342,16 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
     usb_device = *(int *)com_target;
 
     /* prepare command byte */
-    buf_req[0] = 0;
-    buf_req[1] = spi_mux_target;
-    buf_req[2] = 0x00 | ((address >> 8) & 0x7F);
-    buf_req[3] =        ((address >> 0) & 0xFF);
-    buf_req[4] = 0x00;
+    in_out_buf[0] = 0;
+    in_out_buf[1] = spi_mux_target;
+    in_out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
+    in_out_buf[3] =        ((address >> 0) & 0xFF);
+    in_out_buf[4] = 0x00;
     for (i = 0; i < size; i++) {
-        buf_req[i + 5] = 0;
+        in_out_buf[i + 5] = 0;
     }
 
-    a = mcu_spi_access(usb_device, buf_req, command_size, in_buf);
+    a = mcu_spi_access(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -361,7 +359,7 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
         return -1;
     } else {
         DEBUG_MSG("Note: USB read burst success\n");
-        memcpy(data, in_buf + 5, size);
+        memcpy(data, in_out_buf + 5, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
 }
