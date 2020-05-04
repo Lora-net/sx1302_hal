@@ -206,9 +206,6 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
         return -1;
     } else {
         DEBUG_PRINTF("INFO: read %d bytes for header from gateway\n", n);
-#if 0
-        nb_read += n;
-#endif
     }
 
 #if DEBUG_VERBOSE
@@ -220,9 +217,14 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     printf("\n");
 #endif
 
+    /* Check if the command id is valid */
+    if ((cmd_get_type(hdr) < 0x40) || (cmd_get_type(hdr) > 0x45)) {
+        printf("ERROR: received wrong ACK type (0x%02X)\n", cmd_get_type(hdr));
+        return -1;
+    }
+
     /* Get remaining payload size (metadata + pkt payload) */
-    size  = (size_t)hdr[CMD_OFFSET__SIZE_MSB] << 8;
-    size |= (size_t)hdr[CMD_OFFSET__SIZE_LSB] << 0;
+    size = (size_t)cmd_get_size(hdr);
     if (size > buf_size) {
         printf("ERROR: not enough memory to store all data (%zd)\n", size);
         return -1;

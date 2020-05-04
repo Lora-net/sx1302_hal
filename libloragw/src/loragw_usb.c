@@ -152,7 +152,13 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
         printf("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
     } else {
         x = set_interface_attribs_linux(fd, B115200);
-        x |= set_blocking_linux(fd, true);
+        if (x != 0) {
+            printf("ERROR: failed to configure COM port %s\n", portname);
+            free(usb_device);
+            return LGW_USB_ERROR;
+        }
+
+        x = set_blocking_linux(fd, true);
         if (x != 0) {
             printf("ERROR: failed to configure COM port %s\n", portname);
             free(usb_device);
