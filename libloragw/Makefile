@@ -62,6 +62,7 @@ inc/config.h: ../VERSION library.cfg
 	# Debug options
 	@echo "	#define DEBUG_AUX		$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_COM		$(DEBUG_COM)" >> $@
+	@echo "	#define DEBUG_MCU		$(DEBUG_MCU)" >> $@
 	@echo "	#define DEBUG_I2C		$(DEBUG_I2C)" >> $@
 	@echo "	#define DEBUG_REG		$(DEBUG_REG)" >> $@
 	@echo "	#define DEBUG_HAL		$(DEBUG_HAL)" >> $@
@@ -88,6 +89,7 @@ $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 libloragw.a: $(OBJDIR)/loragw_spi.o \
 			 $(OBJDIR)/loragw_usb.o \
 			 $(OBJDIR)/loragw_com.o \
+			 $(OBJDIR)/loragw_mcu.o \
 			 $(OBJDIR)/loragw_i2c.o \
 			 $(OBJDIR)/sx125x_spi.o \
 			 $(OBJDIR)/sx125x_com.o \
