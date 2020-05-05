@@ -151,8 +151,9 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    boardconf.com_type = LGW_COM_SPI;
+    strncpy(boardconf.com_path, spidev_path, sizeof boardconf.com_path);
+    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;

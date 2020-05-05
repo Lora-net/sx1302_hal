@@ -22,6 +22,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
+#include "loragw_com.h"
+
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
@@ -147,10 +149,11 @@ typedef enum {
 @brief Configuration structure for board specificities
 */
 struct lgw_conf_board_s {
-    bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
-    uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
-    bool    full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
-    char    spidev_path[64];/*!> Path to access the SPI device to connect to the SX1302 */
+    bool            lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
+    uint8_t         clksrc;         /*!> Index of RF chain which provides clock to concentrator */
+    bool            full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
+    lgw_com_type_t  com_type;       /*!> The COMmunication interface (SPI/USB) to connect to the SX1302 */
+    char            com_path[64];   /*!> Path to access the COM device to connect to the SX1302 */
 };
 
 /**
