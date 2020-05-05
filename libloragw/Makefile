@@ -115,9 +115,6 @@ libloragw.a: $(OBJDIR)/loragw_spi.o \
 test_loragw_com: tst/test_loragw_com.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
-test_loragw_com: tst/test_loragw_com.c libloragw.a
-	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
-
 test_loragw_i2c: tst/test_loragw_i2c.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools $< -o $@ $(LIBS)
 
