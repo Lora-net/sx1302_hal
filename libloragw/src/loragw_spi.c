@@ -52,6 +52,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
 
+#define LGW_BURST_CHUNK     1024
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -348,6 +350,12 @@ int lgw_spi_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
         DEBUG_MSG("Note: SPI burst read success\n");
         return LGW_SPI_SUCCESS;
     }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint16_t lgw_spi_chunk_size() {
+    return (uint16_t)LGW_BURST_CHUNK;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -1411,7 +1411,7 @@ int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
     uint16_t addr = mem_addr;
     uint16_t sz_todo = size;
     uint16_t chunk_size;
-    const uint16_t CHUNK_SIZE_MAX = 1024;
+    const uint16_t CHUNK_SIZE_MAX = lgw_com_chunk_size();
 
     /* check input parameters */
     CHECK_NULL(data);
@@ -1456,7 +1456,7 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) 
     uint16_t addr = mem_addr;
     uint16_t sz_todo = size;
     uint16_t chunk_size;
-    const uint16_t CHUNK_SIZE_MAX = 1024;
+    const uint16_t CHUNK_SIZE_MAX = lgw_com_chunk_size();
 
     /* check input parameters */
     CHECK_NULL(data);

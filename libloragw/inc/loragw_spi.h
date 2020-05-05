@@ -31,7 +31,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define LGW_SPI_SUCCESS     0
 #define LGW_SPI_ERROR       -1
-#define LGW_BURST_CHUNK     1024
 
 #define SPI_SPEED       2000000
 
@@ -92,6 +91,11 @@ int lgw_spi_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 int lgw_spi_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+
+/**
+ *
+ **/
+uint16_t lgw_spi_chunk_size();
 
 #endif
 

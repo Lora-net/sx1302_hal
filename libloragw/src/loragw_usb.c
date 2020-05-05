@@ -50,6 +50,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define LGW_USB_BURST_CHUNK     128
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
@@ -364,6 +366,12 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
         memcpy(data, in_out_buf + 5, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint16_t lgw_usb_chunk_size() {
+    return (uint16_t)LGW_USB_BURST_CHUNK;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

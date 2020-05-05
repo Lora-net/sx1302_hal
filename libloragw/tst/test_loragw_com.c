@@ -42,7 +42,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define BUFF_SIZE_SPI       1024
-#define BUFF_SIZE_USB       256 // TODO: 512 total transfer max ?
+#define BUFF_SIZE_USB       128 // TODO: 512 total transfer max ?
 
 #define SX1302_AGC_MCU_MEM  0x0000
 #define SX1302_REG_COMMON   0x5600

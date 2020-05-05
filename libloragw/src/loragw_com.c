@@ -216,4 +216,19 @@ int lgw_com_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
     return com_stat;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+uint16_t lgw_com_chunk_size(void) {
+    switch (lgw_com_type) {
+        case LGW_COM_SPI:
+            return lgw_spi_chunk_size();
+        case LGW_COM_USB:
+            return lgw_usb_chunk_size();
+            break;
+        default:
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+            return 0;
+    }
+}
+
 /* --- EOF ------------------------------------------------------------------ */

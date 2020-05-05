@@ -80,6 +80,11 @@ int lgw_com_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 */
 int lgw_com_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
+/**
+ *
+*/
+uint16_t lgw_com_chunk_size(void);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -66,6 +66,11 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 */
 int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
+/**
+ *
+ **/
+uint16_t lgw_usb_chunk_size();
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
