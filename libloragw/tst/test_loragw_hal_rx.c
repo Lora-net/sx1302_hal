@@ -38,7 +38,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
@@ -66,9 +66,12 @@ static void sig_handler(int sigio) {
 }
 
 void usage(void) {
-    //printf("Library version information: %s\n", lgw_version_info());
+    printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
+    printf(" -u            set COM type as USB (default is SPI)\n");
+    printf(" -d <path>     COM path to be used to connect the concentrator\n");
+    printf("               => default path (SPI): " COM_PATH_DEFAULT "\n");
     printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
     printf(" -a <float>    Radio A RX frequency in MHz\n");
@@ -86,8 +89,9 @@ void usage(void) {
 int main(int argc, char **argv)
 {
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = LGW_COM_SPI;
 
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -140,11 +144,19 @@ int main(int argc, char **argv)
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
+    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:d:u")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'd': /* <char> COM path */
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
+            case 'u':
+                com_type = LGW_COM_USB;
                 break;
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
@@ -253,8 +265,8 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    boardconf.com_type = LGW_COM_SPI;
-    strncpy(boardconf.com_path, spidev_path, sizeof boardconf.com_path);
+    boardconf.com_type = com_type;
+    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
     boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
@@ -329,10 +341,12 @@ int main(int argc, char **argv)
     {
         cnt_loop += 1;
 
-        /* Board reset */
-        if (system("./reset_lgw.sh start") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
+        if (com_type == LGW_COM_SPI) {
+            /* Board reset */
+            if (system("./reset_lgw.sh start") != 0) {
+                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+                exit(EXIT_FAILURE);
+            }
         }
 
         /* connect, configure and start the LoRa concentrator */
@@ -387,10 +401,12 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
 
-        /* Board reset */
-        if (system("./reset_lgw.sh stop") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
+        if (com_type == LGW_COM_SPI) {
+            /* Board reset */
+            if (system("./reset_lgw.sh stop") != 0) {
+                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
 
