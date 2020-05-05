@@ -382,4 +382,27 @@ uint16_t lgw_usb_chunk_size(void) {
     return (uint16_t)LGW_USB_BURST_CHUNK;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_usb_get_temperature(void *com_target, float * temperature) {
+    int usb_device;
+    s_status mcu_status;
+
+    /* check input parameters */
+    CHECK_NULL(com_target);
+    CHECK_NULL(temperature);
+
+    usb_device = *(int *)com_target;
+
+    if (mcu_get_status(usb_device, &mcu_status) != 0) {
+        printf("ERROR: failed to get status from the concentrator MCU\n");
+        return -1;
+    }
+    printf("INFO: temperature:%.1foC\n", mcu_status.temperature);
+
+    *temperature = mcu_status.temperature;
+
+    return 0;
+}
+
 /* --- EOF ------------------------------------------------------------------ */

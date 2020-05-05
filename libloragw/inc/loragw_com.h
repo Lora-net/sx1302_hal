@@ -85,6 +85,11 @@ int lgw_com_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
 */
 uint16_t lgw_com_chunk_size(void);
 
+/**
+ *
+ **/
+int lgw_com_get_temperature(void *com_target, float * temperature);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

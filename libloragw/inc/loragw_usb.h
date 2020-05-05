@@ -71,6 +71,11 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
  **/
 uint16_t lgw_usb_chunk_size(void);
 
+/**
+ *
+ **/
+int lgw_usb_get_temperature(void *com_target, float * temperature);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

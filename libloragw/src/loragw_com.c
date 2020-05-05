@@ -231,4 +231,23 @@ uint16_t lgw_com_chunk_size(void) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_com_get_temperature(void *com_target, float * temperature) {
+    /* Check input parameters */
+    CHECK_NULL(com_target);
+    CHECK_NULL(temperature);
+
+    switch (lgw_com_type) {
+        case LGW_COM_SPI:
+            printf("ERROR(%s:%d): not supported for SPI com\n", __FUNCTION__, __LINE__);
+            return -1;
+        case LGW_COM_USB:
+            return lgw_usb_get_temperature(com_target, temperature);
+        default:
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+            return LGW_COM_ERROR;
+    }
+}
+
 /* --- EOF ------------------------------------------------------------------ */

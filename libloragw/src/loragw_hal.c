@@ -792,7 +792,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t  nb_pkt_fetched = 0;
     uint16_t nb_pkt_found = 0;
     uint16_t nb_pkt_left = 0;
-    float current_temperature, rssi_temperature_offset;
+    float current_temperature = 0.0, rssi_temperature_offset = 0.0;
 
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
@@ -816,7 +816,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Apply RSSI temperature compensation */
-    res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
+    res = lgw_get_temperature(&current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
@@ -995,13 +995,23 @@ int lgw_get_eui(uint64_t* eui) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_temperature(float* temperature) {
+    int err = LGW_HAL_ERROR;
+
     CHECK_NULL(temperature);
 
-    if (stts751_get_temperature(ts_fd, ts_addr, temperature) != LGW_I2C_SUCCESS) {
-        return LGW_HAL_ERROR;
+    switch (CONTEXT_COM_TYPE) {
+        case LGW_COM_SPI:
+            err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+            break;
+        case LGW_COM_USB:
+            err = lgw_reg_get_temperature(temperature);
+            break;
+        default:
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+            break;
     }
 
-    return LGW_HAL_SUCCESS;
+    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
