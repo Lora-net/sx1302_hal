@@ -104,7 +104,6 @@ void usage(void) {
     printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257)\n");
-    printf(" -f <float> Radio TX frequency in MHz\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain [0..3]\n");
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
@@ -460,16 +459,10 @@ int test_capture_ram(uint8_t rf_chain) {
 int main(int argc, char **argv)
 {
     int i, x;
-    uint32_t ft = DEFAULT_FREQ_HZ;
-    double arg_d = 0.0;
     unsigned int arg_u;
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1257;
-    bool single_input_mode = false;
-
-    struct lgw_conf_board_s boardconf;
-    struct lgw_conf_rxrf_s rfconf;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -492,7 +485,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hf:k:r:c:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hk:r:c:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -507,7 +500,7 @@ int main(int argc, char **argv)
 
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257)) {
+                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257))) {
                     printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
@@ -542,16 +535,6 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     rf_chain = (uint8_t)arg_u;
-                }
-                break;
-
-            case 'f': /* <float> Radio TX frequency in MHz */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
 
