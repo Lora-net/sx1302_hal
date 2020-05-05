@@ -13,16 +13,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-#ifndef _SX1250_COM_H
-#define _SX1250_COM_H
+#ifndef _SX1250_USB_H
+#define _SX1250_USB_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types*/
 
-#include "loragw_com.h"
 #include "sx1250_defs.h"
+
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
@@ -37,8 +37,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1250_com_w(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1250_com_r(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size);
 
 #endif
 

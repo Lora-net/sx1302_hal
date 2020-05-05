@@ -87,6 +87,12 @@ typedef enum
     ACK_GPIO_WRITE_SIZE
 } e_cmd_offset_ack_gpio_write;
 
+typedef enum
+{
+    MCU_SPI_TARGET_SX1302,  /* SX1302 + SX1250 */
+    MCU_SPI_TARGET_SX1261   /* LBT/Spectral Scan additional radio */
+} e_cmd_spi_target;
+
 typedef struct {
     uint32_t unique_id_high;
     uint32_t unique_id_mid;

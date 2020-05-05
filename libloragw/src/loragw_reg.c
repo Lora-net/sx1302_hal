@@ -23,7 +23,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 
-#include "loragw_com.h"
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
@@ -1199,7 +1198,7 @@ int reg_r_align32(void *com_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(const char * com_path) {
+int lgw_connect(const lgw_com_type_t com_type, const char * com_path) {
     int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
 
@@ -1214,7 +1213,7 @@ int lgw_connect(const char * com_path) {
     }
 
     /* open the COM link */
-    com_stat = lgw_com_open(LGW_COM_USB, com_path, &lgw_com_target);
+    com_stat = lgw_com_open(com_type, com_path, &lgw_com_target);
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;

@@ -31,6 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <getopt.h>     /* getopt_long */
 
 #include "loragw_hal.h"
+#include "loragw_com.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_sx1250.h"
@@ -174,7 +175,7 @@ int main(int argc, char **argv)
         capture_ram_buffer[i] = i%256;
     }
 
-    reg_stat = lgw_connect(spidev_path);
+    reg_stat = lgw_connect(LGW_COM_SPI, spidev_path);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;

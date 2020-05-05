@@ -35,6 +35,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
+#include "loragw_com.h"
 #include "loragw_sx1302.h"
 #include "loragw_sx125x.h"
 #include "loragw_aux.h"
@@ -650,7 +651,7 @@ int main(int argc, char **argv)
     fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(LGW_COM_SPI, spidev_path);
     if (x != 0) {
         printf("ERROR: failed to connect the gateway\n");
         return EXIT_FAILURE;

@@ -19,9 +19,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
 #include <stdlib.h>     /* malloc free */
+#include <string.h>
 
-#include "sx1250_com.h"
-#include "sx1250_spi.h"
+#include "loragw_aux.h"
+#include "loragw_mcu.h"
 #include "sx1250_usb.h"
 
 /* -------------------------------------------------------------------------- */
@@ -41,58 +42,85 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define WAIT_BUSY_SX1250_MS  1
+
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1250_com_w(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int com_stat;
+int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+    int usb_device;
+    uint8_t command_size = size + 3;
+    uint8_t in_out_buf[command_size];
+    int a;
+    int i;
 
-    /* Check input parameters */
+    /* check input variables */
     CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    switch (com_type) {
-        case LGW_COM_SPI:
-            com_stat = sx1250_spi_w(com_target, spi_mux_target, op_code, data, size);
-            break;
-        case LGW_COM_USB:
-            com_stat = sx1250_usb_w(com_target, spi_mux_target, op_code, data, size);
-            break;
-        default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
-            com_stat = LGW_COM_ERROR;
-            break;
-    }
+    usb_device = *(int *)com_target;
 
-    return com_stat;
+    /* wait BUSY */
+    wait_ms(WAIT_BUSY_SX1250_MS);
+
+    /* prepare frame to be sent */
+    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
+    in_out_buf[2] = (uint8_t)op_code;
+    for(i = 0; i < (int)size; i++) {
+        in_out_buf[3 + i] = data[i];
+    }
+    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB SX1250 WRITE FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB SX1250 write success\n");
+        return 0;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1250_com_r(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int com_stat;
+int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+    int usb_device;
+    uint8_t command_size = size + 3;
+    uint8_t in_out_buf[command_size];
+    int a;
+    int i;
 
-    /* Check input parameters */
+    /* check input variables */
     CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    switch (com_type) {
-        case LGW_COM_SPI:
-            com_stat = sx1250_spi_r(com_target, spi_mux_target, op_code, data, size);
-            break;
-        case LGW_COM_USB:
-            com_stat = sx1250_usb_r(com_target, spi_mux_target, op_code, data, size);
-            break;
-        default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
-            com_stat = LGW_COM_ERROR;
-            break;
-    }
+    usb_device = *(int *)com_target;
 
-    return com_stat;
+    /* wait BUSY */
+    wait_ms(WAIT_BUSY_SX1250_MS);
+
+    /* prepare frame to be sent */
+    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
+    in_out_buf[2] = (uint8_t)op_code;
+    for(i = 0; i < (int)size; i++) {
+        in_out_buf[3 + i] = data[i];
+    }
+    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+
+    /* determine return code */
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB SX1250 READ FAILURE\n");
+        return -1;
+    } else {
+        DEBUG_MSG("Note: USB SX1250 read success\n");
+        memcpy(data, in_out_buf + 3, size); /* remove the first bytes, keep only the payload */
+        return 0;
+    }
 }
 
 /* --- EOF ------------------------------------------------------------------ */

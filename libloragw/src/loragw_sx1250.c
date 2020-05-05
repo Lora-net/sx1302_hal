@@ -51,6 +51,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
 
 extern void *lgw_com_target; /*! generic pointer to the COM device */
+extern lgw_com_type_t lgw_com_type; /*! COM type used to communicate with the concentrator */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -64,7 +65,7 @@ int sx1250_reg_w(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t
         return LGW_REG_ERROR;
     }
 
-    com_stat = sx1250_com_w(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), op_code, data, size);
+    com_stat = sx1250_com_w(lgw_com_type, lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), op_code, data, size);
 
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: COM ERROR DURING RADIO REGISTER WRITE\n");
@@ -83,7 +84,7 @@ int sx1250_reg_r(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t
         return LGW_REG_ERROR;
     }
 
-    com_stat = sx1250_com_r(lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), op_code, data, size);
+    com_stat = sx1250_com_r(lgw_com_type, lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), op_code, data, size);
 
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: COM ERROR DURING RADIO REGISTER READ\n");

@@ -77,12 +77,12 @@ int main(int argc, char ** argv)
     int cycle_number = 0;
     int i, x;
     uint16_t size;
-    lgw_com_type_t com_type = LGW_COM_SPI;
 
-    /* SPI interfaces */
+    /* COM interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
     const char * com_path = com_path_default;
     void *com_target = NULL;
+    lgw_com_type_t com_type = LGW_COM_SPI;
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, "hd:u")) != -1) {

@@ -36,7 +36,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_reg.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
-#include "loragw_spi.h"
+#include "loragw_com.h"
 #include "loragw_i2c.h"
 #include "loragw_sx1250.h"
 #include "loragw_sx125x.h"
@@ -577,7 +577,7 @@ int lgw_start(void) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(CONTEXT_SPI);
+    reg_stat = lgw_connect(LGW_COM_SPI, CONTEXT_SPI);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;

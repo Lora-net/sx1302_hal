@@ -29,6 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>     /* getopt, access */
 #include <math.h>
 
+#include "loragw_com.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
@@ -92,7 +93,7 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(LGW_COM_SPI, spidev_path);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to connect\n");
         return -1;
