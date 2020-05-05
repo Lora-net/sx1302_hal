@@ -37,7 +37,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_MCU == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
-    //#define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr, fmt, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return -1;}
 #else
@@ -49,7 +48,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#if DEBUG_MCU == 1
 #define DEBUG_VERBOSE 1
+#endif
 
 #define HEADER_CMD_SIZE 4
 #define WRITE_SIZE_MAX  64 // TODO: to be checked
@@ -192,7 +193,10 @@ int write_req(int fd, e_order_cmd cmd, const uint8_t * payload, uint16_t payload
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
-    int i, n;
+#if DEBUG_VERBOSE
+    int i;
+#endif
+    int n;
     size_t size;
     int nb_read = 0;
 
@@ -295,7 +299,6 @@ int decode_ack_ping(const uint8_t * hdr, const uint8_t * payload, s_ping_info * 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int decode_ack_get_status(const uint8_t * hdr, const uint8_t * payload, s_status * status) {
-    int i;
     int16_t temperature_sensor;
 
     /* sanity checks */

@@ -378,7 +378,7 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint16_t lgw_usb_chunk_size() {
+uint16_t lgw_usb_chunk_size(void) {
     return (uint16_t)LGW_USB_BURST_CHUNK;
 }
 

@@ -167,7 +167,7 @@ int main(int argc, char ** argv)
         for (i = 0; i < size; ++i) {
             test_buff[i] = rand() & 0xFF;
         }
-        printf("Cycle %i (size:%u)> ", cycle_number, size);
+        printf("Cycle %i> ", cycle_number);
 
         /* Write burst with random data */
         x = lgw_com_wb(com_target, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, size);

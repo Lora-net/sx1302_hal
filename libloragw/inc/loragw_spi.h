@@ -95,7 +95,7 @@ int lgw_spi_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
 /**
  *
  **/
-uint16_t lgw_spi_chunk_size();
+uint16_t lgw_spi_chunk_size(void);
 
 #endif
 
