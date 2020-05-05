@@ -75,6 +75,13 @@ typedef enum
 
 typedef enum
 {
+    ACK_GET_STATUS__SYSTEM_TIME_31_24,  ACK_GET_STATUS__SYSTEM_TIME_23_16,  ACK_GET_STATUS__SYSTEM_TIME_15_8,   ACK_GET_STATUS__SYSTEM_TIME_7_0,
+    ACK_GET_STATUS__TEMPERATURE_15_8,   ACK_GET_STATUS__TEMPERATURE_7_0,
+    ACK_GET_STATUS_SIZE
+} e_cmd_offset_ack_get_status;
+
+typedef enum
+{
     REQ_WRITE_GPIO__PORT,
     REQ_WRITE_GPIO__PIN,
     REQ_WRITE_GPIO__STATE,
@@ -100,19 +107,27 @@ typedef struct {
     char version[10]; /* format is V00.00.00\0 */
 } s_ping_info;
 
+typedef struct {
+    uint32_t system_time_ms;
+    float temperature;
+} s_status;
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
- * 
+ *
 */
-
 int mcu_ping(int fd, s_ping_info * info);
 
 /**
- * 
+ *
 */
+int mcu_get_status(int fd, s_status * status);
 
+/**
+ *
+*/
 int mcu_gpio_write(int fd, uint8_t gpio_port, uint8_t gpio_id, uint8_t gpio_value);
 
 /**

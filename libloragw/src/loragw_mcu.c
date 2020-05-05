@@ -294,6 +294,42 @@ int decode_ack_ping(const uint8_t * hdr, const uint8_t * payload, s_ping_info * 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int decode_ack_get_status(const uint8_t * hdr, const uint8_t * payload, s_status * status) {
+    int i;
+    int16_t temperature_sensor;
+
+    /* sanity checks */
+    if ((payload == NULL) || (status == NULL)) {
+        printf("ERROR: invalid parameter\n");
+        return -1;
+    }
+
+    if (cmd_get_type(hdr) != ORDER_ID__ACK_GET_STATUS) {
+        printf("ERROR: wrong ACK type for GET_STATUS (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_GET_STATUS, cmd_get_type(hdr));
+        return -1;
+    }
+
+    /* payload info */
+    status->system_time_ms = bytes_be_to_uint32_le(&payload[ACK_GET_STATUS__SYSTEM_TIME_31_24]);
+
+    temperature_sensor = (int16_t)(payload[ACK_GET_STATUS__TEMPERATURE_15_8] << 8) |
+                         (int16_t)(payload[ACK_GET_STATUS__TEMPERATURE_7_0]  << 0);
+    status->temperature = (float)temperature_sensor / 100.0;
+
+
+#if DEBUG_VERBOSE
+    DEBUG_MSG   ("## ACK_GET_STATUS\n");
+    DEBUG_PRINTF("   id:            0x%02X\n", cmd_get_id(hdr));
+    DEBUG_PRINTF("   size:          %u\n", cmd_get_size(hdr));
+    DEBUG_PRINTF("   sys_time:      %u\n", status->system_time_ms);
+    DEBUG_PRINTF("   temperature:   %.1f\n", status->temperature);
+#endif
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int decode_ack_gpio_access(const uint8_t * hdr, const uint8_t * payload, uint8_t * write_status) {
     if ((hdr == NULL) || (payload == NULL) || (write_status == NULL)) {
         printf("ERROR: invalid parameter\n");
@@ -359,6 +395,29 @@ int mcu_ping(int fd, s_ping_info * info) {
 
     if (decode_ack_ping(buf_hdr, buf_ack, info) != 0) {
         printf("ERROR: invalid PING ack\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int mcu_get_status(int fd, s_status * status) {
+    CHECK_NULL(status);
+
+    if (write_req(fd, ORDER_ID__REQ_GET_STATUS, NULL, 0) != 0) {
+        printf("ERROR: failed to write GET_STATUS request\n");
+        return -1;
+    }
+
+    if (read_ack(fd, buf_hdr, buf_ack, sizeof buf_ack) < 0) {
+        printf("ERROR: failed to read GET_STATUS ack\n");
+        return -1;
+    }
+
+    if (decode_ack_get_status(buf_hdr, buf_ack, status) != 0) {
+        printf("ERROR: invalid GET_STATUS ack\n");
         return -1;
     }
 

@@ -137,6 +137,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
     int x;
     int fd;
     s_ping_info gw_info;
+    s_status mcu_status;
 
     /*check input variables*/
     CHECK_NULL(com_target_ptr);
@@ -183,6 +184,13 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
             return -1;
         }
         printf("INFO: Concentrator MCU version is %s\n", gw_info.version);
+
+        /* Get MCU status */
+        if (mcu_get_status(fd, &mcu_status) != 0) {
+            printf("ERROR: failed to get status from the concentrator MCU\n");
+            return LGW_USB_ERROR;
+        }
+        printf("INFO: MCU status: sys_time:%u temperature:%.1foC\n", mcu_status.system_time_ms, mcu_status.temperature);
 
         /* Reset SX1302 */
         x  = mcu_gpio_write(fd, 0, 1, 1); /*   set PA1 : POWER_EN */
