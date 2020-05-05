@@ -729,20 +729,22 @@ int lgw_start(void) {
     dbg_init_gpio();
 #endif
 
-    /* Try to configure temperature sensor STTS751-0DP3F */
-    ts_addr = I2C_PORT_TEMP_SENSOR_0;
-    i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
-    err = stts751_configure(ts_fd, ts_addr);
-    if (err != LGW_I2C_SUCCESS) {
-        i2c_linuxdev_close(ts_fd);
-        ts_fd = -1;
-        /* Not found, try to configure temperature sensor STTS751-1DP3F */
-        ts_addr = I2C_PORT_TEMP_SENSOR_1;
+    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+        /* Try to configure temperature sensor STTS751-0DP3F */
+        ts_addr = I2C_PORT_TEMP_SENSOR_0;
         i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
         err = stts751_configure(ts_fd, ts_addr);
         if (err != LGW_I2C_SUCCESS) {
-            printf("ERROR: failed to configure the temperature sensor\n");
-            return LGW_HAL_ERROR;
+            i2c_linuxdev_close(ts_fd);
+            ts_fd = -1;
+            /* Not found, try to configure temperature sensor STTS751-1DP3F */
+            ts_addr = I2C_PORT_TEMP_SENSOR_1;
+            i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+            err = stts751_configure(ts_fd, ts_addr);
+            if (err != LGW_I2C_SUCCESS) {
+                printf("ERROR: failed to configure the temperature sensor\n");
+                return LGW_HAL_ERROR;
+            }
         }
     }
 
@@ -771,10 +773,12 @@ int lgw_stop(void) {
     DEBUG_MSG("INFO: Disconnecting\n");
     lgw_disconnect();
 
-    DEBUG_MSG("INFO: Closing I2C\n");
-    err = i2c_linuxdev_close(ts_fd);
-    if (err != 0) {
-        printf("ERROR: failed to close I2C device (err=%i)\n", err);
+    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+        DEBUG_MSG("INFO: Closing I2C\n");
+        err = i2c_linuxdev_close(ts_fd);
+        if (err != 0) {
+            printf("ERROR: failed to close I2C device (err=%i)\n", err);
+        }
     }
 
     CONTEXT_STARTED = false;
