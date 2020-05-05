@@ -105,7 +105,7 @@ int lgw_com_close(void *com_target) {
             com_stat = lgw_usb_close(com_target);
             break;
         default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
             com_stat = LGW_COM_ERROR;
             break;
     }
@@ -130,7 +130,7 @@ int lgw_com_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
             com_stat = lgw_usb_w(com_target, spi_mux_target, address, data);
             break;
         default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
             com_stat = LGW_COM_ERROR;
             break;
     }
@@ -156,7 +156,7 @@ int lgw_com_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
             com_stat = lgw_usb_r(com_target, spi_mux_target, address, data);
             break;
         default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
             com_stat = LGW_COM_ERROR;
             break;
     }
@@ -182,7 +182,7 @@ int lgw_com_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
             com_stat = lgw_usb_wb(com_target, spi_mux_target, address, data, size);
             break;
         default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
             com_stat = LGW_COM_ERROR;
             break;
     }
@@ -208,7 +208,7 @@ int lgw_com_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
             com_stat = lgw_usb_rb(com_target, spi_mux_target, address, data, size);
             break;
         default:
-            printf("ERROR: wrong communication type (SHOULD NOT HAPPEN)\n");
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
             com_stat = LGW_COM_ERROR;
             break;
     }
