@@ -183,9 +183,9 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
         printf("INFO: Concentrator MCU version is %s\n", gw_info.version);
 
         /* Reset SX1302 */
-        x  = mcu_gpio_write(fd, 0, 1, 1); /*   set PA1 : POWER_EN*/
-        x |= mcu_gpio_write(fd, 0, 2, 1); /*   set PA2 : SX1302_RESET active*/
-        x |= mcu_gpio_write(fd, 0, 2, 0); /* unset PA2 : SX1302_RESET inactive*/
+        x  = mcu_gpio_write(fd, 0, 1, 1); /*   set PA1 : POWER_EN */
+        x |= mcu_gpio_write(fd, 0, 2, 1); /*   set PA2 : SX1302_RESET active */
+        x |= mcu_gpio_write(fd, 0, 2, 0); /* unset PA2 : SX1302_RESET inactive */
         if (x != 0) {
             printf("ERROR: failed to reset SX1302\n");
             free(usb_device);
@@ -239,8 +239,8 @@ int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
     usb_device = *(int *)com_target;
 
     /* prepare frame to be sent */
-    in_out_buf[0] = 0;
-    in_out_buf[1] = spi_mux_target;
+    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
     in_out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
     in_out_buf[3] =        ((address >> 0) & 0xFF);
     in_out_buf[4] = data;
@@ -272,8 +272,8 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
     usb_device = *(int *)com_target;
 
     /* prepare frame to be sent */
-    in_out_buf[0] = 0;
-    in_out_buf[1] = spi_mux_target;
+    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
     in_out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
     in_out_buf[3] =        ((address >> 0) & 0xFF);
     in_out_buf[4] = 0x00;
@@ -301,8 +301,6 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
     int i;
     int a;
 
-    printf("%s\n", __FUNCTION__);
-
     /* check input parameters */
     CHECK_NULL(com_target);
     CHECK_NULL(data);
@@ -310,8 +308,8 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
     usb_device = *(int *)com_target;
 
     /* prepare command byte */
-    in_out_buf[0] = 0;
-    in_out_buf[1] = spi_mux_target;
+    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
     in_out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
     in_out_buf[3] =        ((address >> 0) & 0xFF);
     for (i = 0; i < size; i++) {
@@ -339,8 +337,6 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
     int i;
     int a;
 
-    printf("%s\n", __FUNCTION__);
-
     /* check input parameters */
     CHECK_NULL(com_target);
     CHECK_NULL(data);
@@ -348,8 +344,8 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
     usb_device = *(int *)com_target;
 
     /* prepare command byte */
-    in_out_buf[0] = 0;
-    in_out_buf[1] = spi_mux_target;
+    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
     in_out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
     in_out_buf[3] =        ((address >> 0) & 0xFF);
     in_out_buf[4] = 0x00;
