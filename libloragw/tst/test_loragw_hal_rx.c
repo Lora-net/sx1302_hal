@@ -71,7 +71,7 @@ void usage(void) {
     printf(" -h print this help\n");
     printf(" -u            set COM type as USB (default is SPI)\n");
     printf(" -d <path>     COM path to be used to connect the concentrator\n");
-    printf("               => default path (SPI): " COM_PATH_DEFAULT "\n");
+    printf("               => default path: " COM_PATH_DEFAULT "\n");
     printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
     printf(" -a <float>    Radio A RX frequency in MHz\n");
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
                     com_path = optarg;
                 }
                 break;
-            case 'u':
+            case 'u': /* Configure USB connection type */
                 com_type = LGW_COM_USB;
                 break;
             case 'r': /* <uint> Radio type */
