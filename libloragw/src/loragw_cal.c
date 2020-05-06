@@ -59,7 +59,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CAL_TX_CORR_DURATION    0 /* 0:1ms, 1:2ms, 2:4ms, 3:8ms */
 
 /* -------------------------------------------------------------------------- */
-/* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
+/* --- PRIVATE VARIABLES -------------------------------------------- */
 
 /* Record Rx IQ mismatch corrections from calibration */
 static int8_t rf_rx_image_amp[LGW_RF_CHAIN_NB] = {0, 0};

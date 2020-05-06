@@ -106,9 +106,6 @@ static const struct radio_reg_s sx125x_regs[RADIO_TOTALREGS] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-extern void *lgw_com_target; /*! generic pointer to the COM device */
-extern lgw_com_type_t lgw_com_type; /*! COM type used to communicate with the concentrator */
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
@@ -138,13 +135,13 @@ int sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain) {
 
     if ((reg.leng == 8) && (reg.offs == 0)){
         /* direct write */
-        com_stat = sx125x_com_w(lgw_com_type, lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, data);
+        com_stat = sx125x_com_w(lgw_com_type(), lgw_com_target(), ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, data);
     } else {
         /* read-modify-write */
-        com_stat = sx125x_com_r(lgw_com_type, lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
+        com_stat = sx125x_com_r(lgw_com_type(), lgw_com_target(), ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
         mask = ((1 << reg.leng) - 1) << reg.offs;
         w = (r & ~mask) | ((data << reg.offs) & mask);
-        com_stat |= sx125x_com_w(lgw_com_type, lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, w);
+        com_stat |= sx125x_com_w(lgw_com_type(), lgw_com_target(), ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, w);
     }
 
     /* Check that we can read what we have written */
@@ -183,7 +180,7 @@ int sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain) {
 
     reg = sx125x_regs[idx];
 
-    com_stat = sx125x_com_r(lgw_com_type, lgw_com_target, ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
+    com_stat = sx125x_com_r(lgw_com_type(), lgw_com_target(), ((rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB), reg.addr, &r);
     mask = ((1 << reg.leng) - 1) << reg.offs;
     *data = (r & mask) >> reg.offs;
 

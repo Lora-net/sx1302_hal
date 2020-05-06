@@ -90,6 +90,16 @@ uint16_t lgw_com_chunk_size(void);
  **/
 int lgw_com_get_temperature(float * temperature);
 
+/**
+ *
+ **/
+void* lgw_com_target(void);
+
+/**
+ *
+ **/
+lgw_com_type_t lgw_com_type(void);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -45,9 +45,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define WAIT_BUSY_SX1250_MS  1
 
 /* -------------------------------------------------------------------------- */
-/* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
