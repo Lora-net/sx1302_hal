@@ -1004,7 +1004,7 @@ int lgw_get_temperature(float* temperature) {
             err = stts751_get_temperature(ts_fd, ts_addr, temperature);
             break;
         case LGW_COM_USB:
-            err = lgw_reg_get_temperature(temperature);
+            err = lgw_com_get_temperature(temperature);
             break;
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);

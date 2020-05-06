@@ -52,33 +52,33 @@ typedef enum com_type_e {
  * 
 */
 
-int lgw_com_open(lgw_com_type_t com_type, const char *com_path, void **com_target_ptr);
+int lgw_com_open(lgw_com_type_t com_type, const char *com_path);
 
 /**
  * 
 */
 
-int lgw_com_close(void *com_target);
+int lgw_com_close(void);
 
 /**
  *
 */
-int lgw_com_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
+int lgw_com_w(uint8_t spi_mux_target, uint16_t address, uint8_t data);
 
 /**
  *
 */
-int lgw_com_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
+int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 
 /**
  *
 */
-int lgw_com_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
+int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
  *
 */
-int lgw_com_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
 /**
  *
@@ -88,7 +88,7 @@ uint16_t lgw_com_chunk_size(void);
 /**
  *
  **/
-int lgw_com_get_temperature(void *com_target, float * temperature);
+int lgw_com_get_temperature(float * temperature);
 
 #endif
 

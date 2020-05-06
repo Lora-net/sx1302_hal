@@ -50,20 +50,28 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
+
 lgw_com_type_t lgw_com_type = LGW_COM_UNKNOWN;
+void *lgw_com_target = NULL; /*! generic pointer to the COM device (SPI or USB) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_com_open(lgw_com_type_t com_type, const char * com_path, void **com_target_ptr) {
+int lgw_com_open(lgw_com_type_t com_type, const char * com_path) {
     int com_stat;
 
     /* Check input parameters */
     CHECK_NULL(com_path);
-    CHECK_NULL(com_target_ptr)
     if ((com_type != LGW_COM_SPI) && (com_type != LGW_COM_USB)) {
         DEBUG_MSG("ERROR: COMMUNICATION INTERFACE TYPE IS NOT SUPPORTED\n");
         return LGW_COM_ERROR;
+    }
+
+    if (lgw_com_target != NULL) {
+        DEBUG_MSG("WARNING: CONCENTRATOR WAS ALREADY CONNECTED\n");
+        lgw_com_close();
     }
 
     /* set current com type */
@@ -72,11 +80,11 @@ int lgw_com_open(lgw_com_type_t com_type, const char * com_path, void **com_targ
     switch (com_type) {
         case LGW_COM_SPI:
             printf("Opening SPI communication interface\n");
-            com_stat = lgw_spi_open(com_path, com_target_ptr);
+            com_stat = lgw_spi_open(com_path, &lgw_com_target);
             break;
         case LGW_COM_USB:
             printf("Opening USB communication interface\n");
-            com_stat = lgw_usb_open(com_path, com_target_ptr);
+            com_stat = lgw_usb_open(com_path, &lgw_com_target);
             break;
         default:
             com_stat = LGW_COM_ERROR;
@@ -89,20 +97,22 @@ int lgw_com_open(lgw_com_type_t com_type, const char * com_path, void **com_targ
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* SPI release */
-int lgw_com_close(void *com_target) {
+int lgw_com_close(void) {
     int com_stat;
 
-    /* Check input parameters */
-    CHECK_NULL(com_target);
+    if (lgw_com_target == NULL) {
+        printf("ERROR: concentrator is not connected\n");
+        return -1;
+    }
 
     switch (lgw_com_type) {
         case LGW_COM_SPI:
             printf("Closing SPI communication interface\n");
-            com_stat = lgw_spi_close(com_target);
+            com_stat = lgw_spi_close(lgw_com_target);
             break;
         case LGW_COM_USB:
             printf("Closing USB communication interface\n");
-            com_stat = lgw_usb_close(com_target);
+            com_stat = lgw_usb_close(lgw_com_target);
             break;
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
@@ -116,18 +126,18 @@ int lgw_com_close(void *com_target) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple write */
-int lgw_com_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
+int lgw_com_w(uint8_t spi_mux_target, uint16_t address, uint8_t data) {
     int com_stat;
 
     /* Check input parameters */
-    CHECK_NULL(com_target);
+    CHECK_NULL(lgw_com_target);
 
     switch (lgw_com_type) {
         case LGW_COM_SPI:
-            com_stat = lgw_spi_w(com_target, spi_mux_target, address, data);
+            com_stat = lgw_spi_w(lgw_com_target, spi_mux_target, address, data);
             break;
         case LGW_COM_USB:
-            com_stat = lgw_usb_w(com_target, spi_mux_target, address, data);
+            com_stat = lgw_usb_w(lgw_com_target, spi_mux_target, address, data);
             break;
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
@@ -141,19 +151,19 @@ int lgw_com_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple read */
-int lgw_com_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
+int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
     int com_stat;
 
     /* Check input parameters */
-    CHECK_NULL(com_target);
+    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
     switch (lgw_com_type) {
         case LGW_COM_SPI:
-            com_stat = lgw_spi_r(com_target, spi_mux_target, address, data);
+            com_stat = lgw_spi_r(lgw_com_target, spi_mux_target, address, data);
             break;
         case LGW_COM_USB:
-            com_stat = lgw_usb_r(com_target, spi_mux_target, address, data);
+            com_stat = lgw_usb_r(lgw_com_target, spi_mux_target, address, data);
             break;
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
@@ -167,19 +177,19 @@ int lgw_com_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
-int lgw_com_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
+int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int com_stat;
 
     /* Check input parameters */
-    CHECK_NULL(com_target);
+    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
     switch (lgw_com_type) {
         case LGW_COM_SPI:
-            com_stat = lgw_spi_wb(com_target, spi_mux_target, address, data, size);
+            com_stat = lgw_spi_wb(lgw_com_target, spi_mux_target, address, data, size);
             break;
         case LGW_COM_USB:
-            com_stat = lgw_usb_wb(com_target, spi_mux_target, address, data, size);
+            com_stat = lgw_usb_wb(lgw_com_target, spi_mux_target, address, data, size);
             break;
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
@@ -193,19 +203,19 @@ int lgw_com_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) read */
-int lgw_com_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
+int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
     int com_stat;
 
     /* Check input parameters */
-    CHECK_NULL(com_target);
+    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
     switch (lgw_com_type) {
         case LGW_COM_SPI:
-            com_stat = lgw_spi_rb(com_target, spi_mux_target, address, data, size);
+            com_stat = lgw_spi_rb(lgw_com_target, spi_mux_target, address, data, size);
             break;
         case LGW_COM_USB:
-            com_stat = lgw_usb_rb(com_target, spi_mux_target, address, data, size);
+            com_stat = lgw_usb_rb(lgw_com_target, spi_mux_target, address, data, size);
             break;
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
@@ -233,9 +243,9 @@ uint16_t lgw_com_chunk_size(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_com_get_temperature(void *com_target, float * temperature) {
+int lgw_com_get_temperature(float * temperature) {
     /* Check input parameters */
-    CHECK_NULL(com_target);
+    CHECK_NULL(lgw_com_target);
     CHECK_NULL(temperature);
 
     switch (lgw_com_type) {
@@ -243,7 +253,7 @@ int lgw_com_get_temperature(void *com_target, float * temperature) {
             printf("ERROR(%s:%d): not supported for SPI com\n", __FUNCTION__, __LINE__);
             return -1;
         case LGW_COM_USB:
-            return lgw_usb_get_temperature(com_target, temperature);
+            return lgw_usb_get_temperature(lgw_com_target, temperature);
         default:
             printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
             return LGW_COM_ERROR;
