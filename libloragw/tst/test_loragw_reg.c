@@ -37,7 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -63,20 +63,25 @@ int main(int argc, char ** argv)
     uint8_t reg_max;
 
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = LGW_COM_SPI;
 
     /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:")) != -1) {
+    while ((i = getopt(argc, argv, "hd:u")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_SUCCESS;
                 break;
 
+            case 'u': /* Configure USB connection type */
+                com_type = LGW_COM_USB;
+                break;
+
             case 'd':
                 if (optarg != NULL) {
-                    spidev_path = optarg;
+                    com_path = optarg;
                 }
                 break;
 
@@ -87,13 +92,15 @@ int main(int argc, char ** argv)
             }
     }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    x = lgw_connect(LGW_COM_SPI, spidev_path);
+    x = lgw_connect(com_type, com_path);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to connect\n");
         return -1;
@@ -180,10 +187,12 @@ int main(int argc, char ** argv)
         return -1;
     }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     return 0;
@@ -197,8 +206,9 @@ static void usage(void) {
     printf(" %s\n", lgw_version_info());
     printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" -h            print this help\n");
+    printf(" -u            set COM type as USB (default is SPI)\n");
     printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
+    printf("               => default path: " COM_PATH_DEFAULT "\n");
 }
 
 
