@@ -21,6 +21,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
+#include "loragw_com.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED TYPES ------------------------------------------------ */
 
@@ -36,8 +38,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx125x_com_r(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
-int sx125x_com_w(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t data);
+int sx125x_com_r(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
+int sx125x_com_w(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t data);
 
 #endif
 /* --- EOF ------------------------------------------------------------------ */
