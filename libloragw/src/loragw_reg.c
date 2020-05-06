@@ -1456,12 +1456,4 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) 
     }
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_reg_get_temperature(float * temperature) {
-    CHECK_NULL(temperature);
-
-    return lgw_com_get_temperature(lgw_com_target, temperature);
-}
-
 /* --- EOF ------------------------------------------------------------------ */

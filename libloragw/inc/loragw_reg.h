@@ -1484,11 +1484,6 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
 /**
 TODO
 */
-int lgw_reg_get_temperature(float * temperature);
-
-/**
-TODO
-*/
 int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size);
 
 /**
