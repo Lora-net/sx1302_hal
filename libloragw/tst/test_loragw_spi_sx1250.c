@@ -45,6 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define BUFF_SIZE           16
 
+#define COM_TYPE_DEFAULT    LGW_COM_SPI
 #define COM_PATH_DEFAULT    "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
@@ -77,7 +78,7 @@ int main(int argc, char ** argv)
     /* COM interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
     const char * com_path = com_path_default;
-    lgw_com_type_t com_type = LGW_COM_SPI;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, "hd:u")) != -1) {
