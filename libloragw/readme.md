@@ -21,18 +21,34 @@ radio used to send and receive packets wirelessly using LoRa or FSK modulations.
 
 The library is composed of the following modules:
 
-* loragw_hal
-* loragw_reg
-* loragw_spi
-* loragw_i2c
-* loragw_aux
-* loragw_gps
-* loragw_sx125x
-* loragw_sx1250
-* loragw_sx1302
-* loragw_sx1302_rx
-* loragw_sx1302_timestamp
-* loragw_stts751
+1. abstraction layer
+  * loragw_hal
+  * loragw_reg
+  * loragw_i2c
+  * loragw_aux
+  * loragw_sx1302
+  * loragw_sx1302_rx
+  * loragw_sx1302_timestamp
+  * loragw_sx125x
+  * loragw_sx1250
+
+2. communication layer for sx1302
+  * loragw_com
+  * loragw_spi
+  * loragw_usb
+
+3. communication layer for sx1255/SX1257 radios
+  * sx125x_com
+  * sx125x_spi
+
+4. communication layer for sx1250 radios
+  * sx1250_com
+  * sx1250_spi
+  * sx1250_usb
+
+5. peripherals
+  * loragw_gps
+  * loragw_stts751
 
 The library also contains basic test programs to demonstrate code use and check
 functionality.
@@ -88,7 +104,7 @@ of by address:
 
 This module handles read-only registers protection, multi-byte registers
 management, signed registers management, read-modify-write routines for
-sub-byte registers and read/write burst fragmentation to respect SPI maximum
+sub-byte registers and read/write burst fragmentation to respect SPI/USB maximum
 burst length constraints.
 
 It make the code much easier to read and to debug.
@@ -102,15 +118,21 @@ application.
 **/!\ Warning** please be sure to have a good understanding of the LoRa
 concentrator inner working before accessing the internal registers directly.
 
-### 2.3. loragw_spi
+### 2.3. loragw_com
 
 This module contains the functions to access the LoRa concentrator register
-array through the SPI interface:
+array through the SPI or USB interfaces:
 
-* lgw_spi_r to read one byte
-* lgw_spi_w to write one byte
-* lgw_spi_rb to read two bytes or more
-* lgw_spi_wb to write two bytes or more
+* lgw_com_r to read one byte
+* lgw_com_w to write one byte
+* lgw_com_rb to read two bytes or more
+* lgw_com_wb to write two bytes or more
+
+This modules is an abstract interface, it then relies on the following modules
+to actually perform the interfacing:
+
+* loragw_spi : for SPI interface
+* loragw_usb : for USB interface
 
 Please *do not* include that module directly into your application.
 
@@ -171,11 +193,20 @@ also be converted to/from UTC time using lgw_cnt2utc/lgw_utc2cnt functions.
 ### 2.6. loragw_sx125x
 
 This module contains functions to handle the configuration of SX1255 and
-SX1257 radios.
+SX1257 radios. In order to communicate with the radio, it relies on the
+following modules:
+
+* sx125x_com : abstract interfacing to select USB or SPI interface
+* sx125x_spi : implementation of the SPI interface
 
 ### 2.7. loragw_sx1250
 
-This module contains functions to handle the configuration of SX1250 radios.
+This module contains functions to handle the configuration of SX1250 radios. In
+order to communicate with the radio, it relies on the following modules:
+
+* sx1250_com : abstract interfacing to select USB or SPI interface
+* sx1250_spi : implementation of the SPI interface
+* sx1250_usb : implementation of the USB interface
 
 ### 2.8. loragw_sx1302
 
@@ -270,20 +301,7 @@ The library will not work if there is a mismatch between the hardware version
 and the library version. You can use the test program test_loragw_reg to check
 if the hardware registers match their software declaration.
 
-### 4.2. SPI communication
-
-loragw_spi contains 4 SPI functions (read, write, burst read, burst write) that
-are platform-dependant.
-The functions must be rewritten depending on the SPI bridge you use:
-
-* SPI master matched to the Linux SPI device driver (provided)
-* SPI over USB using FTDI components (not provided)
-* native SPI using a microcontroller peripheral (not provided)
-
-You can use the test program test_loragw_spi to check with a logic analyser
-that the SPI communication is working
-
-### 4.3. GPS receiver (or other GNSS system)
+### 4.2. GPS receiver (or other GNSS system)
 
 To use the GPS module of the library, the host must be connected to a GPS
 receiver via a serial link (or an equivalent receiver using a different

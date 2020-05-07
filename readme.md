@@ -3,7 +3,7 @@
 	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-	  (C)2019 Semtech
+	  (C)2020 Semtech
 
 SX1302 LoRa Gateway project
 ===========================
@@ -37,7 +37,7 @@ link, and emits RF packets that are sent by the server.
 	    |
 	+- -|- - - - - - - - - - - - -+        xxxxxxxxxxxx          +--------+
 	|+--+-----------+     +------+|       xx x  x     xxx        |        |
-	||              |     |      ||      xx  Internet  xx        |        |
+	||              | USB |      ||      xx  Internet  xx        |        |
 	|| Concentrator |<----+ Host |<------xx     or    xx-------->|        |
 	||              | SPI |      ||      xx  Intranet  xx        | Server |
 	|+--------------+     +------+|       xxxx   x   xxxx        |        |
@@ -160,6 +160,16 @@ found in the `libtools` directory.
 * tinymt32: a pseudo-random generator (only used for debug/test)
 
 ## 6. Changelog
+
+### v2.0.0 ###
+
+* HAL: Added support for USB interface between the HOST and the concentrator,
+for sx1250 based concentrator only.
+* HAL: Reworked the complete communication layer. A new loragw_com module has
+been introduced to handle switching from a USB or a SPI communication interface,
+aligned function prototypes for sx125x and sx1250 radios.
+* Packet Forwarder: The type of interface is configurable in the global_conf.json
+file: com_type can be "USB" or "SPI".
 
 ### v1.0.5 ###
 
