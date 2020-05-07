@@ -335,13 +335,16 @@ static int parse_SX130x_configuration(const char * conf_file) {
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
     str = json_object_get_string(conf_obj, "com_type");
-    if (!strncmp(str, "SPI", 3) || !strncmp(str, "spi", 3)) {
+    if (str == NULL) {
+        MSG("ERROR: com_type must be configured in %s\n", conf_file);
+        return -1;
+    } else if (!strncmp(str, "SPI", 3) || !strncmp(str, "spi", 3)) {
         boardconf.com_type = LGW_COM_SPI;
     } else if (!strncmp(str, "USB", 3) || !strncmp(str, "usb", 3)) {
         boardconf.com_type = LGW_COM_USB;
     } else {
-        boardconf.com_type = LGW_COM_UNKNOWN;
-        MSG("WARNING: invalid com type: %s (should be SPI or USB)\n", str);
+        MSG("ERROR: invalid com type: %s (should be SPI or USB)\n", str);
+        return -1;
     }
     com_type = boardconf.com_type;
     str = json_object_get_string(conf_obj, "com_path");
@@ -349,7 +352,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         strncpy(boardconf.com_path, str, sizeof boardconf.com_path);
         boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     } else {
-        MSG("ERROR: spidev path must be configured in %s\n", conf_file);
+        MSG("ERROR: com_path must be configured in %s\n", conf_file);
         return -1;
     }
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
