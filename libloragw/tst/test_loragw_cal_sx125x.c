@@ -52,7 +52,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_TYPE_DEFAULT LGW_COM_SPI
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
@@ -99,8 +100,9 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
-    printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
+    printf(" -u        Set COM type as USB (default is SPI)\n");
+    printf(" -d [path] Path to the COM interface\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
     printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257)\n");
@@ -467,8 +469,9 @@ int main(int argc, char **argv)
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     /* Initialize TX gain LUT */
     txlut.size = 1;
@@ -485,16 +488,20 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hk:r:c:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hk:r:c:d:u", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
                 break;
 
+            case 'u':
+                com_type = LGW_COM_USB;
+                break;
+
             case 'd':
                 if (optarg != NULL) {
-                    spidev_path = optarg;
+                    com_path = optarg;
                 }
                 break;
 
@@ -578,17 +585,25 @@ int main(int argc, char **argv)
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+    /* USB is currently not supported for sx1255/sx1257 radios */
+    if (com_type == LGW_COM_USB) {
+        printf("ERROR: USB interface is currently not supported for sx1255/sx1257 radios\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     /* open log file for writing */
     fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
-    x = lgw_connect(LGW_COM_SPI, spidev_path);
+    x = lgw_connect(com_type, com_path);
     if (x != 0) {
         printf("ERROR: failed to connect the gateway\n");
         return EXIT_FAILURE;
@@ -631,10 +646,12 @@ int main(int argc, char **argv)
     /* Close log file */
     fclose(fp);
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     printf("=========== Test End ===========\n");
