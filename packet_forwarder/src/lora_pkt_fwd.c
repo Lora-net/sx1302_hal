@@ -242,6 +242,9 @@ static uint32_t nb_pkt_received_fsk = 0;
 static struct lgw_conf_debug_s debugconf;
 static uint32_t nb_pkt_received_ref[16];
 
+/* Interface type */
+static lgw_com_type_t com_type = LGW_COM_SPI;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -337,8 +340,10 @@ static int parse_SX130x_configuration(const char * conf_file) {
     } else if (!strncmp(str, "USB", 3) || !strncmp(str, "usb", 3)) {
         boardconf.com_type = LGW_COM_USB;
     } else {
+        boardconf.com_type = LGW_COM_UNKNOWN;
         MSG("WARNING: invalid com type: %s (should be SPI or USB)\n", str);
     }
+    com_type = boardconf.com_type;
     str = json_object_get_string(conf_obj, "com_path");
     if (str != NULL) {
         strncpy(boardconf.com_path, str, sizeof boardconf.com_path);
@@ -1383,10 +1388,12 @@ int main(int argc, char ** argv)
     }
     freeaddrinfo(result);
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
@@ -1655,10 +1662,12 @@ int main(int argc, char ** argv)
         }
     }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     MSG("INFO: Exiting packet forwarder program\n");
