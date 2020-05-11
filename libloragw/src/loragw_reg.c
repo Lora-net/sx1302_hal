@@ -1216,11 +1216,7 @@ int lgw_connect(const lgw_com_type_t com_type, const char * com_path) {
         DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
         return LGW_REG_ERROR;
     }
-    if (u != loregs[SX1302_REG_COMMON_VERSION_VERSION].dflt) {
-        DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
-        return LGW_REG_ERROR;
-    }
-    DEBUG_PRINTF("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
+    printf("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
 
     DEBUG_MSG("Note: success connecting the concentrator\n");
     return LGW_REG_SUCCESS;
