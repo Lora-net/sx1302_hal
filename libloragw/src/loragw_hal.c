@@ -627,7 +627,11 @@ int lgw_start(void) {
     sx1302_radio_host_ctrl(false);
 
     /* Basic initialization of the sx1302 */
-    sx1302_init(&CONTEXT_TIMESTAMP);
+    err = sx1302_init(&CONTEXT_TIMESTAMP);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to initialize the concentrator chip\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* Configure PA/LNA LUTs */
     sx1302_pa_lna_lut_configure();

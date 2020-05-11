@@ -46,6 +46,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 /**
+@enum sx1302_model_id_t
+@brief
+*/
+typedef enum {
+    CHIP_MODEL_ID_SX1302 = 0x02, /* SX1302 can be 0x00 or 0x02 */
+    CHIP_MODEL_ID_SX1303 = 0x03,
+    CHIP_MODEL_ID_UNKNOWN
+} sx1302_model_id_t;
+
+/**
 @struct sx1302_if_cfg_t
 @brief TODO
 */
@@ -87,7 +97,7 @@ typedef struct {
 @param TODO
 @return TODO
 */
-void sx1302_init(struct lgw_conf_timestamp_s *conf);
+int sx1302_init(struct lgw_conf_timestamp_s *conf);
 
 /**
 @brief Get the SX1302 unique identifier
@@ -95,6 +105,13 @@ void sx1302_init(struct lgw_conf_timestamp_s *conf);
 @return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
 */
 int sx1302_get_eui(uint64_t * eui);
+
+/**
+@brief Get the SX1302/SX1303 Chip Model ID
+@param model_id pointer to the memory holding the Chip Model ID
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
+*/
+int sx1302_get_model_id(sx1302_model_id_t * model_id);
 
 /**
 @brief Check AGC & ARB MCUs parity error, and update timestamp counter wraping status

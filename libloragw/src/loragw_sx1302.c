@@ -204,15 +204,39 @@ void lora_crc16(const char data, int *crc) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-void sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
-    timestamp_counter_new(&counter_us);
+int sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
+    sx1302_model_id_t model_id;
+    int x;
 
-    if (conf_ts != NULL) {
-        timestamp_counter_mode(conf_ts->enable_precision_ts, conf_ts->max_ts_metrics, conf_ts->nb_symbols);
-    }
+    /* Check input parameters */
+    CHECK_NULL(conf_ts);
+
+    /* Initialize internal counter */
+    timestamp_counter_new(&counter_us);
 
     /* Initialize RX buffer */
     rx_buffer_new(&rx_buffer);
+
+    /* Configure timestamping mode */
+    if (conf_ts->enable_precision_ts == true) {
+        x = sx1302_get_model_id(&model_id);
+        if (x != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to get Chip Model ID\n");
+            return LGW_REG_ERROR;
+        }
+
+        if (model_id != CHIP_MODEL_ID_SX1303) {
+            printf("ERROR: Fine Timestamping is not supported on this Chip Model ID 0x%02X\n", model_id);
+            return LGW_REG_ERROR;
+        }
+    }
+    x = timestamp_counter_mode(conf_ts->enable_precision_ts, conf_ts->max_ts_metrics, conf_ts->nb_symbols);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure timestamp counter mode\n");
+        return LGW_REG_ERROR;
+    }
+
+    return LGW_REG_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -234,6 +258,28 @@ int sx1302_get_eui(uint64_t * eui) {
 
         *eui |= (uint64_t)((uint8_t)val) << (56 - (i * 8));
     }
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_get_model_id(sx1302_model_id_t * model_id) {
+    int  err;
+    int32_t val;
+
+    /* Select ChipModelID */
+    err = lgw_reg_w(SX1302_REG_OTP_BYTE_ADDR_ADDR, 0xD0);
+    if (err != LGW_REG_SUCCESS) {
+        return LGW_REG_ERROR;
+    }
+
+    /* Read Modem ID */
+    err = lgw_reg_r(SX1302_REG_OTP_RD_DATA_RD_DATA, &val);
+    if (err != LGW_REG_SUCCESS) {
+        return LGW_REG_ERROR;
+    }
+    *model_id = (sx1302_model_id_t)val;
 
     return LGW_REG_SUCCESS;
 }
