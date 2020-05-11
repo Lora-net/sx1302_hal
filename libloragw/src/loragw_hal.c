@@ -581,14 +581,13 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 
 int lgw_start(void) {
     int i, err;
-    int reg_stat;
 
     if (CONTEXT_STARTED == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(CONTEXT_COM_TYPE, CONTEXT_COM_PATH);
-    if (reg_stat == LGW_REG_ERROR) {
+    err = lgw_connect(CONTEXT_COM_TYPE, CONTEXT_COM_PATH);
+    if (err == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
     }
@@ -603,99 +602,184 @@ int lgw_start(void) {
     /* Setup radios for RX */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (CONTEXT_RF_CHAIN[i].enable == true) {
-            sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
+            /* Reset the radio */
+            err = sx1302_radio_reset(i, CONTEXT_RF_CHAIN[i].type);
+            if (err != LGW_REG_SUCCESS) {
+                printf("ERROR: failed to reset radio %d\n", i);
+                return LGW_HAL_ERROR;
+            }
+
+            /* Setup the radio */
             switch (CONTEXT_RF_CHAIN[i].type) {
                 case LGW_RADIO_TYPE_SX1250:
-                    sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz, CONTEXT_RF_CHAIN[i].single_input_mode);
+                    err = sx1250_setup(i, CONTEXT_RF_CHAIN[i].freq_hz, CONTEXT_RF_CHAIN[i].single_input_mode);
                     break;
                 case LGW_RADIO_TYPE_SX1255:
                 case LGW_RADIO_TYPE_SX1257:
-                    sx125x_setup(i, CONTEXT_BOARD.clksrc, true, CONTEXT_RF_CHAIN[i].type, CONTEXT_RF_CHAIN[i].freq_hz);
+                    err = sx125x_setup(i, CONTEXT_BOARD.clksrc, true, CONTEXT_RF_CHAIN[i].type, CONTEXT_RF_CHAIN[i].freq_hz);
                     break;
                 default:
                     DEBUG_PRINTF("ERROR: RADIO TYPE NOT SUPPORTED (RF_CHAIN %d)\n", i);
                     return LGW_HAL_ERROR;
             }
-            sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].type);
+            if (err != LGW_REG_SUCCESS) {
+                printf("ERROR: failed to setup radio %d\n", i);
+                return LGW_HAL_ERROR;
+            }
+
+            /* Set radio mode */
+            err = sx1302_radio_set_mode(i, CONTEXT_RF_CHAIN[i].type);
+            if (err != LGW_REG_SUCCESS) {
+                printf("ERROR: failed to set mode for radio %d\n", i);
+                return LGW_HAL_ERROR;
+            }
         }
     }
 
     /* Select the radio which provides the clock to the sx1302 */
-    sx1302_radio_clock_select(CONTEXT_BOARD.clksrc);
+    err = sx1302_radio_clock_select(CONTEXT_BOARD.clksrc);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to get clock from radio %u\n", CONTEXT_BOARD.clksrc);
+        return LGW_HAL_ERROR;
+    }
 
     /* Release host control on radio (will be controlled by AGC) */
-    sx1302_radio_host_ctrl(false);
+    err = sx1302_radio_host_ctrl(false);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to release control over radios\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* Basic initialization of the sx1302 */
     err = sx1302_init(&CONTEXT_TIMESTAMP);
     if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: failed to initialize the concentrator chip\n");
+        printf("ERROR: failed to initialize SX1302\n");
         return LGW_HAL_ERROR;
     }
 
     /* Configure PA/LNA LUTs */
-    sx1302_pa_lna_lut_configure();
+    err = sx1302_pa_lna_lut_configure();
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 PA/LNA LUT\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* Configure Radio FE */
-    sx1302_radio_fe_configure();
+    err = sx1302_radio_fe_configure();
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 radio frontend\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* Configure the Channelizer */
-    sx1302_channelizer_configure(CONTEXT_IF_CHAIN, false);
+    err = sx1302_channelizer_configure(CONTEXT_IF_CHAIN, false);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 channelizer\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* configure LoRa 'multi' demodulators */
-    sx1302_lora_correlator_configure();
-    sx1302_lora_modem_configure(CONTEXT_RF_CHAIN[0].freq_hz); /* TODO: freq_hz used to confiogure freq to time drift, based on RF0 center freq only */
+    err = sx1302_lora_correlator_configure();
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 LoRa modem correlators\n");
+        return LGW_HAL_ERROR;
+    }
+    err = sx1302_lora_modem_configure(CONTEXT_RF_CHAIN[0].freq_hz);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 LoRa modems\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* configure LoRa 'stand-alone' modem */
     if (CONTEXT_IF_CHAIN[8].enable == true) {
-        sx1302_lora_service_correlator_configure(&(CONTEXT_LORA_SERVICE));
-        sx1302_lora_service_modem_configure(&(CONTEXT_LORA_SERVICE), CONTEXT_RF_CHAIN[0].freq_hz);  /* TODO: freq_hz used to confiogure freq to time drift, based on RF0 center freq only */
+        err = sx1302_lora_service_correlator_configure(&(CONTEXT_LORA_SERVICE));
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to configure SX1302 LoRa Service modem correlators\n");
+            return LGW_HAL_ERROR;
+        }
+        err = sx1302_lora_service_modem_configure(&(CONTEXT_LORA_SERVICE), CONTEXT_RF_CHAIN[0].freq_hz);
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to configure SX1302 LoRa Service modem\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     /* configure FSK modem */
     if (CONTEXT_IF_CHAIN[9].enable == true) {
-        sx1302_fsk_configure(&(CONTEXT_FSK));
+        err = sx1302_fsk_configure(&(CONTEXT_FSK));
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to configure SX1302 FSK modem\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     /* configure syncword */
-    sx1302_lora_syncword(CONTEXT_LWAN_PUBLIC, CONTEXT_LORA_SERVICE.datarate);
+    err = sx1302_lora_syncword(CONTEXT_LWAN_PUBLIC, CONTEXT_LORA_SERVICE.datarate);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 LoRa syncword\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* enable demodulators - to be done before starting AGC/ARB */
-    sx1302_modem_enable();
+    err = sx1302_modem_enable();
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to enable SX1302 modems\n");
+        return LGW_HAL_ERROR;
+    }
 
-    /* Load firmware */
+    /* Load AGC firmware */
     switch (CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type) {
         case LGW_RADIO_TYPE_SX1250:
             DEBUG_MSG("Loading AGC fw for sx1250\n");
-            if (sx1302_agc_load_firmware(agc_firmware_sx1250) != LGW_HAL_SUCCESS) {
+            err = sx1302_agc_load_firmware(agc_firmware_sx1250);
+            if (err != LGW_REG_SUCCESS) {
+                printf("ERROR: failed to load AGC firmware for sx1250\n");
                 return LGW_HAL_ERROR;
             }
             break;
         case LGW_RADIO_TYPE_SX1257:
             DEBUG_MSG("Loading AGC fw for sx125x\n");
-            if (sx1302_agc_load_firmware(agc_firmware_sx125x) != LGW_HAL_SUCCESS) {
+            err = sx1302_agc_load_firmware(agc_firmware_sx125x);
+            if (err != LGW_REG_SUCCESS) {
+                printf("ERROR: failed to load AGC firmware for sx125x\n");
                 return LGW_HAL_ERROR;
             }
             break;
         default:
             break;
     }
-    if (sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_BOARD.full_duplex == true) ? 1 : 0) != LGW_HAL_SUCCESS) {
+    err = sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_BOARD.full_duplex == true) ? 1 : 0);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to start AGC firmware\n");
         return LGW_HAL_ERROR;
     }
+
+    /* Load ARB firmware */
     DEBUG_MSG("Loading ARB fw\n");
-    if (sx1302_arb_load_firmware(arb_firmware) != LGW_HAL_SUCCESS) {
+    err = sx1302_arb_load_firmware(arb_firmware);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to load ARB firmware\n");
         return LGW_HAL_ERROR;
     }
-    if (sx1302_arb_start(FW_VERSION_ARB) != LGW_HAL_SUCCESS) {
+    err = sx1302_arb_start(FW_VERSION_ARB);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to start ARB firmware\n");
         return LGW_HAL_ERROR;
     }
 
     /* static TX configuration */
-    sx1302_tx_configure(CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type);
+    err = sx1302_tx_configure(CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure SX1302 TX path\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* enable GPS */
-    sx1302_gps_enable(true);
+    err = sx1302_gps_enable(true);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to enable GPS on sx1302\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* For debug logging */
 #if HAL_DEBUG_FILE_LOG
