@@ -22,7 +22,7 @@ LIBS := -lloragw -ltinymt32 -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_com test_loragw_i2c test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal_sx125x test_loragw_capture_ram test_loragw_spi_sx1250 test_loragw_counter test_loragw_gps
+all: libloragw.a test_loragw_com test_loragw_i2c test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal_sx125x test_loragw_capture_ram test_loragw_spi_sx1250 test_loragw_counter test_loragw_gps test_loragw_toa
 
 clean:
 	rm -f libloragw.a
@@ -140,6 +140,9 @@ test_loragw_counter: tst/test_loragw_counter.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 test_loragw_gps: tst/test_loragw_gps.c libloragw.a
+	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
+
+test_loragw_toa: tst/test_loragw_toa.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 ### EOF
