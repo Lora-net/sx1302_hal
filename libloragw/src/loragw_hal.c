@@ -939,7 +939,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == false) {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING\n");
+        printf("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING\n");
         return LGW_HAL_ERROR;
     }
 
@@ -947,57 +947,57 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
 
     /* check input range (segfault prevention) */
     if (pkt_data->rf_chain >= LGW_RF_CHAIN_NB) {
-        DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
+        printf("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
         return LGW_HAL_ERROR;
     }
 
     /* check input variables */
     if (CONTEXT_RF_CHAIN[pkt_data->rf_chain].tx_enable == false) {
-        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
+        printf("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
         return LGW_HAL_ERROR;
     }
     if (CONTEXT_RF_CHAIN[pkt_data->rf_chain].enable == false) {
-        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
+        printf("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
         return LGW_HAL_ERROR;
     }
     if (!IS_TX_MODE(pkt_data->tx_mode)) {
-        DEBUG_MSG("ERROR: TX_MODE NOT SUPPORTED\n");
+        printf("ERROR: TX_MODE NOT SUPPORTED\n");
         return LGW_HAL_ERROR;
     }
     if (pkt_data->modulation == MOD_LORA) {
         if (!IS_LORA_BW(pkt_data->bandwidth)) {
-            DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
+            printf("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
             return LGW_HAL_ERROR;
         }
         if (!IS_LORA_DR(pkt_data->datarate)) {
-            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
+            printf("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
             return LGW_HAL_ERROR;
         }
         if (!IS_LORA_CR(pkt_data->coderate)) {
-            DEBUG_MSG("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
+            printf("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
             return LGW_HAL_ERROR;
         }
         if (pkt_data->size > 255) {
-            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
+            printf("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
             return LGW_HAL_ERROR;
         }
     } else if (pkt_data->modulation == MOD_FSK) {
         if((pkt_data->f_dev < 1) || (pkt_data->f_dev > 200)) {
-            DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
+            printf("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
             return LGW_HAL_ERROR;
         }
         if(!IS_FSK_DR(pkt_data->datarate)) {
-            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
+            printf("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
             return LGW_HAL_ERROR;
         }
         if (pkt_data->size > 255) {
-            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
+            printf("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
             return LGW_HAL_ERROR;
         }
     } else if (pkt_data->modulation == MOD_CW) {
         /* do nothing */
     } else {
-        DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
+        printf("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
     }
 
