@@ -234,6 +234,7 @@ static int8_t antenna_gain = 0;
 static struct lgw_tx_gain_lut_s txlut[LGW_RF_CHAIN_NB]; /* TX gain table */
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
+static bool tx_enable[LGW_RF_CHAIN_NB] = {false}; /* Is TX enabled for a given RF chain ? */
 
 static uint32_t nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
 static uint32_t nb_pkt_received_lora = 0;
@@ -491,6 +492,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
             val = json_object_dotget_value(conf_obj, param_name);
             if (json_value_get_type(val) == JSONBoolean) {
                 rfconf.tx_enable = (bool)json_value_get_boolean(val);
+                tx_enable[i] = rfconf.tx_enable; /* update global context for later check */
                 if (rfconf.tx_enable == true) {
                     /* tx is enabled on this rf chain, we need its frequency range */
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_freq_min", i);
@@ -2704,6 +2706,11 @@ void thread_down(void) {
                 continue;
             }
             txpkt.rf_chain = (uint8_t)json_value_get_number(val);
+            if (tx_enable[txpkt.rf_chain] == false) {
+                MSG("WARNING: [down] TX is not enabled on RF chain %u, TX aborted\n", txpkt.rf_chain);
+                json_value_free(root_val);
+                continue;
+            }
 
             /* parse TX power (optional field) */
             val = json_object_get_value(txpk_obj,"powe");
