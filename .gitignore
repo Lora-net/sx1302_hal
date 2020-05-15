@@ -1,9 +1,37 @@
-*/*.a
+*.a
+*.o
 */obj/
 *.swp
+*~
 bin/
-libloragw/inc/config.h
+libloragw/inc/config.h*
+libloragw/inc/config-full.h*
 libloragw/test_loragw_*
-packet_forwarder/lora_pkt_fwd
-util_chip_id/chip_id
-util_net_downlink/net_downlink
+*lora_pkt_fwd
+*chip_id
+*net_downlink
+libloragw.pc*
+
+# Autoscan
+/autoscan.log
+/configure.scan
+
+# Autoreconf
+Makefile.in
+aclocal.m4
+autom4te.cache/
+build-aux/
+configure
+
+# Configure
+Makefile
+config.log
+config.status
+
+libloragw/inc/stamp-h*
+*/src/.deps/
+*/src/.dirstamp
+*/tst/.deps/
+*/tst/.dirstamp
+
+

@@ -90,7 +90,12 @@ root directory of this project.
 
 ### 4.1. Clean and compile everything
 
-`make clean all`
+```bash
+make distclean
+autoreconf
+./configure
+make
+```
 
 ### 4.2. Install executables and associated files in one directory
 
@@ -128,29 +133,27 @@ This is by default ~/.ssh/id_rsa.pub
 You should be able to log on host_dest without being asked for a password.
 
 Now that everything is set, the following command can be invoked:<br/>
-`make install`
-
-In order to also install the packet forwarder JSON configuration files:<br/>
-`make install_conf`
+`make upload`
 
 ### 4.3. Cross-compile from a PC
 
 * Add the path to the binaries of the compiler corresponding to the target
 platform to the `PATH` environment variable.
-* set the `ARCH` environment variable to `arm`.
-* set the `CROSS_COMPILE` environment variable to the prefix corresponding to
-the compiler for the target platform.
+
+* Set correct CROSS_COMPILE_PREFIX in configure using '--host' option
 
 An example for a Raspberry Pi target:
 
 * `export PATH=[path]/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin`
-* `export ARCH=arm`
-* `export CROSS_COMPILE=arm-linux-gnueabihf-`
+* `./configure --host=arm-linux-gnueabihf`
+
+Configure script will check if all necessary files and librairies are present in your 
+toolchain.
 
 Then, from the same console where the previous environment variables have been
 set, do:
 
-`make clean all`
+`make`
 
 ## 5. Third party libraries
 
