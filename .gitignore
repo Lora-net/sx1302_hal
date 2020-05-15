@@ -4,13 +4,13 @@
 *.swp
 *~
 bin/
-libloragw/inc/config.h*
-libloragw/inc/config-full.h*
+libloragw/inc/config.h
+libloragw/inc/config-full.h
 libloragw/test_loragw_*
 *lora_pkt_fwd
 *chip_id
 *net_downlink
-libloragw.pc*
+libloragw.pc
 
 # Autoscan
 /autoscan.log

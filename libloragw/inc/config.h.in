@@ -1,0 +1,33 @@
+
+/* Libloragw version number */
+#undef LIBLORAGW_VERSION
+
+/* Auxiliary debug disabled */
+#undef DEBUG_AUX
+
+/* CAL debug disabled */
+#undef DEBUG_CAL
+
+/* GPS debug disabled */
+#undef DEBUG_GPS
+
+/* HAL debug disabled */
+#undef DEBUG_HAL
+
+/* I2C debug disabled */
+#undef DEBUG_I2C
+
+/* LBT debug disabled */
+#undef DEBUG_LBT
+
+/* RAD debug disabled */
+#undef DEBUG_RAD
+
+/* Register debug disabled */
+#undef DEBUG_REG
+
+/* SPI debug disabled */
+#undef DEBUG_SPI
+
+/* SX1302 debug disabled */
+#undef DEBUG_SX1302
