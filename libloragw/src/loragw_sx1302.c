@@ -1709,7 +1709,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint16_t payload_crc16_calc;
     uint8_t cr;
-    uint32_t timestamp_correction; /* correction to account for processing delay */
+    int32_t timestamp_correction;
     rx_packet_t pkt;
 
     /* Check input params */
@@ -1849,13 +1849,13 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         /* Get frequency offset in Hz depending on bandwidth */
         switch (p->bandwidth) {
             case BW_125KHZ:
-                p->freq_offset = (int32_t)((float)(pkt.frequency_offset_error) * FREQ_OFFSET_LSB_125KHZ );
+                p->freq_offset = (int32_t)((float)(pkt.frequency_offset_error) * FREQ_OFFSET_LSB_125KHZ);
                 break;
             case BW_250KHZ:
-                p->freq_offset = (int32_t)((float)(pkt.frequency_offset_error) * FREQ_OFFSET_LSB_250KHZ );
+                p->freq_offset = (int32_t)((float)(pkt.frequency_offset_error) * FREQ_OFFSET_LSB_250KHZ);
                 break;
             case BW_500KHZ:
-                p->freq_offset = (int32_t)((float)(pkt.frequency_offset_error) * FREQ_OFFSET_LSB_500KHZ );
+                p->freq_offset = (int32_t)((float)(pkt.frequency_offset_error) * FREQ_OFFSET_LSB_500KHZ);
                 break;
             default:
                 p->freq_offset = 0;
@@ -1864,7 +1864,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         }
 
         /* Get timestamp correction to be applied */
-        timestamp_correction = timestamp_counter_correction(ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
+        timestamp_correction = timestamp_counter_correction(context, ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
     } else if (ifmod == IF_FSK_STD) {
         DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", pkt.modem_id, p->if_chain);
         p->modulation = MOD_FSK;
@@ -1923,7 +1923,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     p->count_us = timestamp_pkt_expand(&counter_us, p->count_us);
 
     /* Packet timestamp corrected */
-    p->count_us = p->count_us - timestamp_correction;
+    p->count_us = p->count_us + timestamp_correction;
 
     /* Packet CRC status */
     p->crc = pkt.rx_crc16_value;
