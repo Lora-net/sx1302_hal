@@ -386,10 +386,6 @@ int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uin
         /* LoRa multi-SF modems */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_ENABLE, 0x01);
         x |= lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_NB_SYMB, nb_symbols);
-
-        /* LoRa service modem */
-        x |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_ENABLE, 0x01);
-        x |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TIMESTAMP_NB_SYMB, nb_symbols);
     }
 
     return x;
