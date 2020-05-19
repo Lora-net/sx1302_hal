@@ -132,7 +132,7 @@ int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t sf, ui
     }
 
     /* Update some variables if payload fits entirely in the header */
-    if (((2 * (payload_length + 2 * crc_en) - (sf - 7)) <= 0) || ((payload_length == 0) && (crc_en == false))) {
+    if (((int)(2 * (payload_length + 2 * crc_en) - (sf - 7)) <= 0) || ((payload_length == 0) && (crc_en == false))) {
         /* Payload fits entirely in first 8 symbols (header):
             - not possible for SF5/SF6, unless payload length is 0 and no CRC
         */
