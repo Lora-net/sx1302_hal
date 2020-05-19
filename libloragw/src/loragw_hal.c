@@ -27,7 +27,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
-#include <math.h>       /* pow, cell */
 #include <time.h>
 #include <unistd.h>     /* symlink, unlink */
 #include <fcntl.h>
@@ -1111,12 +1110,8 @@ const char* lgw_version_info() {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
-    int32_t val;
-    uint8_t SF, H, DE, n_bit_crc;
-    uint16_t BW;
-    double n_symbol, t_symbol, t_fsk, toa_f;
-    uint16_t n_symbol_preamble = packet->preamble;
-    uint32_t toa, n_symbol_payload;
+    double t_fsk;
+    uint32_t toa_ms, toa_us;
 
     if (packet == NULL) {
         printf("ERROR: Failed to compute time on air, wrong parameter\n");
@@ -1124,45 +1119,9 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
     }
 
     if (packet->modulation == MOD_LORA) {
-        /* Get bandwidth */
-        val = lgw_bw_getval(packet->bandwidth);
-        if (val != -1) {
-            BW = (uint16_t)(val / 1E3);
-        } else {
-            printf("ERROR: Cannot compute time on air for this packet, unsupported bandwidth (0x%02X)\n", packet->bandwidth);
-            return 0;
-        }
-
-        /* Get datarate */
-        val = lgw_sf_getval(packet->datarate);
-        if (val != -1) {
-            SF = (uint8_t)val;
-        } else {
-            printf("ERROR: Cannot compute time on air for this packet, unsupported datarate (0x%02X)\n", packet->datarate);
-            return 0;
-        }
-
-        /* Duration of 1 symbol */
-        t_symbol = pow(2, SF) / BW;
-
-        /* Packet parameters */
-        H = (packet->no_header == false) ? 1 : 0; /* header is always enabled, except for beacons */
-        DE = (SF >= 11) ? 1 : 0; /* Low datarate optimization enabled for SF11 and SF12 */
-        n_bit_crc = (packet->no_crc == false) ? 16 : 0;
-
-        /* Number of symbols in the payload */
-        n_symbol_payload = ceil( MAX( (double)( 8 * packet->size + n_bit_crc - 4*SF + ((SF >= 7) ? 8 : 0) + 20*H ), 0.0) /
-                                      (double)( 4 * (SF - 2*DE)) )
-                           * ( packet->coderate + 4 ); /* Explicitely cast to double to keep precision of the division */
-
-        /* number of symbols in packet */
-        n_symbol = (double)n_symbol_preamble + ((SF >= 7) ? 4.25 : 6.25) + 8.0 + (double)n_symbol_payload;
-
-        /* Duration of packet */
-        toa_f = n_symbol * t_symbol;
-        toa = (uint32_t)( toa_f + 0.5 );
-
-        printf("INFO: toa:%u ms (%.3f) (n_symbol:%f, t_symbol:%f)\n", toa, toa_f, n_symbol, t_symbol);
+        toa_us = lora_packet_time_on_air(packet->bandwidth, packet->datarate, packet->coderate, packet->preamble, packet->no_header, packet->no_crc, packet->size, NULL, NULL, NULL);
+        toa_ms = (uint32_t)( (double)toa_us / 1000.0 + 0.5 );
+        printf("INFO: LoRa packet ToA: %u ms\n", toa_ms);
     } else if (packet->modulation == MOD_FSK) {
         /* PREAMBLE + SYNC_WORD + PKT_LEN + PKT_PAYLOAD + CRC
                 PREAMBLE: default 5 bytes
@@ -1174,13 +1133,13 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
         t_fsk = (8 * (double)(packet->preamble + CONTEXT_FSK.sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
 
         /* Duration of packet */
-        toa = (uint32_t)t_fsk + 1; /* add margin for rounding */
+        toa_ms = (uint32_t)t_fsk + 1; /* add margin for rounding */
     } else {
-        toa = 0;
+        toa_ms = 0;
         printf("ERROR: Cannot compute time on air for this packet, unsupported modulation (0x%02X)\n", packet->modulation);
     }
 
-    return toa;
+    return toa_ms;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

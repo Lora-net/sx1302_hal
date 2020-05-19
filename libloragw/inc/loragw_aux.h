@@ -19,7 +19,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include "config.h"    /* library configuration options (dynamically generated) */
+#include <stdint.h>     /* C99 types */
+#include <stdbool.h>    /* bool type */
+
+#include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
@@ -44,6 +47,21 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param t number of milliseconds to wait.
 */
 void wait_ms(unsigned long t);
+
+/**
+@brief TODO
+@param TODO
+*/
+uint32_t lora_packet_time_on_air( const uint8_t bw,
+                                  const uint8_t sf,
+                                  const uint8_t cr,
+                                  const uint16_t n_symbol_preamble,
+                                  const bool no_header,
+                                  const bool no_crc,
+                                  const uint8_t size,
+                                  double * nb_symbols,
+                                  uint32_t * nb_symbols_payload,
+                                  uint16_t * t_symbol_us);
 
 #endif
 
