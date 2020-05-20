@@ -123,6 +123,11 @@ int mcu_ping(int fd, s_ping_info * info);
 /**
  *
 */
+int mcu_boot(int fd);
+
+/**
+ *
+*/
 int mcu_get_status(int fd, s_status * status);
 
 /**

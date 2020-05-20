@@ -298,6 +298,29 @@ int decode_ack_ping(const uint8_t * hdr, const uint8_t * payload, s_ping_info * 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int decode_ack_bootloader_mode(const uint8_t * hdr) {
+     /* sanity checks */
+    if (hdr == NULL) {
+        printf("ERROR: invalid parameter\n");
+        return -1;
+    }
+
+    if (cmd_get_type(hdr) != ORDER_ID__ACK_BOOTLOADER_MODE) {
+        printf("ERROR: wrong ACK type for ACK_BOOTLOADER_MODE (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_BOOTLOADER_MODE, cmd_get_type(hdr));
+        return -1;
+    }
+
+#if DEBUG_VERBOSE
+    DEBUG_MSG   ("## ACK_BOOTLOADER_MODE\n");
+    DEBUG_PRINTF("   id:           0x%02X\n", cmd_get_id(hdr));
+    DEBUG_PRINTF("   size:         %u\n", cmd_get_size(hdr));
+#endif
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int decode_ack_get_status(const uint8_t * hdr, const uint8_t * payload, s_status * status) {
     int16_t temperature_sensor;
 
@@ -398,6 +421,27 @@ int mcu_ping(int fd, s_ping_info * info) {
 
     if (decode_ack_ping(buf_hdr, buf_ack, info) != 0) {
         printf("ERROR: invalid PING ack\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int mcu_boot(int fd) {
+    if (write_req(fd, ORDER_ID__REQ_BOOTLOADER_MODE, NULL, 0) != 0) {
+        printf("ERROR: failed to write BOOTLOADER_MODE request\n");
+        return -1;
+    }
+
+    if (read_ack(fd, buf_hdr, buf_ack, sizeof buf_ack) < 0) {
+        printf("ERROR: failed to read BOOTLOADER_MODE ack\n");
+        return -1;
+    }
+
+    if (decode_ack_bootloader_mode(buf_hdr) != 0) {
+        printf("ERROR: invalid BOOTLOADER_MODE ack\n");
         return -1;
     }
 
