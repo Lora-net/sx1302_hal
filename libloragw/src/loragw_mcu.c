@@ -140,7 +140,7 @@ uint8_t cmd_get_type(const uint8_t * bytes) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int write_req(int fd, e_order_cmd cmd, const uint8_t * payload, uint16_t payload_size ) {
+int write_req(int fd, e_order_id cmd, const uint8_t * payload, uint16_t payload_size ) {
     uint8_t buf_w[HEADER_CMD_SIZE];
     int n;
 
@@ -393,7 +393,7 @@ int decode_ack_spi_access(const uint8_t * hdr, const uint8_t * payload) {
         printf("ERROR: wrong ACK type for ACK_SPI (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_SPI, cmd_get_type(hdr));
         return -1;
     }
-    
+
 #if DEBUG_VERBOSE
     DEBUG_MSG   ("## ACK_SPI_ACCESS\n");
     DEBUG_PRINTF("   id:           0x%02X\n", cmd_get_id(hdr));
