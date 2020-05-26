@@ -204,12 +204,12 @@ void lora_crc16(const char data, int *crc) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
+int sx1302_init(const struct lgw_conf_timestamp_s * timestamp_context) {
     sx1302_model_id_t model_id;
     int x;
 
     /* Check input parameters */
-    CHECK_NULL(conf_ts);
+    CHECK_NULL(timestamp_context);
 
     /* Initialize internal counter */
     timestamp_counter_new(&counter_us);
@@ -218,7 +218,7 @@ int sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
     rx_buffer_new(&rx_buffer);
 
     /* Configure timestamping mode */
-    if (conf_ts->enable_precision_ts == true) {
+    if (timestamp_context->enable_precision_ts == true) {
         x = sx1302_get_model_id(&model_id);
         if (x != LGW_REG_SUCCESS) {
             printf("ERROR: failed to get Chip Model ID\n");
@@ -230,7 +230,7 @@ int sx1302_init(struct lgw_conf_timestamp_s *conf_ts) {
             return LGW_REG_ERROR;
         }
     }
-    x = timestamp_counter_mode(conf_ts->enable_precision_ts, conf_ts->max_ts_metrics, conf_ts->nb_symbols);
+    x = timestamp_counter_mode(timestamp_context->enable_precision_ts, timestamp_context->max_ts_metrics, timestamp_context->nb_symbols);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to configure timestamp counter mode\n");
         return LGW_REG_ERROR;

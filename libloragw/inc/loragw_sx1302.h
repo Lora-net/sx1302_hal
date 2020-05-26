@@ -117,7 +117,7 @@ typedef struct {
 @param TODO
 @return TODO
 */
-int sx1302_init(struct lgw_conf_timestamp_s *conf);
+int sx1302_init(const struct lgw_conf_timestamp_s *conf);
 
 /**
 @brief Get the SX1302 unique identifier
