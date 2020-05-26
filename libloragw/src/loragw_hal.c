@@ -760,7 +760,7 @@ int lgw_start(void) {
         printf("ERROR: failed to load ARB firmware\n");
         return LGW_HAL_ERROR;
     }
-    err = sx1302_arb_start(FW_VERSION_ARB);
+    err = sx1302_arb_start(FW_VERSION_ARB, &CONTEXT_TIMESTAMP);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to start ARB firmware\n");
         return LGW_HAL_ERROR;

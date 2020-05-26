@@ -1672,7 +1672,7 @@ void sx1302_arb_print_debug_stats(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_arb_start(uint8_t version) {
+int sx1302_arb_start(uint8_t version, const struct lgw_conf_timestamp_s * timestamp_context) {
     uint8_t val;
 
     /* Wait for ARB fw to be started, and VERSION available in debug registers */
@@ -1689,8 +1689,15 @@ int sx1302_arb_start(uint8_t version) {
     /* Enable/disable ARB detect/modem alloc stats for the specified SF */
     sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
 
-    /* 0:Disable 1:Enable double demod for different timing set (best_timestamp / best_demodulation) - Only available for SF9 -> SF12 */
-    sx1302_arb_debug_write(3, 0);
+    /* Enable/Disable double demod for different timing set (best timestamp / best demodulation) - 1 bit per SF (LSB=SF5, MSB=SF12) => 0:Disable 1:Enable */
+    if (timestamp_context->enable_precision_ts == false) {
+        printf("ARB: dual demodulation disabled for all SF\n");
+        sx1302_arb_debug_write(3, 0x00); /* double demod disabled for all SF */
+    } else {
+        /* TODO: 2 modes: high capacity / full_ts */
+        printf("ARB: dual demodulation enabled for all SF\n");
+        sx1302_arb_debug_write(3, 0xFF); /* double demod enabled for all SF */
+    }
 
     /* Set double detect packet filtering threshold [0..3] */
     sx1302_arb_debug_write(2, 3);

@@ -356,7 +356,7 @@ int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value);
 @param TODO
 @return TODO
 */
-int sx1302_arb_start(uint8_t version);
+int sx1302_arb_start(uint8_t version, const struct lgw_conf_timestamp_s * timestamp_context);
 
 /**
 @brief TODO
