@@ -283,6 +283,12 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
 
+    /* TS metrics: it is expected the nb_symbols parameter is set to 0 here */
+    for (i = 0; i < (pkt->num_ts_metrics_stored * 2); i++) {
+        pkt->timestamp_avg[i] = (int8_t)SX1302_PKT_NUM_TS_METRICS(self->buffer, self->buffer_index + pkt->rxbytenb_modem + 1 + i);
+        pkt->timestamp_stddev[i] = 0; /* no stddev when nb_symbols == 0 */
+    }
+
     DEBUG_MSG   ("-----------------\n");
     DEBUG_PRINTF("  modem:      %u\n", pkt->modem_id);
     DEBUG_PRINTF("  chan:       %u\n", pkt->rx_channel_in);
@@ -295,6 +301,14 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     DEBUG_PRINTF("  codr:       %u\n", pkt->coding_rate);
     DEBUG_PRINTF("  datr:       %u\n", pkt->rx_rate_sf);
     DEBUG_PRINTF("  num_ts:     %u\n", pkt->num_ts_metrics_stored);
+    if (pkt->num_ts_metrics_stored > 0) {
+        DEBUG_MSG("  ts_avg:     ");
+        for (i = 0; i < (pkt->num_ts_metrics_stored * 2); i++) {
+            DEBUG_PRINTF("%d ", pkt->timestamp_avg[i]);
+        }
+        DEBUG_MSG("\n");
+        DEBUG_MSG("  ts_stdev:   NONE (nb_symbols=0)\n");
+    }
     DEBUG_MSG   ("-----------------\n");
 
     /* Sanity checks: check the range of few metadata */

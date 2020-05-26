@@ -128,6 +128,11 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 */
 int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uint8_t nb_symbols);
 
+/**
+@brief TODO
+*/
+double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -1692,6 +1692,7 @@ void thread_up(void) {
     struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX]; /* array containing inbound packets + metadata */
     struct lgw_pkt_rx_s *p; /* pointer on a RX packet */
     int nb_pkt;
+    uint32_t ftime;
 
     /* local copy of GPS time reference */
     bool ref_ok = false; /* determine if GPS time reference must be used or not */
@@ -1893,6 +1894,22 @@ void thread_up(void) {
                         MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                         exit(EXIT_FAILURE);
                     }
+                }
+            }
+
+            /* Fine timestamp */
+            if (p->ftime_received == true) {
+                ftime = (uint32_t)(p->ftime / xtal_correct);
+                if (ftime > 1E9) {
+                    printf("ERROR: fine timestamp is out of range : %u\n", ftime);
+                    exit(EXIT_FAILURE);
+                }
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"ftime\":%u", ftime);
+                if (j > 0) {
+                    buff_index += j;
+                } else {
+                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    exit(EXIT_FAILURE);
                 }
             }
 

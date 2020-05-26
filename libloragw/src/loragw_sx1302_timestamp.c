@@ -52,6 +52,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define PRECISION_TIMESTAMP_TS_METRICS_MAX  0xFF
+#define PRECISION_TIMESTAMP_NB_SYMBOLS      0
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -378,7 +381,12 @@ int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uin
         /* Latch end-of-packet timestamp (sx1301 compatibility) */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
     } else {
-        DEBUG_PRINTF("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", max_ts_metrics, nb_symbols);
+        /* Ignore given ts metrics parameters, for now */
+        max_ts_metrics = PRECISION_TIMESTAMP_TS_METRICS_MAX;
+        nb_symbols = PRECISION_TIMESTAMP_NB_SYMBOLS;
+
+        printf("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", max_ts_metrics, nb_symbols);
+
         /* Latch end-of-preamble timestamp */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x00);
         x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS, max_ts_metrics);
@@ -416,5 +424,95 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
         return precision_timestamp_correction(bandwidth, datarate, coderate, crc_en, payload_length);
     }
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt) {
+    int i, x;
+    int32_t ftime_sum;
+    int32_t ftime[256];
+    float ftime_mean;
+    uint32_t timestamp_pps = 0;
+    uint8_t buff[4];
+    int32_t diff_pps;
+
+    double pkt_ftime;
+    double pkt_ftime_ludo;
+
+    printf("%s\n", __FUNCTION__);
+    printf("ts_metrics_nb*2: %u\n", ts_metrics_nb * 2);
+    for (i = 0; i < (2 * ts_metrics_nb); i++) {
+        printf("%d ", ts_metrics[i]);
+    }
+    printf("\n");
+
+    /* Compute the ftime cumulative sum */
+    ftime[0] = (int32_t)ts_metrics[0];
+    ftime_sum = ftime[0];
+    for (i = 1; i < (2 * ts_metrics_nb); i++)
+    {
+        ftime[i] = ftime[i-1] + ts_metrics[i];
+        ftime_sum += ftime[i];
+    }
+    printf("ftime_sum: %d\n", ftime_sum);
+
+    /* Compute the mean of the cumulative sum */
+    ftime_mean = (float)ftime_sum / (float)(2 * ts_metrics_nb);
+    printf("ftime mean: %.3f\n", ftime_mean);
+
+    /* Compute the fine timestamp relative to PPS */
+    x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS , &buff[0], 4);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to get timestamp counter value\n");
+        return 0;
+    }
+    timestamp_pps  = (uint32_t)((buff[0] << 24) & 0xFF000000);
+    timestamp_pps |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
+    timestamp_pps |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
+    timestamp_pps |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+
+    diff_pps = (int32_t)timestamp_cnt - (int32_t)timestamp_pps;
+    if (diff_pps < 0) {
+        do {
+            printf("... adding 1 second to diff_pps\n");
+            diff_pps += 32E6;
+        } while (diff_pps < 0);
+    }
+
+    printf("timestamp_cnt : %u\n", timestamp_cnt);
+    printf("timestamp_pps : %u\n", timestamp_pps);
+    printf("diff_pps : %d\n", diff_pps);
+
+    pkt_ftime = (double)diff_pps + (double)ftime_mean;
+    printf("%f %f %f\n", pkt_ftime, (double)diff_pps, ftime_mean);
+    printf("pkt_ftime      = %f\n", pkt_ftime);
+
+#if 1
+    pkt_ftime_ludo = (double)timestamp_cnt - (double)timestamp_pps + (double)ftime_mean;
+    if (pkt_ftime_ludo < -2147483648){ //timestamp wrap but not pps counter
+        printf("pkt_ftime_ludo < -2^31\n");
+        pkt_ftime_ludo = pkt_ftime_ludo + 4294967296; // (1<<32);
+    }
+    /*
+    if (pkt_ftime < -(28*1e6)){
+        pkt_ftime = pkt_ftime + 32*1e9;
+    }
+    */
+    if (pkt_ftime_ludo > 2147483648){
+        printf("pkt_ftime_ludo > 2^31\n");
+        pkt_ftime_ludo = pkt_ftime_ludo - 4294967296; //(1<<32);
+    }
+
+    printf("pkt_ftime_ludo = %f\n", pkt_ftime_ludo);
+#endif
+
+    /* Convert fine timestamp from 32 Mhz clock to nanoseconds */
+    pkt_ftime *= 31.25;
+
+    printf("==> ftime = %f ns since last PPS\n", pkt_ftime);
+
+    return pkt_ftime;
+}
+
 
 /* --- EOF ------------------------------------------------------------------ */

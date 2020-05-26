@@ -59,8 +59,8 @@ typedef struct rx_packet_s {
     uint32_t    timestamp_cnt;
     uint16_t    rx_crc16_value;             /* LoRa only */
     uint8_t     num_ts_metrics_stored;      /* LoRa only */
-    uint8_t     timestamp_avg[255];         /* LoRa only */
-    uint8_t     timestamp_stddev[255];      /* LoRa only */
+    int8_t      timestamp_avg[255];         /* LoRa only */
+    int8_t      timestamp_stddev[255];      /* LoRa only */
     uint8_t     packet_checksum;
 } rx_packet_t;
 

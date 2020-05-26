@@ -224,6 +224,8 @@ struct lgw_pkt_rx_s {
     uint16_t    crc;            /*!> CRC that was received in the payload */
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
+    bool        ftime_received; /*!> a fine timestamp has been received */
+    double      ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
 };
 
 /**
