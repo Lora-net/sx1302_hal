@@ -56,6 +56,26 @@ typedef enum {
 } sx1302_model_id_t;
 
 /**
+@enum sx1302_rx_frequency_tracking_t
+@brief Frequency Tracking mode
+*/
+typedef enum {
+    RX_FREQ_TRACK_OFF  = 0x00,
+    RX_FREQ_TRACK_ON   = 0x01,
+    RX_FREQ_TRACK_AUTO = 0x03
+} sx1302_rx_frequency_tracking_t;
+
+/**
+@enum sx1302_rx_fine_timing_mode_t
+@brief Fine Timing mode
+*/
+typedef enum {
+    RX_FINE_TIMING_MODE_ABS     = 0x01,
+    RX_FINE_TIMING_MODE_LINEAR  = 0x02,
+    RX_FINE_TIMING_MODE_AUTO    = 0x03
+} sx1302_rx_fine_timing_mode_t;
+
+/**
 @struct sx1302_if_cfg_t
 @brief TODO
 */
