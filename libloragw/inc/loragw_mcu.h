@@ -30,7 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 static const char mcu_version_string[] = "00.02.02";
 
-#define MAX_TRANSFER_SIZE (512)
+#define MAX_TRANSFER_SIZE (4512)
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
