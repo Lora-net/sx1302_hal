@@ -201,6 +201,14 @@ struct lgw_conf_rxif_s {
 };
 
 /**
+@struct lgw_ftime_dbg_s
+@brief Structure containing debug information for fine timestamps
+*/
+struct lgw_ftime_dbg_s {
+    bool timing_set;    /*!> indicates if the fine timestamps comes from a modem configured with best timestamp mode */
+};
+
+/**
 @struct lgw_pkt_rx_s
 @brief Structure containing the metadata of a packet that was received and a pointer to the payload
 */
@@ -226,6 +234,7 @@ struct lgw_pkt_rx_s {
     uint8_t     payload[256];   /*!> buffer containing the payload */
     bool        ftime_received; /*!> a fine timestamp has been received */
     double      ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
+    struct lgw_ftime_dbg_s ftime_dbg; /*!> packet fine timestamp debug information */
 };
 
 /**

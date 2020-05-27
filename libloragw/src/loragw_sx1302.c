@@ -1911,6 +1911,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         if (pkt.num_ts_metrics_stored > 0) {
             p->ftime_received = true;
             p->ftime = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt);
+            p->ftime_dbg.timing_set = pkt.timing_set;
         } else {
             p->ftime_received = false;
             p->ftime = 0.0;

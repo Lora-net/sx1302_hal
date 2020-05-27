@@ -1899,12 +1899,22 @@ void thread_up(void) {
 
             /* Fine timestamp */
             if (p->ftime_received == true) {
+                /* fine timestamp corrected with xtal error */
                 ftime = (uint32_t)(p->ftime / xtal_correct);
                 if (ftime > 1E9) {
                     printf("ERROR: fine timestamp is out of range : %u\n", ftime);
                     exit(EXIT_FAILURE);
                 }
                 j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"ftime\":%u", ftime);
+                if (j > 0) {
+                    buff_index += j;
+                } else {
+                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    exit(EXIT_FAILURE);
+                }
+
+                /* fine timestamps debug info */
+                j = snprintf(( char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"ftime_dbg\":{\"timing_set\":%u}", p->ftime_dbg.timing_set);
                 if (j > 0) {
                     buff_index += j;
                 } else {
