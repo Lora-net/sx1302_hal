@@ -30,6 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <signal.h>     /* sigaction */
 #include <unistd.h>     /* getopt, access */
 #include <time.h>
+#include <errno.h>
 
 #include "loragw_com.h"
 #include "loragw_aux.h"
@@ -42,7 +43,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define BUFF_SIZE_SPI       1024
-#define BUFF_SIZE_USB       128 // TODO: 512 total transfer max ?
+#define BUFF_SIZE_USB       4096
 
 #define SX1302_AGC_MCU_MEM  0x0000
 #define SX1302_REG_COMMON   0x5600
@@ -58,6 +59,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
+/* Buffers */
+static uint8_t * test_buff = NULL;
+static uint8_t * read_buff = NULL;
+
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
 
@@ -72,9 +77,8 @@ int main(int argc, char ** argv)
 {
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
+    uint16_t max_buff_size;
     uint8_t data = 0;
-    uint8_t test_buff[BUFF_SIZE_SPI];
-    uint8_t read_buff[BUFF_SIZE_SPI];
     int cycle_number = 0;
     int i, x;
     uint16_t size;
@@ -161,9 +165,22 @@ int main(int argc, char ** argv)
 
     srand(time(NULL));
 
+    /* Allocate buffers according to com type capabilities */
+    max_buff_size = (com_type == LGW_COM_SPI) ? BUFF_SIZE_SPI : BUFF_SIZE_USB;
+    test_buff = (uint8_t*)malloc(max_buff_size * sizeof(uint8_t));
+    if (test_buff == NULL) {
+        printf("ERROR: failed to allocate memory for test_buff - %s\n", strerror(errno));
+        exit_failure();
+    }
+    read_buff = (uint8_t*)malloc(max_buff_size * sizeof(uint8_t));
+    if (read_buff == NULL) {
+        printf("ERROR: failed to allocate memory for read_buff - %s\n", strerror(errno));
+        exit_failure();
+    }
+
     /* databuffer R/W stress test */
     while ((quit_sig != 1) && (exit_sig != 1)) {
-        size = rand() % ((com_type == LGW_COM_SPI) ? BUFF_SIZE_SPI : BUFF_SIZE_USB);
+        size = rand() % max_buff_size;
         for (i = 0; i < size; ++i) {
             test_buff[i] = rand() & 0xFF;
         }
@@ -215,6 +232,16 @@ int main(int argc, char ** argv)
     lgw_com_close();
     printf("End of test for loragw_com.c\n");
 
+    /* deallocate buffers */
+    if (test_buff != NULL) {
+        free(test_buff);
+        test_buff = NULL;
+    }
+    if (read_buff != NULL) {
+        free(read_buff);
+        read_buff = NULL;
+    }
+
     if (com_type == LGW_COM_SPI) {
         /* Board reset */
         if (system("./reset_lgw.sh stop") != 0) {
@@ -242,6 +269,16 @@ static void sig_handler(int sigio) {
 static void exit_failure(void) {
     lgw_com_close();
     printf("End of test for loragw_com.c\n");
+
+    /* deallocate buffers */
+    if (test_buff != NULL) {
+        free(test_buff);
+        test_buff = NULL;
+    }
+    if (read_buff != NULL) {
+        free(read_buff);
+        read_buff = NULL;
+    }
 
     exit(EXIT_FAILURE);
 }
