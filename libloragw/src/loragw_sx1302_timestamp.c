@@ -427,7 +427,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt) {
+double precise_timestamp_calculate(double xtal_correct, uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt) {
     int i, x;
     int32_t ftime_sum;
     int32_t ftime[256];
@@ -436,6 +436,7 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     uint8_t buff[4];
     int32_t diff_pps;
 
+    double _1sec_corrected;
     double pkt_ftime;
     double pkt_ftime_ludo;
 
@@ -472,10 +473,19 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     timestamp_pps |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
 
     diff_pps = (int32_t)timestamp_cnt - (int32_t)timestamp_pps;
+    /*  timestamp_cnt corresponds to the end of the header of the packet.
+        timestamps_pps can be either the PPS just before the packet was received,
+        or several PPS after (for a long SF12 packet for example).
+        So the diff can be negative.
+    */
     if (diff_pps < 0) {
+        /* We want the timestamp to be related to the last PPS before its arrival,
+            so its range should be 0..1second.
+            Let's remove the extra PPSs if needed */
         do {
-            printf("... adding 1 second to diff_pps\n");
-            diff_pps += 32E6;
+            _1sec_corrected = 32.0E6 / xtal_correct;
+            diff_pps += (uint32_t)(_1sec_corrected + 0.5); /* +1 second */
+            printf("... adding 1 second to diff_pps (%.15lf, %u) - xtal_correct:%.15lf\n", _1sec_corrected, (uint32_t)(_1sec_corrected + 0.5), xtal_correct);
         } while (diff_pps < 0);
     }
 

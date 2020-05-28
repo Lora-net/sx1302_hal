@@ -185,6 +185,10 @@ FILE * log_file = NULL;
 static int     ts_fd = -1;
 static uint8_t ts_addr = 0xFF;
 
+/* xtal correction to be applied */
+static bool     lgw_xtal_correct_ok = false;
+static double   lgw_xtal_correct = 1.0;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -912,7 +916,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* Iterate on the RX buffer to get parsed packets */
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
         /* Get packet and move to next one */
-        res = sx1302_parse(&lgw_context, &pkt_data[nb_pkt_found]);
+        res = sx1302_parse(&lgw_context, lgw_xtal_correct, &pkt_data[nb_pkt_found]);
         if (res != LGW_REG_SUCCESS) {
             printf("ERROR: failed to parse fetched packet %d, aborting...\n", nb_pkt_found);
             return LGW_HAL_ERROR;
@@ -1140,6 +1144,22 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
     }
 
     return toa_ms;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_set_xtal_correct(bool is_valid, double xtal_correct) {
+    lgw_xtal_correct_ok = is_valid;
+
+    if (lgw_xtal_correct_ok == true) {
+        lgw_xtal_correct = xtal_correct;
+    } else {
+        lgw_xtal_correct = 1.0;
+    }
+
+    printf("INFO: lgw_xtal_correct_ok:%d, lgw_xtal_correct:%.15lf\n", lgw_xtal_correct_ok, lgw_xtal_correct);
+
+    return LGW_HAL_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

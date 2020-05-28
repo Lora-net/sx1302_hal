@@ -85,7 +85,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PROTOCOL_VERSION    2           /* v1.3 */
 #define PROTOCOL_JSON_RXPK_FRAME_FORMAT 1
 
+#if 0
 #define XERR_INIT_AVG       128         /* nb of measurements the XTAL correction is averaged on as initial value */
+#else
+#define XERR_INIT_AVG       16
+#endif
 #define XERR_FILT_COEF      256         /* coefficient for low-pass XTAL error tracking */
 
 #define PKT_PUSH_DATA   0
@@ -1898,9 +1902,13 @@ void thread_up(void) {
             }
 
             /* Fine timestamp */
-            if (p->ftime_received == true) {
+            if ((p->ftime_received == true) && (xtal_correct_ok == true)) {
                 /* fine timestamp corrected with xtal error */
+        #if 0
                 ftime = (uint32_t)(p->ftime / xtal_correct);
+        #else
+                ftime = (uint32_t)(p->ftime);
+        #endif
                 if (ftime > 1E9) {
                     printf("ERROR: fine timestamp is out of range : %u\n", ftime);
                     exit(EXIT_FAILURE);
@@ -3293,7 +3301,9 @@ void thread_valid(void) {
                 // fprintf(log_file,"%.18lf,\"track\"\n", xtal_correct); // DEBUG
             }
         }
-        // printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
+
+        lgw_set_xtal_correct(xtal_correct_ok, xtal_correct);
+        printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
     }
     MSG("\nINFO: End of validation thread\n");
 }

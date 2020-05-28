@@ -1745,7 +1745,7 @@ int sx1302_fetch(uint8_t * nb_pkt) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
+int sx1302_parse(lgw_context_t * context, double xtal_correct, struct lgw_pkt_rx_s * p) {
     int i, err;
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint16_t payload_crc16_calc;
@@ -1910,7 +1910,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         /* Compute fine timestmap */
         if (pkt.num_ts_metrics_stored > 0) {
             p->ftime_received = true;
-            p->ftime = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt);
+            p->ftime = precise_timestamp_calculate(xtal_correct, pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt);
             p->ftime_dbg.timing_set = pkt.timing_set;
         } else {
             p->ftime_received = false;

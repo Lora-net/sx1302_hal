@@ -397,10 +397,11 @@ int sx1302_fetch(uint8_t * nb_pkt);
 /**
 @brief Parse and return the next packet available in rx_buffer.
 @param context      Gateway configuration context
+@param xtal_correct XTal correction to be applied to fine timestamp
 @param p            The structure to get the packet parsed
 @return LGW_REG_SUCCESS if a packet could be parsed, LGW_REG_ERROR otherwise
 */
-int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p);
+int sx1302_parse(lgw_context_t * context, double xtal_correct, struct lgw_pkt_rx_s * p);
 
 /**
 @brief Configure the delay to be applied by the SX1302 for TX to start

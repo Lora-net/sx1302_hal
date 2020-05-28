@@ -131,7 +131,7 @@ int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uin
 /**
 @brief TODO
 */
-double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst);
+double precise_timestamp_calculate(double xtal_correct, uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst);
 
 #endif
 
