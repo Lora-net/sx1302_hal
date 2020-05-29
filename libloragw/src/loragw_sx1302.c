@@ -1114,7 +1114,11 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     err |= lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x00);
 
     err |= lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
-    DEBUG_PRINTF("AGC fw loaded (parity error:0x%02X)\n", val);
+    if (val != 0) {
+        printf("ERROR: Failed to load AGC fw: parity error check failed\n");
+        return LGW_REG_ERROR;
+    }
+    DEBUG_MSG("AGC fw loaded\n");
 
     return err;
 }
@@ -1522,7 +1526,11 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
     err |= lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x00);
 
     err |= lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
-    DEBUG_PRINTF("ARB fw loaded (parity error:0x%02X)\n", val);
+    if (val != 0) {
+        printf("ERROR: Failed to load ARB fw: parity error check failed\n");
+        return LGW_REG_ERROR;
+    }
+    DEBUG_MSG("ARB fw loaded\n");
 
     return err;
 }
