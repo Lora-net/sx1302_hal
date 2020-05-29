@@ -26,6 +26,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <memory.h>     /* memset */
 #include <assert.h>
+#include <sys/time.h>
 
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_reg.h"
@@ -481,6 +482,7 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     int32_t ftime[256];
     float ftime_mean;
     uint32_t timestamp_pps = 0;
+    uint32_t timestamp_pps2 = 0;
     uint8_t buff[4];
     int32_t diff_pps;
 
@@ -522,10 +524,37 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
 
     diff_pps = (int32_t)timestamp_cnt - (int32_t)timestamp_pps;
     /*  timestamp_cnt corresponds to the end of the header of the packet.
-        timestamps_pps can be either the PPS just before the packet was received,
+        timestamp_pps can be either the PPS just before the packet was received,
         or several PPS after (for a long SF12 packet for example).
         So the diff can be negative.
     */
+
+    /* methode 1 */
+    if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
+        // TODO: inform upper layer that we cannot compute a timestamp yet
+        printf("INFO: NO TIMESTAMP YET\n");
+        return 0.0;
+    }
+    bool found = false;
+    if (diff_pps < 0) {
+        uint32_t diff_test;
+        for (i = 0; i < timestamp_pps_history.size; i++) {
+            diff_test = timestamp_cnt - timestamp_pps_history.history[i];
+            if (diff_test < 32e6) {
+                timestamp_pps2 = timestamp_pps_history.history[i];
+                printf("==> timestamp_pps2 = %u (history[%d])\n", timestamp_pps2, i);
+                found = true;
+                break;
+            }
+        }
+    } else {
+        found = true;
+        timestamp_pps2 = timestamp_pps;
+        printf("==> timestamp_pps2 = %u\n", timestamp_pps2);
+    }
+    uint32_t diff_pps2 = timestamp_cnt - timestamp_pps2;
+
+    /* methode 1 */
     if (diff_pps < 0) {
         /* We want the timestamp to be related to the last PPS before its arrival,
             so its range should be 0..1second.
@@ -540,6 +569,14 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     printf("timestamp_cnt : %u\n", timestamp_cnt);
     printf("timestamp_pps : %u\n", timestamp_pps);
     printf("diff_pps : %d\n", diff_pps);
+    printf("diff_pps2: %u\n", diff_pps2);
+
+    assert (found == true);
+    if ((uint32_t)diff_pps < diff_pps2) {
+        assert((diff_pps2 - (uint32_t)diff_pps) < 10);
+    } else {
+        assert(((uint32_t)diff_pps - diff_pps2) < 10);
+    }
 
     pkt_ftime = (double)diff_pps + (double)ftime_mean;
     printf("%f %f %f\n", pkt_ftime, (double)diff_pps, ftime_mean);
