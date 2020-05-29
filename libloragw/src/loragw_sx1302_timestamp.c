@@ -58,6 +58,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
+/* xtal correction to be applied */
+static bool     lgw_xtal_correct_ok = false;
+static double   lgw_xtal_correct = 1.0;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -427,7 +431,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-double precise_timestamp_calculate(double xtal_correct, uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt) {
+double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt) {
     int i, x;
     int32_t ftime_sum;
     int32_t ftime[256];
@@ -483,9 +487,9 @@ double precise_timestamp_calculate(double xtal_correct, uint8_t ts_metrics_nb, c
             so its range should be 0..1second.
             Let's remove the extra PPSs if needed */
         do {
-            _1sec_corrected = 32.0E6 / xtal_correct;
+            _1sec_corrected = 32.0E6 / lgw_xtal_correct;
             diff_pps += (uint32_t)(_1sec_corrected + 0.5); /* +1 second */
-            printf("... adding 1 second to diff_pps (%.15lf, %u) - xtal_correct:%.15lf\n", _1sec_corrected, (uint32_t)(_1sec_corrected + 0.5), xtal_correct);
+            printf("... adding 1 second to diff_pps (%.15lf, %u) - xtal_correct:%.15lf\n", _1sec_corrected, (uint32_t)(_1sec_corrected + 0.5), lgw_xtal_correct);
         } while (diff_pps < 0);
     }
 
@@ -524,5 +528,21 @@ double precise_timestamp_calculate(double xtal_correct, uint8_t ts_metrics_nb, c
     return pkt_ftime;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int set_xtal_correct(bool is_valid, double xtal_correct) {
+    /* Keep status of the current xtal error to be corrected */
+    lgw_xtal_correct_ok = is_valid;
+
+    if (lgw_xtal_correct_ok == true) {
+        lgw_xtal_correct = xtal_correct;
+    } else {
+        lgw_xtal_correct = 1.0;
+    }
+
+    printf("INFO: lgw_xtal_correct_ok:%d, lgw_xtal_correct:%.15lf\n", lgw_xtal_correct_ok, lgw_xtal_correct);
+
+    return 0;
+}
 
 /* --- EOF ------------------------------------------------------------------ */
