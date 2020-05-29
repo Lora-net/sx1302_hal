@@ -26,7 +26,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <memory.h>     /* memset */
 #include <assert.h>
-#include <sys/time.h>
 
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_reg.h"
@@ -482,13 +481,9 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     int32_t ftime[256];
     float ftime_mean;
     uint32_t timestamp_pps = 0;
-    uint32_t timestamp_pps2 = 0;
     uint8_t buff[4];
-    int32_t diff_pps;
-
-    double _1sec_corrected;
+    uint32_t diff_pps;
     double pkt_ftime;
-    double pkt_ftime_ludo;
 
     printf("%s\n", __FUNCTION__);
     printf("ts_metrics_nb*2: %u\n", ts_metrics_nb * 2);
@@ -511,7 +506,13 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     ftime_mean = (float)ftime_sum / (float)(2 * ts_metrics_nb);
     printf("ftime mean: %.3f\n", ftime_mean);
 
-    /* Compute the fine timestamp relative to PPS */
+    /* Find the last timestamp_pps before packet to use as reference for ftime */
+    if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
+        // TODO: inform upper layer that we cannot compute a timestamp yet
+        printf("INFO: NO TIMESTAMP YET\n");
+        return 0.0;
+    }
+
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS , &buff[0], 4);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter value\n");
@@ -522,84 +523,35 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     timestamp_pps |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
     timestamp_pps |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
 
-    diff_pps = (int32_t)timestamp_cnt - (int32_t)timestamp_pps;
-    /*  timestamp_cnt corresponds to the end of the header of the packet.
-        timestamp_pps can be either the PPS just before the packet was received,
-        or several PPS after (for a long SF12 packet for example).
-        So the diff can be negative.
-    */
-
-    /* methode 1 */
-    if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
-        // TODO: inform upper layer that we cannot compute a timestamp yet
-        printf("INFO: NO TIMESTAMP YET\n");
-        return 0.0;
-    }
-    bool found = false;
-    if (diff_pps < 0) {
-        uint32_t diff_test;
+    /* Check if timestamp_pps we just read is the reference to be used to compute ftime or not */
+    if ((timestamp_cnt - timestamp_pps) > 32e6) {
+        /* The timestamp_pps we just read is after the packet timestamp, we need to rewind */
         for (i = 0; i < timestamp_pps_history.size; i++) {
-            diff_test = timestamp_cnt - timestamp_pps_history.history[i];
-            if (diff_test < 32e6) {
-                timestamp_pps2 = timestamp_pps_history.history[i];
-                printf("==> timestamp_pps2 = %u (history[%d])\n", timestamp_pps2, i);
-                found = true;
+            /* search the pps counter in history */
+            if ((timestamp_cnt - timestamp_pps_history.history[i]) < 32e6) {
+                timestamp_pps = timestamp_pps_history.history[i];
+                printf("==> timestamp_pps found at history[%d] => %u\n", i, timestamp_pps);
                 break;
             }
         }
+        if (i == timestamp_pps_history.size) {
+            printf("ERROR: failed to find the reference timestamp_pps, cannot compute ftime\n");
+            return 0.0; // TODO: handle error properly
+        }
     } else {
-        found = true;
-        timestamp_pps2 = timestamp_pps;
-        printf("==> timestamp_pps2 = %u\n", timestamp_pps2);
+        printf("==> timestamp_pps => %u\n", timestamp_pps);
     }
-    uint32_t diff_pps2 = timestamp_cnt - timestamp_pps2;
 
-    /* methode 1 */
-    if (diff_pps < 0) {
-        /* We want the timestamp to be related to the last PPS before its arrival,
-            so its range should be 0..1second.
-            Let's remove the extra PPSs if needed */
-        do {
-            _1sec_corrected = 32.0E6 / lgw_xtal_correct;
-            diff_pps += (uint32_t)(_1sec_corrected + 0.5); /* +1 second */
-            printf("... adding 1 second to diff_pps (%.15lf, %u) - xtal_correct:%.15lf\n", _1sec_corrected, (uint32_t)(_1sec_corrected + 0.5), lgw_xtal_correct);
-        } while (diff_pps < 0);
-    }
+    /* Coarse timestamp based on PPS reference */
+    diff_pps = timestamp_cnt - timestamp_pps;
 
     printf("timestamp_cnt : %u\n", timestamp_cnt);
     printf("timestamp_pps : %u\n", timestamp_pps);
     printf("diff_pps : %d\n", diff_pps);
-    printf("diff_pps2: %u\n", diff_pps2);
 
-    assert (found == true);
-    if ((uint32_t)diff_pps < diff_pps2) {
-        assert((diff_pps2 - (uint32_t)diff_pps) < 10);
-    } else {
-        assert(((uint32_t)diff_pps - diff_pps2) < 10);
-    }
-
+    /* Compute the fine timestamp */
     pkt_ftime = (double)diff_pps + (double)ftime_mean;
-    printf("%f %f %f\n", pkt_ftime, (double)diff_pps, ftime_mean);
-    printf("pkt_ftime      = %f\n", pkt_ftime);
-
-#if 1
-    pkt_ftime_ludo = (double)timestamp_cnt - (double)timestamp_pps + (double)ftime_mean;
-    if (pkt_ftime_ludo < -2147483648){ //timestamp wrap but not pps counter
-        printf("pkt_ftime_ludo < -2^31\n");
-        pkt_ftime_ludo = pkt_ftime_ludo + 4294967296; // (1<<32);
-    }
-    /*
-    if (pkt_ftime < -(28*1e6)){
-        pkt_ftime = pkt_ftime + 32*1e9;
-    }
-    */
-    if (pkt_ftime_ludo > 2147483648){
-        printf("pkt_ftime_ludo > 2^31\n");
-        pkt_ftime_ludo = pkt_ftime_ludo - 4294967296; //(1<<32);
-    }
-
-    printf("pkt_ftime_ludo = %f\n", pkt_ftime_ludo);
-#endif
+    printf("pkt_ftime = %f\n", pkt_ftime);
 
     /* Convert fine timestamp from 32 Mhz clock to nanoseconds */
     pkt_ftime *= 31.25;
