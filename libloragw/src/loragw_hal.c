@@ -31,6 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>     /* symlink, unlink */
 #include <fcntl.h>
 #include <inttypes.h>
+#include <stdlib.h>     /* abs */
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -192,6 +193,10 @@ static uint8_t ts_addr = 0xFF;
 int32_t lgw_sf_getval(int x);
 int32_t lgw_bw_getval(int x);
 
+static bool is_same_pkt(struct lgw_pkt_rx_s *p1, struct lgw_pkt_rx_s *p2);
+static int remove_pkt(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt, uint8_t pkt_index);
+static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt);
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
@@ -218,6 +223,165 @@ int32_t lgw_sf_getval(int x) {
         case DR_LORA_SF12: return 12;
         default: return -1;
     }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+static bool is_same_pkt(struct lgw_pkt_rx_s *p1, struct lgw_pkt_rx_s *p2) {
+    if ((p1 != NULL) && (p2 != NULL)) {
+        /* Criterias to determine if packets are identical:
+            -- count_us should be equal or can have up to 24µs of difference (3 samples)
+            -- channel should be same
+            -- datarate should be same
+            -- payload should be same
+        */
+        if ((abs(p1->count_us - p2->count_us) <= 24) &&
+            (p1->if_chain == p2->if_chain) &&
+            (p1->datarate == p2->datarate) &&
+            (p1->size == p2->size) &&
+            (memcmp(p1->payload, p2->payload, p1->size) == 0)) {
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+static int remove_pkt(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt, uint8_t pkt_index) {
+    /* Check input parameters */
+    CHECK_NULL(p);
+    CHECK_NULL(nb_pkt);
+    if (pkt_index > ((*nb_pkt) - 1)) {
+        printf("ERROR: failed to remove packet index %u\n", pkt_index);
+        return -1;
+    }
+
+    /* Remove pkt from array, by replacing it with last packet of array */
+    if (pkt_index == ((*nb_pkt) - 1)) {
+        /* If we remove last element, just decrement nb packet counter */
+        /* Do nothing */
+    } else {
+        /* Copy last packet onto the packet to be removed */
+        memcpy(p + pkt_index, p + (*nb_pkt) - 1, sizeof(struct lgw_pkt_rx_s));
+    }
+
+    *nb_pkt -= 1;
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
+    uint8_t cpt;
+    int j, k, pkt_idx, pkt_dup_idx, x;
+    bool dup_restart = false;
+
+    /* Check input parameters */
+    CHECK_NULL(p);
+    CHECK_NULL(nb_pkt);
+
+    /* Init number of packets in array before merge */
+    cpt = *nb_pkt;
+
+    /* --------------------------------------------- */
+    /* ---------- For Debug only - START ----------- */
+    if (cpt > 0) {
+        printf("<----- Searching for DUPLICATEs ------\n");
+    }
+    for (j = 0; j < cpt; j++) {
+        printf("  %d: tmst=%u SF=%u CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
+        if (p[j].ftime_received == true) {
+            printf(" ftime=%f\n", p[j].ftime);
+        } else {
+            printf(" ftime=NONE\n");
+        }
+    }
+    /* ---------- For Debug only - END ------------- */
+    /* --------------------------------------------- */
+
+    /* Remove duplicates */
+    j = 0;
+    while (j < cpt) {
+        for (k = (j+1); k < cpt; k++) {
+            /* Searching for duplicated packets:
+                -- count_us should be equal or can have up to 24µs of difference (3 samples)
+                -- channel should be same
+                -- datarate should be same
+                -- payload should be same
+            */
+            if (is_same_pkt( &p[j], &p[k])) {
+                /* We keep the packet which has CRC checked */
+                if ((p[j].status == STAT_CRC_OK) && (p[k].status == STAT_CRC_BAD)) {
+                    pkt_dup_idx = k;
+                    pkt_idx = j;
+                } else if ((p[j].status == STAT_CRC_BAD) && (p[k].status == STAT_CRC_OK)) {
+                    pkt_dup_idx = j;
+                    pkt_idx = k;
+                } else {
+                    /* we keep the packet which has a fine timestamp */
+                    if (p[j].ftime_received == true) {
+                        pkt_dup_idx = k;
+                        pkt_idx = j;
+                    } else {
+                        pkt_dup_idx = j;
+                        pkt_idx = k;
+                    }
+                    /* sanity check */
+                    if (((p[j].ftime_received == true) && (p[k].ftime_received == true)) ||
+                        ((p[j].ftime_received == false) && (p[k].ftime_received == false))) {
+                        printf("WARNING: both duplicates have fine timestamps, or none has ? TBC\n");
+                    }
+                }
+                /* pkt_dup_idx contains the index to be deleted */
+                printf("duplicate found %d:%d, deleting %d\n", pkt_idx, pkt_dup_idx, pkt_dup_idx);
+                /* Remove duplicated packet from packet array */
+                x = remove_pkt(p, &cpt, pkt_dup_idx);
+                if (x != 0) {
+                    printf("ERROR: failed to remove packet from array (%d)\n", x);
+                }
+                dup_restart = true;
+                break;
+            }
+        }
+        if (dup_restart == true) {
+            /* Duplicate found, restart searching for duplicate from first element */
+            j = 0;
+            dup_restart = false;
+            /*printf( "restarting search for duplicate\n" );*/ /* Too verbose */
+        } else {
+            /* No duplicate found, continue... */
+            j += 1;
+            /*printf( "no duplicate found\n" );*/ /* Too verbose */
+        }
+    }
+
+    /* --------------------------------------------- */
+    /* ---------- For Debug only - START ----------- */
+    if (cpt > 0) {
+        printf("--\n");
+    }
+    for (j = 0; j < cpt; j++) {
+        printf("  %d: tmst=%u SF=%d CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
+        if (p[j].ftime_received == true) {
+            printf(" ftime=%f\n", p[j].ftime);
+        } else {
+            printf(" ftime=NONE\n");
+        }
+    }
+    if (cpt > 0) {
+        printf( " ------------------------------------>\n\n" );
+    }
+    /* ---------- For Debug only - END ------------- */
+    /* --------------------------------------------- */
+
+    /* Update number of packets contained in packet array */
+    *nb_pkt = cpt;
+
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -877,9 +1041,9 @@ int lgw_stop(void) {
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int res;
-    uint8_t  nb_pkt_fetched = 0;
-    uint16_t nb_pkt_found = 0;
-    uint16_t nb_pkt_left = 0;
+    uint8_t nb_pkt_fetched = 0;
+    uint8_t nb_pkt_found = 0;
+    uint8_t nb_pkt_left = 0;
     float current_temperature = 0.0, rssi_temperature_offset = 0.0;
 
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
@@ -929,7 +1093,17 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB (current temperature %.1f C)\n", rssi_temperature_offset, current_temperature);
     }
 
-    DEBUG_PRINTF("INFO: nb pkt found:%u left:%u\n", nb_pkt_found, nb_pkt_left);
+    printf("INFO: nb pkt found:%u left:%u\n", nb_pkt_found, nb_pkt_left);
+
+    /* Remove duplicated packets generated by double demod when precision timestamp is enabled */
+    if ((nb_pkt_found > 0) && (CONTEXT_TIMESTAMP.enable_precision_ts == true)) {
+        res = merge_packets(pkt_data, &nb_pkt_found);
+        if (res != 0) {
+            printf("WARNING: failed to remove duplicated packets\n");
+        }
+
+        printf("INFO: nb pkt found:%u (after de-duplicating)\n", nb_pkt_found);
+    }
 
     return nb_pkt_found;
 }
