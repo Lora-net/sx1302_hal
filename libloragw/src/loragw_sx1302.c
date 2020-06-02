@@ -1915,14 +1915,13 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         /* Get timestamp correction to be applied to count_us */
         timestamp_correction = timestamp_counter_correction(context, ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
 
-        /* Compute fine timestmap */
+        /* Compute fine timestmap for packets coming from the modem optimized for fine timestamping, if CRC is OK */
         p->ftime_received = false;
         p->ftime = 0.0;
-        if (pkt.num_ts_metrics_stored > 0) {
+        if ((pkt.num_ts_metrics_stored > 0) && (pkt.timing_set == true) && (p->status == STAT_CRC_OK)) {
             err = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt, &(p->ftime));
             if (err == 0) {
                 p->ftime_received = true;
-                p->ftime_dbg.timing_set = pkt.timing_set;
             }
         }
     } else if (ifmod == IF_FSK_STD) {
