@@ -1916,13 +1916,14 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         timestamp_correction = timestamp_counter_correction(context, ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
 
         /* Compute fine timestmap */
+        p->ftime_received = false;
+        p->ftime = 0.0;
         if (pkt.num_ts_metrics_stored > 0) {
-            p->ftime_received = true;
-            p->ftime = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt);
-            p->ftime_dbg.timing_set = pkt.timing_set;
-        } else {
-            p->ftime_received = false;
-            p->ftime = 0.0;
+            err = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt, &(p->ftime));
+            if (err == 0) {
+                p->ftime_received = true;
+                p->ftime_dbg.timing_set = pkt.timing_set;
+            }
         }
     } else if (ifmod == IF_FSK_STD) {
         DEBUG_PRINTF("Note: FSK packet (modem %u chan %u)\n", pkt.modem_id, p->if_chain);

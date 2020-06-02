@@ -475,7 +475,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt) {
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, double * pkt_ftime) {
     int i, x;
     int32_t ftime_sum;
     int32_t ftime[256];
@@ -483,7 +483,10 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     uint32_t timestamp_pps = 0;
     uint8_t buff[4];
     uint32_t diff_pps;
-    double pkt_ftime;
+
+    /* Check input parameters */
+    CHECK_NULL(ts_metrics);
+    CHECK_NULL(pkt_ftime);
 
     printf("%s\n", __FUNCTION__);
     printf("ts_metrics_nb*2: %u\n", ts_metrics_nb * 2);
@@ -508,9 +511,8 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
 
     /* Find the last timestamp_pps before packet to use as reference for ftime */
     if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
-        // TODO: inform upper layer that we cannot compute a timestamp yet
-        printf("INFO: NO TIMESTAMP YET\n");
-        return 0.0;
+        printf("INFO: Cannot compute ftime yet, PPS history is too short\n");
+        return -1;
     }
 
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS , &buff[0], 4);
@@ -536,7 +538,7 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
         }
         if (i == timestamp_pps_history.size) {
             printf("ERROR: failed to find the reference timestamp_pps, cannot compute ftime\n");
-            return 0.0; // TODO: handle error properly
+            return -1;
         }
     } else {
         printf("==> timestamp_pps => %u\n", timestamp_pps);
@@ -550,15 +552,15 @@ double precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metr
     printf("diff_pps : %d\n", diff_pps);
 
     /* Compute the fine timestamp */
-    pkt_ftime = (double)diff_pps + (double)ftime_mean;
-    printf("pkt_ftime = %f\n", pkt_ftime);
+    *pkt_ftime = (double)diff_pps + (double)ftime_mean;
+    printf("pkt_ftime = %f\n", *pkt_ftime);
 
     /* Convert fine timestamp from 32 Mhz clock to nanoseconds */
-    pkt_ftime *= 31.25;
+    *pkt_ftime *= 31.25;
 
-    printf("==> ftime = %f ns since last PPS\n", pkt_ftime);
+    printf("==> ftime = %f ns since last PPS\n", *pkt_ftime);
 
-    return pkt_ftime;
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
