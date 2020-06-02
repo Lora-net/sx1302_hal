@@ -1904,11 +1904,7 @@ void thread_up(void) {
             /* Fine timestamp */
             if ((p->ftime_received == true) && (xtal_correct_ok == true)) {
                 /* fine timestamp corrected with xtal error */
-        #if 0
                 ftime = (uint32_t)(p->ftime / xtal_correct);
-        #else
-                ftime = (uint32_t)(p->ftime);
-        #endif
                 if (ftime > 1E9) {
                     printf("ERROR: fine timestamp is out of range : %u\n", ftime);
                     exit(EXIT_FAILURE);
