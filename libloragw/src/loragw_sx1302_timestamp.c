@@ -67,8 +67,8 @@ struct timestamp_pps_history_s {
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 /* xtal correction to be applied */
-static bool     lgw_xtal_correct_ok = false;
-static double   lgw_xtal_correct = 1.0;
+static bool lgw_xtal_correct_ok = false;
+static double lgw_xtal_correct = 1.0;
 
 /* history of the last PPS timestamps */
 static struct timestamp_pps_history_s timestamp_pps_history = {
@@ -471,7 +471,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, double * pkt_ftime) {
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, uint8_t sf, uint32_t * result_ftime) {
     int i, x;
     int32_t ftime_sum;
     int32_t ftime[256];
@@ -479,17 +479,26 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     uint32_t timestamp_pps = 0;
     uint8_t buff[4];
     uint32_t diff_pps;
+    double pkt_ftime;
 
     /* Check input parameters */
     CHECK_NULL(ts_metrics);
-    CHECK_NULL(pkt_ftime);
+    CHECK_NULL(result_ftime);
 
+    /* Check if we can calculate a ftime */
+    if ((timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) || (lgw_xtal_correct_ok == false)) {
+        printf("INFO: Cannot compute ftime yet, PPS history is too short or XTal correction is not valid\n");
+        return -1;
+    }
+
+#if 0
     printf("%s\n", __FUNCTION__);
     printf("ts_metrics_nb*2: %u\n", ts_metrics_nb * 2);
     for (i = 0; i < (2 * ts_metrics_nb); i++) {
         printf("%d ", ts_metrics[i]);
     }
     printf("\n");
+#endif
 
     /* Compute the ftime cumulative sum */
     ftime[0] = (int32_t)ts_metrics[0];
@@ -506,11 +515,6 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     printf("ftime mean: %.3f\n", ftime_mean);
 
     /* Find the last timestamp_pps before packet to use as reference for ftime */
-    if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
-        printf("INFO: Cannot compute ftime yet, PPS history is too short\n");
-        return -1;
-    }
-
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS , &buff[0], 4);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter value\n");
@@ -548,25 +552,34 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     printf("diff_pps : %d\n", diff_pps);
 
     /* Compute the fine timestamp */
-    *pkt_ftime = (double)diff_pps + (double)ftime_mean;
-    printf("pkt_ftime = %f\n", *pkt_ftime);
+    pkt_ftime = (double)diff_pps + (double)ftime_mean;
+    printf("pkt_ftime = %f\n", pkt_ftime);
 
     /* Convert fine timestamp from 32 Mhz clock to nanoseconds */
-    *pkt_ftime *= 31.25;
+    pkt_ftime *= 31.25;
 
-    printf("==> ftime = %f ns since last PPS\n", *pkt_ftime);
+    /* Apply current XTAL error correction */
+    pkt_ftime /= lgw_xtal_correct;
+
+    *result_ftime = (uint32_t)pkt_ftime;
+    if (*result_ftime > 1E9) {
+        printf("ERROR: fine timestamp is out of range (%u)\n", *result_ftime);
+        return -1;
+    }
+
+    printf("==> ftime = %u ns since last PPS (%.15lf)\n", *result_ftime, pkt_ftime);
 
     return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int set_xtal_correct(bool is_valid, double xtal_correct) {
+int set_xtal_correct(bool is_valid, double xtal_correction) {
     /* Keep status of the current xtal error to be corrected */
     lgw_xtal_correct_ok = is_valid;
 
     if (lgw_xtal_correct_ok == true) {
-        lgw_xtal_correct = xtal_correct;
+        lgw_xtal_correct = xtal_correction;
     } else {
         lgw_xtal_correct = 1.0;
     }

@@ -1694,7 +1694,6 @@ void thread_up(void) {
     struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX]; /* array containing inbound packets + metadata */
     struct lgw_pkt_rx_s *p; /* pointer on a RX packet */
     int nb_pkt;
-    uint32_t ftime;
 
     /* local copy of GPS time reference */
     bool ref_ok = false; /* determine if GPS time reference must be used or not */
@@ -1900,14 +1899,8 @@ void thread_up(void) {
             }
 
             /* Fine timestamp */
-            if ((p->ftime_received == true) && (xtal_correct_ok == true)) {
-                /* fine timestamp corrected with xtal error */
-                ftime = (uint32_t)(p->ftime / xtal_correct);
-                if (ftime > 1E9) {
-                    printf("ERROR: fine timestamp is out of range : %u\n", ftime);
-                    exit(EXIT_FAILURE);
-                }
-                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"ftime\":%u", ftime);
+            if (p->ftime_received == true) {
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"ftime\":%u", p->ftime);
                 if (j > 0) {
                     buff_index += j;
                 } else {
@@ -3287,8 +3280,10 @@ void thread_valid(void) {
             }
         }
 
+        /* Send current xtal_correct value to the HAL, for fine timestamping correction */
         lgw_set_xtal_correct(xtal_correct_ok, xtal_correct);
-        printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
+
+        //printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
     }
     MSG("\nINFO: End of validation thread\n");
 }

@@ -225,7 +225,7 @@ struct lgw_pkt_rx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
     bool        ftime_received; /*!> a fine timestamp has been received */
-    double      ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
+    uint32_t    ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
 };
 
 /**
@@ -480,11 +480,12 @@ const char* lgw_version_info(void);
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s * packet);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Set the current correction to be applied to compensate XTAL error
+@param is_valid indicates if there is a valid XTAL error correction to be applied
+@param xtal_correction the current value to be used to compensate XTAL error.
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_set_xtal_correct(bool is_valid, double xtal_correct);
+int lgw_set_xtal_correct(bool is_valid, double xtal_correction);
 
 #endif
 

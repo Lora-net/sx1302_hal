@@ -131,12 +131,12 @@ int timestamp_counter_mode(bool ftime_enable);
 /**
 @brief TODO
 */
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, double * pkt_ftime);
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, uint32_t * result_ftime);
 
 /**
 @brief TODO
 */
-int set_xtal_correct(bool is_valid, double xtal_correct);
+int set_xtal_correct(bool is_valid, double xtal_correction);
 
 #endif
 

@@ -294,7 +294,7 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
     for (j = 0; j < cpt; j++) {
         printf("  %d: tmst=%u SF=%u CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
         if (p[j].ftime_received == true) {
-            printf(" ftime=%f\n", p[j].ftime);
+            printf(" ftime=%u\n", p[j].ftime);
         } else {
             printf(" ftime=NONE\n");
         }
@@ -366,7 +366,7 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
     for (j = 0; j < cpt; j++) {
         printf("  %d: tmst=%u SF=%d CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
         if (p[j].ftime_received == true) {
-            printf(" ftime=%f\n", p[j].ftime);
+            printf(" ftime=%u\n", p[j].ftime);
         } else {
             printf(" ftime=NONE\n");
         }
@@ -1317,8 +1317,8 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_set_xtal_correct(bool is_valid, double xtal_correct) {
-    return set_xtal_correct(is_valid, xtal_correct);
+int lgw_set_xtal_correct(bool is_valid, double xtal_correction) {
+    return set_xtal_correct(is_valid, xtal_correction);
 }
 
 /* --- EOF ------------------------------------------------------------------ */
