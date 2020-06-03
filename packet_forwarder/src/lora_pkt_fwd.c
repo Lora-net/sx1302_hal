@@ -317,7 +317,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
-    struct lgw_conf_timestamp_s tsconf;
+    struct lgw_conf_ftime_s tsconf;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
 
@@ -401,37 +401,35 @@ static int parse_SX130x_configuration(const char * conf_file) {
     MSG("INFO: antenna_gain %d dBi\n", antenna_gain);
 
     /* set timestamp configuration */
-    conf_ts_obj = json_object_get_object(conf_obj, "precision_timestamp");
+    conf_ts_obj = json_object_get_object(conf_obj, "fine_timestamp");
     if (conf_ts_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object for precision timestamp\n", conf_file);
+        MSG("INFO: %s does not contain a JSON object for fine timestamp\n", conf_file);
     } else {
         val = json_object_get_value(conf_ts_obj, "enable"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONBoolean) {
-            tsconf.enable_precision_ts = (bool)json_value_get_boolean(val);
+            tsconf.ftime_enable = (bool)json_value_get_boolean(val);
         } else {
-            MSG("WARNING: Data type for precision_timestamp.enable seems wrong, please check\n");
-            tsconf.enable_precision_ts = false;
+            MSG("WARNING: Data type for fine_timestamp.enable seems wrong, please check\n");
+            tsconf.ftime_enable = false;
         }
-        if (tsconf.enable_precision_ts == true) {
-            val = json_object_get_value(conf_ts_obj, "max_ts_metrics"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                tsconf.max_ts_metrics = (uint8_t)json_value_get_number(val);
+        if (tsconf.ftime_enable == true) {
+            str = json_object_get_string(conf_ts_obj, "mode");
+            if (str == NULL) {
+                MSG("ERROR: fine_timestamp.mode must be configured in %s\n", conf_file);
+                return -1;
+            } else if (!strncmp(str, "high_capacity", 13) || !strncmp(str, "HIGH_CAPACITY", 13)) {
+                tsconf.ftime_mode = LGW_FTIME_MODE_HIGH_CAPACITY;
+            } else if (!strncmp(str, "all_sf", 6) || !strncmp(str, "ALL_SF", 6)) {
+                tsconf.ftime_mode = LGW_FTIME_MODE_ALL_SF;
             } else {
-                MSG("WARNING: Data type for precision_timestamp.max_ts_metrics seems wrong, please check\n");
-                tsconf.max_ts_metrics = 0xFF;
+                MSG("ERROR: invalid fine timestamp mode: %s (should be high_capacity or all_sf)\n", str);
+                return -1;
             }
-            val = json_object_get_value(conf_ts_obj, "nb_symbols"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                tsconf.nb_symbols = (uint8_t)json_value_get_number(val);
-            } else {
-                MSG("WARNING: Data type for precision_timestamp.nb_symbols seems wrong, please check\n");
-                tsconf.nb_symbols = 1;
-            }
-            MSG("INFO: Configuring precision timestamp: max_ts_metrics:%u, nb_symbols:%u\n", tsconf.max_ts_metrics, tsconf.nb_symbols);
+            MSG("INFO: Configuring precision timestamp with %s mode\n", str);
 
             /* all parameters parsed, submitting configuration to the HAL */
-            if (lgw_timestamp_setconf(&tsconf) != LGW_HAL_SUCCESS) {
-                MSG("ERROR: Failed to configure precision timestamp\n");
+            if (lgw_ftime_setconf(&tsconf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure fine timestamp\n");
                 return -1;
             }
         } else {

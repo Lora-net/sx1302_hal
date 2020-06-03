@@ -421,27 +421,23 @@ uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t pkt_cnt_us) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uint8_t nb_symbols) {
+int timestamp_counter_mode(bool ftime_enable) {
     int x = LGW_REG_SUCCESS;
 
-    if (enable_precision_ts == false) {
+    if (ftime_enable == false) {
         DEBUG_MSG("INFO: using legacy timestamp\n");
         /* Latch end-of-packet timestamp (sx1301 compatibility) */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
     } else {
-        /* Ignore given ts metrics parameters, for now */
-        max_ts_metrics = PRECISION_TIMESTAMP_TS_METRICS_MAX;
-        nb_symbols = PRECISION_TIMESTAMP_NB_SYMBOLS;
-
-        printf("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", max_ts_metrics, nb_symbols);
+        printf("INFO: using precision timestamp (max_ts_metrics:%u nb_symbols:%u)\n", PRECISION_TIMESTAMP_TS_METRICS_MAX, PRECISION_TIMESTAMP_NB_SYMBOLS);
 
         /* Latch end-of-preamble timestamp */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x00);
-        x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS, max_ts_metrics);
+        x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_TIMESTAMP_CFG_MAX_TS_METRICS, (int32_t)PRECISION_TIMESTAMP_TS_METRICS_MAX);
 
         /* LoRa multi-SF modems */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_ENABLE, 0x01);
-        x |= lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_NB_SYMB, nb_symbols);
+        x |= lgw_reg_w(SX1302_REG_RX_TOP_TIMESTAMP_NB_SYMB, (int32_t)PRECISION_TIMESTAMP_NB_SYMBOLS);
     }
 
     return x;
@@ -466,7 +462,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
     }
 
     /* Calculate the correction to be applied */
-    if (context->timestamp_cfg.enable_precision_ts == false) {
+    if (context->ftime_cfg.ftime_enable == false) {
         return legacy_timestamp_correction(ifmod, bandwidth, datarate, coderate, crc_en, payload_length);
     } else {
         return precision_timestamp_correction(bandwidth, datarate, coderate, crc_en, payload_length);

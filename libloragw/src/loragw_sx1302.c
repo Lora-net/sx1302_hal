@@ -204,12 +204,12 @@ void lora_crc16(const char data, int *crc) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1302_init(const struct lgw_conf_timestamp_s * timestamp_context) {
+int sx1302_init(const struct lgw_conf_ftime_s * ftime_context) {
     sx1302_model_id_t model_id;
     int x;
 
     /* Check input parameters */
-    CHECK_NULL(timestamp_context);
+    CHECK_NULL(ftime_context);
 
     /* Initialize internal counter */
     timestamp_counter_new(&counter_us);
@@ -218,7 +218,7 @@ int sx1302_init(const struct lgw_conf_timestamp_s * timestamp_context) {
     rx_buffer_new(&rx_buffer);
 
     /* Configure timestamping mode */
-    if (timestamp_context->enable_precision_ts == true) {
+    if (ftime_context->ftime_enable == true) {
         x = sx1302_get_model_id(&model_id);
         if (x != LGW_REG_SUCCESS) {
             printf("ERROR: failed to get Chip Model ID\n");
@@ -230,7 +230,7 @@ int sx1302_init(const struct lgw_conf_timestamp_s * timestamp_context) {
             return LGW_REG_ERROR;
         }
     }
-    x = timestamp_counter_mode(timestamp_context->enable_precision_ts, timestamp_context->max_ts_metrics, timestamp_context->nb_symbols);
+    x = timestamp_counter_mode(ftime_context->ftime_enable);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to configure timestamp counter mode\n");
         return LGW_REG_ERROR;
@@ -1680,7 +1680,7 @@ void sx1302_arb_print_debug_stats(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_arb_start(uint8_t version, const struct lgw_conf_timestamp_s * timestamp_context) {
+int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_context) {
     uint8_t val;
 
     /* Wait for ARB fw to be started, and VERSION available in debug registers */
@@ -1698,7 +1698,7 @@ int sx1302_arb_start(uint8_t version, const struct lgw_conf_timestamp_s * timest
     sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
 
     /* Enable/Disable double demod for different timing set (best timestamp / best demodulation) - 1 bit per SF (LSB=SF5, MSB=SF12) => 0:Disable 1:Enable */
-    if (timestamp_context->enable_precision_ts == false) {
+    if (ftime_context->ftime_enable == false) {
         printf("ARB: dual demodulation disabled for all SF\n");
         sx1302_arb_debug_write(3, 0x00); /* double demod disabled for all SF */
     } else {

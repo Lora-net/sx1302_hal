@@ -126,7 +126,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 @param nb_symbols           The sampling rate of timestamp metrics
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int timestamp_counter_mode(bool enable_precision_ts, uint8_t max_ts_metrics, uint8_t nb_symbols);
+int timestamp_counter_mode(bool ftime_enable);
 
 /**
 @brief TODO

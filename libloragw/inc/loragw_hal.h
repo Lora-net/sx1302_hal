@@ -293,13 +293,21 @@ struct lgw_conf_debug_s {
 };
 
 /**
-@struct lgw_conf_debug_s
-@brief Configuration structure for debug
+@enum lgw_ftime_mode_t
+@brief Fine timestamping modes
 */
-struct lgw_conf_timestamp_s {
-    bool enable_precision_ts;
-    uint8_t max_ts_metrics;
-    uint8_t nb_symbols;
+typedef enum {
+    LGW_FTIME_MODE_HIGH_CAPACITY,   /*!> fine timestamps for SF5 -> SF10 */
+    LGW_FTIME_MODE_ALL_SF           /*!> fine timestamps for SF5 -> SF12 */
+} lgw_ftime_mode_t;
+
+/**
+@struct lgw_conf_ftime_s
+@brief Configuration structure for fine timestamping
+*/
+struct lgw_conf_ftime_s {
+    bool ftime_enable;              /*!> Enable / Disable fine timestamping */
+    lgw_ftime_mode_t ftime_mode;    /*!> Fine timestamping mode */
 };
 
 /**
@@ -318,7 +326,7 @@ typedef struct lgw_context_s {
     /* TX context */
     struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
     /* Misc */
-    struct lgw_conf_timestamp_s timestamp_cfg;
+    struct lgw_conf_ftime_s     ftime_cfg;
     /* Debug */
     struct lgw_conf_debug_s     debug_cfg;
 } lgw_context_t;
@@ -351,21 +359,21 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf);
 
 /**
 @brief Configure the Tx gain LUT
-@param pointer to structure defining the LUT
+@param conf pointer to structure defining the LUT
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf);
 
 /**
-@brief Configure the precision timestamp
-@param pointer to structure defining the config to be applied
+@brief Configure the fine timestamping
+@param conf pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf);
+int lgw_ftime_setconf(struct lgw_conf_ftime_s * conf);
 
 /**
 @brief Configure the debug context
-@param pointer to structure defining the config to be applied
+@param conf pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_debug_setconf(struct lgw_conf_debug_s * conf);

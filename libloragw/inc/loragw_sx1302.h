@@ -117,7 +117,7 @@ typedef struct {
 @param TODO
 @return TODO
 */
-int sx1302_init(const struct lgw_conf_timestamp_s *conf);
+int sx1302_init(const struct lgw_conf_ftime_s *conf);
 
 /**
 @brief Get the SX1302 unique identifier
@@ -356,7 +356,7 @@ int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value);
 @param TODO
 @return TODO
 */
-int sx1302_arb_start(uint8_t version, const struct lgw_conf_timestamp_s * timestamp_context);
+int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_context);
 
 /**
 @brief TODO
