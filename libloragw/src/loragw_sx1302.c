@@ -1702,9 +1702,16 @@ int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_cont
         printf("ARB: dual demodulation disabled for all SF\n");
         sx1302_arb_debug_write(3, 0x00); /* double demod disabled for all SF */
     } else {
-        /* TODO: 2 modes: high capacity / full_ts */
-        printf("ARB: dual demodulation enabled for all SF\n");
-        sx1302_arb_debug_write(3, 0xFF); /* double demod enabled for all SF */
+        if (ftime_context->ftime_mode == LGW_FTIME_MODE_ALL_SF) {
+            printf("ARB: dual demodulation enabled for all SF\n");
+            sx1302_arb_debug_write(3, 0xFF); /* double demod enabled for all SF */
+        } else if (ftime_context->ftime_mode == LGW_FTIME_MODE_HIGH_CAPACITY) {
+            printf("ARB: dual demodulation enabled for SF5 -> SF10\n");
+            sx1302_arb_debug_write(3, 0x3F); /* double demod enabled for SF5 -> SF10 */
+        } else {
+            printf("ERROR: fine timestamp mode is not supported (%d)\n", ftime_context->ftime_mode);
+            return LGW_REG_ERROR;
+        }
     }
 
     /* Set double detect packet filtering threshold [0..3] */
