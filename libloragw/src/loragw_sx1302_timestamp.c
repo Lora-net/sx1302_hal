@@ -476,7 +476,9 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     int32_t ftime_sum;
     int32_t ftime[256];
     float ftime_mean;
+    uint32_t timestamp_cnt_end_of_preamble;
     uint32_t timestamp_pps = 0;
+    uint32_t offset_preamble_hdr;
     uint8_t buff[4];
     uint32_t diff_pps;
     double pkt_ftime;
@@ -490,6 +492,14 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
         printf("INFO: Cannot compute ftime yet, PPS history is too short or XTal correction is not valid\n");
         return -1;
     }
+
+    /* Coarse timestamp correction to match with GW v2 (end of header -> end of preamble) */
+    offset_preamble_hdr =   256 * (1 << sf) * (8 + 4 + (((sf == 5) || (sf == 6)) ? 2 : 0)) +
+                            256 * ((1 << sf) / 4 - 1); /* 32e6 / 125e3 = 256 */
+
+    timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr - 2393;
+    printf("GWv2: timestamp_cnt = %u -> %u (offset:%u, sf:%u)\n", timestamp_cnt, timestamp_cnt_end_of_preamble, offset_preamble_hdr, sf);
+    timestamp_cnt = timestamp_cnt_end_of_preamble;
 
 #if 0
     printf("%s\n", __FUNCTION__);
