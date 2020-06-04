@@ -497,7 +497,7 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     offset_preamble_hdr =   256 * (1 << sf) * (8 + 4 + (((sf == 5) || (sf == 6)) ? 2 : 0)) +
                             256 * ((1 << sf) / 4 - 1); /* 32e6 / 125e3 = 256 */
 
-    timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr - 2393;
+    timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr + 2137;
     printf("GWv2: timestamp_cnt = %u -> %u (offset:%u, sf:%u)\n", timestamp_cnt, timestamp_cnt_end_of_preamble, offset_preamble_hdr, sf);
     timestamp_cnt = timestamp_cnt_end_of_preamble;
 
