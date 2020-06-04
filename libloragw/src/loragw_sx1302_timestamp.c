@@ -352,11 +352,13 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
                 timestamp_pps_history.idx += 1;
             }
 
+#if 0
             printf("---- timestamp PPS history (idx:%u size:%u) ----\n",  timestamp_pps_history.idx,  timestamp_pps_history.size);
             for (int i = 0; i < timestamp_pps_history.size; i++) {
                 printf("  %u\n", timestamp_pps_history.history[i]);
             }
             printf("--------------------------------\n");
+#endif
         }
     }
 

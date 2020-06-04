@@ -21,8 +21,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
+#include <sys/time.h>   /* gettimeofday, structtimeval */
 
 #include "config.h"     /* library configuration options (dynamically generated) */
+
+/* -------------------------------------------------------------------------- */
+/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
+
+#define DEBUG_PERF 0   /* Debug timing performances: level [0..4] */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
@@ -38,6 +44,22 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @return The value corresponding the requested bits
 */
 #define TAKE_N_BITS_FROM(b, p, n) (((b) >> (p)) & ((1 << (n)) - 1))
+
+/**
+@brief Substract struct timeval values
+@param a [in]   struct timeval a
+@param b [in]   struct timeval b
+@param b [out]  struct timeval resulting from (a - b)
+*/
+#define TIMER_SUB( a, b, result )                                              \
+    do  {                                                                      \
+        (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                          \
+        (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                       \
+        if ((result)->tv_usec < 0) {                                           \
+            --(result)->tv_sec;                                                \
+            (result)->tv_usec += 1000000;                                      \
+        }                                                                      \
+    } while (0)
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -62,6 +84,20 @@ uint32_t lora_packet_time_on_air( const uint8_t bw,
                                   double * nb_symbols,
                                   uint32_t * nb_symbols_payload,
                                   uint16_t * t_symbol_us);
+
+/**
+@brief Record the current time, for measure start
+@param tm Pointer to the current time value
+*/
+void _meas_time_start(struct timeval *tm);
+
+/**
+@brief Measure the ellapsed time since given time
+@param debug_level  debug print debug level to be used
+@param start_time   start time of the measure to be used
+@param str          string to be used for debug print
+*/
+void _meas_time_stop(int debug_level, struct timeval start_time, const char *str);
 
 #endif
 

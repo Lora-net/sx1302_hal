@@ -137,4 +137,32 @@ uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8
     return toa_us;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+void _meas_time_start(struct timeval *tm)
+{
+#if (DEBUG_PERF > 0) && (DEBUG_PERF <= 4)
+    gettimeofday(tm, NULL);
+#endif
+}
+
+void _meas_time_stop(int debug_level, struct timeval start_time, const char *str)
+{
+#if (DEBUG_PERF > 0) && (DEBUG_PERF <= 4)
+    struct timeval tm;
+    double time_ms;
+    char *indent[] = { "", " ..", " ....", " ......" };
+
+    gettimeofday(&tm, NULL);
+
+    time_ms = (tm.tv_sec - start_time.tv_sec) * 1000.0 + (tm.tv_usec - start_time.tv_usec) / 1000.0;
+    if ((debug_level > 0) && (debug_level <= DEBUG_PERF)) {
+        printf("PERF:%s %s %f ms\n", indent[debug_level - 1], str, time_ms);
+    }
+#endif
+}
+#pragma GCC diagnostic pop
+
 /* --- EOF ------------------------------------------------------------------ */

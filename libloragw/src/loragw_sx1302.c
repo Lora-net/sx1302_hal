@@ -2208,6 +2208,11 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     uint8_t mod_bw;
     uint8_t pa_en;
     uint16_t tx_start_delay;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* CHeck input parameters */
     CHECK_NULL(tx_lut);
@@ -2479,6 +2484,9 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             printf("ERROR: TX mode not supported\n");
             return LGW_REG_ERROR;
     }
+
+    /* Compute time spent in this function */
+    _meas_time_stop(1, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 }

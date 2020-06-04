@@ -132,6 +132,11 @@ int lgw_com_close(void) {
 /* Simple write */
 int lgw_com_w(uint8_t spi_mux_target, uint16_t address, uint8_t data) {
     int com_stat;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input parameters */
     CHECK_NULL(_lgw_com_target);
@@ -149,6 +154,9 @@ int lgw_com_w(uint8_t spi_mux_target, uint16_t address, uint8_t data) {
             break;
     }
 
+    /* Compute time spent in this function */
+    _meas_time_stop(2, tm, __FUNCTION__);
+
     return com_stat;
 }
 
@@ -157,6 +165,11 @@ int lgw_com_w(uint8_t spi_mux_target, uint16_t address, uint8_t data) {
 /* Simple read */
 int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
     int com_stat;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input parameters */
     CHECK_NULL(_lgw_com_target);
@@ -175,6 +188,9 @@ int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
             break;
     }
 
+    /* Compute time spent in this function */
+    _meas_time_stop(2, tm, __FUNCTION__);
+
     return com_stat;
 }
 
@@ -183,6 +199,11 @@ int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
 /* Burst (multiple-byte) write */
 int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int com_stat;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input parameters */
     CHECK_NULL(_lgw_com_target);
@@ -201,6 +222,9 @@ int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, ui
             break;
     }
 
+    /* Compute time spent in this function */
+    _meas_time_stop(2, tm, __FUNCTION__);
+
     return com_stat;
 }
 
@@ -209,6 +233,11 @@ int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, ui
 /* Burst (multiple-byte) read */
 int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
     int com_stat;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input parameters */
     CHECK_NULL(_lgw_com_target);
@@ -226,6 +255,9 @@ int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t
             com_stat = LGW_COM_ERROR;
             break;
     }
+
+    /* Compute time spent in this function */
+    _meas_time_stop(2, tm, __FUNCTION__);
 
     return com_stat;
 }
