@@ -570,7 +570,7 @@ int main(int argc, char **argv)
             x = lgw_send(&pkt);
             if (x != 0) {
                 printf("ERROR: failed to send packet\n");
-                return EXIT_FAILURE;
+                break;
             }
             /* wait for packet to finish sending */
             do {
@@ -590,7 +590,6 @@ int main(int argc, char **argv)
         x = lgw_stop();
         if (x != 0) {
             printf("ERROR: failed to stop the gateway\n");
-            return EXIT_FAILURE;
         }
 
         if (com_type == LGW_COM_SPI) {
