@@ -91,7 +91,7 @@ int set_interface_attribs_linux(int fd, int speed) {
     tty.c_lflag = 0;
     /* Settings for non-canonical mode */
     tty.c_cc[VMIN] = 0;                         /* non-blocking mode */
-    tty.c_cc[VTIME] = 50;                       /* wait for (n * 0.1) seconds before returning */
+    tty.c_cc[VTIME] = 0;                        /* wait for (n * 0.1) seconds before returning */
 
     /* Set attributes */
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
@@ -156,6 +156,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
     if (fd < 0) {
         printf("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
     } else {
+        printf("INFO: Configuring TTY\n");
         x = set_interface_attribs_linux(fd, B115200);
         if (x != 0) {
             printf("ERROR: failed to configure COM port %s\n", portname);
@@ -164,6 +165,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
         }
 
         /* flush tty port before setting it as blocking */
+        printf("INFO: Flushing TTY\n");
         do {
             n = read(fd, &data, 1);
             if (n > 0) {
@@ -172,6 +174,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
         } while (n > 0);
 
         /* set tty port blocking */
+        printf("INFO: Setting TTY in blocking mode\n");
         x = set_blocking_linux(fd, true);
         if (x != 0) {
             printf("ERROR: failed to configure COM port %s\n", portname);
@@ -186,6 +189,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
         srand(0);
 
         /* Check MCU version (ignore first char of the received version (release/debug) */
+        printf("INFO: Connect to MCU\n");
         if (mcu_ping(fd, &gw_info) != 0) {
             printf("ERROR: failed to ping the concentrator MCU\n");
             return LGW_USB_ERROR;
