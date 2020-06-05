@@ -213,12 +213,12 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     /* Record function start time */
     _meas_time_start(&tm);
 
-    /* Read message header first */
-    n = read(fd, &hdr[0], (size_t)HEADER_CMD_SIZE);
-    if (errno == EINTR) {
-        printf("INFO: syscall was interrupted, continue...\n");
-        return -1;
-    } else if (n == -1) {
+    /* Read message header first, handle EINTR as it is a blocking call */
+    do {
+        n = read(fd, &hdr[0], (size_t)HEADER_CMD_SIZE);
+    } while (n == -1 && errno == EINTR);
+
+    if (n == -1) {
         perror("ERROR: Unable to read /dev/ttyACMx - ");
         return -1;
     } else {
@@ -256,11 +256,12 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     /* Read payload if any */
     if (size > 0) {
         do {
-            n = read(fd, &buf[nb_read], size - nb_read);
-            if (errno == EINTR) {
-                printf("INFO: syscall was interrupted, continue...\n");
-                return -1;
-            } else if (n == -1) {
+            /* handle EINTR as it is a blocking call */
+            do {
+                n = read(fd, &buf[nb_read], size - nb_read);
+            } while (n == -1 && errno == EINTR);
+
+            if (n == -1) {
                 perror("ERROR: Unable to read /dev/ttyACMx - ");
                 return -1;
             } else {
