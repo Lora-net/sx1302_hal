@@ -138,6 +138,8 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
     int fd;
     s_ping_info gw_info;
     s_status mcu_status;
+    uint8_t data;
+    ssize_t n;
 
     /*check input variables*/
     CHECK_NULL(com_target_ptr);
@@ -161,6 +163,15 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
             return LGW_USB_ERROR;
         }
 
+        /* flush tty port before setting it as blocking */
+        do {
+            n = read(fd, &data, 1);
+            if (n > 0) {
+                printf("NOTE: flushing serial port (0x%2X)\n", data);
+            }
+        } while (n > 0);
+
+        /* set tty port blocking */
         x = set_blocking_linux(fd, true);
         if (x != 0) {
             printf("ERROR: failed to configure COM port %s\n", portname);
