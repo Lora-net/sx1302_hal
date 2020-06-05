@@ -143,6 +143,11 @@ uint8_t cmd_get_type(const uint8_t * bytes) {
 int write_req(int fd, e_order_id cmd, const uint8_t * payload, uint16_t payload_size ) {
     uint8_t buf_w[HEADER_CMD_SIZE];
     int n;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input params */
     if (payload_size > MAX_TRANSFER_SIZE) {
@@ -187,6 +192,9 @@ int write_req(int fd, e_order_id cmd, const uint8_t * payload, uint16_t payload_
     printf("\n");
 #endif
 
+    /* Compute time spent in this function */
+    _meas_time_stop(3, tm, __FUNCTION__);
+
     return 0;
 }
 
@@ -199,6 +207,11 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     int n;
     size_t size;
     int nb_read = 0;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Read message header first */
     n = read(fd, &hdr[0], (size_t)HEADER_CMD_SIZE);
@@ -212,6 +225,9 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
         DEBUG_PRINTF("INFO: read %d bytes for header from gateway\n", n);
     }
 
+    /* Compute time spent in this function */
+    _meas_time_stop(3, tm, "read_ack(hdr)");
+
 #if DEBUG_VERBOSE
     printf("read_ack(hdr):");
     /* debug print */
@@ -220,6 +236,9 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     }
     printf("\n");
 #endif
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check if the command id is valid */
     if ((cmd_get_type(hdr) < 0x40) || (cmd_get_type(hdr) > 0x45)) {
@@ -259,6 +278,9 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
         printf("\n");
 #endif
     }
+
+    /* Compute time spent in this function */
+    _meas_time_stop(3, tm, "read_ack(payload)");
 
     return nb_read;
 }
