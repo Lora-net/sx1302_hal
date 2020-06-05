@@ -1007,11 +1007,21 @@ int lgw_start(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_stop(void) {
-    int i, err;
+    int i, err = LGW_HAL_SUCCESS;
+    uint8_t tx_status;
 
-    DEBUG_MSG("INFO: aborting TX\n");
+    if (CONTEXT_STARTED == false) {
+        DEBUG_MSG("Note: LoRa concentrator was not started...\n");
+        return LGW_HAL_SUCCESS;
+    }
+
+    /* Abort current TX if needed */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
-        lgw_abort_tx(i);
+        DEBUG_PRINTF("INFO: aborting TX on chain %u\n", i);
+        err |= lgw_abort_tx(i);
+        if (err != LGW_HAL_SUCCESS) {
+            printf("WARNING: failed to get abort TX on chain %u\n", i);
+        }
     }
 
     /* Close log file */
@@ -1021,18 +1031,21 @@ int lgw_stop(void) {
     }
 
     DEBUG_MSG("INFO: Disconnecting\n");
-    lgw_disconnect();
+    err |= lgw_disconnect();
+    if (err != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to disconnect concentrator\n");
+    }
 
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
         DEBUG_MSG("INFO: Closing I2C\n");
-        err = i2c_linuxdev_close(ts_fd);
+        err |= i2c_linuxdev_close(ts_fd);
         if (err != 0) {
             printf("ERROR: failed to close I2C device (err=%i)\n", err);
         }
     }
 
     CONTEXT_STARTED = false;
-    return LGW_HAL_SUCCESS;
+    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
