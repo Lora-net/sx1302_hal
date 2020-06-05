@@ -1008,7 +1008,6 @@ int lgw_start(void) {
 
 int lgw_stop(void) {
     int i, err = LGW_HAL_SUCCESS;
-    uint8_t tx_status;
 
     if (CONTEXT_STARTED == false) {
         DEBUG_MSG("Note: LoRa concentrator was not started...\n");
