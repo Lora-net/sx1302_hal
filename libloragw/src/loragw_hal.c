@@ -1088,8 +1088,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
         /* Get packet and move to next one */
         res = sx1302_parse(&lgw_context, &pkt_data[nb_pkt_found]);
-        if (res != LGW_REG_SUCCESS) {
-            printf("ERROR: failed to parse fetched packet %d, aborting...\n", nb_pkt_found);
+        if (res == LGW_REG_WARNING) {
+            printf("WARNING: parsing error on packet %d, discarding fetched packets\n", nb_pkt_found);
+            return LGW_HAL_SUCCESS;
+        } else if (res == LGW_REG_ERROR) {
+            printf("ERROR: fatal parsing error on packet %d, aborting...\n", nb_pkt_found);
             return LGW_HAL_ERROR;
         }
 

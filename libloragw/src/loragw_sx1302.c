@@ -1778,8 +1778,11 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
 
     /* get packet from RX buffer */
     err = rx_buffer_pop(&rx_buffer, &pkt);
-    if (err != LGW_REG_SUCCESS) {
-        return LGW_REG_ERROR;
+    if (err == LGW_REG_WARNING) {
+        rx_buffer_del(&rx_buffer); /* clear the buffer */
+        return err;
+    } else if (err == LGW_REG_ERROR) {
+        return err;
     }
 
     /* copy payload to result struct */

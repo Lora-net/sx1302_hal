@@ -54,6 +54,7 @@ int reg_r_align32(uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value
 
 #define LGW_REG_SUCCESS  0
 #define LGW_REG_ERROR    -1
+#define LGW_REG_WARNING  -2
 
 #define SX1302_REG_COMMON_PAGE_PAGE 0
 #define SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL 1
