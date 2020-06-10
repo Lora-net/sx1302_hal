@@ -1203,6 +1203,7 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
 int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
     uint8_t val;
     struct agc_gain_params_s agc_params;
+    uint8_t pa_start_delay;
 
     /* Check parameters */
     if ((radio_type != LGW_RADIO_TYPE_SX1255) && (radio_type != LGW_RADIO_TYPE_SX1257) && (radio_type != LGW_RADIO_TYPE_SX1250)) {
@@ -1446,8 +1447,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: config of channel atten threshold done\n");
 
+    /* Configure sx1250 SetPAConfig */
     if (radio_type == LGW_RADIO_TYPE_SX1250) {
-        /* Configure sx1250 SetPAConfig */
         sx1302_agc_mailbox_write(0, agc_params.deviceSel);
         sx1302_agc_mailbox_write(1, agc_params.hpMax);
         sx1302_agc_mailbox_write(2, agc_params.paDutyCycle);
@@ -1476,13 +1477,31 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         }
 
         DEBUG_MSG("AGC: config of sx1250 PA optimal settings done\n");
-
-        /* notify AGC that it can resume */
-        sx1302_agc_mailbox_write(3, 0x0A);
-    } else {
-        /* notify AGC that it can resume */
-        sx1302_agc_mailbox_write(3, 0x09);
     }
+
+    /* Set PA start delay */
+    pa_start_delay = 8;
+    sx1302_agc_mailbox_write(0, pa_start_delay); /* 1 LSB = 100 µs*/
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x0A);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x0F);
+
+    /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+
+    /* Check params */
+    if (val != pa_start_delay) {
+        printf("ERROR: wrong PA start delay (w:%u r:%u)\n", pa_start_delay, val);
+        return LGW_REG_ERROR;
+    }
+
+    DEBUG_MSG("AGC: config of PA start delay done\n");
+
+    /* notify AGC that configuration is finished */
+    sx1302_agc_mailbox_write(3, 0x0F);
 
     DEBUG_MSG("AGC: started\n");
 
