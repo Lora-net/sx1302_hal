@@ -37,7 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_SX1302 == 1
+#if DEBUG_FTIME == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr, fmt, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
@@ -119,7 +119,7 @@ int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t sf, ui
             bw_pow = 4;
             break;
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", bandwidth);
+            printf("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT - %s\n", bandwidth, __FUNCTION__);
             return 0;
     }
 
@@ -210,12 +210,12 @@ int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t sf, ui
 
     timestamp_correction = -((int32_t)total_delay); /* compensate all decoding processing delays */
 
-    printf("FTIME OFF : filtering_delay %llu \n", filtering_delay);
-    printf("FTIME OFF : fft_delay_state3 %llu \n", fft_delay_state3);
-    printf("FTIME OFF : fft_delay %llu \n", fft_delay);
-    printf("FTIME OFF : demap_delay %llu \n", demap_delay);
-    printf("FTIME OFF : decode_delay %llu \n", decode_delay);
-    printf("FTIME OFF : timestamp correction %d \n", timestamp_correction);
+    DEBUG_PRINTF("FTIME OFF : filtering_delay %llu \n", filtering_delay);
+    DEBUG_PRINTF("FTIME OFF : fft_delay_state3 %llu \n", fft_delay_state3);
+    DEBUG_PRINTF("FTIME OFF : fft_delay %llu \n", fft_delay);
+    DEBUG_PRINTF("FTIME OFF : demap_delay %llu \n", demap_delay);
+    DEBUG_PRINTF("FTIME OFF : decode_delay %llu \n", decode_delay);
+    DEBUG_PRINTF("FTIME OFF : timestamp correction %d \n", timestamp_correction);
 
     return timestamp_correction;
 }
@@ -241,7 +241,7 @@ int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint
             bw_pow = 4;
             break;
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", bandwidth);
+            printf("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT - %s\n", bandwidth, __FUNCTION__);
             return 0;
     }
 
@@ -258,7 +258,7 @@ int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint
     timestamp_correction += (nb_symbols_payload * t_symbol_us); /* shift from end of header to end of packet */
     timestamp_correction -= (filtering_delay + 500E3) / 1E6; /* compensate the filtering delay */
 
-    printf("FTIME ON : timestamp correction %d \n", timestamp_correction);
+    DEBUG_PRINTF("FTIME ON : timestamp correction %d \n", timestamp_correction);
 
     return timestamp_correction;
 }
@@ -427,7 +427,7 @@ int timestamp_counter_mode(bool ftime_enable) {
     int x = LGW_REG_SUCCESS;
 
     if (ftime_enable == false) {
-        DEBUG_MSG("INFO: using legacy timestamp\n");
+        printf("INFO: using legacy timestamp\n");
         /* Latch end-of-packet timestamp (sx1301 compatibility) */
         x |= lgw_reg_w(SX1302_REG_RX_TOP_RX_BUFFER_LEGACY_TIMESTAMP, 0x01);
     } else {
@@ -500,7 +500,8 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
                             256 * ((1 << sf) / 4 - 1); /* 32e6 / 125e3 = 256 */
 
     timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr + 2137;
-    printf("GWv2: timestamp_cnt = %u -> %u (offset:%u, sf:%u)\n", timestamp_cnt, timestamp_cnt_end_of_preamble, offset_preamble_hdr, sf);
+
+    /* Shift the packet corase timestamp which is used to get ref PPS counter */
     timestamp_cnt = timestamp_cnt_end_of_preamble;
 
 #if 0
@@ -520,11 +521,9 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
         ftime[i] = ftime[i-1] + ts_metrics[i];
         ftime_sum += ftime[i];
     }
-    printf("ftime_sum: %d\n", ftime_sum);
 
     /* Compute the mean of the cumulative sum */
     ftime_mean = (float)ftime_sum / (float)(2 * ts_metrics_nb);
-    printf("ftime mean: %.3f\n", ftime_mean);
 
     /* Find the last timestamp_pps before packet to use as reference for ftime */
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS , &buff[0], 4);
@@ -544,7 +543,7 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
             /* search the pps counter in history */
             if ((timestamp_cnt - timestamp_pps_history.history[i]) < 32e6) {
                 timestamp_pps = timestamp_pps_history.history[i];
-                printf("==> timestamp_pps found at history[%d] => %u\n", i, timestamp_pps);
+                DEBUG_PRINTF("==> timestamp_pps found at history[%d] => %u\n", i, timestamp_pps);
                 break;
             }
         }
@@ -553,19 +552,19 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
             return -1;
         }
     } else {
-        printf("==> timestamp_pps => %u\n", timestamp_pps);
+        DEBUG_PRINTF("==> timestamp_pps => %u\n", timestamp_pps);
     }
 
     /* Coarse timestamp based on PPS reference */
     diff_pps = timestamp_cnt - timestamp_pps;
 
-    printf("timestamp_cnt : %u\n", timestamp_cnt);
-    printf("timestamp_pps : %u\n", timestamp_pps);
-    printf("diff_pps : %d\n", diff_pps);
+    DEBUG_PRINTF("timestamp_cnt : %u\n", timestamp_cnt);
+    DEBUG_PRINTF("timestamp_pps : %u\n", timestamp_pps);
+    DEBUG_PRINTF("diff_pps : %d\n", diff_pps);
 
     /* Compute the fine timestamp */
     pkt_ftime = (double)diff_pps + (double)ftime_mean;
-    printf("pkt_ftime = %f\n", pkt_ftime);
+    DEBUG_PRINTF("pkt_ftime = %f\n", pkt_ftime);
 
     /* Convert fine timestamp from 32 Mhz clock to nanoseconds */
     pkt_ftime *= 31.25;
@@ -579,7 +578,7 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
         return -1;
     }
 
-    printf("==> ftime = %u ns since last PPS (%.15lf)\n", *result_ftime, pkt_ftime);
+    DEBUG_PRINTF("==> ftime = %u ns since last PPS (%.15lf)\n", *result_ftime, pkt_ftime);
 
     return 0;
 }
@@ -596,7 +595,7 @@ int set_xtal_correct(bool is_valid, double xtal_correction) {
         lgw_xtal_correct = 1.0;
     }
 
-    printf("INFO: lgw_xtal_correct_ok:%d, lgw_xtal_correct:%.15lf\n", lgw_xtal_correct_ok, lgw_xtal_correct);
+    DEBUG_PRINTF("INFO: lgw_xtal_correct_ok:%d, lgw_xtal_correct:%.15lf\n", lgw_xtal_correct_ok, lgw_xtal_correct);
 
     return 0;
 }
