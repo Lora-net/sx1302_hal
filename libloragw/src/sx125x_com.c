@@ -60,6 +60,7 @@ int sx125x_com_r(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_targ
     switch (com_type) {
         case LGW_COM_SPI:
             com_stat = sx125x_spi_r(com_target, spi_mux_target, address, data);
+            break;
         case LGW_COM_USB:
             printf("ERROR: USB COM type is not supported for sx125x\n");
             return -1;
@@ -82,6 +83,7 @@ int sx125x_com_w(lgw_com_type_t com_type, void *com_target, uint8_t spi_mux_targ
     switch (com_type) {
         case LGW_COM_SPI:
             com_stat = sx125x_spi_w(com_target, spi_mux_target, address, data);
+            break;
         case LGW_COM_USB:
             printf("ERROR: USB COM type is not supported for sx125x\n");
             return -1;
