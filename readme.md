@@ -168,8 +168,12 @@ for sx1250 based concentrator only.
 * HAL: Reworked the complete communication layer. A new loragw_com module has
 been introduced to handle switching from a USB or a SPI communication interface,
 aligned function prototypes for sx125x and sx1250 radios.
+* HAL: Added support for Fine Timestamping for TDOA localization.
+* HAL: Updated AGC firmware to v4, to be able to configure the delay for PA to
+start.
 * Packet Forwarder: The type of interface is configurable in the global_conf.json
 file: com_type can be "USB" or "SPI".
+* Packet Forwarder: Changed the parameters to configure the fine timestamps.
 
 ### v1.0.5 ###
 
