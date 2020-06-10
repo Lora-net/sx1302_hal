@@ -7,7 +7,7 @@
         "antenna_gain": 0, /* antenna gain, in dBi */
         "full_duplex": false,
         "fine_timestamp": {
-            "enable": true,
+            "enable": false,
             "mode": "all_sf" /* high_capacity or all_sf */
         },
         "radio_0": {
