@@ -215,10 +215,14 @@ That object contains the status of the gateway, with the following fields:
  Name |  Type  | Function
 :----:|:------:|--------------------------------------------------------------
  time | string | UTC 'system' time of the gateway, ISO 8601 'expanded' format
+ tacc | number | GPS time accuracy in nanoseconds
  lati | number | GPS latitude of the gateway in degree (float, N is +)
  long | number | GPS latitude of the gateway in degree (float, E is +)
  alti | number | GPS altitude of the gateway in meter RX (integer)
  rxnb | number | Number of radio packets received (unsigned integer)
+ eha  | number | GPS horizontal accuracy in meters
+ eva  | number | GPS vertical accuracy in meters
+ sats | number | GPS satellites used for position and time (quantity)
  rxok | number | Number of radio packets received with a valid PHY CRC
  rxfw | number | Number of radio packets forwarded (unsigned integer)
  ackr | number | Percentage of upstream datagrams that were acknowledged
@@ -231,9 +235,13 @@ Example (white-spaces, indentation and newlines added for readability):
 ``` json
 {"stat":{
     "time":"2014-01-12 08:59:28 GMT",
+    "tacc":43,
     "lati":46.24000,
     "long":3.25230,
     "alti":145,
+    "eha":3.9.
+    "eva":12.1,
+    "sats":5,
     "rxnb":2,
     "rxok":2,
     "rxfw":2,
