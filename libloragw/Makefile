@@ -22,7 +22,19 @@ LIBS := -lloragw -ltinymt32 -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_com test_loragw_i2c test_loragw_reg test_loragw_hal_tx test_loragw_hal_rx test_loragw_cal_sx125x test_loragw_capture_ram test_loragw_spi_sx1250 test_loragw_counter test_loragw_gps test_loragw_toa
+all: 	libloragw.a \
+		test_loragw_com \
+		test_loragw_i2c \
+		test_loragw_reg \
+		test_loragw_hal_tx \
+		test_loragw_hal_rx \
+		test_loragw_cal_sx125x \
+		test_loragw_capture_ram \
+		test_loragw_com_sx1250 \
+		test_loragw_com_sx1261 \
+		test_loragw_counter \
+		test_loragw_gps \
+		test_loragw_toa
 
 clean:
 	rm -f libloragw.a
@@ -97,9 +109,13 @@ libloragw.a: $(OBJDIR)/loragw_spi.o \
 			 $(OBJDIR)/sx1250_spi.o \
 			 $(OBJDIR)/sx1250_usb.o \
 			 $(OBJDIR)/sx1250_com.o \
+			 $(OBJDIR)/sx1261_spi.o \
+			 $(OBJDIR)/sx1261_usb.o \
+			 $(OBJDIR)/sx1261_com.o \
 			 $(OBJDIR)/loragw_aux.o \
 			 $(OBJDIR)/loragw_reg.o \
 			 $(OBJDIR)/loragw_sx1250.o \
+			 $(OBJDIR)/loragw_sx1261.o \
 			 $(OBJDIR)/loragw_sx125x.o \
 			 $(OBJDIR)/loragw_sx1302.o \
 			 $(OBJDIR)/loragw_cal.o \
@@ -135,6 +151,9 @@ test_loragw_cal_sx125x: tst/test_loragw_cal_sx125x.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 test_loragw_com_sx1250: tst/test_loragw_com_sx1250.c libloragw.a
+	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
+
+test_loragw_com_sx1261: tst/test_loragw_com_sx1261.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 test_loragw_counter: tst/test_loragw_counter.c libloragw.a
