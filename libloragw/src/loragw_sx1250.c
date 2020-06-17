@@ -70,6 +70,8 @@ int sx1250_reg_w(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1250_reg_r(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t rf_chain) {
     int com_stat;
 

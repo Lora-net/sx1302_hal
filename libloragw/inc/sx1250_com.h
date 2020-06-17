@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_com.h"
 #include "sx1250_defs.h"
+
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */

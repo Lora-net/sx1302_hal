@@ -134,7 +134,7 @@ test_loragw_capture_ram: tst/test_loragw_capture_ram.c libloragw.a
 test_loragw_cal_sx125x: tst/test_loragw_cal_sx125x.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
-test_loragw_spi_sx1250: tst/test_loragw_spi_sx1250.c libloragw.a
+test_loragw_com_sx1250: tst/test_loragw_com_sx1250.c libloragw.a
 	$(CC) $(CFLAGS) -L. -L../libtools  $< -o $@ $(LIBS)
 
 test_loragw_counter: tst/test_loragw_counter.c libloragw.a
