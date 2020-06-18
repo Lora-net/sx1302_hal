@@ -45,6 +45,8 @@ int sx1261_disconnect(void);
 int sx1261_reg_w(sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
 int sx1261_reg_r(sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
 
+int sx1261_load_pram(void);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

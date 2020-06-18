@@ -40,6 +40,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_i2c.h"
 #include "loragw_sx1250.h"
 #include "loragw_sx125x.h"
+#include "loragw_sx1261.h"
 #include "loragw_sx1302.h"
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_stts751.h"
@@ -1021,6 +1022,21 @@ int lgw_start(void) {
                 printf("ERROR: failed to configure the temperature sensor\n");
                 return LGW_HAL_ERROR;
             }
+        }
+    }
+
+    /* Connect to the external sx1261 for LBT or Spectral Scan */
+    if (CONTEXT_LBT.enable == true) { /* TODO: add an option for Spectral Scan ? */
+        err = sx1261_connect((CONTEXT_COM_TYPE == LGW_COM_SPI) ? "/dev/spidev0.1" : NULL);
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to connect to the sx1261 radio (LBT/Spectral Scan)\n");
+            return LGW_HAL_ERROR;
+        }
+
+        err = sx1261_load_pram();
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to patch sx1261 radio for LBT/Spectral Scan\n");
+            return LGW_HAL_ERROR;
         }
     }
 
