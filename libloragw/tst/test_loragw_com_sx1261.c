@@ -153,7 +153,6 @@ int main(int argc, char ** argv)
     }
     printf("SX1261: get_status: 0x%02X\n", test_buff[0]);
 
-#if 1
     /* databuffer R/W stress test */
     while ((quit_sig != 1) && (exit_sig != 1)) {
         test_buff[0] = rand() & 0x7F;
@@ -183,9 +182,7 @@ int main(int argc, char ** argv)
             printf("did a %i-byte R/W on a register with no error\n", 4);
             ++cycle_number;
         }
-
     }
-#endif
 
     /* Disconnect from the sx1261 radio */
     sx1261_disconnect();
