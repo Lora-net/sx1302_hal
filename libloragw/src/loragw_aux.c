@@ -44,21 +44,31 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-/* This implementation is POSIX-pecific and require a fix to be compatible with C99 */
-void wait_ms(unsigned long a) {
+void wait_us(unsigned long delay_us) {
     struct timespec dly;
     struct timespec rem;
 
-    dly.tv_sec = a / 1000;
-    dly.tv_nsec = ((long)a % 1000) * 1000000;
+    dly.tv_sec = delay_us / 1000000;
+    dly.tv_nsec = (delay_us % 1000000) * 1000;
 
-    DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
-
-    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
+    while ((dly.tv_sec > 0) || (dly.tv_nsec > 1000)) {
+        /*
+        rem is set ONLY if clock_nanosleep is interrupted (eg. by a signal).
+        Must be zeroed each time or will get into an infinite loop after an IT.
+        */
+        rem.tv_sec = 0;
+        rem.tv_nsec = 0;
         clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
-        DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
+        dly = rem;
     }
+
     return;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void wait_ms(unsigned long delay_ms) {
+    wait_us(delay_ms * 1000);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

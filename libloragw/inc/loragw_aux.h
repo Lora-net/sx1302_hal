@@ -71,6 +71,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 void wait_ms(unsigned long t);
 
 /**
+@brief Wait for a certain time (microsencond accuracy)
+@param t number of microseconds to wait.
+*/
+void wait_us(unsigned long t);
+
+/**
 @brief TODO
 @param TODO
 */
