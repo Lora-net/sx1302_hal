@@ -312,12 +312,16 @@ static int parse_SX130x_configuration(const char * conf_file) {
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_txgain_obj;
     JSON_Object *conf_ts_obj;
+    JSON_Object *conf_lbt_obj = NULL;
+    JSON_Object *conf_lbtchan_obj = NULL;
     JSON_Array *conf_txlut_array;
+    JSON_Array *conf_lbtchan_array = NULL;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
     struct lgw_conf_ftime_s tsconf;
+    struct lgw_conf_lbt_s lbtconf;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
 
@@ -434,6 +438,87 @@ static int parse_SX130x_configuration(const char * conf_file) {
             }
         } else {
             MSG("INFO: Configuring legacy timestamp\n");
+        }
+    }
+
+    /* set LBT configuration */
+    memset(&lbtconf, 0, sizeof lbtconf); /* initialize configuration structure */
+    conf_lbt_obj = json_object_get_object(conf_obj, "lbt_cfg"); /* fetch value (if possible) */
+    if (conf_lbt_obj == NULL) {
+        MSG("INFO: no configuration for LBT\n");
+    } else {
+        val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
+        if (json_value_get_type(val) == JSONBoolean) {
+            lbtconf.enable = (bool)json_value_get_boolean(val);
+        } else {
+            MSG("WARNING: Data type for lbt_cfg.enable seems wrong, please check\n");
+            lbtconf.enable = false;
+        }
+        if (lbtconf.enable == true) {
+            val = json_object_get_value(conf_lbt_obj, "rssi_target"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                lbtconf.rssi_target = (int8_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for lbt_cfg.rssi_target seems wrong, please check\n");
+                lbtconf.rssi_target = 0;
+            }
+            val = json_object_get_value(conf_lbt_obj, "rssi_offset"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONNumber) {
+                lbtconf.rssi_offset = (int8_t)json_value_get_number(val);
+            } else {
+                MSG("WARNING: Data type for lbt_cfg.rssi_offset seems wrong, please check\n");
+                lbtconf.rssi_offset = 0;
+            }
+            /* set LBT channels configuration */
+            conf_lbtchan_array = json_object_get_array(conf_lbt_obj, "chan_cfg");
+            if (conf_lbtchan_array != NULL) {
+                lbtconf.nb_channel = json_array_get_count(conf_lbtchan_array);
+                MSG("INFO: %u LBT channels configured\n", lbtconf.nb_channel);
+            }
+            for (i = 0; i < (int)lbtconf.nb_channel; i++) {
+                /* Sanity check */
+                if (i >= LGW_LBT_CHANNEL_NB_MAX) {
+                    MSG("ERROR: LBT channel %d not supported, skip it\n", i);
+                    break;
+                }
+                /* Get LBT channel configuration object from array */
+                conf_lbtchan_obj = json_array_get_object(conf_lbtchan_array, i);
+
+                /* Channel frequency */
+                val = json_object_dotget_value(conf_lbtchan_obj, "freq_hz"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    lbtconf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
+                    lbtconf.channels[i].freq_hz = 0;
+                }
+
+                /* Channel scan time */
+                val = json_object_dotget_value(conf_lbtchan_obj, "scan_time_us"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    lbtconf.channels[i].scan_time_us = (uint16_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
+                    lbtconf.channels[i].scan_time_us = 0;
+                }
+
+                /* Channel transmit time */
+                val = json_object_dotget_value(conf_lbtchan_obj, "transmit_time_ms"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    lbtconf.channels[i].transmit_time_ms = (uint16_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for lbt_cfg.channels[%d].transmit_time_ms seems wrong, please check\n", i);
+                    lbtconf.channels[i].transmit_time_ms = 0;
+                }
+            }
+
+            /* all parameters parsed, submitting configuration to the HAL */
+            if (lgw_lbt_setconf(&lbtconf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure LBT\n");
+                return -1;
+            }
+        } else {
+            MSG("INFO: LBT is disabled\n");
         }
     }
 

@@ -79,6 +79,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_FSK             lgw_context.fsk_cfg
 #define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
 #define CONTEXT_FINE_TIMESTAMP  lgw_context.ftime_cfg
+#define CONTEXT_LBT             lgw_context.lbt_cfg
 #define CONTEXT_DEBUG           lgw_context.debug_cfg
 
 /* -------------------------------------------------------------------------- */
@@ -172,6 +173,13 @@ static lgw_context_t lgw_context = {
     .ftime_cfg = {
         .enable = false,
         .mode = LGW_FTIME_MODE_ALL_SF
+    },
+    .lbt_cfg = {
+        .enable = false,
+        .rssi_target = 0,
+        .rssi_offset = 0,
+        .nb_channel = 0,
+        .channels = {{ 0 }}
     },
     .debug_cfg = {
         .nb_ref_payload = 0,
@@ -707,6 +715,24 @@ int lgw_ftime_setconf(struct lgw_conf_ftime_s * conf) {
 
     CONTEXT_FINE_TIMESTAMP.enable = conf->enable;
     CONTEXT_FINE_TIMESTAMP.mode = conf->mode;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
+    int i;
+
+    CHECK_NULL(conf);
+
+    CONTEXT_LBT.enable = conf->enable;
+    CONTEXT_LBT.rssi_target = conf->rssi_target;
+    CONTEXT_LBT.rssi_offset = conf->rssi_offset;
+    CONTEXT_LBT.nb_channel = conf->nb_channel;
+    for (i = 0; i < CONTEXT_LBT.nb_channel; i++) {
+        CONTEXT_LBT.channels[i] = conf->channels[i];
+    }
 
     return LGW_HAL_SUCCESS;
 }

@@ -314,7 +314,7 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value);
 @param TODO
 @return TODO
 */
-int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode);
+int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, bool full_duplex, bool lbt_enable);
 
 /**
 @brief TODO

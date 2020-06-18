@@ -10,6 +10,22 @@
             "enable": false,
             "mode": "all_sf" /* high_capacity or all_sf */
         },
+        "lbt_cfg": {
+            "enable": false,
+            "rssi_target": -70, /* dBm */
+            "rssi_offset": 0, /* dBm */
+            "chan_cfg":[ /* 16 channels maximum */
+                { "freq_hz": 867100000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 867300000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 867500000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 867700000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 867900000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 868100000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 868300000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 868500000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                { "freq_hz": 869525000, "scan_time_us": 5000, "transmit_time_ms": 4000 }
+            ]
+        },
         "radio_0": {
             "enable": true,
             "type": "SX1250",
