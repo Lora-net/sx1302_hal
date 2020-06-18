@@ -219,7 +219,7 @@ int sx1302_init(const struct lgw_conf_ftime_s * ftime_context) {
     rx_buffer_new(&rx_buffer);
 
     /* Configure timestamping mode */
-    if (ftime_context->ftime_enable == true) {
+    if (ftime_context->enable == true) {
         x = sx1302_get_model_id(&model_id);
         if (x != LGW_REG_SUCCESS) {
             printf("ERROR: failed to get Chip Model ID\n");
@@ -231,7 +231,7 @@ int sx1302_init(const struct lgw_conf_ftime_s * ftime_context) {
             return LGW_REG_ERROR;
         }
     }
-    x = timestamp_counter_mode(ftime_context->ftime_enable);
+    x = timestamp_counter_mode(ftime_context->enable);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to configure timestamp counter mode\n");
         return LGW_REG_ERROR;
@@ -1718,18 +1718,18 @@ int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_cont
     sx1302_arb_set_debug_stats(true, DR_LORA_SF7);
 
     /* Enable/Disable double demod for different timing set (best timestamp / best demodulation) - 1 bit per SF (LSB=SF5, MSB=SF12) => 0:Disable 1:Enable */
-    if (ftime_context->ftime_enable == false) {
+    if (ftime_context->enable == false) {
         printf("ARB: dual demodulation disabled for all SF\n");
         sx1302_arb_debug_write(3, 0x00); /* double demod disabled for all SF */
     } else {
-        if (ftime_context->ftime_mode == LGW_FTIME_MODE_ALL_SF) {
+        if (ftime_context->mode == LGW_FTIME_MODE_ALL_SF) {
             printf("ARB: dual demodulation enabled for all SF\n");
             sx1302_arb_debug_write(3, 0xFF); /* double demod enabled for all SF */
-        } else if (ftime_context->ftime_mode == LGW_FTIME_MODE_HIGH_CAPACITY) {
+        } else if (ftime_context->mode == LGW_FTIME_MODE_HIGH_CAPACITY) {
             printf("ARB: dual demodulation enabled for SF5 -> SF10\n");
             sx1302_arb_debug_write(3, 0x3F); /* double demod enabled for SF5 -> SF10 */
         } else {
-            printf("ERROR: fine timestamp mode is not supported (%d)\n", ftime_context->ftime_mode);
+            printf("ERROR: fine timestamp mode is not supported (%d)\n", ftime_context->mode);
             return LGW_REG_ERROR;
         }
     }

@@ -407,20 +407,20 @@ static int parse_SX130x_configuration(const char * conf_file) {
     } else {
         val = json_object_get_value(conf_ts_obj, "enable"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONBoolean) {
-            tsconf.ftime_enable = (bool)json_value_get_boolean(val);
+            tsconf.enable = (bool)json_value_get_boolean(val);
         } else {
             MSG("WARNING: Data type for fine_timestamp.enable seems wrong, please check\n");
-            tsconf.ftime_enable = false;
+            tsconf.enable = false;
         }
-        if (tsconf.ftime_enable == true) {
+        if (tsconf.enable == true) {
             str = json_object_get_string(conf_ts_obj, "mode");
             if (str == NULL) {
                 MSG("ERROR: fine_timestamp.mode must be configured in %s\n", conf_file);
                 return -1;
             } else if (!strncmp(str, "high_capacity", 13) || !strncmp(str, "HIGH_CAPACITY", 13)) {
-                tsconf.ftime_mode = LGW_FTIME_MODE_HIGH_CAPACITY;
+                tsconf.mode = LGW_FTIME_MODE_HIGH_CAPACITY;
             } else if (!strncmp(str, "all_sf", 6) || !strncmp(str, "ALL_SF", 6)) {
-                tsconf.ftime_mode = LGW_FTIME_MODE_ALL_SF;
+                tsconf.mode = LGW_FTIME_MODE_ALL_SF;
             } else {
                 MSG("ERROR: invalid fine timestamp mode: %s (should be high_capacity or all_sf)\n", str);
                 return -1;

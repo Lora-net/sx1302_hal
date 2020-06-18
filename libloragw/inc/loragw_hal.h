@@ -306,8 +306,8 @@ typedef enum {
 @brief Configuration structure for fine timestamping
 */
 struct lgw_conf_ftime_s {
-    bool ftime_enable;              /*!> Enable / Disable fine timestamping */
-    lgw_ftime_mode_t ftime_mode;    /*!> Fine timestamping mode */
+    bool enable;              /*!> Enable / Disable fine timestamping */
+    lgw_ftime_mode_t mode;    /*!> Fine timestamping mode */
 };
 
 /**

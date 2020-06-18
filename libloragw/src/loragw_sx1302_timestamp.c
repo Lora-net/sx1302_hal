@@ -464,7 +464,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
     }
 
     /* Calculate the correction to be applied */
-    if (context->ftime_cfg.ftime_enable == false) {
+    if (context->ftime_cfg.enable == false) {
         return legacy_timestamp_correction(ifmod, bandwidth, datarate, coderate, crc_en, payload_length);
     } else {
         return precision_timestamp_correction(bandwidth, datarate, coderate, crc_en, payload_length);
