@@ -244,4 +244,97 @@ int sx1261_load_pram(void) {
     return 0;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_setup(uint32_t freq_hz) {
+    int32_t freq_reg;
+    uint8_t buff[32];
+
+    /* Set Radio in Standby mode */
+    buff[0] = (uint8_t)SX1261_STDBY_RC;
+    sx1261_reg_w(SX1261_SET_STANDBY, buff, 1);
+    wait_ms(10);
+    sx1261_reg_w(SX1261_SET_FS, buff, 0);
+    wait_us(150);
+
+    /* Check radio status */
+    buff[0] = 0x00;
+    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
+    if (buff[0] != 0x42) {
+        printf("ERROR: %s: unexpected status (0x%02X), should be 0x42\n", __FUNCTION__, buff[0]);
+        return LGW_REG_ERROR;
+    }
+
+    /* Set PacketType */
+    buff[0] = 0x00; /* FSK */
+    sx1261_reg_w(SX1261_SET_PACKET_TYPE, buff, 1);
+
+    /* Set frequency */
+    freq_reg = SX1261_FREQ_TO_REG(freq_hz);
+    buff[0] = (uint8_t)(freq_reg >> 24);
+    buff[1] = (uint8_t)(freq_reg >> 16);
+    buff[2] = (uint8_t)(freq_reg >> 8);
+    buff[3] = (uint8_t)(freq_reg >> 0);
+    sx1261_reg_w(SX1261_SET_RF_FREQUENCY, buff, 4);
+
+    /* Set modulation params for FSK */
+    buff[0] = 0;    /* bitrate */
+    buff[1] = 0x14; /* bitrate */
+    buff[2] = 0x00; /* bitrate */
+    buff[3] = 0x00; /* Gaussian BT disabled */
+    buff[4] = 0x0A; /* BW_234300 (232.3 kHz DSB)  0x0A fo 232.3 kHz 0x09 for 467 kHz 0x18 for 624 kHz */
+    buff[5] = 0x02; /* FDEV */
+    buff[6] = 0xE9; /* FDEV */
+    buff[7] = 0x0F; /* FDEV */
+    sx1261_reg_w(SX1261_SET_MODULATION_PARAMS, buff, 8);
+
+    /* Set packet params for FSK */
+    buff[0] = 0x00; /* Preamble length MSB */
+    buff[1] = 0x20; /* Preamble length LSB 32 bits*/
+    buff[2] = 0x05; /* Preamble detector lenght 16 bits */
+    buff[3] = 0x20; /* SyncWordLength 32 bits*/
+    buff[4] = 0x00; /* AddrComp disabled */
+    buff[5] = 0x01; /* PacketType variable size */
+    buff[6] = 0xff; /* PayloadLength 255 bytes */
+    buff[7] = 0x00; /* CRCType 1 Byte */
+    buff[8] = 0x00; /* Whitening disabled*/
+    sx1261_reg_w(SX1261_SET_PACKET_PARAMS, buff, 9);
+
+    /* Set Buffer Base address */
+    buff[0] = 0x80;
+    buff[1] = 0x80;
+    sx1261_reg_w(SX1261_SET_BUFFER_BASE_ADDRESS, buff, 2);
+
+    /* Configure RSSI averaging window */
+    buff[0] = 0x08;
+    buff[1] = 0x9B;
+    buff[2] = 0x05 << 2;
+    sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+
+    /* sensi adjust */
+    buff[0] = 0x08;
+    buff[1] = 0xAC;
+    buff[2] = 0xCB;
+    sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+
+    /* Set Radio in Rx continuous mode */
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = 0xFF;
+    sx1261_reg_w(SX1261_SET_RX, buff, 3);
+    wait_us(150);
+
+    /* Check radio status */
+    buff[0] = 0;
+    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
+    if (buff[0] != 0x52) {
+        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52\n", __FUNCTION__, buff[0]);
+        return LGW_REG_ERROR;
+    }
+
+    printf("SX1261: setup for LBT / Spectral Scan done\n");
+
+    return LGW_REG_SUCCESS;
+}
+
 /* --- EOF ------------------------------------------------------------------ */

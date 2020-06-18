@@ -1038,6 +1038,12 @@ int lgw_start(void) {
             printf("ERROR: failed to patch sx1261 radio for LBT/Spectral Scan\n");
             return LGW_HAL_ERROR;
         }
+
+        err = sx1261_setup(867100000); /* TODO: need to set a frequency here ? */
+        if (err != LGW_REG_SUCCESS) {
+            printf("ERROR: failed to setup sx1261 radio\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     /* set hal state */
