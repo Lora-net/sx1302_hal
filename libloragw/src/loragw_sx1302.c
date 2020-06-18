@@ -1200,10 +1200,11 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode) {
+int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, bool full_duplex, bool lbt_enable) {
     uint8_t val;
     struct agc_gain_params_s agc_params;
     uint8_t pa_start_delay;
+    uint8_t fdd_mode = ((full_duplex == true) ? 1 : 0);
 
     /* Check parameters */
     if ((radio_type != LGW_RADIO_TYPE_SX1255) && (radio_type != LGW_RADIO_TYPE_SX1257) && (radio_type != LGW_RADIO_TYPE_SX1250)) {
@@ -1220,6 +1221,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         return LGW_REG_ERROR;
     }
     DEBUG_PRINTF("AGC FW VERSION: %d\n", val);
+
+    /* -----------------------------------------------------------------------*/
 
     /* Configure Radio A gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
@@ -1258,6 +1261,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: Radio A config done\n");
 
+    /* -----------------------------------------------------------------------*/
+
     /* Configure Radio B gains */
     sx1302_agc_mailbox_write(0, ana_gain); /* 0:auto agc*/
     sx1302_agc_mailbox_write(1, dec_gain);
@@ -1294,6 +1299,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: Radio B config done\n");
 
+    /* -----------------------------------------------------------------------*/
+
     /* Configure AGC gains */
     agc_params = (radio_type == LGW_RADIO_TYPE_SX1250) ? agc_params_sx1250 : agc_params_sx125x;
 
@@ -1321,6 +1328,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: config of analog gain min/max done\n");
 
+    /* -----------------------------------------------------------------------*/
+
     /* Configure analog thresholds */
     sx1302_agc_mailbox_write(0, agc_params.ana_thresh_l);
     sx1302_agc_mailbox_write(1, agc_params.ana_thresh_h);
@@ -1345,6 +1354,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: config of analog threshold done\n");
 
+    /* -----------------------------------------------------------------------*/
+
     /* Configure decimator attenuation min/max */
     sx1302_agc_mailbox_write(0, agc_params.dec_attn_min);
     sx1302_agc_mailbox_write(1, agc_params.dec_attn_max);
@@ -1368,6 +1379,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
     }
 
     DEBUG_MSG("AGC: config of decimator atten min/max done\n");
+
+    /* -----------------------------------------------------------------------*/
 
     /* Configure decimator attenuation thresholds */
     sx1302_agc_mailbox_write(0, agc_params.dec_thresh_l);
@@ -1399,6 +1412,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: config of decimator threshold done\n");
 
+    /* -----------------------------------------------------------------------*/
+
     /* Configure channel attenuation min/max */
     sx1302_agc_mailbox_write(0, agc_params.chan_attn_min);
     sx1302_agc_mailbox_write(1, agc_params.chan_attn_max);
@@ -1423,6 +1438,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
     DEBUG_MSG("AGC: config of channel atten min/max done\n");
 
+    /* -----------------------------------------------------------------------*/
+
     /* Configure channel attenuation threshold */
     sx1302_agc_mailbox_write(0, agc_params.chan_thresh_l);
     sx1302_agc_mailbox_write(1, agc_params.chan_thresh_h);
@@ -1446,6 +1463,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
     }
 
     DEBUG_MSG("AGC: config of channel atten threshold done\n");
+
+    /* -----------------------------------------------------------------------*/
 
     /* Configure sx1250 SetPAConfig */
     if (radio_type == LGW_RADIO_TYPE_SX1250) {
@@ -1479,6 +1498,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
         DEBUG_MSG("AGC: config of sx1250 PA optimal settings done\n");
     }
 
+    /* -----------------------------------------------------------------------*/
+
     /* Set PA start delay */
     pa_start_delay = 8;
     sx1302_agc_mailbox_write(0, pa_start_delay); /* 1 LSB = 100 µs*/
@@ -1487,18 +1508,38 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
     sx1302_agc_mailbox_write(3, 0x0A);
 
     /* Wait for AGC to acknoledge it has received params */
-    sx1302_agc_wait_status(0x0F);
+    sx1302_agc_wait_status(0x0B);
 
     /* Check params */
     sx1302_agc_mailbox_read(0, &val);
-
-    /* Check params */
     if (val != pa_start_delay) {
         printf("ERROR: wrong PA start delay (w:%u r:%u)\n", pa_start_delay, val);
         return LGW_REG_ERROR;
     }
 
     DEBUG_MSG("AGC: config of PA start delay done\n");
+
+    /* -----------------------------------------------------------------------*/
+
+    /* Enable LBT if required */
+    sx1302_agc_mailbox_write(0, (lbt_enable == true) ? 1 : 0);
+
+    /* notify AGC that params have been set to mailbox */
+    sx1302_agc_mailbox_write(3, 0x0B);
+
+    /* Wait for AGC to acknoledge it has received params */
+    sx1302_agc_wait_status(0x0F);
+
+     /* Check params */
+    sx1302_agc_mailbox_read(0, &val);
+    if ((bool)val != lbt_enable) {
+        printf("ERROR: wrong LBT configuration (w:%u r:%u)\n", lbt_enable, val);
+        return LGW_REG_ERROR;
+    }
+
+    DEBUG_PRINTF("AGC: LBT is %s\n", (lbt_enable == true) ? "enabled" : "disabled");
+
+    /* -----------------------------------------------------------------------*/
 
     /* notify AGC that configuration is finished */
     sx1302_agc_mailbox_write(3, 0x0F);

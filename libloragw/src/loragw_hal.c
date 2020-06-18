@@ -85,7 +85,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define FW_VERSION_AGC      4 /* Expected version of AGC firmware */
+#define FW_VERSION_AGC      5 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      2 /* Expected version of arbiter firmware */
 
 /* Useful bandwidth of SX125x radios to consider depending on channel bandwidth */
@@ -936,7 +936,7 @@ int lgw_start(void) {
         default:
             break;
     }
-    err = sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, (CONTEXT_BOARD.full_duplex == true) ? 1 : 0);
+    err = sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, CONTEXT_BOARD.full_duplex, CONTEXT_LBT.enable);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to start AGC firmware\n");
         return LGW_HAL_ERROR;
