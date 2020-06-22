@@ -38,6 +38,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_com.h"
 #include "loragw_i2c.h"
+#include "loragw_lbt.h"
 #include "loragw_sx1250.h"
 #include "loragw_sx125x.h"
 #include "loragw_sx1261.h"
@@ -1172,6 +1173,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
+    int err;
+
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == false) {
         printf("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING\n");
@@ -1234,6 +1237,14 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     } else {
         printf("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
+    }
+
+    if (CONTEXT_LBT.enable == true) {
+        err = lgw_lbt_start(&CONTEXT_LBT, pkt_data->freq_hz, pkt_data->bandwidth);
+        if (err != 0) {
+            printf("ERROR: failed to start LBT\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     return sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
