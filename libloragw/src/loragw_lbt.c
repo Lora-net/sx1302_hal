@@ -29,6 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_lbt.h"
 #include "loragw_sx1261.h"
+#include "loragw_sx1302.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -125,7 +126,63 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, uint32_t freq_hz, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
+    int err;
+    uint8_t status;
+
+    /* Wait for transmit to be initiated */
+    /* Bit 0 in status: TX has been initiated on Radio A */
+    /* Bit 1 in status: TX has been initiated on Radio B */
+    do {
+        err = sx1302_agc_status(&status);
+        if (err != 0) {
+            printf("ERROR: %s: failed to get AGC status\n", __FUNCTION__);
+            return -1;
+        }
+        wait_ms(1);
+    } while ((status & (1 << rf_chain)) == 0x00);
+    printf("==> AGC_STATUS 0x%02X\n", status);
+
+    /* Check if the packet has been transmitted or blocked by LBT */
+    /* Bit 6 in status: Radio A is not allowed to transmit */
+    /* Bit 7 in status: Radio B is not allowed to transmit */
+    if (TAKE_N_BITS_FROM(status, ((rf_chain == 0) ? 6 : 7), 1) == 0) {
+        *tx_ok = true;
+    } else {
+        *tx_ok = false;
+    }
+
+    /* Clear AGC transmit status */
+    sx1302_agc_mailbox_write(0, 0xFF);
+
+    /* Wait for transmit status to be cleared */
+    do {
+        err = sx1302_agc_status(&status);
+        if (err != 0) {
+            printf("ERROR: %s: failed to get AGC status\n", __FUNCTION__);
+            return -1;
+        }
+        wait_ms(1);
+        printf("==> AGC_STATUS 0x%02X\n", status);
+    } while (status != 0x00);
+
+    /* Acknoledge */
+    sx1302_agc_mailbox_write(0, 0x00);
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_lbt_stop(void) {
+    int err;
+
+    err = sx1261_lbt_stop();
+    if (err != 0) {
+        printf("ERROR: Cannot stop LBT - failed\n");
+        return -1;
+    }
+
     return 0;
 }
 

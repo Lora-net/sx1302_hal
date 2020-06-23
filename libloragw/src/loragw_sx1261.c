@@ -459,7 +459,7 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
 
     /* Check radio status */
     buff[0] = 0x00;
-    sx1261_reg_r( SX1261_GET_STATUS, buff, 1);
+    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
     if (buff[0] != 0xD2) {
         printf("ERROR: %s : unexpected status (0x%02X), should be 0xD2\n", __FUNCTION__, buff[0]);
         return LGW_REG_ERROR;
@@ -472,6 +472,39 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
 
     return LGW_REG_SUCCESS;
 
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_lbt_stop(void) {
+    uint8_t buff[16];
+
+    /* Check radio status */
+    buff[0] = 0x00;
+    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
+    if (buff[0] != 0x52 && buff[0] != 0xD2) {
+        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52 or 0xD2\n", __FUNCTION__, buff[0]);
+        return LGW_REG_ERROR;
+    }
+
+    /* Disable LBT */
+    buff[0] = 0x08;
+    buff[1] = 0x9B;
+    buff[2] = 0x00;
+    sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+
+
+    /* Check radio status */
+    buff[0] = 0x00;
+    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
+    if (buff[0] != 0x52) {
+        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52\n", __FUNCTION__, buff[0]);
+        return LGW_REG_ERROR;
+    }
+
+    printf("SX1261: LBT stopped\n");
+
+    return LGW_REG_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

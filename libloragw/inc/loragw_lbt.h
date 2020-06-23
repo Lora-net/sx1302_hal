@@ -52,6 +52,13 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, uint32_t freq_hz, u
 */
 int lgw_lbt_stop(void);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -49,6 +49,7 @@ int sx1261_load_pram(void);
 int sx1261_setup(uint32_t freq_hz);
 int sx1261_set_rf_frequency(uint32_t freq_hz, uint8_t bandwidth);
 int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm);
+int sx1261_lbt_stop(void);
 
 #endif
 

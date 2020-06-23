@@ -1242,7 +1242,35 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         }
     }
 
-    return sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
+    /* Send the TX request to the concentrator */
+    err = sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: Failed to send packet\n", __FUNCTION__);
+        return LGW_HAL_ERROR;
+    }
+
+    if (CONTEXT_LBT.enable == true) {
+        bool lbt_status;
+        err = lgw_lbt_tx_status(pkt_data->rf_chain, &lbt_status);
+        if (err != 0) {
+            printf("ERROR: %s: Failed to get LBT TX status\n", __FUNCTION__);
+            return LGW_HAL_ERROR;
+        }
+        if (lbt_status == true) {
+            printf("LBT: packet is allowed to be transmitted\n");
+        } else {
+            printf("LBT: (ERROR) packet is NOT allowed to be transmitted\n");
+            /* TODO: return a LGW_LBT_ERROR */
+        }
+
+        err = lgw_lbt_stop();
+        if (err != 0) {
+            printf("ERROR: %s: Failed to stop LBT\n", __FUNCTION__);
+            return LGW_HAL_ERROR;
+        }
+    }
+
+    return LGW_HAL_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
