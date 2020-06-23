@@ -457,6 +457,13 @@ int sx1302_tx_configure(lgw_radio_type_t radio_type);
 */
 int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, bool lwan_public, struct lgw_conf_rxif_s * context_fsk, struct lgw_pkt_tx_s * pkt_data);
 
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+int sx1302_set_gpio(uint8_t gpio_reg_val);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

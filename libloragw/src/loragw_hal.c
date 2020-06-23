@@ -1002,11 +1002,6 @@ int lgw_start(void) {
     /* Configure the pseudo-random generator (For Debug) */
     dbg_init_random();
 
-#if 0
-    /* Configure a GPIO to be toggled for debug purpose */
-    dbg_init_gpio();
-#endif
-
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
         /* Try to configure temperature sensor STTS751-0DP3F */
         ts_addr = I2C_PORT_TEMP_SENSOR_0;

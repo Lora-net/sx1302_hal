@@ -107,6 +107,19 @@ const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 #define MIN_FSK_PREAMBLE    3
 #define STD_FSK_PREAMBLE    5
 
+#define GPIO_CFG_REGISTER               0x00
+#define GPIO_CFG_AGC                    0x01
+#define GPIO_CFG_ARB                    0x02
+#define GPIO_CFG_SPI_EXP_1              0x03
+#define GPIO_CFG_CSN_SPI_EXP            0x04
+#define GPIO_CFG_SPI_EXP_2              0x05
+#define GPIO_CFG_UART                   0x06
+#define GPIO_CFG_SX1255_IQ              0x07
+#define GPIO_CFG_SX1261_IQ              0x08
+#define GPIO_CFG_STATUS                 0x09
+#define GPIO_CFG_MBIST                  0x0A
+#define GPIO_CFG_OTP                    0x0B
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -202,6 +215,33 @@ void lora_crc16(const char data, int *crc) {
     (*crc) = next;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_config_gpio(void) {
+    int err;
+
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, GPIO_CFG_REGISTER); /* GPIO_0 => CONFIG_DONE */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, GPIO_CFG_REGISTER); /* GPIO_1 => UNUSED */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, GPIO_CFG_STATUS);   /* GPIO_2 => Tx ON */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, GPIO_CFG_REGISTER); /* GPIO_3 => UNUSED */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, GPIO_CFG_STATUS);   /* GPIO_4 => RX ON (PKT_RECEIVE_TOGGLE_OUT) */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, GPIO_CFG_REGISTER); /* GPIO_5 => UNUSED */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, GPIO_CFG_REGISTER); /* GPIO_6 => UNUSED */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, GPIO_CFG_AGC);      /* GPIO_7 => USED FOR LBT (MUST BE INPUT) */
+    CHECK_ERR(err);
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0x7F);              /* GPIO output direction (0 for input and 1 for output) */
+    CHECK_ERR(err);
+
+    return LGW_REG_SUCCESS;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -236,6 +276,8 @@ int sx1302_init(const struct lgw_conf_ftime_s * ftime_context) {
         printf("ERROR: failed to configure timestamp counter mode\n");
         return LGW_REG_ERROR;
     }
+
+    sx1302_config_gpio();
 
     return LGW_REG_SUCCESS;
 }
@@ -1081,19 +1123,7 @@ int sx1302_gps_enable(bool enable) {
 int sx1302_agc_load_firmware(const uint8_t *firmware) {
     int32_t val;
     uint8_t fw_check[MCU_FW_SIZE];
-    int32_t gpio_sel = MCU_AGC;
     int err = LGW_REG_SUCCESS;
-
-    /* Configure GPIO to let AGC MCU access board LEDs */
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
 
     /* Take control over AGC MCU */
     err |= lgw_reg_w(SX1302_REG_AGC_MCU_CTRL_MCU_CLEAR, 0x01);
@@ -1553,19 +1583,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
 int sx1302_arb_load_firmware(const uint8_t *firmware) {
     uint8_t fw_check[MCU_FW_SIZE];
-    int32_t gpio_sel = MCU_ARB;
     int32_t val;
     int err = LGW_REG_SUCCESS;
-
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_0_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_1_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_2_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_3_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_4_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_5_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_6_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_SEL_7_SELECTION, gpio_sel);
-    err |= lgw_reg_w(SX1302_REG_GPIO_GPIO_DIR_L_DIRECTION, 0xFF); /* GPIO output direction */
 
     /* Take control over ARB MCU */
     err |= lgw_reg_w(SX1302_REG_ARB_MCU_CTRL_MCU_CLEAR, 0x01);
@@ -2645,6 +2664,17 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
 
     /* Compute time spent in this function */
     _meas_time_stop(1, tm, __FUNCTION__);
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1302_set_gpio(uint8_t gpio_reg_val) {
+    int err;
+
+    err = lgw_reg_w(SX1302_REG_GPIO_GPIO_OUT_L_OUT_VALUE, gpio_reg_val); /* set all GPIOs at once, 1 bit per GPIO */
+    CHECK_ERR(err);
 
     return LGW_REG_SUCCESS;
 }
