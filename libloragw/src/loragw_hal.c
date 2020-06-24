@@ -1169,6 +1169,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     int err;
+    bool lbt_tx_allowed;
 
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == false) {
@@ -1234,6 +1235,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         return LGW_HAL_ERROR;
     }
 
+    /* Start Listen-Before-Talk */
     if (CONTEXT_LBT.enable == true) {
         err = lgw_lbt_start(&CONTEXT_LBT, pkt_data->freq_hz, pkt_data->bandwidth);
         if (err != 0) {
@@ -1246,17 +1248,25 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     err = sx1302_send(CONTEXT_RF_CHAIN[pkt_data->rf_chain].type, &CONTEXT_TX_GAIN_LUT[pkt_data->rf_chain], CONTEXT_LWAN_PUBLIC, &CONTEXT_FSK, pkt_data);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: %s: Failed to send packet\n", __FUNCTION__);
+
+        if (CONTEXT_LBT.enable == true) {
+            err = lgw_lbt_stop();
+            if (err != 0) {
+                printf("ERROR: %s: Failed to stop LBT\n", __FUNCTION__);
+            }
+        }
+
         return LGW_HAL_ERROR;
     }
 
+    /* Stop Listen-Before-Talk */
     if (CONTEXT_LBT.enable == true) {
-        bool lbt_status;
-        err = lgw_lbt_tx_status(pkt_data->rf_chain, &lbt_status);
+        err = lgw_lbt_tx_status(pkt_data->rf_chain, &lbt_tx_allowed);
         if (err != 0) {
             printf("ERROR: %s: Failed to get LBT TX status\n", __FUNCTION__);
             return LGW_HAL_ERROR;
         }
-        if (lbt_status == true) {
+        if (lbt_tx_allowed == true) {
             printf("LBT: packet is allowed to be transmitted\n");
         } else {
             printf("LBT: (ERROR) packet is NOT allowed to be transmitted\n");
@@ -1270,7 +1280,11 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         }
     }
 
-    return LGW_HAL_SUCCESS;
+    if (CONTEXT_LBT.enable == true && lbt_tx_allowed == false) {
+        return LGW_LBT_NOT_ALLOWED;
+    } else {
+        return LGW_HAL_SUCCESS;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

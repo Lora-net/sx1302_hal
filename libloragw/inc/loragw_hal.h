@@ -44,7 +44,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* return status code */
 #define LGW_HAL_SUCCESS     0
 #define LGW_HAL_ERROR       -1
-#define LGW_LBT_ISSUE       1
+#define LGW_LBT_NOT_ALLOWED 1
 
 /* radio-specific parameters */
 #define LGW_XTAL_FREQU      32000000            /* frequency of the RF reference oscillator */
