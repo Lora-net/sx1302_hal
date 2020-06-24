@@ -733,6 +733,10 @@ int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
     CONTEXT_LBT.rssi_offset = conf->rssi_offset;
     CONTEXT_LBT.nb_channel = conf->nb_channel;
     for (i = 0; i < CONTEXT_LBT.nb_channel; i++) {
+        if (conf->channels[i].bandwidth != BW_125KHZ && conf->channels[i].bandwidth != BW_250KHZ) {
+            printf("ERROR: bandwidth not supported for LBT channel %d\n", i);
+            return LGW_HAL_ERROR;
+        }
         CONTEXT_LBT.channels[i] = conf->channels[i];
     }
 

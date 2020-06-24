@@ -66,27 +66,12 @@ static int is_lbt_channel(const struct lgw_conf_lbt_s * lbt_context, uint32_t fr
     int i;
     int lbt_channel_match = -1;
 
-    if (bandwidth == BW_125KHZ) {
-        for (i = 0; i <  lbt_context->nb_channel; i++) {
-            if (is_equal_freq(freq_hz, lbt_context->channels[i].freq_hz) == true) {
-                printf("LBT: select channel %d (%u Hz)\n", i, lbt_context->channels[i].freq_hz);
-                lbt_channel_match = i;
-                break;
-            }
+    for (i = 0; i <  lbt_context->nb_channel; i++) {
+        if ((is_equal_freq(freq_hz, lbt_context->channels[i].freq_hz) == true) && (bandwidth == lbt_context->channels[i].bandwidth)) {
+            printf("LBT: select channel %d (freq:%u Hz, bw:0x%02X)\n", i, lbt_context->channels[i].freq_hz, lbt_context->channels[i].bandwidth);
+            lbt_channel_match = i;
+            break;
         }
-    } else if (bandwidth == BW_250KHZ) {
-        /* In case of 250KHz, the TX freq has to be in between 2 consecutive channels of 200KHz BW.
-            The TX can only be over 2 channels, not more */
-        for (i = 0; i < (lbt_context->nb_channel - 1); i++) {
-            if ((is_equal_freq(freq_hz, (lbt_context->channels[i].freq_hz + lbt_context->channels[i+1].freq_hz) / 2) == true) && ((lbt_context->channels[i+1].freq_hz - lbt_context->channels[i].freq_hz) == 200E3)) {
-                printf("LBT: select channels (%u-%u Hz)\n",  lbt_context->channels[i].freq_hz, lbt_context->channels[i+1].freq_hz);
-                lbt_channel_match = i;
-                break;
-            }
-        }
-    } else {
-        /* Nothing to do for now */
-        printf("ERROR: Bandwidth Not supported for LBT (%u)\n", bandwidth);
     }
 
     /* Return the index of the LBT channel which matched */
@@ -108,9 +93,9 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, uint32_t freq_hz, u
     }
 
     /* Set LBT scan frequency */
-    err = sx1261_set_rf_frequency(freq_hz, bandwidth);
+    err = sx1261_set_rx_params(freq_hz, bandwidth);
     if (err != 0) {
-        printf("ERROR: Cannot start LBT - unable to set sx1261 RF frequency to %u\n", freq_hz);
+        printf("ERROR: Cannot start LBT - unable to set sx1261 RX parameters\n");
         return -1;
     }
 

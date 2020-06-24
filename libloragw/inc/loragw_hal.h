@@ -318,6 +318,7 @@ struct lgw_conf_ftime_s {
 */
 struct lgw_conf_chan_lbt_s{
     uint32_t freq_hz;           /*!> LBT channel frequency */
+    uint8_t  bandwidth;         /*!> LBT channel bandwidth */
     uint16_t scan_time_us;      /*!> LBT channel carrier sense time */
     uint16_t transmit_time_ms;  /*!> LBT channel transmission duration when allowed */
 };

@@ -340,7 +340,7 @@ int sx1261_setup(uint32_t freq_hz) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1261_set_rf_frequency(uint32_t freq_hz, uint8_t bandwidth) {
+int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     uint8_t buff[16];
     int32_t freq_reg;
     uint8_t fsk_bw_reg;
@@ -426,7 +426,7 @@ int sx1261_set_rf_frequency(uint32_t freq_hz, uint8_t bandwidth) {
         return LGW_REG_ERROR;
     }
 
-    printf("SX1261: RF frequency set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
+    printf("SX1261: RX params set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
 
     return LGW_REG_SUCCESS;
 }

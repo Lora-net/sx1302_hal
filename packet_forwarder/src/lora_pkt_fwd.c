@@ -486,29 +486,64 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
                 /* Channel frequency */
                 val = json_object_dotget_value(conf_lbtchan_obj, "freq_hz"); /* fetch value (if possible) */
-                if (json_value_get_type(val) == JSONNumber) {
-                    lbtconf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
+                if (val != NULL) {
+                    if (json_value_get_type(val) == JSONNumber) {
+                        lbtconf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
+                    } else {
+                        MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
+                        lbtconf.channels[i].freq_hz = 0;
+                    }
                 } else {
-                    MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
-                    lbtconf.channels[i].freq_hz = 0;
+                    MSG("ERROR: no frequency defined for LBT channel %d\n", i);
+                    return -1;
+                }
+
+                /* Channel bandiwdth */
+                val = json_object_dotget_value(conf_lbtchan_obj, "bandwidth"); /* fetch value (if possible) */
+                if (val != NULL) {
+                    if (json_value_get_type(val) == JSONNumber) {
+                        bw = (uint32_t)json_value_get_number(val);
+                        switch(bw) {
+                            case 500000: lbtconf.channels[i].bandwidth = BW_500KHZ; break;
+                            case 250000: lbtconf.channels[i].bandwidth = BW_250KHZ; break;
+                            case 125000: lbtconf.channels[i].bandwidth = BW_125KHZ; break;
+                            default: lbtconf.channels[i].bandwidth = BW_UNDEFINED;
+                        }
+                    } else {
+                        MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
+                        lbtconf.channels[i].bandwidth = BW_UNDEFINED;
+                    }
+                } else {
+                    MSG("ERROR: no bandiwdth defined for LBT channel %d\n", i);
+                    return -1;
                 }
 
                 /* Channel scan time */
                 val = json_object_dotget_value(conf_lbtchan_obj, "scan_time_us"); /* fetch value (if possible) */
-                if (json_value_get_type(val) == JSONNumber) {
-                    lbtconf.channels[i].scan_time_us = (uint16_t)json_value_get_number(val);
+                if (val != NULL) {
+                    if (json_value_get_type(val) == JSONNumber) {
+                        lbtconf.channels[i].scan_time_us = (uint16_t)json_value_get_number(val);
+                    } else {
+                        MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
+                        lbtconf.channels[i].scan_time_us = 0;
+                    }
                 } else {
-                    MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
-                    lbtconf.channels[i].scan_time_us = 0;
+                    MSG("ERROR: no scan_time_us defined for LBT channel %d\n", i);
+                    return -1;
                 }
 
                 /* Channel transmit time */
                 val = json_object_dotget_value(conf_lbtchan_obj, "transmit_time_ms"); /* fetch value (if possible) */
-                if (json_value_get_type(val) == JSONNumber) {
-                    lbtconf.channels[i].transmit_time_ms = (uint16_t)json_value_get_number(val);
+                if (val != NULL) {
+                    if (json_value_get_type(val) == JSONNumber) {
+                        lbtconf.channels[i].transmit_time_ms = (uint16_t)json_value_get_number(val);
+                    } else {
+                        MSG("WARNING: Data type for lbt_cfg.channels[%d].transmit_time_ms seems wrong, please check\n", i);
+                        lbtconf.channels[i].transmit_time_ms = 0;
+                    }
                 } else {
-                    MSG("WARNING: Data type for lbt_cfg.channels[%d].transmit_time_ms seems wrong, please check\n", i);
-                    lbtconf.channels[i].transmit_time_ms = 0;
+                    MSG("ERROR: no transmit_time_ms defined for LBT channel %d\n", i);
+                    return -1;
                 }
             }
 
