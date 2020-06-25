@@ -126,6 +126,7 @@ int sx1261_connect(const char * spi_path) {
         _sx1261_com_type = LGW_COM_USB;
 
         /* the USB link has already been opened (lgw_connect) */
+        _sx1261_com_target = lgw_com_target();
         printf("SX1261: connected with USB\n");
     }
 
