@@ -440,7 +440,6 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
     uint8_t threshold_reg = -2 * threshold_dbm;
 
     nb_scan = (uint16_t)((float)scan_time_us / 8.2 + 0.5);
-    printf("===> nb_scan %u\n", nb_scan);
 
     /* Check radio status */
     buff[0] = 0x00;
