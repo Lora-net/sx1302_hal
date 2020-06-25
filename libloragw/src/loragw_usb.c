@@ -211,8 +211,9 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
         x  = mcu_gpio_write(fd, 0, 1, 1); /*   set PA1 : POWER_EN */
         x |= mcu_gpio_write(fd, 0, 2, 1); /*   set PA2 : SX1302_RESET active */
         x |= mcu_gpio_write(fd, 0, 2, 0); /* unset PA2 : SX1302_RESET inactive */
-        x |= mcu_gpio_write(fd, 0, 8, 0); /*   set PA8 : SX1261_NRESET active*/
-        x |= mcu_gpio_write(fd, 0, 8, 1); /* unset PA8 : SX1261_NRESET inactive*/
+        /* Reset SX1261 (LBT / Spectral Scan) */
+        x |= mcu_gpio_write(fd, 0, 8, 0); /*   set PA8 : SX1261_NRESET active */
+        x |= mcu_gpio_write(fd, 0, 8, 1); /* unset PA8 : SX1261_NRESET inactive */
         if (x != 0) {
             printf("ERROR: failed to reset SX1302\n");
             free(usb_device);
