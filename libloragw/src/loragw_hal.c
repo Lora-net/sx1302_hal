@@ -1274,7 +1274,6 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
             printf("LBT: packet is allowed to be transmitted\n");
         } else {
             printf("LBT: (ERROR) packet is NOT allowed to be transmitted\n");
-            /* TODO: return a LGW_LBT_ERROR */
         }
 
         err = lgw_lbt_stop();

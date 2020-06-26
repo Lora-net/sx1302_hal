@@ -100,7 +100,7 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, uint32_t freq_hz, u
     }
 
     /* Start LBT */
-    err = sx1261_lbt_start(lbt_context->channels[lbt_channel_selected].scan_time_us, lbt_context->rssi_target);
+    err = sx1261_lbt_start(lbt_context->channels[lbt_channel_selected].scan_time_us, lbt_context->rssi_target + lbt_context->rssi_offset);
     if (err != 0) {
         printf("ERROR: Cannot start LBT - sx1261 LBT start\n");
         return -1;
