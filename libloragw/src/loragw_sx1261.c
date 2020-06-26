@@ -105,6 +105,41 @@ int sx1261_pram_get_version(void) {
     return LGW_REG_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_get_status(uint8_t * status) {
+    uint8_t buff[1];
+
+    buff[0] = 0x00;
+    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
+
+    *status = buff[0] & 0x7E; /* ignore bit 0 & 7 */
+
+    printf("SX1261: %s: get_status: 0x%02X (0x%02X)\n", __FUNCTION__, *status, buff[0]);
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_check_status(uint8_t expected_status) {
+    int err;
+    uint8_t status;
+
+    err = sx1261_get_status(&status);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: failed to get status\n", __FUNCTION__);
+        return LGW_REG_ERROR;
+    }
+
+    if (status != expected_status) {
+        printf("ERROR: %s: SX1261 status is not as expected: got:0x%02X expected:0x%02X\n", __FUNCTION__, status, expected_status);
+        return LGW_REG_ERROR;
+    }
+
+    return LGW_REG_SUCCESS;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -193,7 +228,7 @@ int sx1261_reg_r(sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_load_pram(void) {
-    int i;
+    int i, err;
     uint8_t buff[32];
     uint32_t val, addr;
 
@@ -202,13 +237,18 @@ int sx1261_load_pram(void) {
     sx1261_reg_w(SX1261_SET_STANDBY, buff, 1);
     wait_ms(10);
 
-    /* Get status */
-    buff[0] = 0x00;
-    sx1261_reg_r( SX1261_GET_STATUS, buff, 1);
-    DEBUG_PRINTF("SX1261: %s: get_status: 0x%02X\n", __FUNCTION__, buff[0]);
-    /* TODO: check if status is as expected */
+    /* Check status */
+    err = sx1261_check_status(SX1261_STATUS_MODE_STBY_RC | SX1261_STATUS_READY);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+        return -1;
+    }
 
-    sx1261_pram_get_version();
+    err = sx1261_pram_get_version();
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 failed to get pram version\n", __FUNCTION__);
+        return -1;
+    }
 
     /* Enable patch update */
     buff[0] = 0x06;
@@ -240,7 +280,11 @@ int sx1261_load_pram(void) {
     buff[0] = 0;
     sx1261_reg_w(0xd9, buff, 0);
 
-    sx1261_pram_get_version();
+    err = sx1261_pram_get_version();
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 failed to get pram version\n", __FUNCTION__);
+        return -1;
+    }
     /* TODO: check PRAM version is correct */
 
     return 0;
@@ -249,6 +293,7 @@ int sx1261_load_pram(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_setup(uint32_t freq_hz) {
+    int err;
     int32_t freq_reg;
     uint8_t buff[32];
 
@@ -260,11 +305,10 @@ int sx1261_setup(uint32_t freq_hz) {
     wait_us(150);
 
     /* Check radio status */
-    buff[0] = 0x00;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x42) { // TODO: check possible values (busy ?)
-        printf("ERROR: %s: unexpected status (0x%02X), should be 0x42\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
+    err = sx1261_check_status(SX1261_STATUS_MODE_FS | SX1261_STATUS_READY);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+        return -1;
     }
 
     /* Set PacketType */
@@ -327,11 +371,10 @@ int sx1261_setup(uint32_t freq_hz) {
     wait_us(150);
 
     /* Check radio status */
-    buff[0] = 0;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x52) { // TODO: check possible values (busy ?)
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
+    err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+        return -1;
     }
 
     printf("SX1261: setup for LBT / Spectral Scan done\n");
@@ -342,6 +385,7 @@ int sx1261_setup(uint32_t freq_hz) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
+    int err;
     uint8_t buff[16];
     int32_t freq_reg;
     uint8_t fsk_bw_reg;
@@ -351,11 +395,10 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     wait_us(100);
 
     /* Check radio status */
-    buff[0] = 0x00;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x42) {
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0x42\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
+    err = sx1261_check_status(SX1261_STATUS_MODE_FS | SX1261_STATUS_READY);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+        return -1;
     }
 
     /* Set frequency */
@@ -420,11 +463,10 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     wait_us(150);
 
     /* Check radio status */
-    buff[0] = 0;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x52) { // TODO: check possible values (busy ?)
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
+    err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+        return -1;
     }
 
     printf("SX1261: RX params set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
@@ -435,6 +477,7 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
+    int err;
     uint8_t buff[16];
     uint16_t nb_scan;
     uint8_t threshold_reg = -2 * threshold_dbm;
@@ -442,11 +485,10 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
     nb_scan = (uint16_t)((float)scan_time_us / 8.2 + 0.5);
 
     /* Check radio status */
-    buff[0] = 0x00;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x52) {
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
+    err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+        return -1;
     }
 
     /* Configure LBT scan */
@@ -456,14 +498,6 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
     buff[3] = threshold_reg;
     buff[4] = 1; // gpioId
     sx1261_reg_w(0x9a, buff, 5);
-
-    /* Check radio status */
-    buff[0] = 0x00;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0xD2) {
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0xD2\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
-    }
 
     /* Wait for Scan Time before TX trigger request */
     wait_us(scan_time_us);
@@ -479,28 +513,11 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
 int sx1261_lbt_stop(void) {
     uint8_t buff[16];
 
-    /* Check radio status */
-    buff[0] = 0x00;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x52 && buff[0] != 0xD2) {
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52 or 0xD2\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
-    }
-
     /* Disable LBT */
     buff[0] = 0x08;
     buff[1] = 0x9B;
     buff[2] = 0x00;
     sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
-
-
-    /* Check radio status */
-    buff[0] = 0x00;
-    sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
-    if (buff[0] != 0x52) {
-        printf("ERROR: %s : unexpected status (0x%02X), should be 0x52\n", __FUNCTION__, buff[0]);
-        return LGW_REG_ERROR;
-    }
 
     printf("SX1261: LBT stopped\n");
 
