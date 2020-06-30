@@ -1396,7 +1396,7 @@ const char* lgw_version_info() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
+uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
     double t_fsk;
     uint32_t toa_ms, toa_us;
 

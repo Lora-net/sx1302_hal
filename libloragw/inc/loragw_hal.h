@@ -510,7 +510,7 @@ const char* lgw_version_info(void);
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s * packet);
+uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
 
 /**
 @brief Set the current correction to be applied to compensate XTAL error
