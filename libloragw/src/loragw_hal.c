@@ -1241,7 +1241,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
 
     /* Start Listen-Before-Talk */
     if (CONTEXT_LBT.enable == true) {
-        err = lgw_lbt_start(&CONTEXT_LBT, pkt_data->freq_hz, pkt_data->bandwidth);
+        err = lgw_lbt_start(&CONTEXT_LBT, pkt_data);
         if (err != 0) {
             printf("ERROR: failed to start LBT\n");
             return LGW_HAL_ERROR;
