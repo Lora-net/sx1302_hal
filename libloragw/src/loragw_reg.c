@@ -1231,7 +1231,7 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
         return LGW_REG_ERROR;
     }
 
-    com_stat += reg_w_align32(LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
+    com_stat = reg_w(LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
 
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: COM ERROR DURING REGISTER WRITE\n");
@@ -1258,7 +1258,7 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
     /* get register struct from the struct array */
     r = loregs[register_id];
 
-    com_stat += reg_r_align32(LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
+    com_stat = reg_r(LGW_SPI_MUX_TARGET_SX1302, r, reg_value);
 
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: COM ERROR DURING REGISTER WRITE\n");
@@ -1296,7 +1296,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* do the burst write */
-    com_stat += lgw_com_wb(LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
+    com_stat = lgw_com_wb(LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
 
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: COM ERROR DURING REGISTER BURST WRITE\n");
@@ -1328,7 +1328,7 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     r = loregs[register_id];
 
     /* do the burst read */
-    com_stat += lgw_com_rb(LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
+    com_stat = lgw_com_rb(LGW_SPI_MUX_TARGET_SX1302, r.addr, data, size);
 
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: COM ERROR DURING REGISTER BURST READ\n");
@@ -1361,7 +1361,7 @@ int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size) {
         chunk_size = (sz_todo > CHUNK_SIZE_MAX) ? CHUNK_SIZE_MAX : sz_todo;
 
         /* do the burst write */
-        com_stat += lgw_com_wb(LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+        com_stat = lgw_com_wb(LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
 
         /* prepare for next write */
         addr += chunk_size;
@@ -1400,7 +1400,7 @@ int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode) 
         chunk_size = (sz_todo > CHUNK_SIZE_MAX) ? CHUNK_SIZE_MAX : sz_todo;
 
         /* do the burst read */
-        com_stat += lgw_com_rb(LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
+        com_stat = lgw_com_rb(LGW_SPI_MUX_TARGET_SX1302, addr, &data[chunk_cnt * CHUNK_SIZE_MAX], chunk_size);
 
         /* do not increment the address when the target memory is in FIFO mode (auto-increment) */
         if (fifo_mode == false) {

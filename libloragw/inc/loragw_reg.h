@@ -46,9 +46,6 @@ struct lgw_reg_s {
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED FUNCTIONS -------------------------------------------- */
 
-int reg_w_align32(uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value);
-int reg_r_align32(uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value);
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
