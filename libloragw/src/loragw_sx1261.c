@@ -292,6 +292,52 @@ int sx1261_load_pram(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int sx1261_calibrate(uint32_t freq_hz) {
+    int err = LGW_REG_SUCCESS;
+    uint8_t buff[16];
+
+    buff[0] = 0x00;
+    err |= sx1261_reg_r(SX1261_GET_STATUS, buff, 1);
+
+    /* Run calibration */
+    if ((freq_hz > 430E6) && (freq_hz < 440E6)) {
+        buff[0] = 0x6B;
+        buff[1] = 0x6F;
+    } else if ((freq_hz > 470E6) && (freq_hz < 510E6)) {
+        buff[0] = 0x75;
+        buff[1] = 0x81;
+    } else if ((freq_hz > 779E6) && (freq_hz < 787E6)) {
+        buff[0] = 0xC1;
+        buff[1] = 0xC5;
+    } else if ((freq_hz > 863E6) && (freq_hz < 870E6)) {
+        buff[0] = 0xD7;
+        buff[1] = 0xDB;
+    } else if ((freq_hz > 902E6) && (freq_hz < 928E6)) {
+        buff[0] = 0xE1;
+        buff[1] = 0xE9;
+    } else {
+        printf("ERROR: failed to calibrate sx1261 radio, frequency range not supported (%u)\n", freq_hz);
+        return LGW_REG_ERROR;
+    }
+    err |= sx1261_reg_w(SX1261_CALIBRATE_IMAGE, buff, 2);
+
+    /* Wait for calibration to complete */
+    wait_ms(10);
+
+    buff[0] = 0x00;
+    buff[1] = 0x00;
+    buff[2] = 0x00;
+    err |= sx1261_reg_r(SX1261_GET_DEVICE_ERRORS, buff, 3);
+    if (TAKE_N_BITS_FROM(buff[2], 4, 1) != 0) {
+        printf("ERROR: sx1261 Image Calibration Error\n");
+        return LGW_REG_ERROR;
+    }
+
+    return err;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1261_setup(uint32_t freq_hz) {
     int err;
     int32_t freq_reg;

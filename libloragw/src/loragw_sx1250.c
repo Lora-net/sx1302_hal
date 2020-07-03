@@ -91,6 +91,8 @@ int sx1250_reg_r(sx1250_op_code_t op_code, uint8_t *data, uint16_t size, uint8_t
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int sx1250_calibrate(uint8_t rf_chain, uint32_t freq_hz) {
     int err = LGW_REG_SUCCESS;
     uint8_t buff[16];
