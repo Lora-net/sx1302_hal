@@ -115,6 +115,8 @@ const char * cmd_get_str(const uint8_t cmd) {
             return "REQ_WRITE_GPIO";
         case ORDER_ID__REQ_SPI:
             return "REQ_SPI";
+        case ORDER_ID__REQ_MULTIPLE_SPI:
+            return "REQ_MULTIPLE_SPI";
         default:
             return "UNKNOWN";
     }
@@ -140,7 +142,7 @@ uint8_t cmd_get_type(const uint8_t * bytes) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int write_req(int fd, e_order_id cmd, const uint8_t * payload, uint16_t payload_size ) {
+int write_req(int fd, order_id_t cmd, const uint8_t * payload, uint16_t payload_size ) {
     uint8_t buf_w[HEADER_CMD_SIZE];
     int n;
     /* performances variables */
@@ -150,8 +152,8 @@ int write_req(int fd, e_order_id cmd, const uint8_t * payload, uint16_t payload_
     _meas_time_start(&tm);
 
     /* Check input params */
-    if (payload_size > MAX_TRANSFER_SIZE) {
-        printf("ERROR: payload size exceeds maximum transfer size (req:%u, max:%d)\n", payload_size, MAX_TRANSFER_SIZE);
+    if (payload_size > MAX_SIZE_COMMAND) {
+        printf("ERROR: payload size exceeds maximum transfer size (req:%u, max:%d)\n", payload_size, MAX_SIZE_COMMAND);
         return -1;
     }
 
@@ -241,7 +243,7 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     _meas_time_start(&tm);
 
     /* Check if the command id is valid */
-    if ((cmd_get_type(hdr) < 0x40) || (cmd_get_type(hdr) > 0x45)) {
+    if ((cmd_get_type(hdr) < 0x40) || (cmd_get_type(hdr) > 0x46)) {
         printf("ERROR: received wrong ACK type (0x%02X)\n", cmd_get_type(hdr));
         return -1;
     }
