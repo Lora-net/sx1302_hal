@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types*/
 #include <stdbool.h>    /* bool type */
 
+#include "loragw_hal.h"
 #include "sx1261_defs.h"
 
 #include "config.h"     /* library configuration options (dynamically generated) */
@@ -49,7 +50,7 @@ int sx1261_load_pram(void);
 int sx1261_calibrate(uint32_t freq_hz);
 int sx1261_setup(uint32_t freq_hz);
 int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth);
-int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm);
+int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm);
 int sx1261_lbt_stop(void);
 
 #endif

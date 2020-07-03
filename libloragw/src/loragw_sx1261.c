@@ -522,13 +522,23 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
+int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm) {
     int err;
     uint8_t buff[16];
     uint16_t nb_scan;
     uint8_t threshold_reg = -2 * threshold_dbm;
 
-    nb_scan = (uint16_t)((float)scan_time_us / 8.2 + 0.5);
+    switch (scan_time_us) {
+        case LGW_LBT_SCAN_TIME_128_US:
+            nb_scan = 24;
+            break;
+        case LGW_LBT_SCAN_TIME_5000_US:
+            nb_scan = 715;
+            break;
+        default:
+            printf("ERROR: wrong scan_time_us value\n");
+            return -1;
+    }
 
     /* Check radio status */
     err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
@@ -546,9 +556,9 @@ int sx1261_lbt_start(uint16_t scan_time_us, int8_t threshold_dbm) {
     sx1261_reg_w(0x9a, buff, 5);
 
     /* Wait for Scan Time before TX trigger request */
-    wait_us(scan_time_us);
+    wait_us((uint16_t)scan_time_us);
 
-    printf("SX1261: LBT started: scan time = %uus, threshold = %ddBm\n", scan_time_us, threshold_dbm);
+    printf("SX1261: LBT started: scan time = %uus, threshold = %ddBm\n", (uint16_t)scan_time_us, threshold_dbm);
 
     return LGW_REG_SUCCESS;
 

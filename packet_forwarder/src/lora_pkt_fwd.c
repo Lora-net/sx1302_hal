@@ -522,7 +522,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
                 val = json_object_dotget_value(conf_lbtchan_obj, "scan_time_us"); /* fetch value (if possible) */
                 if (val != NULL) {
                     if (json_value_get_type(val) == JSONNumber) {
-                        lbtconf.channels[i].scan_time_us = (uint16_t)json_value_get_number(val);
+                        if ((uint16_t)json_value_get_number(val) == 128) {
+                            lbtconf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_128_US;
+                        } else if ((uint16_t)json_value_get_number(val) == 5000) {
+                            lbtconf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_5000_US;
+                        } else {
+                            MSG("ERROR: scan time not supported for LBT channel %d, must be 128 or 5000\n", i);
+                            return -1;
+                        }
                     } else {
                         MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
                         lbtconf.channels[i].scan_time_us = 0;

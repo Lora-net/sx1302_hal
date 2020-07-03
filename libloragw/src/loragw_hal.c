@@ -737,6 +737,10 @@ int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
             printf("ERROR: bandwidth not supported for LBT channel %d\n", i);
             return LGW_HAL_ERROR;
         }
+        if (conf->channels[i].scan_time_us != LGW_LBT_SCAN_TIME_128_US && conf->channels[i].scan_time_us != LGW_LBT_SCAN_TIME_5000_US) {
+            printf("ERROR: scan_time_us not supported for LBT channel %d\n", i);
+            return LGW_HAL_ERROR;
+        }
         CONTEXT_LBT.channels[i] = conf->channels[i];
     }
 

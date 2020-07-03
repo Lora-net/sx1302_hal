@@ -314,13 +314,22 @@ struct lgw_conf_ftime_s {
 };
 
 /**
+@enum lgw_lbt_scan_time_t
+@brief Radio types that can be found on the LoRa Gateway
+*/
+typedef enum {
+    LGW_LBT_SCAN_TIME_128_US    = 128,
+    LGW_LBT_SCAN_TIME_5000_US   = 5000,
+} lgw_lbt_scan_time_t;
+
+/**
 @brief Structure containing a Listen-Before-Talk channel configuration
 */
 struct lgw_conf_chan_lbt_s{
-    uint32_t freq_hz;           /*!> LBT channel frequency */
-    uint8_t  bandwidth;         /*!> LBT channel bandwidth */
-    uint16_t scan_time_us;      /*!> LBT channel carrier sense time */
-    uint16_t transmit_time_ms;  /*!> LBT channel transmission duration when allowed */
+    uint32_t            freq_hz;           /*!> LBT channel frequency */
+    uint8_t             bandwidth;         /*!> LBT channel bandwidth */
+    lgw_lbt_scan_time_t scan_time_us;      /*!> LBT channel carrier sense time */
+    uint16_t            transmit_time_ms;  /*!> LBT channel transmission duration when allowed */
 };
 
 /**
