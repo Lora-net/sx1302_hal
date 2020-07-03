@@ -2096,15 +2096,13 @@ uint16_t sx1302_lora_payload_crc(const uint8_t * data, uint8_t size) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint16_t * delay) {
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint8_t chirp_lowpass, uint16_t * delay) {
     int err;
     uint16_t tx_start_delay = TX_START_DELAY_DEFAULT * 32;
     uint16_t radio_bw_delay = 0;
     uint16_t filter_delay = 0;
     uint16_t modem_delay = 0;
     int32_t bw_hz = lgw_bw_getval(bandwidth);
-    int32_t val;
-    uint8_t chirp_low_pass = 0;
 
     CHECK_NULL(delay);
 
@@ -2143,10 +2141,7 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
 
     /* Adjust with modulation */
     if (modulation == MOD_LORA) {
-        err = lgw_reg_r(SX1302_REG_TX_TOP_TX_CFG0_0_CHIRP_LOWPASS(0), &val);
-        CHECK_ERR(err);
-        chirp_low_pass = (uint8_t)val;
-        filter_delay = ((1 << chirp_low_pass) - 1) * 1e6 / bw_hz;
+        filter_delay = ((1 << chirp_lowpass) - 1) * 1e6 / bw_hz;
         modem_delay = 8 * (32e6 / (32 * bw_hz)); /* if bw=125k then modem freq=4MHz */
     } else {
         /* TODO */
@@ -2296,15 +2291,21 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     uint8_t mod_bw;
     uint8_t pa_en;
     uint16_t tx_start_delay;
+    uint8_t chirp_lowpass = 0;
     /* performances variables */
     struct timeval tm;
 
     /* Record function start time */
     _meas_time_start(&tm);
 
-    /* CHeck input parameters */
+    /* Check input parameters */
     CHECK_NULL(tx_lut);
     CHECK_NULL(pkt_data);
+
+    /* Setting BULK write mode (to speed up configuration on USB) */
+    err = lgw_com_set_write_mode(LGW_COM_WRITE_MODE_BULK);
+    CHECK_ERR(err);
+    /* TODO: switch back to SINGLE mode if any error is raised before the end of the function */
 
     /* Select the proper modem */
     switch (pkt_data->modulation) {
@@ -2396,7 +2397,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     switch (pkt_data->modulation) {
         case MOD_CW:
             /* Set frequency deviation */
-            freq_dev = ceil(fabs((float)pkt_data->freq_offset/10))*10e3;
+            freq_dev = ceil(fabs( (float)pkt_data->freq_offset / 10) ) * 10e3;
             printf("CW: f_dev %d Hz\n", (int)(freq_dev));
             fdev_reg = SX1302_FREQ_TO_REG(freq_dev);
             err = lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_DEV_H_FREQ_DEV(pkt_data->rf_chain), (fdev_reg >>  8) & 0xFF);
@@ -2444,13 +2445,11 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             /* LoRa datarate */
             err = lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_0_MODEM_SF(pkt_data->rf_chain), pkt_data->datarate);
             CHECK_ERR(err);
-            if (pkt_data->datarate < 10) {
-                err = lgw_reg_w(SX1302_REG_TX_TOP_TX_CFG0_0_CHIRP_LOWPASS(pkt_data->rf_chain), 6); /* less filtering for low SF : TBC */
-                CHECK_ERR(err);
-            } else {
-                err = lgw_reg_w(SX1302_REG_TX_TOP_TX_CFG0_0_CHIRP_LOWPASS(pkt_data->rf_chain), 7);
-                CHECK_ERR(err);
-            }
+
+            /* Chirp filtering */
+            chirp_lowpass = (pkt_data->datarate < 10) ? 6 : 7;
+            err = lgw_reg_w(SX1302_REG_TX_TOP_TX_CFG0_0_CHIRP_LOWPASS(pkt_data->rf_chain), (int32_t)chirp_lowpass);
+            CHECK_ERR(err);
 
             /* Coding Rate */
             err = lgw_reg_w(SX1302_REG_TX_TOP_TXRX_CFG0_1_CODING_RATE(pkt_data->rf_chain), pkt_data->coderate);
@@ -2605,7 +2604,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     }
 
     /* Set TX start delay */
-    err = sx1302_tx_set_start_delay(pkt_data->rf_chain, radio_type, pkt_data->modulation, pkt_data->bandwidth, &tx_start_delay);
+    err = sx1302_tx_set_start_delay(pkt_data->rf_chain, radio_type, pkt_data->modulation, pkt_data->bandwidth, chirp_lowpass, &tx_start_delay);
     CHECK_ERR(err);
 
     /* Write payload in transmit buffer */
@@ -2661,6 +2660,14 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             printf("ERROR: TX mode not supported\n");
             return LGW_REG_ERROR;
     }
+
+    /* Flush write (USB BULK mode) */
+    err = lgw_com_flush();
+    CHECK_ERR(err);
+
+    /* Setting back to SINGLE BULK write mode */
+    err = lgw_com_set_write_mode(LGW_COM_WRITE_MODE_SINGLE);
+    CHECK_ERR(err);
 
     /* Compute time spent in this function */
     _meas_time_stop(1, tm, __FUNCTION__);
