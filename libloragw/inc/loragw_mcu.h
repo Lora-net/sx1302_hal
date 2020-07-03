@@ -43,7 +43,7 @@ typedef enum order_id_e
     ORDER_ID__REQ_BOOTLOADER_MODE = 0x02,
     ORDER_ID__REQ_RESET           = 0x03,
     ORDER_ID__REQ_WRITE_GPIO      = 0x04,
-    ORDER_ID__REQ_SPI             = 0x05,
+    ORDER_ID__REQ_SPI             = 0x05, /* deprecated */
     ORDER_ID__REQ_MULTIPLE_SPI    = 0x06,
 
     ORDER_ID__ACK_PING            = 0x40,
@@ -51,7 +51,7 @@ typedef enum order_id_e
     ORDER_ID__ACK_BOOTLOADER_MODE = 0x42,
     ORDER_ID__ACK_RESET           = 0x43,
     ORDER_ID__ACK_WRITE_GPIO      = 0x44,
-    ORDER_ID__ACK_SPI             = 0x45,
+    ORDER_ID__ACK_SPI             = 0x45, /* deprecated */
     ORDER_ID__ACK_MULTIPLE_SPI    = 0x46,
 
     ORDER_ID__UNKNOW_CMD = 0xFF
@@ -164,16 +164,11 @@ int mcu_gpio_write(int fd, uint8_t gpio_port, uint8_t gpio_id, uint8_t gpio_valu
 /**
 @brief Send a SX1302 read/write SPI request to the MCU
 @param fd File descriptor of the device used to access the MCU
-@param in_out_buf The buffer containing the request to be sent to the SX1302
-with the SPI header (r/w, target mux). THis buffer will also contain the SPI
-answer when the function exits.
+@param in_out_buf The buffer containing the multiple requests to be sent to the
+SX1302 with the SPI header (r/w, target mux). This buffer will also contain the
+SPI answer when the function exits.
 @param buf_size The size of the given input/output buffer
 @return 0 for SUCCESS, -1 for failure
-*/
-int mcu_spi_access(int fd, uint8_t * in_out_buf, size_t buf_size);
-
-/**
- *
 */
 int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size);
 

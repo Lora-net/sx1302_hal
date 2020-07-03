@@ -598,30 +598,6 @@ int mcu_gpio_write(int fd, uint8_t gpio_port, uint8_t gpio_id, uint8_t gpio_valu
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int mcu_spi_access(int fd, uint8_t * in_out_buf, size_t buf_size) {
-    /* Check input parameters */
-    CHECK_NULL(in_out_buf);
-
-    if (write_req(fd, ORDER_ID__REQ_SPI, in_out_buf, buf_size) != 0) {
-        printf("ERROR: failed to write REQ_SPI request\n");
-        return -1;
-    }
-
-    if (read_ack(fd, buf_hdr, in_out_buf, buf_size) < 0) {
-        printf("ERROR: failed to read REQ_SPI ack\n");
-        return -1;
-    }
-
-    if (decode_ack_spi_access(buf_hdr, in_out_buf) != 0) {
-        printf("ERROR: invalid REQ_SPI ack\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size) {
     /* Check input parameters */
     CHECK_NULL(in_out_buf);
