@@ -87,7 +87,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define FW_VERSION_AGC      5 /* Expected version of AGC firmware */
+#define FW_VERSION_AGC      6 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      2 /* Expected version of arbiter firmware */
 
 /* Useful bandwidth of SX125x radios to consider depending on channel bandwidth */
