@@ -73,6 +73,11 @@ int lgw_spi_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 int lgw_spi_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 
 /**
+@brief TODO
+*/
+int lgw_spi_rmw(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
+
+/**
 @brief LoRa concentrator SPI burst (multiple-byte) write
 @param spi_target generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address

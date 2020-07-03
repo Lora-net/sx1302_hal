@@ -23,6 +23,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>   /* C99 types*/
 
+#include "loragw_com.h"
+
 #include "config.h"   /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
@@ -35,13 +37,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
- * 
+ *
 */
 
 int lgw_usb_open(const char * com_path, void **com_target_ptr);
 
 /**
- * 
+ *
 */
 
 int lgw_usb_close(void *com_target);
@@ -65,6 +67,21 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
  *
 */
 int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+
+/**
+ *
+*/
+int lgw_usb_rmw(void *com_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
+
+/**
+ *
+ **/
+int lgw_usb_set_write_mode(lgw_com_write_mode_t write_mode);
+
+/**
+ *
+ **/
+int lgw_usb_flush(void *com_target);
 
 /**
  *

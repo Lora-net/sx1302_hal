@@ -28,6 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <errno.h>      /* Error number definitions */
 #include <termios.h>    /* POSIX terminal control definitions */
 
+#include "loragw_com.h"
 #include "loragw_usb.h"
 #include "loragw_mcu.h"
 #include "loragw_aux.h"
@@ -50,16 +51,51 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define LGW_USB_BURST_CHUNK     128
+#define LGW_USB_BURST_CHUNK     4096
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
+typedef struct spi_req_bulk_s {
+    uint16_t size;
+    uint8_t nb_req;
+    uint8_t buffer[LGW_USB_BURST_CHUNK];
+} spi_req_bulk_t;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES  --------------------------------------------------- */
 
+static lgw_com_write_mode_t _lgw_write_mode = LGW_COM_WRITE_MODE_SINGLE;
+
+static spi_req_bulk_t spi_bulk_buffer = {
+    .size = 0,
+    .nb_req = 0,
+    .buffer = { 0 }
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+int spi_req_bulk_insert(spi_req_bulk_t * bulk_buffer, uint8_t * req, uint16_t req_size) {
+    if (bulk_buffer->nb_req == 255) {
+        printf("ERROR: cannot insert a new SPI request in bulk buffer - too many requests\n");
+        return -1;
+    }
+
+    if ((bulk_buffer->size + req_size) > LGW_USB_BURST_CHUNK) {
+        printf("ERROR: cannot insert a new SPI request in bulk buffer - buffer full\n");
+        return -1;
+    }
+
+    memcpy(bulk_buffer->buffer + bulk_buffer->size, req, req_size);
+
+    bulk_buffer->nb_req += 1;
+    bulk_buffer->size += req_size;
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int set_interface_attribs_linux(int fd, int speed) {
     struct termios tty;
@@ -256,23 +292,45 @@ int lgw_usb_close(void *com_target) {
 
 /* Simple write */
 int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
+    return lgw_usb_wb(com_target, spi_mux_target, address, &data, 1);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+/* Simple read */
+int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
+    return lgw_usb_rb(com_target, spi_mux_target, address, data, 1);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+/* Single Byte Read-Modify-Write */
+int lgw_usb_rmw(void *com_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data) {
     int usb_device;
-    uint8_t command_size = 5;
+    uint8_t command_size = 6;
     uint8_t in_out_buf[command_size];
-    int a;
+    int a = 0;
 
     /* check input variables */
     CHECK_NULL(com_target);
 
     usb_device = *(int *)com_target;
 
+    DEBUG_PRINTF("==> RMW register @ 0x%04X, offs:%u leng:%u value:0x%02X\n", address, offs, leng, data);
+
     /* prepare frame to be sent */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
-    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
-    in_out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
-    in_out_buf[3] =        ((address >> 0) & 0xFF);
-    in_out_buf[4] = data;
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+    in_out_buf[0] = spi_bulk_buffer.nb_req; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_MODIFY_WRITE; /* Req type */
+    in_out_buf[2] = (uint8_t)(address >> 8); /* Register address MSB */
+    in_out_buf[3] = (uint8_t)(address >> 0); /* Register address LSB */
+    in_out_buf[4] = ((1 << leng) - 1) << offs; /* Register bitmask */
+    in_out_buf[5] = data << offs;
+
+    if (_lgw_write_mode == LGW_COM_WRITE_MODE_BULK) {
+        a = spi_req_bulk_insert(&spi_bulk_buffer, in_out_buf, command_size);
+    } else {
+        a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
+    }
 
     /* determine return code */
     if (a != 0) {
@@ -286,48 +344,13 @@ int lgw_usb_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple read */
-int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
-    int usb_device;
-    uint8_t command_size = 6;
-    uint8_t in_out_buf[command_size];
-    int a;
-
-    /* check input variables */
-    CHECK_NULL(com_target);
-    CHECK_NULL(data);
-
-    usb_device = *(int *)com_target;
-
-    /* prepare frame to be sent */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
-    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
-    in_out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
-    in_out_buf[3] =        ((address >> 0) & 0xFF);
-    in_out_buf[4] = 0x00;
-    in_out_buf[5] = 0x00;
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
-
-    /* determine return code */
-    if (a != 0) {
-        DEBUG_MSG("ERROR: USB READ FAILURE\n");
-        return -1;
-    } else {
-        DEBUG_MSG("Note: USB read success\n");
-        *data = in_out_buf[command_size - 1]; /* the last byte contains the register value */
-        return 0;
-    }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 /* Burst (multiple-byte) write */
 int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int usb_device;
-    uint16_t command_size = size + 4;
+    uint16_t command_size = size + 8; /* 5 bytes: REQ metadata (MCU), 3 bytes: SPI header (SX1302) */
     uint8_t in_out_buf[command_size];
     int i;
-    int a;
+    int a = 0;
 
     /* check input parameters */
     CHECK_NULL(com_target);
@@ -335,15 +358,26 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 
     usb_device = *(int *)com_target;
 
-    /* prepare command byte */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
-    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
-    in_out_buf[2] = 0x80 | ((address >> 8) & 0x7F);
-    in_out_buf[3] =        ((address >> 0) & 0xFF);
+    /* prepare command */
+    /* Request metadata */
+    in_out_buf[0] = spi_bulk_buffer.nb_req; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_WRITE; /* Req type */
+    in_out_buf[2] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[3] = (uint8_t)((size + 3) >> 8); /* payload size + spi_mux_target + address */
+    in_out_buf[4] = (uint8_t)((size + 3) >> 0); /* payload size + spi_mux_target + address */
+    /* RAW SPI frame */
+    in_out_buf[5] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
+    in_out_buf[6] = 0x80 | ((address >> 8) & 0x7F);
+    in_out_buf[7] =        ((address >> 0) & 0xFF);
     for (i = 0; i < size; i++) {
-        in_out_buf[i + 4] = data[i];
+        in_out_buf[i + 8] = data[i];
     }
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+
+    if (_lgw_write_mode == LGW_COM_WRITE_MODE_BULK) {
+        a = spi_req_bulk_insert(&spi_bulk_buffer, in_out_buf, command_size);
+    } else {
+        a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
+    }
 
     /* determine return code */
     if (a != 0) {
@@ -360,10 +394,10 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
 /* Burst (multiple-byte) read */
 int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
     int usb_device;
-    uint16_t command_size = size + 5;
+    uint16_t command_size = size + 9;  /* 5 bytes: REQ metadata (MCU), 3 bytes: SPI header (SX1302), 1 byte: dummy*/
     uint8_t in_out_buf[command_size];
     int i;
-    int a;
+    int a = 0;
 
     /* check input parameters */
     CHECK_NULL(com_target);
@@ -371,17 +405,29 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
 
     usb_device = *(int *)com_target;
 
-    /* prepare command byte */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
-    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
-    in_out_buf[2] = 0x00 | ((address >> 8) & 0x7F);
-    in_out_buf[3] =        ((address >> 0) & 0xFF);
-    in_out_buf[4] = 0x00;
+    /* prepare command */
+    /* Request metadata */
+    in_out_buf[0] = spi_bulk_buffer.nb_req; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_WRITE; /* Req type */
+    in_out_buf[2] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[3] = (uint8_t)((size + 4) >> 8); /* payload size + spi_mux_target + address + dummy byte */
+    in_out_buf[4] = (uint8_t)((size + 4) >> 0); /* payload size + spi_mux_target + address + dummy byte */
+    /* RAW SPI frame */
+    in_out_buf[5] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
+    in_out_buf[6] = 0x00 | ((address >> 8) & 0x7F);
+    in_out_buf[7] =        ((address >> 0) & 0xFF);
+    in_out_buf[8] = 0x00; /* dummy byte */
     for (i = 0; i < size; i++) {
-        in_out_buf[i + 5] = 0;
+        in_out_buf[i + 9] = data[i];
     }
 
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+    if (_lgw_write_mode == LGW_COM_WRITE_MODE_BULK) {
+        /* makes no sense to read in bulk mode, as we can't get the result */
+        printf("ERROR: USB READ BURST FAILURE - bulk mode is enabled\n");
+        return -1;
+    } else {
+        a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
+    }
 
     /* determine return code */
     if (a != 0) {
@@ -389,9 +435,56 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
         return -1;
     } else {
         DEBUG_MSG("Note: USB read burst success\n");
-        memcpy(data, in_out_buf + 5, size); /* remove the first bytes, keep only the payload */
+        memcpy(data, in_out_buf + 9, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
+    if (write_mode >= LGW_COM_WRITE_MODE_UNKNOWN) {
+        printf("ERROR: wrong write mode\n");
+        return -1;
+    }
+
+    printf("INFO: setting USB write mode to %s\n", (write_mode == LGW_COM_WRITE_MODE_SINGLE) ? "SINGLE" : "BULK");
+
+    _lgw_write_mode = write_mode;
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_usb_flush(void *com_target) {
+    int usb_device;
+    int a = 0;
+
+    /* Restore single mode after flushing */
+    _lgw_write_mode = LGW_COM_WRITE_MODE_SINGLE;
+
+    if (spi_bulk_buffer.nb_req == 0) {
+        printf("INFO: no SPI request to flush\n");
+        return 0;
+    }
+
+    /* Check input parameters */
+    CHECK_NULL(com_target);
+
+    usb_device = *(int *)com_target;
+
+    printf("INFO: flushing USB write buffer\n");
+    a = mcu_spi_bulk(usb_device, spi_bulk_buffer.buffer, spi_bulk_buffer.size);
+    if (a != 0) {
+        DEBUG_MSG("ERROR: USB WRITE FLUSH FAILURE\n");
+    }
+
+    /* reset the bluk buffer */
+    spi_bulk_buffer.nb_req = 0;
+    spi_bulk_buffer.size = 0;
+
+    return a;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

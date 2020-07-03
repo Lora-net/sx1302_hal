@@ -49,7 +49,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
     int usb_device;
-    uint8_t command_size = size + 2;
+    uint8_t command_size = size + 6; /* 5 bytes: REQ metadata, 1 byte: op_code */
     uint8_t in_out_buf[command_size];
     int a;
     int i;
@@ -63,13 +63,19 @@ int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
     /* wait BUSY */
     wait_ms(WAIT_BUSY_SX1261_MS);
 
-    /* prepare frame to be sent */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1261; /* MCU -> SX1261 */
-    in_out_buf[1] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        in_out_buf[2 + i] = data[i];
+    /* prepare command */
+    /* Request metadata */
+    in_out_buf[0] = 0; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_WRITE; /* Req type */
+    in_out_buf[2] = MCU_SPI_TARGET_SX1261; /* MCU -> SX1302 */
+    in_out_buf[3] = (uint8_t)((size + 1) >> 8); /* payload size + op_code */
+    in_out_buf[4] = (uint8_t)((size + 1) >> 0); /* payload size + op_code */
+    /* RAW SPI frame */
+    in_out_buf[5] = (uint8_t)op_code;
+    for (i = 0; i < size; i++) {
+        in_out_buf[i + 6] = data[i];
     }
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+    a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -85,7 +91,7 @@ int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
 
 int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
     int usb_device;
-    uint8_t command_size = size + 2;
+    uint8_t command_size = size + 6; /* 5 bytes: REQ metadata, 1 byte: op_code */
     uint8_t in_out_buf[command_size];
     int a;
     int i;
@@ -99,21 +105,27 @@ int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
     /* wait BUSY */
     wait_ms(WAIT_BUSY_SX1261_MS);
 
-    /* prepare frame to be sent */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1261; /* MCU -> SX1261 */
-    in_out_buf[1] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        in_out_buf[2 + i] = data[i];
+    /* prepare command */
+    /* Request metadata */
+    in_out_buf[0] = 0; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_WRITE; /* Req type */
+    in_out_buf[2] = MCU_SPI_TARGET_SX1261; /* MCU -> SX1302 */
+    in_out_buf[3] = (uint8_t)((size + 1) >> 8); /* payload size + op_code */
+    in_out_buf[4] = (uint8_t)((size + 1) >> 0); /* payload size + op_code */
+    /* RAW SPI frame */
+    in_out_buf[5] = (uint8_t)op_code;
+    for (i = 0; i < size; i++) {
+        in_out_buf[i + 6] = data[i];
     }
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+    a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
-        DEBUG_MSG("ERROR: USB SX1261 READ FAILURE\n");
+        DEBUG_MSG("ERROR: USB SX1261 WRITE FAILURE\n");
         return -1;
     } else {
-        DEBUG_MSG("Note: USB SX1261 read success\n");
-        memcpy(data, in_out_buf + 2, size); /* remove the first bytes, keep only the payload */
+        DEBUG_MSG("Note: USB SX1261 write success\n");
+        memcpy(data, in_out_buf + 6, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
 }

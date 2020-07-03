@@ -117,6 +117,12 @@ typedef enum
 
 typedef enum
 {
+    MCU_SPI_REQ_TYPE_READ_WRITE         = 0x01, /* Read/Write SPI request */
+    MCU_SPI_REQ_TYPE_READ_MODIFY_WRITE  = 0x02  /* Read-Modify-Write SPI request */
+} e_cmd_spi_req_type;
+
+typedef enum
+{
     RESET_TYPE__GTW
 }e_reset_type;
 
@@ -165,6 +171,11 @@ answer when the function exits.
 @return 0 for SUCCESS, -1 for failure
 */
 int mcu_spi_access(int fd, uint8_t * in_out_buf, size_t buf_size);
+
+/**
+ *
+*/
+int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size);
 
 #endif
 

@@ -44,20 +44,23 @@ typedef enum com_type_e {
     LGW_COM_UNKNOWN
 } lgw_com_type_t;
 
+typedef enum com_write_mode_e {
+    LGW_COM_WRITE_MODE_SINGLE,
+    LGW_COM_WRITE_MODE_BULK,
+    LGW_COM_WRITE_MODE_UNKNOWN
+} lgw_com_write_mode_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
- * 
+ *
 */
-
 int lgw_com_open(lgw_com_type_t com_type, const char *com_path);
 
 /**
- * 
+ *
 */
-
 int lgw_com_close(void);
 
 /**
@@ -73,12 +76,27 @@ int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 /**
  *
 */
+int lgw_com_rmw(uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
+
+/**
+ *
+*/
 int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
  *
 */
 int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+
+/**
+ *
+*/
+int lgw_com_set_write_mode(lgw_com_write_mode_t write_mode);
+
+/**
+ *
+*/
+int lgw_com_flush(void);
 
 /**
  *

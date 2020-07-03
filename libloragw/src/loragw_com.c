@@ -196,6 +196,38 @@ int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_com_rmw(uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data) {
+    int com_stat;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
+
+    /* Check input parameters */
+    CHECK_NULL(_lgw_com_target);
+
+    switch (_lgw_com_type) {
+        case LGW_COM_SPI:
+            com_stat = lgw_spi_rmw(_lgw_com_target, spi_mux_target, address, offs, leng, data);
+            break;
+        case LGW_COM_USB:
+            com_stat = lgw_usb_rmw(_lgw_com_target, address, offs, leng, data);
+            break;
+        default:
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+            com_stat = LGW_COM_ERROR;
+            break;
+    }
+
+    /* Compute time spent in this function */
+    _meas_time_stop(2, tm, __FUNCTION__);
+
+    return com_stat;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* Burst (multiple-byte) write */
 int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int com_stat;
@@ -258,6 +290,48 @@ int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t
 
     /* Compute time spent in this function */
     _meas_time_stop(2, tm, __FUNCTION__);
+
+    return com_stat;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_com_set_write_mode(lgw_com_write_mode_t write_mode) {
+    int com_stat = LGW_COM_SUCCESS;
+
+    switch (_lgw_com_type) {
+        case LGW_COM_SPI:
+            /* Do nothing: only single mode is supported on SPI */
+            break;
+        case LGW_COM_USB:
+            com_stat = lgw_usb_set_write_mode(write_mode);
+            break;
+        default:
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+            com_stat = LGW_COM_ERROR;
+            break;
+    }
+
+    return com_stat;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_com_flush(void) {
+    int com_stat = LGW_COM_SUCCESS;
+
+    switch (_lgw_com_type) {
+        case LGW_COM_SPI:
+            /* Do nothing: only single mode is supported on SPI */
+            break;
+        case LGW_COM_USB:
+            com_stat = lgw_usb_flush(_lgw_com_target);
+            break;
+        default:
+            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+            com_stat = LGW_COM_ERROR;
+            break;
+    }
 
     return com_stat;
 }

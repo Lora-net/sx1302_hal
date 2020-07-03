@@ -428,6 +428,75 @@ int decode_ack_spi_access(const uint8_t * hdr, const uint8_t * payload) {
     return 0;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int decode_ack_spi_bulk(const uint8_t * hdr, const uint8_t * payload) {
+    uint8_t req_id, req_type, req_status;
+    uint16_t frame_size;
+    int i;
+
+    /* sanity checks */
+    if ((hdr == NULL) || (payload == NULL)) {
+        printf("ERROR: invalid parameter\n");
+        return -1;
+    }
+
+    if (cmd_get_type(hdr) != ORDER_ID__ACK_MULTIPLE_SPI) {
+        printf("ERROR: wrong ACK type for ACK_MULTIPLE_SPI (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_MULTIPLE_SPI, cmd_get_type(hdr));
+        return -1;
+    }
+
+#if DEBUG_VERBOSE
+    DEBUG_MSG   ("## ACK_SPI_BULK\n");
+    DEBUG_PRINTF("   id:           0x%02X\n", cmd_get_id(hdr));
+    DEBUG_PRINTF("   size:         %u\n", cmd_get_size(hdr));
+#endif
+
+    //TODO: parse the buffer to get all ACKs in case of multiple requests
+    i = 0;
+    while (i < cmd_get_size(hdr)) {
+        /* parse the request */
+        req_id      = payload[i + 0];
+        req_type    = payload[i + 1];
+        if (req_type != MCU_SPI_REQ_TYPE_READ_WRITE && req_type != MCU_SPI_REQ_TYPE_READ_MODIFY_WRITE) {
+            printf("ERROR: %s: wrong type for SPI request %u (0x%02X)\n", __FUNCTION__, req_id, req_type);
+            return -1;
+        }
+        req_status  = payload[i + 2];
+        if (req_status != 0) {
+            /* Exit if any of the requests failed */
+            printf("ERROR: %s: SPI request %u failed with %u\n", __FUNCTION__, req_id, req_status);
+            return -1;
+        }
+#if DEBUG_VERBOSE
+        DEBUG_PRINTF("   ----- REQ_SPI %u -----\n", req_id);
+        DEBUG_PRINTF("   type %s\n", (req_type == MCU_SPI_REQ_TYPE_READ_WRITE) ? "read/write" : "read-modify-write");
+        DEBUG_PRINTF("   status %u\n", req_status);
+#endif
+        /* Move to the next REQ */
+        if (req_type == MCU_SPI_REQ_TYPE_READ_WRITE) {
+            frame_size = (uint16_t)(payload[i + 3] << 8) | (uint16_t)(payload[i + 4]);
+#if DEBUG_VERBOSE
+            int j;
+            DEBUG_PRINTF("   RAW SPI frame (sz:%u): ", frame_size);
+            for (j = 0; j < frame_size; j++) {
+                DEBUG_PRINTF(" %02X", payload[i + 5 + j]);
+            }
+            DEBUG_MSG("\n");
+#endif
+            i += (5 + frame_size); /* REQ ACK metadata + SPI raw frame */
+        } else {
+#if DEBUG_VERBOSE
+            DEBUG_PRINTF("   read value     0x%02X\n", payload[i + 3]);
+            DEBUG_PRINTF("   modified value 0x%02X\n", payload[i + 4]);
+#endif
+            i += 5;
+        }
+    }
+
+    return 0;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -545,6 +614,30 @@ int mcu_spi_access(int fd, uint8_t * in_out_buf, size_t buf_size) {
 
     if (decode_ack_spi_access(buf_hdr, in_out_buf) != 0) {
         printf("ERROR: invalid REQ_SPI ack\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size) {
+    /* Check input parameters */
+    CHECK_NULL(in_out_buf);
+
+    if (write_req(fd, ORDER_ID__REQ_MULTIPLE_SPI, in_out_buf, buf_size) != 0) {
+        printf("ERROR: failed to write REQ_MULTIPLE_SPI request\n");
+        return -1;
+    }
+
+    if (read_ack(fd, buf_hdr, in_out_buf, buf_size) < 0) {
+        printf("ERROR: failed to read REQ_MULTIPLE_SPI ack\n");
+        return -1;
+    }
+
+    if (decode_ack_spi_bulk(buf_hdr, in_out_buf) != 0) {
+        printf("ERROR: invalid REQ_MULTIPLE_SPI ack\n");
         return -1;
     }
 

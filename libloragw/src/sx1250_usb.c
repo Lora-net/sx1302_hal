@@ -49,7 +49,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
     int usb_device;
-    uint8_t command_size = size + 3;
+    uint8_t command_size = size + 7; /* 5 bytes: REQ metadata, 2 bytes: RAW SPI frame */
     uint8_t in_out_buf[command_size];
     int a;
     int i;
@@ -63,14 +63,20 @@ int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
     /* wait BUSY */
     wait_ms(WAIT_BUSY_SX1250_MS);
 
-    /* prepare frame to be sent */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
-    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
-    in_out_buf[2] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        in_out_buf[3 + i] = data[i];
+    /* prepare command */
+    /* Request metadata */
+    in_out_buf[0] = 0; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_WRITE; /* Req type */
+    in_out_buf[2] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[3] = (uint8_t)((size + 2) >> 8); /* payload size + spi_mux_target + op_code */
+    in_out_buf[4] = (uint8_t)((size + 2) >> 0); /* payload size + spi_mux_target + op_code */
+    /* RAW SPI frame */
+    in_out_buf[5] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
+    in_out_buf[6] = (uint8_t)op_code;
+    for (i = 0; i < size; i++) {
+        in_out_buf[i + 7] = data[i];
     }
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+    a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -86,7 +92,7 @@ int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
 
 int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
     int usb_device;
-    uint8_t command_size = size + 3;
+    uint8_t command_size = size + 7; /* 5 bytes: REQ metadata, 2 bytes: RAW SPI frame */
     uint8_t in_out_buf[command_size];
     int a;
     int i;
@@ -100,14 +106,20 @@ int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
     /* wait BUSY */
     wait_ms(WAIT_BUSY_SX1250_MS);
 
-    /* prepare frame to be sent */
-    in_out_buf[0] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
-    in_out_buf[1] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
-    in_out_buf[2] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        in_out_buf[3 + i] = data[i];
+    /* prepare command */
+    /* Request metadata */
+    in_out_buf[0] = 0; /* Req ID */
+    in_out_buf[1] = MCU_SPI_REQ_TYPE_READ_WRITE; /* Req type */
+    in_out_buf[2] = MCU_SPI_TARGET_SX1302; /* MCU -> SX1302 */
+    in_out_buf[3] = (uint8_t)((size + 2) >> 8); /* payload size + spi_mux_target + op_code */
+    in_out_buf[4] = (uint8_t)((size + 2) >> 0); /* payload size + spi_mux_target + op_code */
+    /* RAW SPI frame */
+    in_out_buf[5] = spi_mux_target; /* SX1302 -> RADIO_A or RADIO_B */
+    in_out_buf[6] = (uint8_t)op_code;
+    for (i = 0; i < size; i++) {
+        in_out_buf[i + 7] = data[i];
     }
-    a = mcu_spi_access(usb_device, in_out_buf, command_size);
+    a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -115,7 +127,7 @@ int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
         return -1;
     } else {
         DEBUG_MSG("Note: USB SX1250 read success\n");
-        memcpy(data, in_out_buf + 3, size); /* remove the first bytes, keep only the payload */
+        memcpy(data, in_out_buf + 7, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
 }

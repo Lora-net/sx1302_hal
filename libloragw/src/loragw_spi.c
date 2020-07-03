@@ -243,6 +243,27 @@ int lgw_spi_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+/* Single Byte Read-Modify-Write */
+int lgw_spi_rmw(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data) {
+    int spi_stat = LGW_SPI_SUCCESS;
+    uint8_t buf[4] = "\x00\x00\x00\x00";
+
+    /* Read */
+    spi_stat += lgw_spi_r(com_target, spi_mux_target, address, &buf[0]);
+
+    /* Modify */
+    buf[1] = ((1 << leng) - 1) << offs; /* bit mask */
+    buf[2] = ((uint8_t)data) << offs; /* new data offsetted */
+    buf[3] = (~buf[1] & buf[0]) | (buf[1] & buf[2]); /* mixing old & new data */
+
+    /* Write */
+    spi_stat += lgw_spi_w(com_target, spi_mux_target, address, buf[3]);
+
+    return spi_stat;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* Burst (multiple-byte) write */
 int lgw_spi_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
     int spi_device;
