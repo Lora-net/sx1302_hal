@@ -39,6 +39,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
+#define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -180,6 +182,12 @@ int main(int argc, char ** argv)
 
     /* databuffer R/W stress test */
     while ((quit_sig != 1) && (exit_sig != 1)) {
+        /*************************************************
+         *
+         *      WRITE BURST TEST
+         *
+         * ***********************************************/
+
         size = rand() % max_buff_size;
         for (i = 0; i < size; ++i) {
             test_buff[i] = rand() & 0xFF;
@@ -225,6 +233,127 @@ int main(int argc, char ** argv)
             exit_failure();
         } else {
             printf("did a %i-byte R/W on a data buffer with no error\n", size);
+            ++cycle_number;
+        }
+
+        /*************************************************
+         *
+         *      WRITE SINGLE BYTE TEST
+         *
+         * ***********************************************/
+
+        /* Single byte r/w test */
+        printf("Cycle %i> ", cycle_number);
+
+        test_buff[0] = rand() & 0xFF;
+
+        /* Write single byte */
+        x = lgw_com_w(LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff[0]);
+        if (x != 0) {
+            printf("ERROR (%d): failed to write burst\n", __LINE__);
+            exit_failure();
+        }
+
+        /* Read back */
+        x = lgw_com_r(LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, &read_buff[0]);
+        if (x != 0) {
+            printf("ERROR (%d): failed to read burst\n", __LINE__);
+            exit_failure();
+        }
+
+        /* Compare read / write bytes */
+        if (test_buff[0] != read_buff[0]) {
+            printf("error during the byte comparison\n");
+
+            /* Print what has been written */
+            printf("Written value: %02X\n", test_buff[0]);
+
+            /* Print what has been read back */
+            printf("Read values: %02X\n", read_buff[0]);
+
+            /* exit */
+            exit_failure();
+        } else {
+            printf("did a 1-byte R/W on a data buffer with no error\n");
+            ++cycle_number;
+        }
+
+        /*************************************************
+         *
+         *      WRITE WITH BULK (USB only mode)
+         *
+         * ***********************************************/
+        x = lgw_com_set_write_mode(LGW_COM_WRITE_MODE_BULK);
+        if (x != 0) {
+            printf("ERROR (%d): failed to set bulk write mode\n", __LINE__);
+            exit_failure();
+        }
+
+        uint16_t num_req = RAND_RANGE(1, 254); /* keep one req for remaining bytes */
+        size = RAND_RANGE(num_req, max_buff_size / 2); /* TODO: test proper limit */
+        for (i = 0; i < size; i++) {
+            test_buff[i] = rand() & 0xFF;
+        }
+        uint16_t size_per_req = size / num_req;
+        uint16_t size_remaining = size - (num_req * size_per_req);
+        printf("Cycle %i> ", cycle_number);
+
+        uint16_t size_written = 0;
+        for (i = 0; i < num_req; i++) {
+            x = lgw_com_wb(LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM + size_written, test_buff + size_written, size_per_req);
+            if (x != 0) {
+                printf("ERROR (%d): failed to write burst\n", __LINE__);
+                exit_failure();
+            }
+            size_written += (size_per_req);
+        }
+        if (size_remaining > 0) {
+            x = lgw_com_wb(LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM + size_written, test_buff + size_written, size_remaining);
+            if (x != 0) {
+                printf("ERROR (%d): failed to write burst\n", __LINE__);
+                exit_failure();
+            }
+        }
+
+        /* Send data to MCU (UBS mode only) */
+        x = lgw_com_flush();
+        if (x != 0) {
+            printf("ERROR (%d): failed to flush write\n", __LINE__);
+            exit_failure();
+        }
+
+        /* Read back */
+        x = lgw_com_rb(LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, size);
+        if (x != 0) {
+            printf("ERROR (%d): failed to read burst\n", __LINE__);
+            exit_failure();
+        }
+
+        /* Compare read / write buffers */
+        for (i=0; ((i<size) && (test_buff[i] == read_buff[i])); ++i);
+        if (i != size) {
+            printf("error during the buffer comparison\n");
+
+            /* Print what has been written */
+            printf("Written values:\n");
+            for (i=0; i<size; ++i) {
+                printf(" %02X ", test_buff[i]);
+                if (i%16 == 15) printf("\n");
+            }
+            printf("\n");
+
+            /* Print what has been read back */
+            printf("Read values:\n");
+            for (i=0; i<size; ++i) {
+                printf(" %02X ", read_buff[i]);
+                if (i%16 == 15) printf("\n");
+            }
+            printf("\n");
+
+            /* exit */
+            exit_failure();
+        } else {
+            printf("did a %i-byte bulk R/W on a data buffer with no error\n", size);
             ++cycle_number;
         }
     }
