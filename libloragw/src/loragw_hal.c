@@ -1039,13 +1039,13 @@ int lgw_start(void) {
             return LGW_HAL_ERROR;
         }
 
-        err = sx1261_calibrate(867100000); /* TODO: need to set a frequency here */
+        err = sx1261_calibrate(CONTEXT_RF_CHAIN[0].freq_hz);
         if (err != LGW_REG_SUCCESS) {
             printf("ERROR: failed to calibrate sx1261 radio\n");
             return LGW_HAL_ERROR;
         }
 
-        err = sx1261_setup(867100000); /* TODO: need to set a frequency here */
+        err = sx1261_setup(CONTEXT_RF_CHAIN[0].freq_hz);
         if (err != LGW_REG_SUCCESS) {
             printf("ERROR: failed to setup sx1261 radio\n");
             return LGW_HAL_ERROR;
