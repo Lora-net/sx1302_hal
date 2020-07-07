@@ -337,6 +337,7 @@ int sx1302_update(void) {
     /* Record function start time */
     _meas_time_start(&tm);
 
+#if 0 /* Disabled because it brings latency on USB, for low value. TODO: do this less frequently ? */
     /* Check MCUs parity errors */
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
     if (val != 0) {
@@ -348,6 +349,7 @@ int sx1302_update(void) {
         printf("ERROR: Parity error check failed on ARB firmware\n");
         return LGW_REG_ERROR;
     }
+#endif
 
     /* Update internal timestamp counter wrapping status */
     timestamp_counter_get(&counter_us, false); /* maintain inst counter */
@@ -1869,8 +1871,12 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     CHECK_NULL(context);
     CHECK_NULL(p);
 
-    /* FOR DEBUG: Print statistics of number of detects and modem allocations from ARB for configured SF (see sx1302_arb_start()) */
+#if 0
+    /* For DEBUG: WARNING: it is quite time consuming in USB mode, due to SPI over USB latency
+        Print statistics of number of detects and modem allocations from ARB for configured SF (see sx1302_arb_start())
+    */
     sx1302_arb_print_debug_stats();
+#endif
 
     /* get packet from RX buffer */
     err = rx_buffer_pop(&rx_buffer, &pkt);
