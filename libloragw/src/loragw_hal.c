@@ -1307,7 +1307,15 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     if (CONTEXT_LBT.enable == true) {
         err = lgw_lbt_tx_status(pkt_data->rf_chain, &lbt_tx_allowed);
         if (err != 0) {
-            printf("ERROR: %s: Failed to get LBT TX status\n", __FUNCTION__);
+            printf("ERROR: %s: Failed to get LBT TX status, TX aborted\n", __FUNCTION__);
+            err = sx1302_tx_abort(pkt_data->rf_chain);
+            if (err != 0) {
+                printf("ERROR: %s: Failed to abort TX\n", __FUNCTION__);
+            }
+            err = lgw_lbt_stop();
+            if (err != 0) {
+                printf("ERROR: %s: Failed to stop LBT\n", __FUNCTION__);
+            }
             return LGW_HAL_ERROR;
         }
         if (lbt_tx_allowed == true) {

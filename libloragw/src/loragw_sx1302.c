@@ -2247,7 +2247,7 @@ uint8_t sx1302_rx_status(uint8_t rf_chain) {
 
 int sx1302_tx_abort(uint8_t rf_chain) {
     int err;
-    uint8_t tx_status;
+    uint8_t tx_status = TX_STATUS_UNKNOWN;
 
     err  = lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_IMMEDIATE(rf_chain), 0x00);
     err |= lgw_reg_w(SX1302_REG_TX_TOP_TX_TRIG_TX_TRIG_DELAYED(rf_chain), 0x00);
@@ -2259,7 +2259,11 @@ int sx1302_tx_abort(uint8_t rf_chain) {
 
     do {
         wait_ms(1);
-    } while ((tx_status = sx1302_tx_status(rf_chain)) != TX_FREE && tx_status != TX_STATUS_UNKNOWN);
+        tx_status = sx1302_tx_status(rf_chain);
+        /* TODO: add timeout */
+    } while (tx_status != TX_FREE);
+
+    printf("==> TX ABORTED\n");
 
     return LGW_REG_SUCCESS;
 }

@@ -136,6 +136,7 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
     int err;
     uint8_t status;
     bool tx_timeout = false;
+    struct timeval tm_start;
     /* performances variables */
     struct timeval tm;
 
@@ -145,6 +146,7 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
     /* Wait for transmit to be initiated */
     /* Bit 0 in status: TX has been initiated on Radio A */
     /* Bit 1 in status: TX has been initiated on Radio B */
+    timeout_start(&tm_start);
     do {
         err = sx1302_agc_status(&status);
         if (err != 0) {
@@ -152,16 +154,23 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
             return -1;
         }
         wait_ms(1);
+        if (timeout_check(tm_start, 500) != 0) {
+            printf("ERROR: %s: TIMEOUT on TX start, not started\n", __FUNCTION__);
+            tx_timeout = true;
+            /* we'll still perform the AGC clean status and return an error to upper layer */
+            break;
+        }
     } while ((status & (1 << rf_chain)) == 0x00);
-    printf("==> AGC_STATUS 0x%02X\n", status);
 
-    /* Check if the packet has been transmitted or blocked by LBT */
-    /* Bit 6 in status: Radio A is not allowed to transmit */
-    /* Bit 7 in status: Radio B is not allowed to transmit */
-    if (TAKE_N_BITS_FROM(status, ((rf_chain == 0) ? 6 : 7), 1) == 0) {
-        *tx_ok = true;
-    } else {
-        *tx_ok = false;
+    if (tx_timeout == false) {
+        /* Check if the packet has been transmitted or blocked by LBT */
+        /* Bit 6 in status: Radio A is not allowed to transmit */
+        /* Bit 7 in status: Radio B is not allowed to transmit */
+        if (TAKE_N_BITS_FROM(status, ((rf_chain == 0) ? 6 : 7), 1) == 0) {
+            *tx_ok = true;
+        } else {
+            *tx_ok = false;
+        }
     }
 
     /* Clear AGC transmit status */
@@ -175,7 +184,7 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
             return -1;
         }
         wait_ms(1);
-        printf("==> AGC_STATUS 0x%02X\n", status);
+        /* TODO: add timeout */
     } while (status != 0x00);
 
     /* Acknoledge */
