@@ -180,6 +180,23 @@ uint8_t cmd_get_type(const uint8_t * bytes) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+const char * spi_status_get_str(const uint8_t status) {
+    switch (status) {
+        case SPI_STATUS_OK:
+            return "SPI_STATUS_OK";
+        case SPI_STATUS_FAIL:
+            return "SPI_STATUS_FAIL";
+        case SPI_STATUS_WRONG_PARAM:
+            return "SPI_STATUS_WRONG_PARAM";
+        case SPI_STATUS_TIMEOUT:
+            return "SPI_STATUS_TIMEOUT";
+        default:
+            return "SPI_STATUS_UNKNOWN";
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int write_req(int fd, order_id_t cmd, const uint8_t * payload, uint16_t payload_size ) {
     uint8_t buf_w[HEADER_CMD_SIZE];
     int n;
@@ -503,7 +520,7 @@ int decode_ack_spi_bulk(const uint8_t * hdr, const uint8_t * payload) {
         req_status  = payload[i + 2];
         if (req_status != 0) {
             /* Exit if any of the requests failed */
-            printf("ERROR: %s: SPI request %u failed with %u\n", __FUNCTION__, req_id, req_status);
+            printf("ERROR: %s: SPI request %u failed with %u - %s\n", __FUNCTION__, req_id, req_status, spi_status_get_str(req_status));
             return -1;
         }
 #if DEBUG_VERBOSE

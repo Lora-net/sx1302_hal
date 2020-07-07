@@ -28,7 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-static const char mcu_version_string[] = "00.02.04";
+static const char mcu_version_string[] = "00.02.05";
 
 #define MAX_SIZE_COMMAND ( 4200 )
 #define MAX_SPI_COMMAND ( MAX_SIZE_COMMAND - CMD_OFFSET__DATA - 1 )
@@ -66,13 +66,13 @@ typedef enum
     CMD_OFFSET__SIZE_LSB,
     CMD_OFFSET__CMD,
     CMD_OFFSET__DATA
-}e_cmd_order_offset;
+} e_cmd_order_offset;
 
 typedef enum
 {
     REQ_RESET__TYPE,
     REQ_RESET_SIZE
-}e_cmd_offset_req_reset;
+} e_cmd_offset_req_reset;
 
 typedef enum
 {
@@ -80,7 +80,7 @@ typedef enum
     REQ_WRITE_GPIO__PIN,
     REQ_WRITE_GPIO__STATE,
     REQ_WRITE_GPIO_SIZE
-}e_cmd_offset_req_write_gpio;
+} e_cmd_offset_req_write_gpio;
 
 typedef enum
 {
@@ -90,26 +90,26 @@ typedef enum
     ACK_PING__VERSION_0,    ACK_PING__VERSION_1,    ACK_PING__VERSION_2,    ACK_PING__VERSION_3,    ACK_PING__VERSION_4,
     ACK_PING__VERSION_5,    ACK_PING__VERSION_6,    ACK_PING__VERSION_7,    ACK_PING__VERSION_8,
     ACK_PING_SIZE,
-}e_cmd_offset_ack_ping;
+} e_cmd_offset_ack_ping;
 
 typedef enum
 {
     ACK_GET_STATUS__SYSTEM_TIME_31_24,      ACK_GET_STATUS__SYSTEM_TIME_23_16,      ACK_GET_STATUS__SYSTEM_TIME_15_8,   ACK_GET_STATUS__SYSTEM_TIME_7_0,
     ACK_GET_STATUS__TEMPERATURE_15_8,       ACK_GET_STATUS__TEMPERATURE_7_0,
     ACK_GET_STATUS_SIZE
-}e_cmd_offset_ack_get_status;
+} e_cmd_offset_ack_get_status;
 
 typedef enum
 {
     ACK_GPIO_WRITE__STATUS,
     ACK_GPIO_WRITE_SIZE
-}e_cmd_offset_ack_gpio_write;
+} e_cmd_offset_ack_gpio_write;
 
 typedef enum
 {
     ACK_RESET__STATUS,
     ACK_RESET_SIZE
-}e_cmd_offset_ack_reset;
+} e_cmd_offset_ack_reset;
 
 typedef enum
 {
@@ -126,7 +126,15 @@ typedef enum
 typedef enum
 {
     RESET_TYPE__GTW
-}e_reset_type;
+} e_reset_type;
+
+typedef enum
+{
+    SPI_STATUS_OK,
+    SPI_STATUS_FAIL,
+    SPI_STATUS_WRONG_PARAM,
+    SPI_STATUS_TIMEOUT
+} e_spi_status;
 
 typedef struct {
     uint32_t unique_id_high;
