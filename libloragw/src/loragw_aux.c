@@ -168,17 +168,17 @@ uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 void _meas_time_start(struct timeval *tm)
 {
-#if (DEBUG_PERF > 0) && (DEBUG_PERF <= 4)
+#if (DEBUG_PERF > 0) && (DEBUG_PERF <= 5)
     gettimeofday(tm, NULL);
 #endif
 }
 
 void _meas_time_stop(int debug_level, struct timeval start_time, const char *str)
 {
-#if (DEBUG_PERF > 0) && (DEBUG_PERF <= 4)
+#if (DEBUG_PERF > 0) && (DEBUG_PERF <= 5)
     struct timeval tm;
     double time_ms;
-    char *indent[] = { "", " ..", " ....", " ......" };
+    char *indent[] = { "", " ..", " ....", " ......", " ........" };
 
     gettimeofday(&tm, NULL);
 
