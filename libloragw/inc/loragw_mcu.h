@@ -33,6 +33,8 @@ static const char mcu_version_string[] = "00.02.04";
 #define MAX_SIZE_COMMAND ( 4200 )
 #define MAX_SPI_COMMAND ( MAX_SIZE_COMMAND - CMD_OFFSET__DATA - 1 )
 
+#define LGW_USB_BURST_CHUNK ( 4096 )
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -170,7 +172,17 @@ SPI answer when the function exits.
 @param buf_size The size of the given input/output buffer
 @return 0 for SUCCESS, -1 for failure
 */
-int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size);
+int mcu_spi_write(int fd, uint8_t * in_out_buf, size_t buf_size);
+
+/**
+ *
+*/
+int mcu_spi_store(uint8_t * in_out_buf, size_t buf_size);
+
+/**
+ *
+*/
+int mcu_spi_flush(int fd);
 
 #endif
 

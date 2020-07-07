@@ -1033,7 +1033,7 @@ int lgw_start(void) {
 
     /* Connect to the external sx1261 for LBT or Spectral Scan */
     if (CONTEXT_LBT.enable == true) { /* TODO: add an option for Spectral Scan ? */
-        err = sx1261_connect((CONTEXT_COM_TYPE == LGW_COM_SPI) ? "/dev/spidev0.1" : NULL);
+        err = sx1261_connect(CONTEXT_COM_TYPE, (CONTEXT_COM_TYPE == LGW_COM_SPI) ? "/dev/spidev0.1" : NULL); /* TODO: take com_path from CONTEXT */
         if (err != LGW_REG_SUCCESS) {
             printf("ERROR: failed to connect to the sx1261 radio (LBT/Spectral Scan)\n");
             return LGW_HAL_ERROR;

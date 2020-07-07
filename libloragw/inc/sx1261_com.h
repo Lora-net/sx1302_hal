@@ -38,8 +38,35 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx1261_com_w(lgw_com_type_t com_type, void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1261_com_r(lgw_com_type_t com_type, void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+/**
+ *
+*/
+int sx1261_com_open(lgw_com_type_t com_type, const char *com_path);
+
+/**
+ *
+*/
+int sx1261_com_close(void);
+
+/**
+ *
+*/
+int sx1261_com_w(sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+
+/**
+ *
+*/
+int sx1261_com_r(sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+
+/**
+ *
+*/
+int sx1261_com_set_write_mode(lgw_com_write_mode_t write_mode);
+
+/**
+ *
+*/
+int sx1261_com_flush(void);
 
 #endif
 

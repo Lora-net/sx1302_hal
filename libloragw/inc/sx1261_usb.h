@@ -22,6 +22,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types*/
 
+#include "loragw_com.h"
 #include "sx1261_defs.h"
 
 #include "config.h"     /* library configuration options (dynamically generated) */
@@ -38,8 +39,25 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
+/**
+ *
+ **/
 int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+
+/**
+ *
+ **/
 int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+
+/**
+ *
+ **/
+int sx1261_usb_set_write_mode(lgw_com_write_mode_t write_mode);
+
+/**
+ *
+ **/
+int sx1261_usb_flush(void *com_target);
 
 #endif
 

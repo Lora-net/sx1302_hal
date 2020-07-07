@@ -59,6 +59,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
+typedef struct spi_req_bulk_s {
+    uint16_t size;
+    uint8_t nb_req;
+    uint8_t buffer[LGW_USB_BURST_CHUNK];
+} spi_req_bulk_t;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES  --------------------------------------------------- */
 
@@ -66,8 +72,40 @@ static uint8_t buf_hdr[HEADER_CMD_SIZE];
 static uint8_t buf_req[WRITE_SIZE_MAX];
 static uint8_t buf_ack[READ_SIZE_MAX];
 
+static spi_req_bulk_t spi_bulk_buffer = {
+    .size = 0,
+    .nb_req = 0,
+    .buffer = { 0 }
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+int spi_req_bulk_insert(spi_req_bulk_t * bulk_buffer, uint8_t * req, uint16_t req_size) {
+    /* Check input parameters */
+    CHECK_NULL(bulk_buffer);
+    CHECK_NULL(req);
+
+    if (bulk_buffer->nb_req == 255) {
+        printf("ERROR: cannot insert a new SPI request in bulk buffer - too many requests\n");
+        return -1;
+    }
+
+    if ((bulk_buffer->size + req_size) > LGW_USB_BURST_CHUNK) {
+        printf("ERROR: cannot insert a new SPI request in bulk buffer - buffer full\n");
+        return -1;
+    }
+
+    /* Add a new request entry in storage buffer */
+    memcpy(bulk_buffer->buffer + bulk_buffer->size, req, req_size);
+
+    bulk_buffer->nb_req += 1;
+    bulk_buffer->size += req_size;
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint32_t bytes_be_to_uint32_le(const uint8_t * bytes) {
     uint32_t val = 0;
@@ -598,7 +636,7 @@ int mcu_gpio_write(int fd, uint8_t gpio_port, uint8_t gpio_id, uint8_t gpio_valu
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size) {
+int mcu_spi_write(int fd, uint8_t * in_out_buf, size_t buf_size) {
     /* Check input parameters */
     CHECK_NULL(in_out_buf);
 
@@ -616,6 +654,30 @@ int mcu_spi_bulk(int fd, uint8_t * in_out_buf, size_t buf_size) {
         printf("ERROR: invalid REQ_MULTIPLE_SPI ack\n");
         return -1;
     }
+
+    return 0;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int mcu_spi_store(uint8_t * in_out_buf, size_t buf_size) {
+    CHECK_NULL(in_out_buf);
+
+    return spi_req_bulk_insert(&spi_bulk_buffer, in_out_buf, buf_size);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int mcu_spi_flush(int fd) {
+    /* Write pending SPI requests to MCU */
+    if (mcu_spi_write(fd, spi_bulk_buffer.buffer, spi_bulk_buffer.size) != 0) {
+        printf("ERROR: %s: failed to write SPI requests to MCU\n", __FUNCTION__);
+        return -1;
+    }
+
+    /* Reset bulk storage buffer */
+    spi_bulk_buffer.nb_req = 0;
+    spi_bulk_buffer.size = 0;
 
     return 0;
 }

@@ -53,16 +53,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-/**
-@brief The current communication type in use (SPI, USB)
-*/
-static lgw_com_type_t _sx1261_com_type = LGW_COM_UNKNOWN;
-
-/**
-@brief A generic pointer to the COM device (file descriptor)
-*/
-static void* _sx1261_com_target = NULL;
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
@@ -143,50 +133,18 @@ int sx1261_check_status(uint8_t expected_status) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1261_connect(const char * spi_path) {
-    int spi_stat = LGW_REG_SUCCESS;
-
-    if (spi_path != NULL) {
-        _sx1261_com_type = LGW_COM_SPI;
-
-        /* open the SPI link */
-        spi_stat = lgw_spi_open(spi_path, &_sx1261_com_target);
-        if (spi_stat != LGW_SPI_SUCCESS) {
-            printf("ERROR CONNECTING SX1261 RADIO\n");
-            return LGW_REG_ERROR;
-        }
-
-        printf("SX1261: connected with SPI %s\n", spi_path);
-    } else {
-        _sx1261_com_type = LGW_COM_USB;
-
-        /* the USB link has already been opened (lgw_connect) */
-        _sx1261_com_target = lgw_com_target();
-        printf("SX1261: connected with USB\n");
+int sx1261_connect(lgw_com_type_t com_type, const char *com_path) {
+    if (com_type == LGW_COM_SPI && com_path == NULL) {
+        printf("ERROR: %s: unspecified COM path to connect to sx1261 radio\n", __FUNCTION__);
+        return LGW_REG_ERROR;
     }
-
-    return LGW_REG_SUCCESS;
+    return sx1261_com_open(com_type, com_path);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_disconnect(void) {
-    int spi_stat = LGW_SPI_SUCCESS;
-
-    if (_sx1261_com_type == LGW_COM_SPI) {
-        /* Close the SPI link */
-        spi_stat = lgw_spi_close(_sx1261_com_target);
-        if (spi_stat != LGW_SPI_SUCCESS) {
-            printf("ERROR DISCONNECTING SX1261 RADIO\n");
-            return LGW_REG_ERROR;
-        }
-    }
-
-    /* Reset context */
-    _sx1261_com_target = NULL;
-    _sx1261_com_type = LGW_COM_UNKNOWN;
-
-    return LGW_REG_SUCCESS;
+    return sx1261_com_close();
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -197,8 +155,7 @@ int sx1261_reg_w(sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
     /* checking input parameters */
     CHECK_NULL(data);
 
-    com_stat = sx1261_com_w(_sx1261_com_type, _sx1261_com_target, op_code, data, size);
-
+    com_stat = sx1261_com_w(op_code, data, size);
     if (com_stat != LGW_COM_SUCCESS) {
         printf("ERROR: COM ERROR DURING SX1261 RADIO REGISTER WRITE\n");
         return LGW_REG_ERROR;
@@ -215,8 +172,7 @@ int sx1261_reg_r(sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
     /* checking input parameters */
     CHECK_NULL(data);
 
-    com_stat = sx1261_com_r(_sx1261_com_type, _sx1261_com_target, op_code, data, size);
-
+    com_stat = sx1261_com_r(op_code, data, size);
     if (com_stat != LGW_COM_SUCCESS) {
         printf("ERROR: COM ERROR DURING SX1261 RADIO REGISTER READ\n");
         return LGW_REG_ERROR;

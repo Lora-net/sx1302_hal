@@ -76,7 +76,7 @@ int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
     for (i = 0; i < size; i++) {
         in_out_buf[i + 7] = data[i];
     }
-    a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
+    a = mcu_spi_write(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {
@@ -119,7 +119,7 @@ int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
     for (i = 0; i < size; i++) {
         in_out_buf[i + 7] = data[i];
     }
-    a = mcu_spi_bulk(usb_device, in_out_buf, command_size);
+    a = mcu_spi_write(usb_device, in_out_buf, command_size);
 
     /* determine return code */
     if (a != 0) {

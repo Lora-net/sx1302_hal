@@ -130,7 +130,7 @@ int main(int argc, char ** argv)
     }
 
     /* Connect to the sx1261 radio */
-    x = sx1261_connect((com_type == LGW_COM_SPI) ? SX1261_PATH_DEFAULT : NULL);
+    x = sx1261_connect(com_type, SX1261_PATH_DEFAULT);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to connect to the sx1261 using COM %s\n", com_path);
         return EXIT_FAILURE;
