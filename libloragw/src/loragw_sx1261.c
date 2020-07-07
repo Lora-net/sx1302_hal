@@ -49,6 +49,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define CHECK_ERR(a)                    if(a==-1){return LGW_REG_ERROR;}
 
+#define DEBUG_SX1261_GET_STATUS 0
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -412,8 +414,14 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     err = sx1261_reg_w(SX1261_SET_FS, buff, 0);
     CHECK_ERR(err);
 
+#if DEBUG_SX1261_GET_STATUS
     /* Check radio status */
     err = sx1261_check_status(SX1261_STATUS_MODE_FS | SX1261_STATUS_READY);
+    CHECK_ERR(err);
+#endif
+
+    /* Set SPI write bulk mode to optimize speed on USB */
+    err = sx1261_com_set_write_mode(LGW_COM_WRITE_MODE_BULK);
     CHECK_ERR(err);
 
     /* Set frequency */
@@ -482,12 +490,22 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     err = sx1261_reg_w(SX1261_SET_RX, buff, 3);
     CHECK_ERR(err);
 
-    /* Check radio status */
-    err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
-    if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
+    /* Flush write (USB BULK mode) */
+    err = sx1261_com_flush();
+    if (err != 0) {
+        printf("ERROR: %s: Failed to flush sx1261 SPI\n", __FUNCTION__);
         return -1;
     }
+
+    /* Setting back to SINGLE BULK write mode */
+    err = sx1261_com_set_write_mode(LGW_COM_WRITE_MODE_SINGLE);
+    CHECK_ERR(err);
+
+#if DEBUG_SX1261_GET_STATUS
+    /* Check radio status */
+    err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
+    CHECK_ERR(err);
+#endif
 
     printf("SX1261: RX params set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
 
