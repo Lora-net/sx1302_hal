@@ -190,4 +190,29 @@ void _meas_time_stop(int debug_level, struct timeval start_time, const char *str
 }
 #pragma GCC diagnostic pop
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void timeout_start(struct timeval * start) {
+    gettimeofday(start, NULL);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int timeout_check(struct timeval start, uint32_t timeout_ms) {
+    struct timeval tm;
+    struct timeval diff;
+    uint32_t ms;
+
+    gettimeofday(&tm, NULL);
+
+    TIMER_SUB(&tm, &start, &diff);
+
+    ms = diff.tv_sec * 1000 + diff.tv_usec / 1000;
+    if (ms >= timeout_ms) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
 /* --- EOF ------------------------------------------------------------------ */

@@ -51,7 +51,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param b [in]   struct timeval b
 @param b [out]  struct timeval resulting from (a - b)
 */
-#define TIMER_SUB( a, b, result )                                              \
+#define TIMER_SUB(a, b, result)                                                \
     do  {                                                                      \
         (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                          \
         (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                       \
@@ -104,6 +104,18 @@ void _meas_time_start(struct timeval *tm);
 @param str          string to be used for debug print
 */
 void _meas_time_stop(int debug_level, struct timeval start_time, const char *str);
+
+/**
+@brief TODO
+@param TODO
+*/
+void timeout_start(struct timeval * start);
+
+/**
+@brief TODO
+@param TODO
+*/
+int timeout_check(struct timeval start, uint32_t timeout_ms);
 
 #endif
 
