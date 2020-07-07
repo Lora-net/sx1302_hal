@@ -2122,6 +2122,7 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
     uint16_t filter_delay = 0;
     uint16_t modem_delay = 0;
     int32_t bw_hz = lgw_bw_getval(bandwidth);
+    uint8_t buff[2]; /* for 16 bits register write operation */
 
     CHECK_NULL(delay);
 
@@ -2173,10 +2174,9 @@ int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uin
 
     DEBUG_PRINTF("INFO: tx_start_delay=%u (%u, radio_bw_delay=%u, filter_delay=%u, modem_delay=%u)\n", (uint16_t)tx_start_delay, TX_START_DELAY_DEFAULT*32, radio_bw_delay, filter_delay, modem_delay);
 
-    /* Configure the SX1302 with the calculated delay */
-    err = lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 8));
-    CHECK_ERR(err);
-    err = lgw_reg_w(SX1302_REG_TX_TOP_TX_START_DELAY_LSB_TX_START_DELAY(rf_chain), (uint8_t)(tx_start_delay >> 0));
+    buff[0] = (uint8_t)(tx_start_delay >> 8);
+    buff[1] = (uint8_t)(tx_start_delay >> 0);
+    err = lgw_reg_wb(SX1302_REG_TX_TOP_TX_START_DELAY_MSB_TX_START_DELAY(rf_chain), buff, 2);
     CHECK_ERR(err);
 
     /* return tx_start_delay */
@@ -2311,6 +2311,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     uint8_t pa_en;
     uint16_t tx_start_delay;
     uint8_t chirp_lowpass = 0;
+    uint8_t buff[2]; /* for 16-bits register write operation */
     /* performances variables */
     struct timeval tm;
 
@@ -2596,9 +2597,9 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
 
             /* Set datarate */
             fsk_br_reg = 32000000 / pkt_data->datarate;
-            err = lgw_reg_w(SX1302_REG_TX_TOP_FSK_BIT_RATE_MSB_BIT_RATE(pkt_data->rf_chain), fsk_br_reg >> 8);
-            CHECK_ERR(err);
-            err = lgw_reg_w(SX1302_REG_TX_TOP_FSK_BIT_RATE_LSB_BIT_RATE(pkt_data->rf_chain), fsk_br_reg >> 0);
+            buff[0] = (uint8_t)(fsk_br_reg >> 8);
+            buff[1] = (uint8_t)(fsk_br_reg >> 0);
+            err = lgw_reg_wb(SX1302_REG_TX_TOP_FSK_BIT_RATE_MSB_BIT_RATE(pkt_data->rf_chain), buff, 2);
             CHECK_ERR(err);
 
             /* Preamble length */
@@ -2608,9 +2609,9 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
                 pkt_data->preamble = MIN_FSK_PREAMBLE;
                 DEBUG_MSG("Note: preamble length adjusted to respect minimum FSK preamble size\n");
             }
-            err = lgw_reg_w(SX1302_REG_TX_TOP_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE(pkt_data->rf_chain), (pkt_data->preamble >> 8) & 0xFF); /* MSB */
-            CHECK_ERR(err);
-            err = lgw_reg_w(SX1302_REG_TX_TOP_FSK_PREAMBLE_SIZE_LSB_PREAMBLE_SIZE(pkt_data->rf_chain), (pkt_data->preamble >> 0) & 0xFF); /* LSB */
+            buff[0] = (uint8_t)(pkt_data->preamble >> 8);
+            buff[1] = (uint8_t)(pkt_data->preamble >> 8);
+            err = lgw_reg_wb(SX1302_REG_TX_TOP_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE(pkt_data->rf_chain), buff, 2);
             CHECK_ERR(err);
 
             /* Set Payload length */
