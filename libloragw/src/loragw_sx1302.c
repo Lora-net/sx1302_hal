@@ -330,7 +330,6 @@ int sx1302_get_model_id(sx1302_model_id_t * model_id) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_update(void) {
-    int32_t val;
     /* performances variables */
     struct timeval tm;
 
@@ -338,6 +337,8 @@ int sx1302_update(void) {
     _meas_time_start(&tm);
 
 #if 0 /* Disabled because it brings latency on USB, for low value. TODO: do this less frequently ? */
+    int32_t val;
+
     /* Check MCUs parity errors */
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
     if (val != 0) {
