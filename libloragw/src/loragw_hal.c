@@ -780,6 +780,8 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 int lgw_start(void) {
     int i, err;
 
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
     if (CONTEXT_STARTED == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
@@ -1059,6 +1061,8 @@ int lgw_start(void) {
     /* set hal state */
     CONTEXT_STARTED = true;
 
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     return LGW_HAL_SUCCESS;
 }
 
@@ -1066,6 +1070,8 @@ int lgw_start(void) {
 
 int lgw_stop(void) {
     int i, err = LGW_HAL_SUCCESS;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
 
     if (CONTEXT_STARTED == false) {
         DEBUG_MSG("Note: LoRa concentrator was not started...\n");
@@ -1102,6 +1108,9 @@ int lgw_stop(void) {
     }
 
     CONTEXT_STARTED = false;
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     return err;
 }
 
@@ -1113,6 +1122,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t nb_pkt_found = 0;
     uint8_t nb_pkt_left = 0;
     float current_temperature = 0.0, rssi_temperature_offset = 0.0;
+    /* performances variables */
+    struct timeval tm;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
@@ -1128,6 +1144,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         return LGW_HAL_ERROR;
     }
     if (nb_pkt_fetched == 0) {
+        _meas_time_stop(1, tm, __FUNCTION__);
         return 0;
     }
     if (nb_pkt_fetched > max_pkt) {
@@ -1176,6 +1193,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("INFO: nb pkt found:%u (after de-duplicating)\n", nb_pkt_found);
     }
 
+    _meas_time_stop(1, tm, __FUNCTION__);
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     return nb_pkt_found;
 }
 
@@ -1184,6 +1205,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     int err;
     bool lbt_tx_allowed;
+    /* performances variables */
+    struct timeval tm;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* check if the concentrator is running */
     if (CONTEXT_STARTED == false) {
@@ -1273,6 +1301,8 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         return LGW_HAL_ERROR;
     }
 
+    _meas_time_stop(1, tm, __FUNCTION__);
+
     /* Stop Listen-Before-Talk */
     if (CONTEXT_LBT.enable == true) {
         err = lgw_lbt_tx_status(pkt_data->rf_chain, &lbt_tx_allowed);
@@ -1293,6 +1323,8 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         }
     }
 
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     if (CONTEXT_LBT.enable == true && lbt_tx_allowed == false) {
         return LGW_LBT_NOT_ALLOWED;
     } else {
@@ -1303,6 +1335,8 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
     /* check input variables */
     CHECK_NULL(code);
     if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -1328,6 +1362,8 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
         return LGW_HAL_ERROR;
     }
 
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     //DEBUG_PRINTF("INFO: STATUS %u\n", *code);
     return LGW_HAL_SUCCESS;
 }
@@ -1335,6 +1371,10 @@ int lgw_status(uint8_t rf_chain, uint8_t select, uint8_t *code) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_abort_tx(uint8_t rf_chain) {
+    int err;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
     /* check input variables */
     if (rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
@@ -1342,15 +1382,23 @@ int lgw_abort_tx(uint8_t rf_chain) {
     }
 
     /* Abort current TX */
-    return sx1302_tx_abort(rf_chain);
+    err = sx1302_tx_abort(rf_chain);
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
+    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
     CHECK_NULL(trig_cnt_us);
 
     *trig_cnt_us = sx1302_timestamp_counter(true);
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
 
     return LGW_HAL_SUCCESS;
 }
@@ -1358,9 +1406,13 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_instcnt(uint32_t* inst_cnt_us) {
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
     CHECK_NULL(inst_cnt_us);
 
     *inst_cnt_us = sx1302_timestamp_counter(false);
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
 
     return LGW_HAL_SUCCESS;
 }
@@ -1368,11 +1420,16 @@ int lgw_get_instcnt(uint32_t* inst_cnt_us) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_eui(uint64_t* eui) {
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
     CHECK_NULL(eui);
 
     if (sx1302_get_eui(eui) != LGW_REG_SUCCESS) {
         return LGW_HAL_ERROR;
     }
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     return LGW_HAL_SUCCESS;
 }
 
@@ -1380,6 +1437,8 @@ int lgw_get_eui(uint64_t* eui) {
 
 int lgw_get_temperature(float* temperature) {
     int err = LGW_HAL_ERROR;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
 
     CHECK_NULL(temperature);
 
@@ -1395,6 +1454,8 @@ int lgw_get_temperature(float* temperature) {
             break;
     }
 
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     return err;
 }
 
@@ -1409,6 +1470,8 @@ const char* lgw_version_info() {
 uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
     double t_fsk;
     uint32_t toa_ms, toa_us;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
 
     if (packet == NULL) {
         printf("ERROR: Failed to compute time on air, wrong parameter\n");
@@ -1436,13 +1499,23 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
         printf("ERROR: Cannot compute time on air for this packet, unsupported modulation (0x%02X)\n", packet->modulation);
     }
 
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
     return toa_ms;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_set_xtal_correct(bool is_valid, double xtal_correction) {
-    return set_xtal_correct(is_valid, xtal_correction);
+    int err;
+
+    DEBUG_PRINTF(" --- %s\n", "IN");
+
+    err = set_xtal_correct(is_valid, xtal_correction);
+
+    DEBUG_PRINTF(" --- %s\n", "OUT");
+
+    return err;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

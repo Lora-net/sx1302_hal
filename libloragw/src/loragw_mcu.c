@@ -195,7 +195,7 @@ int write_req(int fd, order_id_t cmd, const uint8_t * payload, uint16_t payload_
 #endif
 
     /* Compute time spent in this function */
-    _meas_time_stop(3, tm, __FUNCTION__);
+    _meas_time_stop(5, tm, __FUNCTION__);
 
     return 0;
 }
@@ -228,7 +228,7 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(3, tm, "read_ack(hdr)");
+    _meas_time_stop(5, tm, "read_ack(hdr)");
 
 #if DEBUG_VERBOSE
     printf("read_ack(hdr):");
@@ -283,7 +283,7 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(3, tm, "read_ack(payload)");
+    _meas_time_stop(5, tm, "read_ack(payload)");
 
     return nb_read;
 }

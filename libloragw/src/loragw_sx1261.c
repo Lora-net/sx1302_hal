@@ -435,6 +435,11 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     uint8_t buff[16];
     int32_t freq_reg;
     uint8_t fsk_bw_reg;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Set FS */
     sx1261_reg_w(SX1261_SET_FS, buff, 0);
@@ -517,6 +522,8 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
 
     printf("SX1261: RX params set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
 
+    _meas_time_stop(4, tm, __FUNCTION__);
+
     return LGW_REG_SUCCESS;
 }
 
@@ -527,6 +534,11 @@ int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm) {
     uint8_t buff[16];
     uint16_t nb_scan;
     uint8_t threshold_reg = -2 * threshold_dbm;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     switch (scan_time_us) {
         case LGW_LBT_SCAN_TIME_128_US:
@@ -540,12 +552,11 @@ int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm) {
             return -1;
     }
 
+#if DEBUG_SX1261_GET_STATUS
     /* Check radio status */
     err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
-    if (err != LGW_REG_SUCCESS) {
-        printf("ERROR: %s: SX1261 status error\n", __FUNCTION__);
-        return -1;
-    }
+    CHECK_ERR(err);
+#endif
 
     /* Configure LBT scan */
     buff[0] = 11; // intervall_rssi_read (10 => 7.68 usec,11 => 8.2 usec, 12 => 8.68 usec)
@@ -553,12 +564,15 @@ int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm) {
     buff[2] = (nb_scan >> 0) & 0xFF;
     buff[3] = threshold_reg;
     buff[4] = 1; // gpioId
-    sx1261_reg_w(0x9a, buff, 5);
+    err = sx1261_reg_w(0x9a, buff, 5);
+    CHECK_ERR(err);
 
     /* Wait for Scan Time before TX trigger request */
     wait_us((uint16_t)scan_time_us);
 
     printf("SX1261: LBT started: scan time = %uus, threshold = %ddBm\n", (uint16_t)scan_time_us, threshold_dbm);
+
+    _meas_time_stop(4, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 
@@ -567,15 +581,26 @@ int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_lbt_stop(void) {
+    int err;
     uint8_t buff[16];
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
+
+    printf("SX1261: stopping LBT\n");
 
     /* Disable LBT */
     buff[0] = 0x08;
     buff[1] = 0x9B;
     buff[2] = 0x00;
-    sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+    err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+    CHECK_ERR(err);
 
     printf("SX1261: LBT stopped\n");
+
+    _meas_time_stop(4, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 }

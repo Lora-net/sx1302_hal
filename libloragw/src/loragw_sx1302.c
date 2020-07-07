@@ -331,6 +331,11 @@ int sx1302_get_model_id(sx1302_model_id_t * model_id) {
 
 int sx1302_update(void) {
     int32_t val;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check MCUs parity errors */
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
@@ -347,6 +352,8 @@ int sx1302_update(void) {
     /* Update internal timestamp counter wrapping status */
     timestamp_counter_get(&counter_us, false); /* maintain inst counter */
     timestamp_counter_get(&counter_us, true); /* maintain pps counter */
+
+    _meas_time_stop(2, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 }
@@ -1812,6 +1819,10 @@ int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_cont
 
 int sx1302_fetch(uint8_t * nb_pkt) {
     int err;
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Fetch packets from sx1302 if no more left in RX buffer */
     if (rx_buffer.buffer_pkt_nb == 0) {
@@ -1835,6 +1846,8 @@ int sx1302_fetch(uint8_t * nb_pkt) {
     /* Return the number of packet fetched */
     *nb_pkt = rx_buffer.buffer_pkt_nb;
 
+    _meas_time_stop(2, tm, __FUNCTION__);
+
     return LGW_REG_SUCCESS;
 }
 
@@ -1847,6 +1860,10 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     uint8_t cr;
     int32_t timestamp_correction;
     rx_packet_t pkt;
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input params */
     CHECK_NULL(context);
@@ -2076,6 +2093,8 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
 
     /* Packet CRC status */
     p->crc = pkt.rx_crc16_value;
+
+    _meas_time_stop(2, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 }
@@ -2670,7 +2689,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     CHECK_ERR(err);
 
     /* Compute time spent in this function */
-    _meas_time_stop(1, tm, __FUNCTION__);
+    _meas_time_stop(2, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 }

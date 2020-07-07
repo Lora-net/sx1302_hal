@@ -155,7 +155,7 @@ int lgw_com_w(uint8_t spi_mux_target, uint16_t address, uint8_t data) {
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(2, tm, __FUNCTION__);
+    _meas_time_stop(5, tm, __FUNCTION__);
 
     return com_stat;
 }
@@ -189,7 +189,7 @@ int lgw_com_r(uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(2, tm, __FUNCTION__);
+    _meas_time_stop(5, tm, __FUNCTION__);
 
     return com_stat;
 }
@@ -221,7 +221,7 @@ int lgw_com_rmw(uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t 
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(2, tm, __FUNCTION__);
+    _meas_time_stop(5, tm, __FUNCTION__);
 
     return com_stat;
 }
@@ -255,7 +255,7 @@ int lgw_com_wb(uint8_t spi_mux_target, uint16_t address, const uint8_t *data, ui
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(2, tm, __FUNCTION__);
+    _meas_time_stop(5, tm, __FUNCTION__);
 
     return com_stat;
 }
@@ -289,7 +289,7 @@ int lgw_com_rb(uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t
     }
 
     /* Compute time spent in this function */
-    _meas_time_stop(2, tm, __FUNCTION__);
+    _meas_time_stop(5, tm, __FUNCTION__);
 
     return com_stat;
 }

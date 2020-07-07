@@ -86,6 +86,11 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pk
     int err;
     int lbt_channel_selected;
     uint32_t toa_ms;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check if we have a LBT channel for this transmit frequency */
     lbt_channel_selected = is_lbt_channel(lbt_context, pkt->freq_hz, pkt->bandwidth);
@@ -120,6 +125,8 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pk
         return -1;
     }
 
+    _meas_time_stop(3, tm, __FUNCTION__);
+
     return 0;
 }
 
@@ -128,6 +135,12 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pk
 int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
     int err;
     uint8_t status;
+    bool tx_timeout = false;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Wait for transmit to be initiated */
     /* Bit 0 in status: TX has been initiated on Radio A */
@@ -168,7 +181,13 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
     /* Acknoledge */
     sx1302_agc_mailbox_write(0, 0x00);
 
-    return 0;
+    _meas_time_stop(3, tm, __FUNCTION__);
+
+    if (tx_timeout == true) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -176,11 +195,19 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
 int lgw_lbt_stop(void) {
     int err;
 
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
+
     err = sx1261_lbt_stop();
     if (err != 0) {
         printf("ERROR: Cannot stop LBT - failed\n");
         return -1;
     }
+
+    _meas_time_stop(3, tm, __FUNCTION__);
 
     return 0;
 }
