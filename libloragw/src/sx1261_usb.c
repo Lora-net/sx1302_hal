@@ -42,8 +42,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define WAIT_BUSY_SX1261_MS  1
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -65,9 +63,6 @@ int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
     CHECK_NULL(data);
 
     usb_device = *(int *)com_target;
-
-    /* wait BUSY */
-    wait_ms(WAIT_BUSY_SX1261_MS);
 
     /* prepare command */
     /* Request metadata */
@@ -113,9 +108,6 @@ int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
     CHECK_NULL(data);
 
     usb_device = *(int *)com_target;
-
-    /* wait BUSY */
-    wait_ms(WAIT_BUSY_SX1261_MS);
 
     /* prepare command */
     /* Request metadata */
