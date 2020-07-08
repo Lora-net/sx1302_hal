@@ -1946,7 +1946,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
             p->status = STAT_NO_CRC;
         }
 
-#if 1
+#if 0
         /* FOR DEBUG: Check data integrity for known devices (debug context) */
         if (p->status == STAT_CRC_OK || p->status == STAT_NO_CRC) {
             /*  We compare the received payload with predefined ones to ensure that the payload content is what we expect.
@@ -2093,6 +2093,22 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
 
     /* Expand 27-bits counter to 32-bits counter, based on current wrapping status (updated after fetch) */
     p->count_us = timestamp_pkt_expand(&counter_us, p->count_us);
+
+
+#if 0 // debug code to check for failed submicros/micros handling
+    {
+        static uint32_t last_valid = 0;
+        static uint32_t last_us32 = 0;
+        int32_t diff = p->count_us - last_us32;
+        printf("XXXXXXXXXXXXXXXX pkt=%u last=%u diff=%08X/%d\n", p->count_us, last_us32, diff, diff);
+        if( last_valid && diff > 30000000 ) {
+            printf("XXXXXXXXXXXXXXXX ERROR jump ahead count_us\n");
+            exit(1);
+        }
+        last_us32 = p->count_us;
+        last_valid = 1;
+    }
+#endif
 
     /* Packet timestamp corrected */
     p->count_us = p->count_us + timestamp_correction;
