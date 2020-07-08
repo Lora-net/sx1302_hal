@@ -129,26 +129,23 @@ int rx_buffer_del(rx_buffer_t * self) {
 int rx_buffer_fetch(rx_buffer_t * self) {
     int i, res;
     uint8_t buff[2];
-    int32_t msb;
     uint8_t payload_len;
     uint16_t next_pkt_idx;
     int idx;
+    uint16_t nb_bytes_1, nb_bytes_2;
 
     /* Check input params */
     CHECK_NULL(self);
 
     /* Check if there is data in the FIFO */
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    /* Workaround concentrator chip issue:
-        - read MSB again
-        - if MSB changed, read the full size gain
-     */
-    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, &msb);
-    if (buff[0] != (uint8_t)msb) {
-        lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    }
+    nb_bytes_1 = (buff[0] << 8) | (buff[1] << 0);
 
-    self->buffer_size = (buff[0] << 8) | (buff[1] << 0);
+    /* Workaround for multi-byte read issue: read again and ensure new read is not lower than the previous one */
+    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    nb_bytes_2 = (buff[0] << 8) | (buff[1] << 0);
+
+    self->buffer_size = (nb_bytes_2 > nb_bytes_1) ? nb_bytes_2 : nb_bytes_1;
 
     /* Fetch bytes from fifo if any */
     if (self->buffer_size > 0) {
