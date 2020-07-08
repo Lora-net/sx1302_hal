@@ -1859,7 +1859,7 @@ int sx1302_fetch(uint8_t * nb_pkt) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
-    int i, err;
+    int err;
     int ifmod; /* type of if_chain/modem a packet was received by */
     uint16_t payload_crc16_calc;
     uint8_t cr;
@@ -1947,6 +1947,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         }
 
 #if 0
+        int i;
         /* FOR DEBUG: Check data integrity for known devices (debug context) */
         if (p->status == STAT_CRC_OK || p->status == STAT_NO_CRC) {
             /*  We compare the received payload with predefined ones to ensure that the payload content is what we expect.

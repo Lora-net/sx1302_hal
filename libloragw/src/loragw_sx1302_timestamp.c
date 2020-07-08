@@ -304,7 +304,6 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
     uint8_t buff_wa[8];
     uint32_t counter_inst_us_raw_27bits_now;
     uint32_t counter_pps_us_raw_27bits_now;
-    int32_t msb;
     uint8_t idx_prev;
 
     /* Get the freerun and pps 32MHz timestamp counters - 8 bytes
