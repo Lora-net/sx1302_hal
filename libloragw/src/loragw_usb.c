@@ -197,8 +197,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
             return LGW_USB_ERROR;
         }
         if (strncmp(gw_info.version + 1, mcu_version_string, sizeof mcu_version_string) != 0) {
-            printf("ERROR: MCU version mismatch (expected:%s, got:%s)\n", mcu_version_string, gw_info.version);
-            return -1;
+            printf("WARNING: MCU version mismatch (expected:%s, got:%s)\n", mcu_version_string, gw_info.version);
         }
         printf("INFO: Concentrator MCU version is %s\n", gw_info.version);
 
