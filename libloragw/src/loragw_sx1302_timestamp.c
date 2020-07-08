@@ -278,32 +278,40 @@ void timestamp_counter_delete(timestamp_counter_t * self) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void timestamp_counter_update(timestamp_counter_t * self, bool pps, uint32_t cnt) {
-    struct timestamp_info_s* tinfo = (pps == true) ? &self->pps : &self->inst;
+void timestamp_counter_update(timestamp_counter_t * self, uint32_t pps, uint32_t inst) {
+    //struct timestamp_info_s* tinfo = (pps == true) ? &self->pps : &self->inst;
 
     /* Check if counter has wrapped, and update wrap status if necessary */
-    if (cnt < tinfo->counter_us_27bits_ref) {
-        tinfo->counter_us_27bits_wrap += 1;
-        tinfo->counter_us_27bits_wrap %= 32;
+    if (pps < self->pps.counter_us_27bits_ref) {
+        self->pps.counter_us_27bits_wrap += 1;
+        self->pps.counter_us_27bits_wrap %= 32;
+    }
+    if (inst < self->inst.counter_us_27bits_ref) {
+        self->inst.counter_us_27bits_wrap += 1;
+        self->inst.counter_us_27bits_wrap %= 32;
     }
 
     /* Update counter reference */
-    tinfo->counter_us_27bits_ref = cnt;
+    self->pps.counter_us_27bits_ref = pps;
+    self->inst.counter_us_27bits_ref = inst;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
+int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t * pps) {
     int x;
-    uint8_t buff[4];
-    uint32_t counter_us_raw_27bits_now;
+    uint8_t buff[8];
+    uint8_t buff_wa[8];
+    uint32_t counter_inst_us_raw_27bits_now;
+    uint32_t counter_pps_us_raw_27bits_now;
     int32_t msb;
     uint8_t idx_prev;
 
-    /* Get the 32MHz timestamp counter - 4 bytes */
-    x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
-                                   SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP,
-                                   &buff[0], 4);
+    /* Get the freerun and pps 32MHz timestamp counters - 8 bytes
+            0 -> 3 : PPS counter
+            4 -> 7 : Freerun counter (inst)
+    */
+    x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff[0], 8);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter value\n");
         return 0;
@@ -311,65 +319,65 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
 
     /* Workaround concentrator chip issue:
         - read MSB again
-        - if MSB changed, read the full counter gain
+        - if MSB changed, read the full counter again
      */
-    x = lgw_reg_r((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
-                                  SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP,
-                                  &msb);
+    x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff_wa[0], 8);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter MSB value\n");
         return 0;
     }
-    if (buff[0] != (uint8_t)msb) {
-        x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
-                                       SX1302_REG_TIMESTAMP_TIMESTAMP_MSB2_TIMESTAMP,
-                                       &buff[0], 4);
+
+    if ((buff[0] != buff_wa[0]) || (buff[4] != buff_wa[4])) {
+        x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff_wa[0], 8);
         if (x != LGW_REG_SUCCESS) {
-            printf("ERROR: Failed to get timestamp counter value\n");
+            printf("ERROR: Failed to get timestamp counter MSB value\n");
             return 0;
         }
     }
 
-    counter_us_raw_27bits_now = (buff[0]<<24) | (buff[1]<<16) | (buff[2]<<8) | buff[3];
+    counter_pps_us_raw_27bits_now  = (buff[0]<<24) | (buff[1]<<16) | (buff[2]<<8) | buff[3];
+    counter_inst_us_raw_27bits_now = (buff[4]<<24) | (buff[5]<<16) | (buff[6]<<8) | buff[7];
 
     /* Store PPS counter to history, for fine timestamp calculation */
-    if (pps == true) {
-        if (timestamp_pps_history.idx == 0) {
-            idx_prev = MAX_TIMESTAMP_PPS_HISTORY - 1;
-        } else {
-            idx_prev = timestamp_pps_history.idx - 1;
+    if (timestamp_pps_history.idx == 0) {
+        idx_prev = MAX_TIMESTAMP_PPS_HISTORY - 1;
+    } else {
+        idx_prev = timestamp_pps_history.idx - 1;
+    }
+    /* Store it only if different from the previous one */
+    if ((counter_pps_us_raw_27bits_now != timestamp_pps_history.history[idx_prev] || (timestamp_pps_history.size == 0))) {
+        /* Add one entry to the history */
+        if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
+            timestamp_pps_history.size += 1;
         }
-        /* Store it only if different from the previous one */
-        if ((counter_us_raw_27bits_now != timestamp_pps_history.history[idx_prev] || (timestamp_pps_history.size == 0))) {
-            /* Add one entry to the history */
-            if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
-                timestamp_pps_history.size += 1;
-            }
-            timestamp_pps_history.history[timestamp_pps_history.idx] = counter_us_raw_27bits_now;
-            if (timestamp_pps_history.idx == (MAX_TIMESTAMP_PPS_HISTORY - 1)) {
-                timestamp_pps_history.idx = 0;
-            } else {
-                timestamp_pps_history.idx += 1;
-            }
+        timestamp_pps_history.history[timestamp_pps_history.idx] = counter_pps_us_raw_27bits_now;
+        if (timestamp_pps_history.idx == (MAX_TIMESTAMP_PPS_HISTORY - 1)) {
+            timestamp_pps_history.idx = 0;
+        } else {
+            timestamp_pps_history.idx += 1;
+        }
 
 #if 0
-            printf("---- timestamp PPS history (idx:%u size:%u) ----\n",  timestamp_pps_history.idx,  timestamp_pps_history.size);
-            for (int i = 0; i < timestamp_pps_history.size; i++) {
-                printf("  %u\n", timestamp_pps_history.history[i]);
-            }
-            printf("--------------------------------\n");
-#endif
+        printf("---- timestamp PPS history (idx:%u size:%u) ----\n",  timestamp_pps_history.idx,  timestamp_pps_history.size);
+        for (int i = 0; i < timestamp_pps_history.size; i++) {
+            printf("  %u\n", timestamp_pps_history.history[i]);
         }
+        printf("--------------------------------\n");
+#endif
     }
 
     /* Scale to 1MHz */
-    counter_us_raw_27bits_now /= 32;
+    counter_pps_us_raw_27bits_now /= 32;
+    counter_inst_us_raw_27bits_now /= 32;
 
     /* Update counter wrapping status */
-    timestamp_counter_update(self, pps, counter_us_raw_27bits_now);
+    timestamp_counter_update(self, counter_pps_us_raw_27bits_now, counter_inst_us_raw_27bits_now);
 
     /* Convert 27-bits counter to 32-bits counter */
-    return timestamp_counter_expand(self, pps, counter_us_raw_27bits_now);
+    *inst = timestamp_counter_expand(self, false, counter_inst_us_raw_27bits_now);
+    *pps  = timestamp_counter_expand(self, false, counter_pps_us_raw_27bits_now);
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

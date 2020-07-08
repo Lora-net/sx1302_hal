@@ -330,6 +330,7 @@ int sx1302_get_model_id(sx1302_model_id_t * model_id) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_update(void) {
+    uint32_t inst, pps;
     /* performances variables */
     struct timeval tm;
 
@@ -353,8 +354,7 @@ int sx1302_update(void) {
 #endif
 
     /* Update internal timestamp counter wrapping status */
-    timestamp_counter_get(&counter_us, false); /* maintain inst counter */
-    timestamp_counter_get(&counter_us, true); /* maintain pps counter */
+    timestamp_counter_get(&counter_us, &inst, &pps);
 
     _meas_time_stop(2, tm, __FUNCTION__);
 
@@ -1110,7 +1110,9 @@ int sx1302_lora_syncword(bool public, uint8_t lora_service_sf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint32_t sx1302_timestamp_counter(bool pps) {
-    return timestamp_counter_get(&counter_us, pps);
+    uint32_t inst_cnt, pps_cnt;
+    timestamp_counter_get(&counter_us, &inst_cnt, &pps_cnt);
+    return ((pps == true) ? pps_cnt : inst_cnt);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
