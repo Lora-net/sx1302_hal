@@ -325,13 +325,13 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
         printf("ERROR: Failed to get timestamp counter MSB value\n");
         return 0;
     }
-
     if ((buff[0] != buff_wa[0]) || (buff[4] != buff_wa[4])) {
         x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff_wa[0], 8);
         if (x != LGW_REG_SUCCESS) {
             printf("ERROR: Failed to get timestamp counter MSB value\n");
             return 0;
         }
+        memcpy(buff, buff_wa, 8); /* use the new read value */
     }
 
     counter_pps_us_raw_27bits_now  = (buff[0]<<24) | (buff[1]<<16) | (buff[2]<<8) | buff[3];
@@ -374,7 +374,7 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
 
     /* Convert 27-bits counter to 32-bits counter */
     *inst = timestamp_counter_expand(self, false, counter_inst_us_raw_27bits_now);
-    *pps  = timestamp_counter_expand(self, false, counter_pps_us_raw_27bits_now);
+    *pps  = timestamp_counter_expand(self, true, counter_pps_us_raw_27bits_now);
 
     return 0;
 }
