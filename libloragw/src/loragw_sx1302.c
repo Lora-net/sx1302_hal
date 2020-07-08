@@ -2088,13 +2088,10 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         timestamp_correction = 0;
     }
 
-    /* Update counter reference / wrap status before expanding */
-    timestamp_counter_get(&counter_us, false);
-
     /* Scale 32 MHz packet timestamp to 1 MHz (microseconds) */
     p->count_us = pkt.timestamp_cnt / 32;
 
-    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status */
+    /* Expand 27-bits counter to 32-bits counter, based on current wrapping status (updated after fetch) */
     p->count_us = timestamp_pkt_expand(&counter_us, p->count_us);
 
     /* Packet timestamp corrected */

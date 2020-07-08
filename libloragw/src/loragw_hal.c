@@ -1130,19 +1130,21 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* Record function start time */
     _meas_time_start(&tm);
 
-    /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
-    /* WARNING: this needs to be called regularly by the upper layer */
-    res = sx1302_update();
-    if (res != LGW_REG_SUCCESS) {
-        return LGW_HAL_ERROR;
-    }
-
     /* Get packets from SX1302, if any */
     res = sx1302_fetch(&nb_pkt_fetched);
     if (res != LGW_REG_SUCCESS) {
         printf("ERROR: failed to fetch packets from SX1302\n");
         return LGW_HAL_ERROR;
     }
+
+    /* Update internal counter */
+    /* WARNING: this needs to be called regularly by the upper layer */
+    res = sx1302_update();
+    if (res != LGW_REG_SUCCESS) {
+        return LGW_HAL_ERROR;
+    }
+
+    /* Exit now if no packet fetched */
     if (nb_pkt_fetched == 0) {
         _meas_time_stop(1, tm, __FUNCTION__);
         return 0;
