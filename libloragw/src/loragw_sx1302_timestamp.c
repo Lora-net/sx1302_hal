@@ -313,7 +313,7 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff[0], 8);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter value\n");
-        return 0;
+        return -1;
     }
 
     /* Workaround concentrator chip issue:
@@ -323,13 +323,13 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff_wa[0], 8);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to get timestamp counter MSB value\n");
-        return 0;
+        return -1;
     }
     if ((buff[0] != buff_wa[0]) || (buff[4] != buff_wa[4])) {
         x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS, &buff_wa[0], 8);
         if (x != LGW_REG_SUCCESS) {
             printf("ERROR: Failed to get timestamp counter MSB value\n");
-            return 0;
+            return -1;
         }
         memcpy(buff, buff_wa, 8); /* use the new read value */
     }
