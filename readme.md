@@ -73,6 +73,21 @@ local CSV file.
 Please refer to the readme.md file located in the util_net_downlink directory
 for more details.
 
+### 2.3. util_chip_id ###
+
+This utility configures the SX1302 to be able to retrieve its EUI. It can then
+be used as a Gateway ID.
+
+### 2.4. util_boot ###
+
+On used for a USB gateway, this software switches the concentrator in DFU mode
+in order to program its internal STM32 MCU.
+
+### 2.5. util_spectral_scan ###
+
+This software allows to scan the spectral band using the additional sx1261 radio
+of the Semtech Corecell reference design.
+
 ## 3. Helper scripts
 
 ### 3.1. tools/reset_lgw.sh
@@ -152,14 +167,29 @@ set, do:
 
 `make clean all`
 
-## 5. Third party libraries
+## 5. USB
+
+This project provides support for both SPI or USB gateways. For USB interface,
+the concentrator board has a STM32 MCU with which the linux host will
+communicate to configure the sx1302 and the associated radios. The STM32 acts
+as a USB <-> SPI bridge.
+
+The STM32 MCU has to be programmed with the binary provided in the `mcu_bin`
+directory of this project. For more details about how to flash it, please refer
+to the `util_boot/readme.md` instructions.
+
+Each test utility of the project can be used using the `-u -d /dev/ttyACMx'
+command line option, or with the proper configuration in the packet forwarder
+global_conf.json file.
+
+## 6. Third party libraries
 
 This project relies on several third-party open source libraries, that can be
 found in the `libtools` directory.
 * parson: a JSON parser (http://kgabis.github.com/parson/)
 * tinymt32: a pseudo-random generator (only used for debug/test)
 
-## 6. Changelog
+## 7. Changelog
 
 ### v2.0.0 ###
 
@@ -167,13 +197,19 @@ found in the `libtools` directory.
 for sx1250 based concentrator only.
 * HAL: Reworked the complete communication layer. A new loragw_com module has
 been introduced to handle switching from a USB or a SPI communication interface,
-aligned function prototypes for sx125x and sx1250 radios.
-* HAL: Added support for Fine Timestamping for TDOA localization.
-* HAL: Updated AGC firmware to v4, to be able to configure the delay for PA to
-start.
+aligned function prototypes for sx125x, sx1250 and sx1261 radios. For USB, a
+mode has been added to group SPI write commands request to the STM32 MCU, in
+order to optimize latency during time critical configuration phases.
+* HAL: Added preliminary support for Fine Timestamping for TDOA localization.
+* HAL: Updated AGC firmware to v6: add configurable delay for PA to start, add
+Listen-Before-Talk support.
+* HAL: Added support for Listen-Before-Talk with additional sx1261 radio.
+* HAL: Added support for Spectral Scan with additional sx1261 radio.
 * Packet Forwarder: The type of interface is configurable in the global_conf.json
 file: com_type can be "USB" or "SPI".
-* Packet Forwarder: Changed the parameters to configure the fine timestamps.
+* Packet Forwarder: Changed the parameters to configure the fine timestamps and
+Listen-Before-Talk.
+* Tools: added util_spectral_scan
 
 ### v1.0.5 ###
 
@@ -224,7 +260,7 @@ calibration
 
 * HAL: Initial private release for TAP program
 
-## 7. Legal notice
+## 8. Legal notice
 
 The information presented in this project documentation does not form part of
 any quotation or contract, is believed to be accurate and reliable and may be
