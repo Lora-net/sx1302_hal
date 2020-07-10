@@ -12,7 +12,11 @@ Spectral Scan Utility
 
 ## 1. Introduction
 
-TODO
+This software allows to scan the spectral band using the additional sx1261 radio
+of the Semtech Corecell reference design.
+It computes a RSSI histogram on several frequencies, that will help to detect
+occupied bands and get interferer profiles.
+It logs the histogram in a .csv file.
 
 ## 2. Command line options
 
@@ -23,13 +27,27 @@ will display a short help and version informations.
 
 ### 2.2. SPI options ###
 
-TODO
+`-d spidev_path`
+specifies the spi_dev path to be used to acces the sx1261 radio.
 
 ### 2.2. USB options ###
 
-TODO
+`-u -d tty_path`
+specifies the tty path to be used to acces the STM32 which will redirect commands
+to the sx1261 radio.
 
-## 3. Legal notice
+## 3. Usage
+
+This utility is autonomous and will perform a full initialization of the
+concentrator. So it cannot be run in parallel of the packet forwarder.
+
+It will scan channels as specified on the command line, the first channel being
+the given frequency (-f argument) and the other channels (number given with -n
+argument) shifted by 200kHz from the previous one.
+
+It then generates a CSV file with the RSSI histogram for each channel.
+
+## 4. Legal notice
 
 The information presented in this project documentation does not form part of
 any quotation or contract, is believed to be accurate and reliable and may be

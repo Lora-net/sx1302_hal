@@ -73,7 +73,7 @@ void usage(void) {
     printf(" -r <uint>  Radio type (1255, 1257, 1250)\n");
     printf(" -f <float> Scan start frequency, in MHz\n");
     printf(" -n <uint>  Number of channels to scan\n");
-    printf(" -s <uint>  Number of scan points per step [1..65535]\n");
+    printf(" -s <uint>  Number of scan points per frequency step [1..65535]\n");
     printf(" -o <int>   RSSI Offset of the sx1261 path, in dB [-127..128]\n");
     printf( " -l <char> Log file name\n");
 }
@@ -192,8 +192,8 @@ int main(int argc, char **argv)
                     printf("ERROR: argument parsing of -n argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    if (arg_u > 255) {
-                        printf("ERROR: Number of channels must be < 255\n");
+                    if (arg_u > 65535) {
+                        printf("ERROR: Number of scan must be < 65535\n");
                         return EXIT_FAILURE;
                     }
                     nb_scan = (uint16_t)arg_u;
