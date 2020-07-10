@@ -616,8 +616,8 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
     do {
         wait_ms(10);
 
-        buff[0] = 0x04;
-        buff[1] = 0x00;
+        buff[0] = 0x07;
+        buff[1] = 0xCD;
         buff[2] = 0x00; /* dummy */
         buff[3] = 0x00; /* read value holder */
         err = sx1261_reg_r(SX1261_READ_REGISTER, buff, 4);
