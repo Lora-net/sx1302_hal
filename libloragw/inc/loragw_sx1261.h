@@ -50,8 +50,11 @@ int sx1261_load_pram(void);
 int sx1261_calibrate(uint32_t freq_hz);
 int sx1261_setup(uint32_t freq_hz);
 int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth);
+
 int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm);
 int sx1261_lbt_stop(void);
+
+int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_dbm, uint16_t * results);
 
 #endif
 

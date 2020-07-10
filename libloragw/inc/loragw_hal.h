@@ -129,7 +129,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TX_GAIN_LUT_SIZE_MAX 16
 
 /* Listen-Before-Talk */
-#define LGW_LBT_CHANNEL_NB_MAX  16 /* Maximum number of LBT channels */
+#define LGW_LBT_CHANNEL_NB_MAX 16 /* Maximum number of LBT channels */
+
+/* Spectral Scan */
+#define LGW_SPECTRAL_SCAN_RESULT_SIZE 33 /* The number of results returned by spectral scan function, to be used for memory allocation */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
@@ -528,6 +531,16 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_set_xtal_correct(bool is_valid, double xtal_correction);
+
+/**
+@brief TODO
+@param freq_hz TODO
+@param nb_scan TODO
+@param levels TODO
+@param values TODO
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_spectral_scan(uint32_t freq_hz, uint16_t nb_scan, int16_t levels_dbm[static LGW_SPECTRAL_SCAN_RESULT_SIZE], uint16_t results[static LGW_SPECTRAL_SCAN_RESULT_SIZE]);
 
 #endif
 

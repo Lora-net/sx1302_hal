@@ -21,6 +21,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <stdlib.h>     /* malloc free */
 #include <unistd.h>     /* lseek, close */
+#include <string.h>     /* memcpy */
 
 #include "loragw_sx1261.h"
 #include "loragw_spi.h"
@@ -588,6 +589,72 @@ int sx1261_lbt_stop(void) {
     printf("SX1261: LBT stopped\n");
 
     _meas_time_stop(4, tm, __FUNCTION__);
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_dbm, uint16_t * results) {
+    int err, i;
+    uint8_t buff[69]; /* 66 bytes for spectral scan results + 2 bytes register address + 1 dummy byte for reading */
+    bool scan_done = false;
+
+    /* Check input parameters */
+    CHECK_NULL(levels_dbm);
+    CHECK_NULL(results);
+
+    /* Start spectral scan */
+    buff[0] = (nb_scan >> 8) & 0xFF; /* nb_scan MSB */
+    buff[1] = (nb_scan >> 0) & 0xFF; /* nb_scan LSB */
+    buff[2] = 11; /* interval between scans - 8.2 us */
+    err = sx1261_reg_w(0x9b, buff, 9);
+    CHECK_ERR(err);
+    printf("INFO: Spectral Scan started...\n");
+
+    /* Wait for scan to be completed */
+    do {
+        wait_ms(10);
+
+        buff[0] = 0x04;
+        buff[1] = 0x00;
+        buff[2] = 0x00; /* dummy */
+        buff[3] = 0x00; /* read value holder */
+        err = sx1261_reg_r(SX1261_READ_REGISTER, buff, 4);
+        CHECK_ERR(err);
+
+        scan_done = ((buff[3] == 0xFF) ? true : false);
+    } while (scan_done == false); /* TODO: add timeout */
+    printf("INFO: Spectral Scan DONE\n");
+
+    /* Get the results (66 bytes) */
+    buff[0] = 0x04;
+    buff[1] = 0x01;
+    buff[2] = 0x00; /* dummy */
+    for (i = 3; i < (66 + 3) ; i++) {
+        buff[i] = 0x00;
+    }
+    err = sx1261_reg_r(SX1261_READ_REGISTER, buff, 66 + 3);
+    CHECK_ERR(err);
+
+    /* Copy the results in the given buffers */
+    /* The number of points measured ABOVE each threshold */
+    for (i = 0; i < 32; i++) {
+        levels_dbm[i] = -i*4 + rssi_offset;
+        results[i] = (uint16_t)((buff[3 + i*2] << 8) | buff[3 + i*2 + 1]);
+    }
+    /* The number of points measured BELOW the lower threshold */
+    levels_dbm[32] = -31*4 + rssi_offset;
+    results[32] = (uint16_t)((buff[3 + 32*2] << 8) + buff[3 + 32*2 + 1]);
+
+#if 0
+    /* print results (for debug) */
+    for (i = 0; i < 32; i++) {
+        printf("%d dBm: \t %u\n",  -i*4 + rssi_offset, (uint16_t)((buff[3 + i*2] << 8) | buff[3 + i*2 + 1]));
+    }
+    printf("-------\n");
+    printf("%d dBm: \t %u\n", -31*4 + rssi_offset, (uint16_t)((buff[3 + 32*2] << 8) + buff[3 + 32*2 + 1]));
+#endif
 
     return LGW_REG_SUCCESS;
 }

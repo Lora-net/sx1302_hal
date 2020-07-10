@@ -1528,4 +1528,26 @@ int lgw_set_xtal_correct(bool is_valid, double xtal_correction) {
     return err;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_spectral_scan(uint32_t freq_hz, uint16_t nb_scan, int16_t levels_dbm[static LGW_SPECTRAL_SCAN_RESULT_SIZE], uint16_t results[static LGW_SPECTRAL_SCAN_RESULT_SIZE]) {
+    int err;
+
+    //TODO: check that SX1261 radio is initialized (LBT_ENABLE to be renamed)
+
+    err = sx1261_set_rx_params(freq_hz, BW_125KHZ);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to set RX params for Spectral Scan\n");
+        return LGW_HAL_ERROR;
+    }
+
+    err = sx1261_spectral_scan(nb_scan, CONTEXT_LBT.rssi_offset, levels_dbm, results);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: spectral scan failed\n");
+        return LGW_HAL_ERROR;
+    }
+
+    return LGW_HAL_SUCCESS;
+}
+
 /* --- EOF ------------------------------------------------------------------ */
