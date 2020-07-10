@@ -81,7 +81,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_FSK             lgw_context.fsk_cfg
 #define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
 #define CONTEXT_FINE_TIMESTAMP  lgw_context.ftime_cfg
-#define CONTEXT_LBT             lgw_context.lbt_cfg
+#define CONTEXT_SX1261          lgw_context.sx1261_cfg
 #define CONTEXT_DEBUG           lgw_context.debug_cfg
 
 /* -------------------------------------------------------------------------- */
@@ -176,12 +176,15 @@ static lgw_context_t lgw_context = {
         .enable = false,
         .mode = LGW_FTIME_MODE_ALL_SF
     },
-    .lbt_cfg = {
+    .sx1261_cfg = {
         .enable = false,
-        .rssi_target = 0,
+        .spi_path = "/dev/spidev0.1",
         .rssi_offset = 0,
-        .nb_channel = 0,
-        .channels = {{ 0 }}
+        .lbt_conf = {
+            .rssi_target = 0,
+            .nb_channel = 0,
+            .channels = {{ 0 }}
+        }
     },
     .debug_cfg = {
         .nb_ref_payload = 0,
@@ -723,25 +726,31 @@ int lgw_ftime_setconf(struct lgw_conf_ftime_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf) {
+int lgw_sx1261_setconf(struct lgw_conf_sx1261_s * conf) {
     int i;
 
     CHECK_NULL(conf);
 
-    CONTEXT_LBT.enable = conf->enable;
-    CONTEXT_LBT.rssi_target = conf->rssi_target;
-    CONTEXT_LBT.rssi_offset = conf->rssi_offset;
-    CONTEXT_LBT.nb_channel = conf->nb_channel;
-    for (i = 0; i < CONTEXT_LBT.nb_channel; i++) {
-        if (conf->channels[i].bandwidth != BW_125KHZ && conf->channels[i].bandwidth != BW_250KHZ) {
+    /* Set the SX1261 global conf */
+    CONTEXT_SX1261.enable = conf->enable;
+    strncpy(CONTEXT_SX1261.spi_path, conf->spi_path, sizeof CONTEXT_SX1261.spi_path);
+    CONTEXT_SX1261.spi_path[sizeof CONTEXT_SX1261.spi_path - 1] = '\0'; /* ensure string termination */
+    CONTEXT_SX1261.rssi_offset = conf->rssi_offset;
+
+    /* Set the LBT conf */
+    CONTEXT_SX1261.lbt_conf.enable = conf->lbt_conf.enable;
+    CONTEXT_SX1261.lbt_conf.rssi_target = conf->lbt_conf.rssi_target;
+    CONTEXT_SX1261.lbt_conf.nb_channel = conf->lbt_conf.nb_channel;
+    for (i = 0; i < CONTEXT_SX1261.lbt_conf.nb_channel; i++) {
+        if (conf->lbt_conf.channels[i].bandwidth != BW_125KHZ && conf->lbt_conf.channels[i].bandwidth != BW_250KHZ) {
             printf("ERROR: bandwidth not supported for LBT channel %d\n", i);
             return LGW_HAL_ERROR;
         }
-        if (conf->channels[i].scan_time_us != LGW_LBT_SCAN_TIME_128_US && conf->channels[i].scan_time_us != LGW_LBT_SCAN_TIME_5000_US) {
+        if (conf->lbt_conf.channels[i].scan_time_us != LGW_LBT_SCAN_TIME_128_US && conf->lbt_conf.channels[i].scan_time_us != LGW_LBT_SCAN_TIME_5000_US) {
             printf("ERROR: scan_time_us not supported for LBT channel %d\n", i);
             return LGW_HAL_ERROR;
         }
-        CONTEXT_LBT.channels[i] = conf->channels[i];
+        CONTEXT_SX1261.lbt_conf.channels[i] = conf->lbt_conf.channels[i];
     }
 
     return LGW_HAL_SUCCESS;
@@ -948,7 +957,7 @@ int lgw_start(void) {
         default:
             break;
     }
-    err = sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, CONTEXT_BOARD.full_duplex, CONTEXT_LBT.enable);
+    err = sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, CONTEXT_BOARD.full_duplex, CONTEXT_SX1261.lbt_conf.enable);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to start AGC firmware\n");
         return LGW_HAL_ERROR;
@@ -1032,8 +1041,8 @@ int lgw_start(void) {
     }
 
     /* Connect to the external sx1261 for LBT or Spectral Scan */
-    if (CONTEXT_LBT.enable == true) { /* TODO: add an option for Spectral Scan ? */
-        err = sx1261_connect(CONTEXT_COM_TYPE, (CONTEXT_COM_TYPE == LGW_COM_SPI) ? "/dev/spidev0.1" : NULL); /* TODO: take com_path from CONTEXT */
+    if (CONTEXT_SX1261.enable == true) {
+        err = sx1261_connect(CONTEXT_COM_TYPE, (CONTEXT_COM_TYPE == LGW_COM_SPI) ? CONTEXT_SX1261.spi_path : NULL);
         if (err != LGW_REG_SUCCESS) {
             printf("ERROR: failed to connect to the sx1261 radio (LBT/Spectral Scan)\n");
             return LGW_HAL_ERROR;
@@ -1280,8 +1289,8 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     }
 
     /* Start Listen-Before-Talk */
-    if (CONTEXT_LBT.enable == true) {
-        err = lgw_lbt_start(&CONTEXT_LBT, pkt_data);
+    if (CONTEXT_SX1261.lbt_conf.enable == true) {
+        err = lgw_lbt_start(&CONTEXT_SX1261, pkt_data);
         if (err != 0) {
             printf("ERROR: failed to start LBT\n");
             return LGW_HAL_ERROR;
@@ -1293,7 +1302,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: %s: Failed to send packet\n", __FUNCTION__);
 
-        if (CONTEXT_LBT.enable == true) {
+        if (CONTEXT_SX1261.lbt_conf.enable == true) {
             err = lgw_lbt_stop();
             if (err != 0) {
                 printf("ERROR: %s: Failed to stop LBT\n", __FUNCTION__);
@@ -1306,7 +1315,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     _meas_time_stop(1, tm, __FUNCTION__);
 
     /* Stop Listen-Before-Talk */
-    if (CONTEXT_LBT.enable == true) {
+    if (CONTEXT_SX1261.lbt_conf.enable == true) {
         err = lgw_lbt_tx_status(pkt_data->rf_chain, &lbt_tx_allowed);
         if (err != 0) {
             printf("ERROR: %s: Failed to get LBT TX status, TX aborted\n", __FUNCTION__);
@@ -1335,7 +1344,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
 
     DEBUG_PRINTF(" --- %s\n", "OUT");
 
-    if (CONTEXT_LBT.enable == true && lbt_tx_allowed == false) {
+    if (CONTEXT_SX1261.lbt_conf.enable == true && lbt_tx_allowed == false) {
         return LGW_LBT_NOT_ALLOWED;
     } else {
         return LGW_HAL_SUCCESS;
@@ -1541,7 +1550,7 @@ int lgw_spectral_scan(uint32_t freq_hz, uint16_t nb_scan, int16_t levels_dbm[sta
         return LGW_HAL_ERROR;
     }
 
-    err = sx1261_spectral_scan(nb_scan, CONTEXT_LBT.rssi_offset, levels_dbm, results);
+    err = sx1261_spectral_scan(nb_scan, CONTEXT_SX1261.rssi_offset, levels_dbm, results);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: spectral scan failed\n");
         return LGW_HAL_ERROR;

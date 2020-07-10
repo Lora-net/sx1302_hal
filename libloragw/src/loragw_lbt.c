@@ -82,7 +82,7 @@ static int is_lbt_channel(const struct lgw_conf_lbt_s * lbt_context, uint32_t fr
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pkt_tx_s * pkt) {
+int lgw_lbt_start(const struct lgw_conf_sx1261_s * sx1261_context, const struct lgw_pkt_tx_s * pkt) {
     int err;
     int lbt_channel_selected;
     uint32_t toa_ms;
@@ -93,7 +93,7 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pk
     _meas_time_start(&tm);
 
     /* Check if we have a LBT channel for this transmit frequency */
-    lbt_channel_selected = is_lbt_channel(lbt_context, pkt->freq_hz, pkt->bandwidth);
+    lbt_channel_selected = is_lbt_channel(&(sx1261_context->lbt_conf), pkt->freq_hz, pkt->bandwidth);
     if (lbt_channel_selected == -1) {
         printf("ERROR: Cannot start LBT - wrong channel\n");
         return -1;
@@ -101,13 +101,13 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pk
 
     /* Check if the packet Time On Air exceeds the maximum allowed transmit time on this channel */
     /* Channel sensing is checked 1.5ms before the packet departure time, so need to take this into account */
-    if (lbt_context->channels[lbt_channel_selected].transmit_time_ms * 1000 <= 1500) {
+    if (sx1261_context->lbt_conf.channels[lbt_channel_selected].transmit_time_ms * 1000 <= 1500) {
         printf("ERROR: Cannot start LBT - channel transmit_time_ms must be > 1.5ms\n");
         return -1;
     }
     toa_ms = lgw_time_on_air(pkt);
-    if ((toa_ms * 1000) > (uint32_t)(lbt_context->channels[lbt_channel_selected].transmit_time_ms * 1000 - 1500)) {
-        printf("ERROR: Cannot start LBT - packet time on air exceeds allowed transmit time (toa:%ums, max:%ums)\n", toa_ms, lbt_context->channels[lbt_channel_selected].transmit_time_ms);
+    if ((toa_ms * 1000) > (uint32_t)(sx1261_context->lbt_conf.channels[lbt_channel_selected].transmit_time_ms * 1000 - 1500)) {
+        printf("ERROR: Cannot start LBT - packet time on air exceeds allowed transmit time (toa:%ums, max:%ums)\n", toa_ms, sx1261_context->lbt_conf.channels[lbt_channel_selected].transmit_time_ms);
         return -1;
     }
 
@@ -119,7 +119,7 @@ int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pk
     }
 
     /* Start LBT */
-    err = sx1261_lbt_start(lbt_context->channels[lbt_channel_selected].scan_time_us, lbt_context->rssi_target + lbt_context->rssi_offset);
+    err = sx1261_lbt_start(sx1261_context->lbt_conf.channels[lbt_channel_selected].scan_time_us, sx1261_context->lbt_conf.rssi_target + sx1261_context->rssi_offset);
     if (err != 0) {
         printf("ERROR: Cannot start LBT - sx1261 LBT start\n");
         return -1;

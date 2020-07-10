@@ -342,9 +342,19 @@ struct lgw_conf_chan_lbt_s{
 struct lgw_conf_lbt_s {
     bool                        enable;             /*!> enable or disable LBT */
     int8_t                      rssi_target;        /*!> RSSI threshold to detect if channel is busy or not (dBm) */
-    int8_t                      rssi_offset;        /*!> value to be applied to the sx1261 RSSI value (dBm) */
     uint8_t                     nb_channel;         /*!> number of LBT channels */
     struct lgw_conf_chan_lbt_s  channels[LGW_LBT_CHANNEL_NB_MAX];  /*!> LBT channels configuration */
+};
+
+/**
+@struct lgw_conf_sx1261_s
+@brief Configuration structure for additional SX1261 radio used for LBT and Spectral Scan
+*/
+struct lgw_conf_sx1261_s {
+    bool                        enable;             /*!> enable or disable SX1261 radio */
+    char                        spi_path[64];       /*!> Path to access the SPI device to connect to the SX1261 (not used for USB com type) */
+    int8_t                      rssi_offset;        /*!> value to be applied to the sx1261 RSSI value (dBm) */
+    struct lgw_conf_lbt_s       lbt_conf;           /*!> listen-before-talk configuration */
 };
 
 /**
@@ -364,7 +374,7 @@ typedef struct lgw_context_s {
     struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
     /* Misc */
     struct lgw_conf_ftime_s     ftime_cfg;
-    struct lgw_conf_lbt_s       lbt_cfg;
+    struct lgw_conf_sx1261_s    sx1261_cfg;
     /* Debug */
     struct lgw_conf_debug_s     debug_cfg;
 } lgw_context_t;
@@ -410,11 +420,11 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf);
 int lgw_ftime_setconf(struct lgw_conf_ftime_s * conf);
 
 /*
-@brief Configure the lbt
+@brief Configure the SX1261 radio for LBT/Spectral Scan
 @param pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_lbt_setconf(struct lgw_conf_lbt_s * conf);
+int lgw_sx1261_setconf(struct lgw_conf_sx1261_s * conf);
 
 /**
 @brief Configure the debug context

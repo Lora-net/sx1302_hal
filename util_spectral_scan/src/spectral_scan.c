@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
-    struct lgw_conf_lbt_s lbtconf;
+    struct lgw_conf_sx1261_s sx1261conf;
 
     /* COM interface */
     const char com_path_default[] = COM_PATH_DEFAULT;
@@ -279,10 +279,11 @@ int main(int argc, char **argv)
     }
 
     /* Configure the sx1261 for spectral scan */
-    memset(&lbtconf, 0, sizeof lbtconf);
-    lbtconf.enable = true;
-    lbtconf.rssi_offset = rssi_offset;
-    if (lgw_lbt_setconf(&lbtconf) != LGW_HAL_SUCCESS) {
+    memset(&sx1261conf, 0, sizeof sx1261conf);
+    sx1261conf.enable = true;
+    sx1261conf.rssi_offset = rssi_offset;
+    sx1261conf.lbt_conf.enable = false;
+    if (lgw_sx1261_setconf(&sx1261conf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure sx1261\n");
         return EXIT_FAILURE;
     }

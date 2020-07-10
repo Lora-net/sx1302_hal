@@ -43,7 +43,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @param TODO
 @return TODO
 */
-int lgw_lbt_start(const struct lgw_conf_lbt_s * lbt_context, const struct lgw_pkt_tx_s * pkt);
+int lgw_lbt_start(const struct lgw_conf_sx1261_s * sx1261_context, const struct lgw_pkt_tx_s * pkt);
 
 /**
 @brief TODO

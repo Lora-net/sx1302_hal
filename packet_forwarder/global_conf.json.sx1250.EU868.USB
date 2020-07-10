@@ -10,22 +10,25 @@
             "enable": false,
             "mode": "all_sf" /* high_capacity or all_sf */
         },
-        "lbt_cfg": {
+        "sx1261_cfg": {
             "enable": false,
-            "rssi_target": -70, /* dBm */
-            "rssi_offset": 0, /* dBm */
-            "chan_cfg":[ /* 16 channels maximum */
-                { "freq_hz": 867100000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 867300000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 867500000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 867700000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 867900000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 868100000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 868300000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 868500000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
-                { "freq_hz": 869525000, "bandwidth": 125000, "scan_time_us": 5000, "transmit_time_ms": 4000 },
-                { "freq_hz": 868300000, "bandwidth": 250000, "scan_time_us": 128,  "transmit_time_ms": 400 }
-            ]
+            "rssi_offset": 0, /* dB */
+            "lbt_cfg": {
+                "enable": false,
+                "rssi_target": -70, /* dBm */
+                "chan_cfg":[ /* 16 channels maximum */
+                    { "freq_hz": 867100000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 867300000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 867500000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 867700000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 867900000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 868100000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 868300000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 868500000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 869525000, "bandwidth": 125000, "scan_time_us": 5000, "transmit_time_ms": 4000 },
+                    { "freq_hz": 868300000, "bandwidth": 250000, "scan_time_us": 128,  "transmit_time_ms": 400 }
+                ]
+            }
         },
         "radio_0": {
             "enable": true,

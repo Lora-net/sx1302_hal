@@ -312,6 +312,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_txgain_obj;
     JSON_Object *conf_ts_obj;
+    JSON_Object *conf_sx1261_obj = NULL;
     JSON_Object *conf_lbt_obj = NULL;
     JSON_Object *conf_lbtchan_obj = NULL;
     JSON_Array *conf_txlut_array;
@@ -321,7 +322,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
     struct lgw_conf_ftime_s tsconf;
-    struct lgw_conf_lbt_s lbtconf;
+    struct lgw_conf_sx1261_s sx1261conf;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
 
@@ -441,126 +442,152 @@ static int parse_SX130x_configuration(const char * conf_file) {
         }
     }
 
-    /* set LBT configuration */
-    memset(&lbtconf, 0, sizeof lbtconf); /* initialize configuration structure */
-    conf_lbt_obj = json_object_get_object(conf_obj, "lbt_cfg"); /* fetch value (if possible) */
-    if (conf_lbt_obj == NULL) {
-        MSG("INFO: no configuration for LBT\n");
+    /* set SX1261 configuration */
+    memset(&sx1261conf, 0, sizeof sx1261conf); /* initialize configuration structure */
+    conf_sx1261_obj = json_object_get_object(conf_obj, "sx1261_cfg"); /* fetch value (if possible) */
+    if (conf_sx1261_obj == NULL) {
+        MSG("INFO: no configuration for SX1261\n");
     } else {
-        val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
+        val = json_object_get_value(conf_sx1261_obj, "enable"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONBoolean) {
-            lbtconf.enable = (bool)json_value_get_boolean(val);
+            sx1261conf.enable = (bool)json_value_get_boolean(val);
         } else {
-            MSG("WARNING: Data type for lbt_cfg.enable seems wrong, please check\n");
-            lbtconf.enable = false;
+            MSG("WARNING: Data type for sx1261_cfg.enable seems wrong, please check\n");
+            sx1261conf.enable = false;
         }
-        if (lbtconf.enable == true) {
-            val = json_object_get_value(conf_lbt_obj, "rssi_target"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                lbtconf.rssi_target = (int8_t)json_value_get_number(val);
+        if (sx1261conf.enable == true) {
+            /* Global SX1261 configuration */
+            str = json_object_get_string(conf_sx1261_obj, "spi_path");
+            if (str != NULL) {
+                strncpy(sx1261conf.spi_path, str, sizeof sx1261conf.spi_path);
+                sx1261conf.spi_path[sizeof sx1261conf.spi_path - 1] = '\0'; /* ensure string termination */
             } else {
-                MSG("WARNING: Data type for lbt_cfg.rssi_target seems wrong, please check\n");
-                lbtconf.rssi_target = 0;
+                MSG("INFO: SX1261 spi_path is not configured in %s\n", conf_file);
             }
-            val = json_object_get_value(conf_lbt_obj, "rssi_offset"); /* fetch value (if possible) */
+            val = json_object_get_value(conf_sx1261_obj, "rssi_offset"); /* fetch value (if possible) */
             if (json_value_get_type(val) == JSONNumber) {
-                lbtconf.rssi_offset = (int8_t)json_value_get_number(val);
+                sx1261conf.rssi_offset = (int8_t)json_value_get_number(val);
             } else {
-                MSG("WARNING: Data type for lbt_cfg.rssi_offset seems wrong, please check\n");
-                lbtconf.rssi_offset = 0;
+                MSG("WARNING: Data type for sx1261_cfg.rssi_offset seems wrong, please check\n");
+                sx1261conf.rssi_offset = 0;
             }
-            /* set LBT channels configuration */
-            conf_lbtchan_array = json_object_get_array(conf_lbt_obj, "chan_cfg");
-            if (conf_lbtchan_array != NULL) {
-                lbtconf.nb_channel = json_array_get_count(conf_lbtchan_array);
-                MSG("INFO: %u LBT channels configured\n", lbtconf.nb_channel);
-            }
-            for (i = 0; i < (int)lbtconf.nb_channel; i++) {
-                /* Sanity check */
-                if (i >= LGW_LBT_CHANNEL_NB_MAX) {
-                    MSG("ERROR: LBT channel %d not supported, skip it\n", i);
-                    break;
-                }
-                /* Get LBT channel configuration object from array */
-                conf_lbtchan_obj = json_array_get_object(conf_lbtchan_array, i);
 
-                /* Channel frequency */
-                val = json_object_dotget_value(conf_lbtchan_obj, "freq_hz"); /* fetch value (if possible) */
-                if (val != NULL) {
-                    if (json_value_get_type(val) == JSONNumber) {
-                        lbtconf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
-                    } else {
-                        MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
-                        lbtconf.channels[i].freq_hz = 0;
-                    }
+            /* LBT configuration */
+            conf_lbt_obj = json_object_get_object(conf_sx1261_obj, "lbt_cfg"); /* fetch value (if possible) */
+            if (conf_lbt_obj == NULL) {
+                MSG("INFO: no configuration for LBT\n");
+                sx1261conf.lbt_conf.enable = false;
+            } else {
+                val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONBoolean) {
+                    sx1261conf.lbt_conf.enable = (bool)json_value_get_boolean(val);
                 } else {
-                    MSG("ERROR: no frequency defined for LBT channel %d\n", i);
-                    return -1;
+                    MSG("WARNING: Data type for sx1261_cfg.enable seems wrong, please check\n");
+                    sx1261conf.lbt_conf.enable = false;
                 }
-
-                /* Channel bandiwdth */
-                val = json_object_dotget_value(conf_lbtchan_obj, "bandwidth"); /* fetch value (if possible) */
-                if (val != NULL) {
+                if (sx1261conf.lbt_conf.enable == true) {
+                    val = json_object_get_value(conf_lbt_obj, "rssi_target"); /* fetch value (if possible) */
                     if (json_value_get_type(val) == JSONNumber) {
-                        bw = (uint32_t)json_value_get_number(val);
-                        switch(bw) {
-                            case 500000: lbtconf.channels[i].bandwidth = BW_500KHZ; break;
-                            case 250000: lbtconf.channels[i].bandwidth = BW_250KHZ; break;
-                            case 125000: lbtconf.channels[i].bandwidth = BW_125KHZ; break;
-                            default: lbtconf.channels[i].bandwidth = BW_UNDEFINED;
+                        sx1261conf.lbt_conf.rssi_target = (int8_t)json_value_get_number(val);
+                    } else {
+                        MSG("WARNING: Data type for lbt_cfg.rssi_target seems wrong, please check\n");
+                        sx1261conf.lbt_conf.rssi_target = 0;
+                    }
+                    /* set LBT channels configuration */
+                    conf_lbtchan_array = json_object_get_array(conf_lbt_obj, "chan_cfg");
+                    if (conf_lbtchan_array != NULL) {
+                        sx1261conf.lbt_conf.nb_channel = json_array_get_count(conf_lbtchan_array);
+                        MSG("INFO: %u LBT channels configured\n", sx1261conf.lbt_conf.nb_channel);
+                    }
+                    for (i = 0; i < (int)sx1261conf.lbt_conf.nb_channel; i++) {
+                        /* Sanity check */
+                        if (i >= LGW_LBT_CHANNEL_NB_MAX) {
+                            MSG("ERROR: LBT channel %d not supported, skip it\n", i);
+                            break;
                         }
-                    } else {
-                        MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
-                        lbtconf.channels[i].bandwidth = BW_UNDEFINED;
-                    }
-                } else {
-                    MSG("ERROR: no bandiwdth defined for LBT channel %d\n", i);
-                    return -1;
-                }
+                        /* Get LBT channel configuration object from array */
+                        conf_lbtchan_obj = json_array_get_object(conf_lbtchan_array, i);
 
-                /* Channel scan time */
-                val = json_object_dotget_value(conf_lbtchan_obj, "scan_time_us"); /* fetch value (if possible) */
-                if (val != NULL) {
-                    if (json_value_get_type(val) == JSONNumber) {
-                        if ((uint16_t)json_value_get_number(val) == 128) {
-                            lbtconf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_128_US;
-                        } else if ((uint16_t)json_value_get_number(val) == 5000) {
-                            lbtconf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_5000_US;
+                        /* Channel frequency */
+                        val = json_object_dotget_value(conf_lbtchan_obj, "freq_hz"); /* fetch value (if possible) */
+                        if (val != NULL) {
+                            if (json_value_get_type(val) == JSONNumber) {
+                                sx1261conf.lbt_conf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
+                            } else {
+                                MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
+                                sx1261conf.lbt_conf.channels[i].freq_hz = 0;
+                            }
                         } else {
-                            MSG("ERROR: scan time not supported for LBT channel %d, must be 128 or 5000\n", i);
+                            MSG("ERROR: no frequency defined for LBT channel %d\n", i);
                             return -1;
                         }
-                    } else {
-                        MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
-                        lbtconf.channels[i].scan_time_us = 0;
-                    }
-                } else {
-                    MSG("ERROR: no scan_time_us defined for LBT channel %d\n", i);
-                    return -1;
-                }
 
-                /* Channel transmit time */
-                val = json_object_dotget_value(conf_lbtchan_obj, "transmit_time_ms"); /* fetch value (if possible) */
-                if (val != NULL) {
-                    if (json_value_get_type(val) == JSONNumber) {
-                        lbtconf.channels[i].transmit_time_ms = (uint16_t)json_value_get_number(val);
-                    } else {
-                        MSG("WARNING: Data type for lbt_cfg.channels[%d].transmit_time_ms seems wrong, please check\n", i);
-                        lbtconf.channels[i].transmit_time_ms = 0;
+                        /* Channel bandiwdth */
+                        val = json_object_dotget_value(conf_lbtchan_obj, "bandwidth"); /* fetch value (if possible) */
+                        if (val != NULL) {
+                            if (json_value_get_type(val) == JSONNumber) {
+                                bw = (uint32_t)json_value_get_number(val);
+                                switch(bw) {
+                                    case 500000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_500KHZ; break;
+                                    case 250000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_250KHZ; break;
+                                    case 125000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_125KHZ; break;
+                                    default: sx1261conf.lbt_conf.channels[i].bandwidth = BW_UNDEFINED;
+                                }
+                            } else {
+                                MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
+                                sx1261conf.lbt_conf.channels[i].bandwidth = BW_UNDEFINED;
+                            }
+                        } else {
+                            MSG("ERROR: no bandiwdth defined for LBT channel %d\n", i);
+                            return -1;
+                        }
+
+                        /* Channel scan time */
+                        val = json_object_dotget_value(conf_lbtchan_obj, "scan_time_us"); /* fetch value (if possible) */
+                        if (val != NULL) {
+                            if (json_value_get_type(val) == JSONNumber) {
+                                if ((uint16_t)json_value_get_number(val) == 128) {
+                                    sx1261conf.lbt_conf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_128_US;
+                                } else if ((uint16_t)json_value_get_number(val) == 5000) {
+                                    sx1261conf.lbt_conf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_5000_US;
+                                } else {
+                                    MSG("ERROR: scan time not supported for LBT channel %d, must be 128 or 5000\n", i);
+                                    return -1;
+                                }
+                            } else {
+                                MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
+                                sx1261conf.lbt_conf.channels[i].scan_time_us = 0;
+                            }
+                        } else {
+                            MSG("ERROR: no scan_time_us defined for LBT channel %d\n", i);
+                            return -1;
+                        }
+
+                        /* Channel transmit time */
+                        val = json_object_dotget_value(conf_lbtchan_obj, "transmit_time_ms"); /* fetch value (if possible) */
+                        if (val != NULL) {
+                            if (json_value_get_type(val) == JSONNumber) {
+                                sx1261conf.lbt_conf.channels[i].transmit_time_ms = (uint16_t)json_value_get_number(val);
+                            } else {
+                                MSG("WARNING: Data type for lbt_cfg.channels[%d].transmit_time_ms seems wrong, please check\n", i);
+                                sx1261conf.lbt_conf.channels[i].transmit_time_ms = 0;
+                            }
+                        } else {
+                            MSG("ERROR: no transmit_time_ms defined for LBT channel %d\n", i);
+                            return -1;
+                        }
                     }
-                } else {
-                    MSG("ERROR: no transmit_time_ms defined for LBT channel %d\n", i);
-                    return -1;
                 }
             }
 
             /* all parameters parsed, submitting configuration to the HAL */
-            if (lgw_lbt_setconf(&lbtconf) != LGW_HAL_SUCCESS) {
-                MSG("ERROR: Failed to configure LBT\n");
+            if (lgw_sx1261_setconf(&sx1261conf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure SX1261\n");
                 return -1;
             }
+            MSG("INFO: SX1261 is enabled\n");
         } else {
-            MSG("INFO: LBT is disabled\n");
+            MSG("INFO: SX1261 is disabled\n");
         }
     }
 
