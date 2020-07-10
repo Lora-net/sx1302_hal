@@ -238,7 +238,7 @@ int main(int argc, char **argv)
             case 'o': /* <float> RSSI offset in dB */
                 i = sscanf(optarg, "%lf", &arg_d);
                 if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
+                    printf("ERROR: argument parsing of -o argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
                     rssi_offset = (float)arg_d;
