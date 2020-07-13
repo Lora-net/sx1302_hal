@@ -135,6 +135,23 @@ int sx1261_check_status(uint8_t expected_status) {
     return LGW_REG_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+const char * get_scan_status_str(const lgw_sx1261_scan_status status) {
+    switch (status) {
+        case LGW_SPECTRAL_SCAN_STATUS_NONE:
+            return "LGW_SPECTRAL_SCAN_STATUS_NONE";
+        case LGW_SPECTRAL_SCAN_STATUS_ON_GOING:
+            return "LGW_SPECTRAL_SCAN_STATUS_ON_GOING";
+        case LGW_SPECTRAL_SCAN_STATUS_ABORTED:
+            return "LGW_SPECTRAL_SCAN_STATUS_ABORTED";
+        case LGW_SPECTRAL_SCAN_STATUS_COMPLETED:
+            return "LGW_SPECTRAL_SCAN_STATUS_COMPLETED";
+        default:
+            return "LGW_SPECTRAL_SCAN_STATUS_UNKNOWN";
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -411,19 +428,23 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     /* Record function start time */
     _meas_time_start(&tm);
 
+    /* Set SPI write bulk mode to optimize speed on USB */
+    err = sx1261_com_set_write_mode(LGW_COM_WRITE_MODE_BULK);
+    CHECK_ERR(err);
+
+    /* Disable any on-going spectral scan to free the sx1261 radio for LBT */
+    err = sx1261_spectral_scan_abort();
+    CHECK_ERR(err);
+
     /* Set FS */
     err = sx1261_reg_w(SX1261_SET_FS, buff, 0);
     CHECK_ERR(err);
 
-#if DEBUG_SX1261_GET_STATUS
+#if DEBUG_SX1261_GET_STATUS /* need to disable spi bulk mode if enable this check */
     /* Check radio status */
     err = sx1261_check_status(SX1261_STATUS_MODE_FS | SX1261_STATUS_READY);
     CHECK_ERR(err);
 #endif
-
-    /* Set SPI write bulk mode to optimize speed on USB */
-    err = sx1261_com_set_write_mode(LGW_COM_WRITE_MODE_BULK);
-    CHECK_ERR(err);
 
     /* Set frequency */
     freq_reg = SX1261_FREQ_TO_REG(freq_hz);
@@ -598,7 +619,12 @@ int sx1261_lbt_stop(void) {
 int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_dbm, uint16_t * results) {
     int err, i;
     uint8_t buff[69]; /* 66 bytes for spectral scan results + 2 bytes register address + 1 dummy byte for reading */
-    bool scan_done = false;
+    lgw_sx1261_scan_status status;
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
 
     /* Check input parameters */
     CHECK_NULL(levels_dbm);
@@ -616,15 +642,19 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
     do {
         wait_ms(10);
 
-        buff[0] = 0x07;
-        buff[1] = 0xCD;
-        buff[2] = 0x00; /* dummy */
-        buff[3] = 0x00; /* read value holder */
-        err = sx1261_reg_r(SX1261_READ_REGISTER, buff, 4);
+        err = sx1261_spectral_scan_status(&status);
         CHECK_ERR(err);
 
-        scan_done = ((buff[3] == 0xFF) ? true : false);
-    } while (scan_done == false); /* TODO: add timeout */
+        if (status == LGW_SPECTRAL_SCAN_STATUS_ABORTED) {
+            printf("ERROR: %s: spectral scan has been aborted\n", __FUNCTION__);
+            return LGW_REG_ERROR;
+        }
+
+        if (status >= LGW_SPECTRAL_SCAN_STATUS_UNKNOWN) {
+            printf("ERROR: wrong spectral scan status : 0x%02X\n", status);
+            return LGW_REG_ERROR;
+        }
+    } while (status != LGW_SPECTRAL_SCAN_STATUS_COMPLETED); /* TODO: add timeout */
     printf("INFO: Spectral Scan DONE\n");
 
     /* Get the results (66 bytes) */
@@ -655,6 +685,79 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
     printf("-------\n");
     printf("%d dBm: \t %u\n", -31*4 + rssi_offset, (uint16_t)((buff[3 + 32*2] << 8) + buff[3 + 32*2 + 1]));
 #endif
+
+    _meas_time_stop(4, tm, __FUNCTION__);
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_spectral_scan_abort(void) {
+    int err;
+    uint8_t buff[16];
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
+
+    printf("SX1261: aborting spectral scan\n");
+
+    /* Disable LBT */
+    buff[0] = 0x08;
+    buff[1] = 0x9B;
+    buff[2] = 0x00;
+    err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+    CHECK_ERR(err);
+
+    printf("SX1261: spectral scan aborted\n");
+
+    _meas_time_stop(4, tm, __FUNCTION__);
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int sx1261_spectral_scan_status(lgw_sx1261_scan_status * status) {
+    int err;
+    uint8_t buff[16];
+    /* performances variables */
+    struct timeval tm;
+
+    /* Record function start time */
+    _meas_time_start(&tm);
+
+    /* Get status */
+    buff[0] = 0x07;
+    buff[1] = 0xCD;
+    buff[2] = 0x00; /* dummy */
+    buff[3] = 0x00; /* read value holder */
+    err = sx1261_reg_r(SX1261_READ_REGISTER, buff, 4);
+    CHECK_ERR(err);
+
+    switch (buff[3]) {
+        case 0x00:
+            *status = LGW_SPECTRAL_SCAN_STATUS_NONE;
+            break;
+        case 0x0F:
+            *status = LGW_SPECTRAL_SCAN_STATUS_ON_GOING;
+            break;
+        case 0xF0:
+            *status = LGW_SPECTRAL_SCAN_STATUS_ABORTED;
+            break;
+        case 0xFF:
+            *status = LGW_SPECTRAL_SCAN_STATUS_COMPLETED;
+            break;
+        default:
+            *status = LGW_SPECTRAL_SCAN_STATUS_UNKNOWN;
+            break;
+    }
+
+    DEBUG_PRINTF("INFO: %s: %s\n", __FUNCTION__, get_scan_status_str(*status));
+
+    _meas_time_stop(4, tm, __FUNCTION__);
 
     return LGW_REG_SUCCESS;
 }

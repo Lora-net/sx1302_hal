@@ -37,6 +37,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
+typedef enum sx1261_scan_status_e {
+    LGW_SPECTRAL_SCAN_STATUS_NONE,
+    LGW_SPECTRAL_SCAN_STATUS_ON_GOING,
+    LGW_SPECTRAL_SCAN_STATUS_ABORTED,
+    LGW_SPECTRAL_SCAN_STATUS_COMPLETED,
+    LGW_SPECTRAL_SCAN_STATUS_UNKNOWN
+} lgw_sx1261_scan_status;
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
@@ -55,6 +63,8 @@ int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm);
 int sx1261_lbt_stop(void);
 
 int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_dbm, uint16_t * results);
+int sx1261_spectral_scan_abort(void);
+int sx1261_spectral_scan_status(lgw_sx1261_scan_status * status);
 
 #endif
 
