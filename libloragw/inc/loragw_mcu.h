@@ -28,7 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-static const char mcu_version_string[] = "00.02.05";
+static const char mcu_version_string[] = "00.02.06";
 
 #define MAX_SIZE_COMMAND ( 4200 )
 #define MAX_SPI_COMMAND ( MAX_SIZE_COMMAND - CMD_OFFSET__DATA - 1 )
