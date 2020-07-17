@@ -157,7 +157,7 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
         if (timeout_check(tm_start, 500) != 0) {
             printf("ERROR: %s: TIMEOUT on TX start, not started\n", __FUNCTION__);
             tx_timeout = true;
-            /* we'll still perform the AGC clean status and return an error to upper layer */
+            /* we'll still perform the AGC clear status and return an error to upper layer */
             break;
         }
     } while ((status & (1 << rf_chain)) == 0x00);
@@ -184,7 +184,11 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
             return -1;
         }
         wait_ms(1);
-        /* TODO: add timeout */
+        if (timeout_check(tm_start, 500) != 0) {
+            printf("ERROR: %s: TIMEOUT on TX start (AGC clear status)\n", __FUNCTION__);
+            tx_timeout = true;
+            break;
+        }
     } while (status != 0x00);
 
     /* Acknoledge */
