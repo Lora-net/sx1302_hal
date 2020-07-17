@@ -2100,13 +2100,20 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     {
         static uint32_t last_valid = 0;
         static uint32_t last_us32 = 0;
+        static uint32_t last_pkt_num;
         int32_t diff = p->count_us - last_us32;
-        printf("XXXXXXXXXXXXXXXX pkt=%u last=%u diff=%08X/%d\n", p->count_us, last_us32, diff, diff);
-        if( last_valid && diff > 30000000 ) {
+        uint32_t pkt_num = (p->payload[4] << 24) | (p->payload[5] << 16) | (p->payload[6] << 8) | (p->payload[7] << 0);
+
+        printf("XXXXXXXXXXXXXXXX inst - ref=%u wrap=%u\n", counter_us.inst.counter_us_27bits_ref, counter_us.inst.counter_us_27bits_wrap);
+        printf("XXXXXXXXXXXXXXXX pps  - ref=%u wrap=%u\n", counter_us.pps.counter_us_27bits_ref, counter_us.pps.counter_us_27bits_wrap);
+        printf("XXXXXXXXXXXXXXXX pkt=%u (%u) last=%u diff=%d\n", p->count_us, pkt.timestamp_cnt / 32, last_us32, diff);
+        printf("XXXXXXXXXXXXXXXX pkt num=%u\n", pkt_num);
+        if (last_valid && (diff > 30000000) && (pkt_num == (last_pkt_num + 1))) {
             printf("XXXXXXXXXXXXXXXX ERROR jump ahead count_us\n");
             exit(1);
         }
         last_us32 = p->count_us;
+        last_pkt_num = pkt_num;
         last_valid = 1;
     }
 #endif
