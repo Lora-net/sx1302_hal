@@ -1473,19 +1473,28 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size);
 /**
 @brief LoRa concentrator register burst read
 @param register_id register number in the data structure describing registers
-@param data pointer to byte array that will be written from the LoRa concentrator
+@param data pointer to byte array to store the data read from the LoRa concentrator
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
 
 /**
-TODO
+@brief LoRa concentrator memory burst write
+@param mem_addr the address of the memory section to write to
+@param data pointer to byte array that will be written from the LoRa concentrator
+@param size size of the transfer, in byte(s)
+@return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size);
 
 /**
-TODO
+@brief LoRa concentrator memory burst read
+@param mem_addr the address of the memory section to read from
+@param data pointer to byte array to store the data read from the LoRa concentrator
+@param size size of the transfer, in byte(s)
+@param fifo_mode the type of memory to read from
+@return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode);
 
