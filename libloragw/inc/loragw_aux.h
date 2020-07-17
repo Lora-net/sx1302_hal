@@ -106,14 +106,16 @@ void _meas_time_start(struct timeval *tm);
 void _meas_time_stop(int debug_level, struct timeval start_time, const char *str);
 
 /**
-@brief TODO
-@param TODO
+@brief Get the current time for later timeout check
+@param start contains the current time to be used as start time for timeout
 */
 void timeout_start(struct timeval * start);
 
 /**
-@brief TODO
-@param TODO
+@brief Check if the given timeout time in milliseconds has ellapsed compared to start time
+@param start reference start time
+@param timeout_ms the timeout duration in milliseconds
+@return -1 if the timeout has exceeded, 0 otherwise
 */
 int timeout_check(struct timeval start, uint32_t timeout_ms);
 

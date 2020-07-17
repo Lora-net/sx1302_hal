@@ -73,7 +73,13 @@ int lgw_spi_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 int lgw_spi_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 
 /**
-@brief TODO
+@brief LoRa concentrator SPI single-byte read-modify-write
+@param spi_target generic pointer to SPI target (implementation dependant)
+@param address 7-bit register address
+@param offs start offset of the bits to be modified
+@param leng number of bits to be modified
+@param data value to be written in the selected bits
+@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 int lgw_spi_rmw(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
 

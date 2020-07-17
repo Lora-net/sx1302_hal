@@ -543,11 +543,11 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
 int lgw_set_xtal_correct(bool is_valid, double xtal_correction);
 
 /**
-@brief TODO
-@param freq_hz TODO
-@param nb_scan TODO
-@param levels TODO
-@param values TODO
+@brief Scan the channel centered on the given frequency
+@param freq_hz channel center frequency
+@param nb_scan number of measures to be done for the scan
+@param levels an array containing the power levels for which the scan results are given
+@param values ar array containing the results of the scan for each power levels
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_spectral_scan(uint32_t freq_hz, uint16_t nb_scan, int16_t levels_dbm[static LGW_SPECTRAL_SCAN_RESULT_SIZE], uint16_t results[static LGW_SPECTRAL_SCAN_RESULT_SIZE]);
