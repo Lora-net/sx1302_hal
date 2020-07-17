@@ -176,7 +176,7 @@ int rx_buffer_fetch(rx_buffer_t * self) {
         idx = 0;
         while (idx <= (self->buffer_size - 2)) {
             if ((self->buffer[idx] == SX1302_PKT_SYNCWORD_BYTE_0) && (self->buffer[idx + 1] == SX1302_PKT_SYNCWORD_BYTE_1)) {
-                printf("INFO: syncword found at idx %d\n", idx);
+                DEBUG_PRINTF("INFO: syncword found at idx %d\n", idx);
                 break;
             } else {
                 printf("INFO: syncword not found at idx %d\n", idx);

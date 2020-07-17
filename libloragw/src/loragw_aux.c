@@ -146,7 +146,7 @@ uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8
     /* Duration of packet in microseconds */
     toa_us = (uint32_t)( (double)n_symbol * (double)t_symbol_us );
 
-    printf("INFO: LoRa packet ToA: %u us (n_symbol:%f, t_symbol_us:%u)\n", toa_us, n_symbol, t_symbol_us);
+    DEBUG_PRINTF("INFO: LoRa packet ToA: %u us (n_symbol:%f, t_symbol_us:%u)\n", toa_us, n_symbol, t_symbol_us);
 
     /* Return details if required */
     if (out_nb_symbols != NULL) {

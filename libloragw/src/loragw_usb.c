@@ -415,7 +415,7 @@ int lgw_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
         return -1;
     }
 
-    printf("INFO: setting USB write mode to %s\n", (write_mode == LGW_COM_WRITE_MODE_SINGLE) ? "SINGLE" : "BULK");
+    DEBUG_PRINTF("INFO: setting USB write mode to %s\n", (write_mode == LGW_COM_WRITE_MODE_SINGLE) ? "SINGLE" : "BULK");
 
     _lgw_write_mode = write_mode;
 
@@ -445,10 +445,10 @@ int lgw_usb_flush(void *com_target) {
 
     usb_device = *(int *)com_target;
 
-    printf("INFO: flushing USB write buffer\n");
+    DEBUG_MSG("INFO: flushing USB write buffer\n");
     a = mcu_spi_flush(usb_device);
     if (a != 0) {
-        DEBUG_MSG("ERROR: USB WRITE FLUSH FAILURE\n");
+        printf("ERROR: Failed to flush USB write buffer\n");
     }
 
     /* reset the pending request number */
@@ -479,7 +479,7 @@ int lgw_usb_get_temperature(void *com_target, float * temperature) {
         printf("ERROR: failed to get status from the concentrator MCU\n");
         return -1;
     }
-    printf("INFO: temperature:%.1foC\n", mcu_status.temperature);
+    DEBUG_PRINTF("INFO: temperature:%.1foC\n", mcu_status.temperature);
 
     *temperature = mcu_status.temperature;
 

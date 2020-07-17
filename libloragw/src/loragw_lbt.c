@@ -35,7 +35,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#if DEBUG_HAL == 1
+#if DEBUG_LBT == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 #else
@@ -69,7 +69,7 @@ static int is_lbt_channel(const struct lgw_conf_lbt_s * lbt_context, uint32_t fr
 
     for (i = 0; i <  lbt_context->nb_channel; i++) {
         if ((is_equal_freq(freq_hz, lbt_context->channels[i].freq_hz) == true) && (bandwidth == lbt_context->channels[i].bandwidth)) {
-            printf("LBT: select channel %d (freq:%u Hz, bw:0x%02X)\n", i, lbt_context->channels[i].freq_hz, lbt_context->channels[i].bandwidth);
+            DEBUG_PRINTF("LBT: select channel %d (freq:%u Hz, bw:0x%02X)\n", i, lbt_context->channels[i].freq_hz, lbt_context->channels[i].bandwidth);
             lbt_channel_match = i;
             break;
         }

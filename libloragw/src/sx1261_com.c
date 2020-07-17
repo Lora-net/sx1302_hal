@@ -29,7 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_RAD == 1
+#if DEBUG_LBT == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return -1;}
@@ -74,12 +74,12 @@ int sx1261_com_open(lgw_com_type_t com_type, const char *com_path) {
                 printf("ERROR: %s: Failed to connect to sx1261 radio on %s\n", __FUNCTION__, com_path);
                 return LGW_COM_ERROR;
             }
-            printf("SX1261: connected with SPI %s\n", com_path);
+            DEBUG_PRINTF("SX1261: connected with SPI %s\n", com_path);
             break;
         case LGW_COM_USB:
             /* the USB link has already been opened (lgw_connect) */
             _sx1261_com_target = lgw_com_target();
-            printf("SX1261: connected with USB\n");
+            DEBUG_MSG("SX1261: connected with USB\n");
             break;
         default:
             printf("ERROR: %s: wrong COM type\n", __FUNCTION__);

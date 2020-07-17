@@ -29,7 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_RAD == 1
+#if DEBUG_LBT == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return -1;}
@@ -148,7 +148,7 @@ int sx1261_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
         return -1;
     }
 
-    printf("INFO: setting SX1261 USB write mode to %s\n", (write_mode == LGW_COM_WRITE_MODE_SINGLE) ? "SINGLE" : "BULK");
+    DEBUG_PRINTF("INFO: setting SX1261 USB write mode to %s\n", (write_mode == LGW_COM_WRITE_MODE_SINGLE) ? "SINGLE" : "BULK");
 
     _sx1261_write_mode = write_mode;
 
@@ -178,10 +178,10 @@ int sx1261_usb_flush(void *com_target) {
 
     usb_device = *(int *)com_target;
 
-    printf("INFO: flushing SX1261 USB write buffer\n");
+    DEBUG_MSG("INFO: flushing SX1261 USB write buffer\n");
     a = mcu_spi_flush(usb_device);
     if (a != 0) {
-        DEBUG_MSG("ERROR: USB WRITE FLUSH FAILURE\n");
+        printf("ERROR: Failed to flush sx1261 USB write buffer\n");
     }
 
     /* reset the pending request number */

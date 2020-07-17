@@ -38,7 +38,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_RAD == 1
+#if DEBUG_LBT == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
@@ -110,7 +110,7 @@ int sx1261_get_status(uint8_t * status) {
 
     *status = buff[0] & 0x7E; /* ignore bit 0 & 7 */
 
-    printf("SX1261: %s: get_status: 0x%02X (0x%02X)\n", __FUNCTION__, *status, buff[0]);
+    DEBUG_PRINTF("SX1261: %s: get_status: 0x%02X (0x%02X)\n", __FUNCTION__, *status, buff[0]);
 
     return LGW_REG_SUCCESS;
 }
@@ -410,7 +410,7 @@ int sx1261_setup(uint32_t freq_hz) {
     err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
     CHECK_ERR(err);
 
-    printf("SX1261: setup for LBT / Spectral Scan done\n");
+    DEBUG_MSG("SX1261: setup for LBT / Spectral Scan done\n");
 
     return LGW_REG_SUCCESS;
 }
@@ -529,7 +529,7 @@ int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
     CHECK_ERR(err);
 #endif
 
-    printf("SX1261: RX params set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
+    DEBUG_PRINTF("SX1261: RX params set to %u Hz (bw:0x%02X)\n", freq_hz, bandwidth);
 
     _meas_time_stop(4, tm, __FUNCTION__);
 
@@ -579,7 +579,7 @@ int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm) {
     /* Wait for Scan Time before TX trigger request */
     wait_us((uint16_t)scan_time_us);
 
-    printf("SX1261: LBT started: scan time = %uus, threshold = %ddBm\n", (uint16_t)scan_time_us, threshold_dbm);
+    DEBUG_PRINTF("SX1261: LBT started: scan time = %uus, threshold = %ddBm\n", (uint16_t)scan_time_us, threshold_dbm);
 
     _meas_time_stop(4, tm, __FUNCTION__);
 
@@ -598,8 +598,6 @@ int sx1261_lbt_stop(void) {
     /* Record function start time */
     _meas_time_start(&tm);
 
-    printf("SX1261: stopping LBT\n");
-
     /* Disable LBT */
     buff[0] = 0x08;
     buff[1] = 0x9B;
@@ -607,7 +605,7 @@ int sx1261_lbt_stop(void) {
     err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
     CHECK_ERR(err);
 
-    printf("SX1261: LBT stopped\n");
+    DEBUG_MSG("SX1261: LBT stopped\n");
 
     _meas_time_stop(4, tm, __FUNCTION__);
 
@@ -702,8 +700,6 @@ int sx1261_spectral_scan_abort(void) {
     /* Record function start time */
     _meas_time_start(&tm);
 
-    printf("SX1261: aborting spectral scan\n");
-
     /* Disable LBT */
     buff[0] = 0x08;
     buff[1] = 0x9B;
@@ -711,7 +707,7 @@ int sx1261_spectral_scan_abort(void) {
     err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
     CHECK_ERR(err);
 
-    printf("SX1261: spectral scan aborted\n");
+    DEBUG_MSG("SX1261: spectral scan aborted\n");
 
     _meas_time_stop(4, tm, __FUNCTION__);
 
