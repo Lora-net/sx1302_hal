@@ -77,7 +77,7 @@ $(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c | $(OBJDIR)
 	$(CC) -c $< -o $@ $(CFLAGS) -Iinc -I../libloragw/inc
 
 ### Link everything together
-$(APP_NAME): $(OBJDIR)/$(APP_NAME).o
+$(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LIB_PATH)/libloragw.a
 	$(CC) -L$(LIB_PATH) -L../libtools $^ -o $@ $(LDFLAGS) $(APP_LIBS)
 
 ### EOF
