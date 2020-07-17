@@ -2287,8 +2287,6 @@ int sx1302_tx_abort(uint8_t rf_chain) {
         /* TODO: add timeout */
     } while (tx_status != TX_FREE);
 
-    printf("==> TX ABORTED\n");
-
     return LGW_REG_SUCCESS;
 }
 

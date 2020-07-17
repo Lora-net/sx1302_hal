@@ -634,7 +634,8 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
     buff[2] = 11; /* interval between scans - 8.2 us */
     err = sx1261_reg_w(0x9b, buff, 9);
     CHECK_ERR(err);
-    printf("INFO: Spectral Scan started...\n");
+
+    DEBUG_MSG("INFO: Spectral Scan started...\n");
 
     /* Wait for scan to be completed */
     do {
@@ -653,7 +654,8 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
             return LGW_REG_ERROR;
         }
     } while (status != LGW_SPECTRAL_SCAN_STATUS_COMPLETED); /* TODO: add timeout */
-    printf("INFO: Spectral Scan DONE\n");
+
+    DEBUG_MSG("INFO: Spectral Scan DONE\n");
 
     /* Get the results (66 bytes) */
     buff[0] = 0x04;
