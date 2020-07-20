@@ -25,6 +25,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* boolean type */
 #include <stdio.h>      /* printf fprintf */
 #include <memory.h>     /* memset */
+#include <inttypes.h>   /* PRIx64, PRIu64... */
 #include <assert.h>
 
 #include "loragw_sx1302_timestamp.h"
@@ -199,12 +200,12 @@ int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t sf, ui
 
     if (total_delay > INT32_MAX) {
         printf("ERROR: overflow error for timestamp correction (SHOULD NOT HAPPEN)\n");
-        printf("=> filtering_delay %llu \n", filtering_delay);
-        printf("=> fft_delay_state3 %llu \n", fft_delay_state3);
-        printf("=> fft_delay %llu \n", fft_delay);
-        printf("=> demap_delay %llu \n", demap_delay);
-        printf("=> decode_delay %llu \n", decode_delay);
-        printf("=> total_delay %llu \n", total_delay);
+        printf("=> filtering_delay %" PRIu64 "\n", filtering_delay);
+        printf("=> fft_delay_state3 %" PRIu64 "\n", fft_delay_state3);
+        printf("=> fft_delay %" PRIu64 "\n", fft_delay);
+        printf("=> demap_delay %" PRIu64 "\n", demap_delay);
+        printf("=> decode_delay %" PRIu64 "\n", decode_delay);
+        printf("=> total_delay %" PRIu64 "\n", total_delay);
         assert(0);
     }
 
