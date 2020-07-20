@@ -148,18 +148,21 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
     /* Bit 1 in status: TX has been initiated on Radio B */
     timeout_start(&tm_start);
     do {
-        err = sx1302_agc_status(&status);
-        if (err != 0) {
-            printf("ERROR: %s: failed to get AGC status\n", __FUNCTION__);
-            return -1;
-        }
-        wait_ms(1);
+        /* handle timeout */
         if (timeout_check(tm_start, 500) != 0) {
             printf("ERROR: %s: TIMEOUT on TX start, not started\n", __FUNCTION__);
             tx_timeout = true;
             /* we'll still perform the AGC clear status and return an error to upper layer */
             break;
         }
+
+        /* get tx status */
+        err = sx1302_agc_status(&status);
+        if (err != 0) {
+            printf("ERROR: %s: failed to get AGC status\n", __FUNCTION__);
+            return -1;
+        }
+        wait_ms(1);
     } while ((status & (1 << rf_chain)) == 0x00);
 
     if (tx_timeout == false) {
@@ -178,17 +181,20 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
 
     /* Wait for transmit status to be cleared */
     do {
+        /* handle timeout */
+        if (timeout_check(tm_start, 500) != 0) {
+            printf("ERROR: %s: TIMEOUT on TX start (AGC clear status)\n", __FUNCTION__);
+            tx_timeout = true;
+            break;
+        }
+
+        /* get tx status */
         err = sx1302_agc_status(&status);
         if (err != 0) {
             printf("ERROR: %s: failed to get AGC status\n", __FUNCTION__);
             return -1;
         }
         wait_ms(1);
-        if (timeout_check(tm_start, 500) != 0) {
-            printf("ERROR: %s: TIMEOUT on TX start (AGC clear status)\n", __FUNCTION__);
-            tx_timeout = true;
-            break;
-        }
     } while (status != 0x00);
 
     /* Acknoledge */
