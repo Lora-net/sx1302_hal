@@ -30,9 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_reg.h"
-#include "loragw_hal.h"
 #include "loragw_aux.h"
-#include "loragw_sx1302.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -86,7 +84,7 @@ static struct timestamp_pps_history_s timestamp_pps_history = {
 @param TODO
 @return The correction to be applied to the packet timestamp, in microseconds
 */
-int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool no_crc, uint8_t payload_length);
+int32_t legacy_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool no_crc, uint8_t payload_length, sx1302_rx_dft_peak_mode_t dft_peak_mode);
 
 /**
 @brief TODO
@@ -98,11 +96,10 @@ int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t sf, uint8_t cr, bool crc_en, uint8_t payload_length) {
-    int32_t val;
+int32_t legacy_timestamp_correction(uint8_t bandwidth, uint8_t sf, uint8_t cr, bool crc_en, uint8_t payload_length, sx1302_rx_dft_peak_mode_t dft_peak_mode) {
     uint64_t clk_period, filtering_delay, demap_delay, fft_delay_state3, fft_delay, decode_delay, total_delay;
     uint32_t nb_nibble, nb_nibble_in_hdr, nb_nibble_in_last_block;
-    uint8_t nb_iter, bw_pow, dft_peak_en;;
+    uint8_t nb_iter, bw_pow, dft_peak_en = (dft_peak_mode == RX_DFT_PEAK_MODE_DISABLED) ? 0 : 1;
     uint8_t ppm = SET_PPM_ON(bandwidth, sf) ? 1 : 0;
     int32_t timestamp_correction;
     bool payload_fits_in_header = false;
@@ -141,18 +138,6 @@ int32_t legacy_timestamp_correction(int ifmod, uint8_t bandwidth, uint8_t sf, ui
     }
 
     nb_iter = (sf + 1) / 2; /* intended to be truncated */
-
-    if (ifmod == IF_LORA_STD) {
-        lgw_reg_r(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_CFG0_DFT_PEAK_EN, &val);
-    } else {
-        lgw_reg_r(SX1302_REG_RX_TOP_RX_CFG0_DFT_PEAK_EN, &val);
-    }
-    if (val != 0) {
-        /* TODO: should we differentiate the mode (FULL/TRACK) ? */
-        dft_peak_en = 1;
-    } else {
-        dft_peak_en = 0;
-    }
 
     /* Update some variables if payload fits entirely in the header */
     if (((int)(2 * (payload_length + 2 * crc_en) - (sf - 7)) <= 0) || ((payload_length == 0) && (crc_en == false))) {
@@ -455,7 +440,7 @@ int timestamp_counter_mode(bool ftime_enable) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool crc_en, uint8_t payload_length) {
+int32_t timestamp_counter_correction(lgw_context_t * context, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool crc_en, uint8_t payload_length, sx1302_rx_dft_peak_mode_t dft_peak_mode) {
     /* Check input parameters */
     CHECK_NULL(context);
     if (IS_LORA_DR(datarate) == false) {
@@ -473,7 +458,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t
 
     /* Calculate the correction to be applied */
     if (context->ftime_cfg.enable == false) {
-        return legacy_timestamp_correction(ifmod, bandwidth, datarate, coderate, crc_en, payload_length);
+        return legacy_timestamp_correction(bandwidth, datarate, coderate, crc_en, payload_length, dft_peak_mode);
     } else {
         return precision_timestamp_correction(bandwidth, datarate, coderate, crc_en, payload_length);
     }

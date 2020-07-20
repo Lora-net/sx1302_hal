@@ -76,6 +76,17 @@ typedef enum {
 } sx1302_rx_fine_timing_mode_t;
 
 /**
+@enum sx1302_rx_dft_peak_mode_t
+@brief DFT peak mode
+*/
+typedef enum {
+    RX_DFT_PEAK_MODE_DISABLED    = 0x00,
+    RX_DFT_PEAK_MODE_FULL        = 0x01,
+    RX_DFT_PEAK_MODE_TRACK       = 0x02,
+    RX_DFT_PEAK_MODE_AUTO        = 0x03
+} sx1302_rx_dft_peak_mode_t;
+
+/**
 @struct sx1302_if_cfg_t
 @brief TODO
 */

@@ -28,6 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* boolean type */
 
 #include "loragw_hal.h"
+#include "loragw_sx1302.h"
 
 #include "config.h"     /* library configuration options (dynamically generated) */
 
@@ -107,15 +108,16 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
 
 /**
 @brief Get the correction to applied to the LoRa packet timestamp (count_us)
-@param ifmod            modem type
+@param context          gateway configuration context
 @param bandwidth        modulation bandwidth
 @param datarate         modulation datarate
 @param coderate         modulation coding rate
 @param crc_en           indicates if CRC is enabled or disabled
 @param payload_length   payload length
+@param dft_peak_mode    DFT peak mode configuration of the modem
 @return The correction to be applied to the packet timestamp, in microseconds
 */
-int32_t timestamp_counter_correction(lgw_context_t * context, int ifmod, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool crc_en, uint8_t payload_length);
+int32_t timestamp_counter_correction(lgw_context_t * context, uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool crc_en, uint8_t payload_length, sx1302_rx_dft_peak_mode_t dft_peak_mode);
 
 /**
 @brief Configure the SX1302 to output legacy timestamp or precision timestamp

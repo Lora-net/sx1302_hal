@@ -963,6 +963,9 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
     /* Time drift compensation */
     err |= lgw_reg_w(SX1302_REG_RX_TOP_FREQ_TO_TIME3_FREQ_TO_TIME_INVERT_TIME_SYMB, 1);
 
+    /* DFT peak mode : set to AUTO, check timestamp_counter_correction() if changed */
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_RX_CFG0_DFT_PEAK_EN, RX_DFT_PEAK_MODE_AUTO);
+
     return err;
 }
 
@@ -1048,6 +1051,9 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t r
     err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_CADRXTX, 1);
 
     err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG2_MODEM_START, 1);
+
+    /* DFT peak mode : set to AUTO, check timestamp_counter_correction() if changed */
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_RX_CFG0_DFT_PEAK_EN, RX_DFT_PEAK_MODE_AUTO);
 
     return err;
 }
@@ -2030,7 +2036,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         }
 
         /* Get timestamp correction to be applied to count_us */
-        timestamp_correction = timestamp_counter_correction(context, ifmod, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem);
+        timestamp_correction = timestamp_counter_correction(context, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem, RX_DFT_PEAK_MODE_AUTO);
 
         /* Compute fine timestmap for packets coming from the modem optimized for fine timestamping, if CRC is OK */
         p->ftime_received = false;
