@@ -614,6 +614,7 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
     int err, i;
     uint8_t buff[69]; /* 66 bytes for spectral scan results + 2 bytes register address + 1 dummy byte for reading */
     lgw_sx1261_scan_status status;
+    struct timeval tm_start;
     /* performances variables */
     struct timeval tm;
 
@@ -634,9 +635,15 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
     DEBUG_MSG("INFO: Spectral Scan started...\n");
 
     /* Wait for scan to be completed */
+    timeout_start(&tm_start);
     do {
-        wait_ms(10);
+        /* handle timeout */
+        if (timeout_check(tm_start, 2000) != 0) {
+            printf("ERROR: %s: TIMEOUT on Spectral Scan\n", __FUNCTION__);
+            return LGW_REG_ERROR;
+        }
 
+        /* get spectral scan status */
         err = sx1261_spectral_scan_status(&status);
         CHECK_ERR(err);
 
@@ -649,7 +656,9 @@ int sx1261_spectral_scan(uint16_t nb_scan, int8_t rssi_offset, int16_t * levels_
             printf("ERROR: wrong spectral scan status : 0x%02X\n", status);
             return LGW_REG_ERROR;
         }
-    } while (status != LGW_SPECTRAL_SCAN_STATUS_COMPLETED); /* TODO: add timeout */
+
+        wait_ms(10);
+    } while (status != LGW_SPECTRAL_SCAN_STATUS_COMPLETED);
 
     DEBUG_MSG("INFO: Spectral Scan DONE\n");
 
