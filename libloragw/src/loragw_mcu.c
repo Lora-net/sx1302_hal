@@ -49,12 +49,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #if DEBUG_MCU == 1
-#define DEBUG_VERBOSE 1
+#define DEBUG_VERBOSE 0
 #endif
 
 #define HEADER_CMD_SIZE 4
-#define WRITE_SIZE_MAX  64 // TODO: to be checked
-#define READ_SIZE_MAX   64 // TODO: to be checked
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -69,8 +67,6 @@ typedef struct spi_req_bulk_s {
 /* --- PRIVATE VARIABLES  --------------------------------------------------- */
 
 static uint8_t buf_hdr[HEADER_CMD_SIZE];
-static uint8_t buf_req[WRITE_SIZE_MAX];
-static uint8_t buf_ack[READ_SIZE_MAX];
 
 static spi_req_bulk_t spi_bulk_buffer = {
     .size = 0,
@@ -556,6 +552,8 @@ int decode_ack_spi_bulk(const uint8_t * hdr, const uint8_t * payload) {
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int mcu_ping(int fd, s_ping_info * info) {
+    uint8_t buf_ack[ACK_PING_SIZE];
+
     CHECK_NULL(info);
 
     if (write_req(fd, ORDER_ID__REQ_PING, NULL, 0) != 0) {
@@ -584,7 +582,7 @@ int mcu_boot(int fd) {
         return -1;
     }
 
-    if (read_ack(fd, buf_hdr, buf_ack, sizeof buf_ack) < 0) {
+    if (read_ack(fd, buf_hdr, NULL, 0) < 0) {
         printf("ERROR: failed to read BOOTLOADER_MODE ack\n");
         return -1;
     }
@@ -600,6 +598,8 @@ int mcu_boot(int fd) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int mcu_get_status(int fd, s_status * status) {
+    uint8_t buf_ack[ACK_GET_STATUS_SIZE];
+
     CHECK_NULL(status);
 
     if (write_req(fd, ORDER_ID__REQ_GET_STATUS, NULL, 0) != 0) {
@@ -624,6 +624,8 @@ int mcu_get_status(int fd, s_status * status) {
 
 int mcu_gpio_write(int fd, uint8_t gpio_port, uint8_t gpio_id, uint8_t gpio_value) {
     uint8_t status;
+    uint8_t buf_req[REQ_WRITE_GPIO_SIZE];
+    uint8_t buf_ack[ACK_GPIO_WRITE_SIZE];
 
     buf_req[REQ_WRITE_GPIO__PORT]   = gpio_port;
     buf_req[REQ_WRITE_GPIO__PIN]    = gpio_id;
