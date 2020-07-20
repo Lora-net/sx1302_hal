@@ -55,47 +55,35 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define SX1261_PRAM_VERSION_FULL_SIZE 16 /* 15 bytes + terminating char */
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
-int sx1261_pram_get_version(void) {
-    uint8_t buff[32];
-    int x, i;
+int sx1261_pram_get_version(char * version_str) {
+    uint8_t buff[3 + SX1261_PRAM_VERSION_FULL_SIZE] = { 0 };
+    int x;
 
+    /* Check input parameter */
+    CHECK_NULL(version_str);
+
+    /* Get version string (15 bytes) at address 0x320 */
     buff[0] = 0x03;
     buff[1] = 0x20;
-    buff[2] = 0x00;
-    buff[3] = 0x00;
-    buff[4] = 0x00;
-    buff[5] = 0x00;
-    buff[6] = 0x00;
-    buff[7] = 0x00;
-    buff[8] = 0x00;
-    buff[9] = 0x00;
-    buff[10] = 0x00;
-    buff[11] = 0x00;
-    buff[12] = 0x00;
-    buff[13] = 0x00;
-    buff[14] = 0x00;
-    buff[15] = 0x00;
-    buff[16] = 0x00;
-    buff[17] = 0x00;
+    buff[2] = 0x00; /* status */
     x = sx1261_reg_r(SX1261_READ_REGISTER, buff, 18);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: failed to read SX1261 PRAM version\n");
         return x;
     }
 
-    /* TODO: return the version string */
-
-    printf("SX1261: PRAM: ");
-    for(i = 0; i < 18; i++) {
-        printf("%c", (char)buff[i]);
-    }
-    printf("\n");
+    /* Return full PRAM version string */
+    buff[18] = '\0';
+    strncpy(version_str, (char*)(buff + 3), 16); /* 15 bytes + terminating char */
+    version_str[16] = '\0';
 
     return LGW_REG_SUCCESS;
 }
@@ -208,6 +196,7 @@ int sx1261_reg_r(sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
 int sx1261_load_pram(void) {
     int i, err;
     uint8_t buff[32];
+    char pram_version[SX1261_PRAM_VERSION_FULL_SIZE];
     uint32_t val, addr;
 
     /* Set Radio in Standby mode */
@@ -221,11 +210,12 @@ int sx1261_load_pram(void) {
         return -1;
     }
 
-    err = sx1261_pram_get_version();
+    err = sx1261_pram_get_version(pram_version);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: %s: SX1261 failed to get pram version\n", __FUNCTION__);
         return -1;
     }
+    printf("SX1261: PRAM version: %s\n", pram_version);
 
     /* Enable patch update */
     buff[0] = 0x06;
@@ -261,12 +251,18 @@ int sx1261_load_pram(void) {
     err = sx1261_reg_w(0xd9, buff, 0);
     CHECK_ERR(err);
 
-    err = sx1261_pram_get_version();
+    err = sx1261_pram_get_version(pram_version);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: %s: SX1261 failed to get pram version\n", __FUNCTION__);
         return -1;
     }
-    /* TODO: check PRAM version is correct */
+    printf("SX1261: PRAM version: %s\n", pram_version);
+
+    /* Check PRAM version (only last 4 bytes) */
+    if (strncmp(pram_version + 11, sx1261_pram_version_string, 4) != 0) {
+        printf("ERROR: SX1261 PRAM version mismatch (got:%s expected:%s)\n", pram_version + 11, sx1261_pram_version_string);
+        return -1;
+    }
 
     return 0;
 }

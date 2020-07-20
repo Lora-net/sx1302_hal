@@ -503,7 +503,6 @@ int decode_ack_spi_bulk(const uint8_t * hdr, const uint8_t * payload) {
     DEBUG_PRINTF("   size:         %u\n", cmd_get_size(hdr));
 #endif
 
-    //TODO: parse the buffer to get all ACKs in case of multiple requests
     i = 0;
     while (i < cmd_get_size(hdr)) {
         /* parse the request */
