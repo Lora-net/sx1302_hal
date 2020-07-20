@@ -63,7 +63,7 @@ uint32_t sampling_frequency[] = {4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 0, 0, 1e6, 1
 #include "src/text_agc_sx1257_19_Nov_1.var"
 #include "src/text_arb_sx1302_13_Nov_3.var"
 
-#define FW_VERSION_CAL      0 /* Expected version of calibration firmware */ /* TODO */
+#define FW_VERSION_CAL      0 /* Expected version of calibration firmware */
 #define FW_VERSION_AGC      1 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 

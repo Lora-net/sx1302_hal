@@ -2371,7 +2371,6 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     /* Setting BULK write mode (to speed up configuration on USB) */
     err = lgw_com_set_write_mode(LGW_COM_WRITE_MODE_BULK);
     CHECK_ERR(err);
-    /* TODO: switch back to SINGLE mode if any error is raised before the end of the function */
 
     /* Select the proper modem */
     switch (pkt_data->modulation) {
