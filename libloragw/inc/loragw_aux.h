@@ -77,8 +77,18 @@ void wait_ms(unsigned long t);
 void wait_us(unsigned long t);
 
 /**
-@brief TODO
-@param TODO
+@brief Calculate the time on air of a LoRa packet in microseconds
+@param bw packet bandwidth
+@param sf packet spreading factor
+@param cr packet coding rate
+@param n_symbol_preamble packet preamble length (number of symbols)
+@param no_header true if packet has no header
+@param no_crc true if packet has no CRC
+@param size packet size in bytes
+@param nb_symbols pointer to return the total number of symbols in packet
+@param nb_symbols_payload pointer to return the number of symbols in packet payload
+@param t_symbol_us pointer to return the duration of a symbol in microseconds
+@return the packet time on air in microseconds
 */
 uint32_t lora_packet_time_on_air( const uint8_t bw,
                                   const uint8_t sf,
