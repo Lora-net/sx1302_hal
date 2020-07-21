@@ -40,16 +40,19 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Configure the temperature sensor (ST TS751)
+@param i2c_fd file descriptor to access the sensor through I2C
+@param i2c_addr the I2C device address of the sensor
+@return LGW_I2C_ERROR if fails, LGW_I2C_SUCCESS otherwise
 */
 int stts751_configure(int i2c_fd, uint8_t i2c_addr);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Get the temperature from the sensor
+@param i2c_fd file descriptor to access the sensor through I2C
+@param i2c_addr the I2C device address of the sensor
+@param temperature pointer to store the temerature read from sensor
+@return LGW_I2C_ERROR if fails, LGW_I2C_SUCCESS otherwise
 */
 int stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature);
 
