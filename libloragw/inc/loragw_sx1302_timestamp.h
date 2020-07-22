@@ -132,12 +132,21 @@ int32_t timestamp_counter_correction(lgw_context_t * context, uint8_t bandwidth,
 int timestamp_counter_mode(bool ftime_enable);
 
 /**
-@brief TODO
+@brief Compute a precise timestamp (fine timestamp) based on given coarse timestamp, metrics given by sx1302 and current GW xtal drift
+@param ts_metrics_nb The number of timestamp metrics given in ts_metrics array
+@param ts_metrics An array containing timestamp metrics to compute fine timestamp
+@param pkt_coarse_tmst The packet coarse timestamp
+@param sf packet spreading factor, used to shift timestamp from end of header to end of preamble
+@param result_ftime A pointer to store the resulting fine timestamp
+@return 0 if success, -1 otherwise
 */
 int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, uint32_t * result_ftime);
 
 /**
-@brief TODO
+@brief Set the current gateway XTAL correction to be applied when computing the fine timestamp (should be called regularly by upper level)
+@param is_valid Boolean to indicate if the xtal correction is valid
+@param xtal_correction The current correction to be applied due to XTAL drift
+@return 0 if success, -1 otherwise
 */
 int set_xtal_correct(bool is_valid, double xtal_correction);
 

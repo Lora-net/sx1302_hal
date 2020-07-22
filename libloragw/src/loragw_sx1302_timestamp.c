@@ -509,8 +509,7 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     /* Compute the ftime cumulative sum */
     ftime[0] = (int32_t)ts_metrics[0];
     ftime_sum = ftime[0];
-    for (i = 1; i < (2 * ts_metrics_nb); i++)
-    {
+    for (i = 1; i < (2 * ts_metrics_nb); i++) {
         ftime[i] = ftime[i-1] + ts_metrics[i];
         ftime_sum += ftime[i];
     }
