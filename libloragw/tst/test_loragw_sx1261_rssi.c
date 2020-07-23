@@ -184,6 +184,7 @@ int main(int argc, char ** argv)
 
         wait_ms(100);
     }
+    printf("\n");
 
     /* Disconnect from the sx1261 radio */
     sx1261_disconnect();
@@ -191,7 +192,7 @@ int main(int argc, char ** argv)
     /* Disconnect from the concentrator board */
     lgw_disconnect();
 
-    printf("End of test for loragw_spi_sx1261.c\n");
+    printf("Disconnected\n");
 
     if (com_type == LGW_COM_SPI) {
         /* Board reset */
