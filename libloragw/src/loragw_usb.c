@@ -233,19 +233,36 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
 /* SPI release */
 int lgw_usb_close(void *com_target) {
     int usb_device;
-    int a;
+    int x, err = LGW_USB_SUCCESS;
 
     /* check input variables */
     CHECK_NULL(com_target);
 
-    /* close file & deallocate file descriptor */
     usb_device = *(int *)com_target;
-    a = close(usb_device);
+
+    /* Reset SX1302 before closing */
+    x  = mcu_gpio_write(usb_device, 0, 1, 1); /*   set PA1 : POWER_EN */
+    x |= mcu_gpio_write(usb_device, 0, 2, 1); /*   set PA2 : SX1302_RESET active */
+    x |= mcu_gpio_write(usb_device, 0, 2, 0); /* unset PA2 : SX1302_RESET inactive */
+    /* Reset SX1261 (LBT / Spectral Scan) */
+    x |= mcu_gpio_write(usb_device, 0, 8, 0); /*   set PA8 : SX1261_NRESET active */
+    x |= mcu_gpio_write(usb_device, 0, 8, 1); /* unset PA8 : SX1261_NRESET inactive */
+    if (x != 0) {
+        printf("ERROR: failed to reset SX1302\n");
+        err = LGW_USB_ERROR;
+    }
+
+    /* close file & deallocate file descriptor */
+    x = close(usb_device);
     free(com_target);
+    if (x != 0) {
+        printf("ERROR: failed to close USB file\n");
+        err = LGW_USB_ERROR;
+    }
 
     /* determine return code */
-    if (a < 0) {
-        DEBUG_MSG("ERROR: USB PORT FAILED TO CLOSE\n");
+    if (err != 0) {
+        printf("ERROR: USB PORT FAILED TO CLOSE\n");
         return LGW_USB_ERROR;
     } else {
         DEBUG_MSG("Note: USB port closed\n");
