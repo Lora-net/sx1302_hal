@@ -86,47 +86,14 @@ typedef enum {
     RX_DFT_PEAK_MODE_AUTO        = 0x03
 } sx1302_rx_dft_peak_mode_t;
 
-/**
-@struct sx1302_if_cfg_t
-@brief TODO
-*/
-typedef struct {
-    bool        if_enable;
-    bool        if_rf_chain; /* for each IF, 0 -> radio A, 1 -> radio B */
-    int32_t     if_freq; /* relative to radio frequency, +/- in Hz */
-} sx1302_if_cfg_t;
-
-/**
-@struct sx1302_lora_service_cfg_t
-@brief TODO
-*/
-typedef struct {
-    uint8_t     lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
-    uint8_t     lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
-    bool        lora_rx_implicit_hdr; /* implicit header setting for LoRa standalone modem */
-    uint8_t     lora_rx_implicit_length; /* implicit header payload length setting for LoRa standalone modem */
-    bool        lora_rx_implicit_crc_en; /* implicit header payload crc enable setting for LoRa standalone modem */
-    uint8_t     lora_rx_implicit_coderate; /* implicit header payload coderate setting for LoRa standalone modem */
-} sx1302_lora_service_cfg_t;
-
-/**
-@struct sx1302_fsk_cfg_t
-@brief TODO
-*/
-typedef struct {
-    uint8_t     fsk_rx_bw; /* bandwidth setting of FSK modem */
-    uint32_t    fsk_rx_dr; /* FSK modem datarate in bauds */
-    uint8_t     fsk_sync_word_size; /* default number of bytes for FSK sync word */
-    uint64_t    fsk_sync_word; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
-} sx1302_fsk_cfg_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Initialize sx1302 for operating, and needed internal structures (rx_buffer,....)
+@param conf a pointer to the fine timestamp configuration context
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
 */
 int sx1302_init(const struct lgw_conf_ftime_s *conf);
 
@@ -206,9 +173,9 @@ int sx1302_pa_lna_lut_configure(void);
 int sx1302_radio_fe_configure(void);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Returns the type of the given modem index (LoRa MultiSF, LoRa SingleSF, FSK)
+@param if_chain the index if the IF chain
+@return The IF chain type
 */
 uint8_t sx1302_get_ifmod_config(uint8_t if_chain);
 
@@ -286,9 +253,9 @@ int sx1302_gps_enable(bool enable);
 uint32_t sx1302_timestamp_counter(bool pps);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Load firmware to AGC MCU memory
+@param firmware A pointer to the fw binary to be loaded
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_agc_load_firmware(const uint8_t *firmware);
 

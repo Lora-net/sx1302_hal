@@ -277,7 +277,11 @@ int sx1302_init(const struct lgw_conf_ftime_s * ftime_context) {
         return LGW_REG_ERROR;
     }
 
-    sx1302_config_gpio();
+    x = sx1302_config_gpio();
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to configure sx1302 GPIOs\n");
+        return LGW_REG_ERROR;
+    }
 
     return LGW_REG_SUCCESS;
 }
