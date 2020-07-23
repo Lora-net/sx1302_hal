@@ -45,6 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define COM_TYPE_DEFAULT    LGW_COM_SPI
 #define COM_PATH_DEFAULT    "/dev/spidev0.0"
+#define SX1261_PATH_DEFAULT "/dev/spidev0.1"
 
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_RADIO_TYPE  LGW_RADIO_TYPE_SX1250
@@ -67,15 +68,17 @@ void usage(void) {
     printf("Available options:\n");
     printf(" -h         Print this help\n");
     printf(" -u         Set COM type as USB (default is SPI)\n");
-    printf(" -d [path]  Path to the COM interface\n");
+    printf(" -d [path]  Path to the main COM interface\n");
     printf("            => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -D [path]  Path to the SX1261 SPI interface (not used for USB)\n");
+    printf("            => default path: " SX1261_PATH_DEFAULT "\n");
     printf(" -k <uint>  Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint>  Radio type (1255, 1257, 1250)\n");
     printf(" -f <float> Scan start frequency, in MHz\n");
     printf(" -n <uint>  Number of channels to scan\n");
     printf(" -s <uint>  Number of scan points per frequency step [1..65535]\n");
     printf(" -o <int>   RSSI Offset of the sx1261 path, in dB [-127..128]\n");
-    printf( " -l <char> Log file name\n");
+    printf(" -l <char>  Log file name\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -99,6 +102,8 @@ int main(int argc, char **argv)
     const char com_path_default[] = COM_PATH_DEFAULT;
     const char * com_path = com_path_default;
     lgw_com_type_t com_type = COM_TYPE_DEFAULT;
+    const char sx1261_path_default[] = SX1261_PATH_DEFAULT;
+    const char * sx1261_path = sx1261_path_default;
 
     /* Spectral Scan */
     uint32_t freq_hz = DEFAULT_FREQ_HZ;
@@ -117,7 +122,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hud:k:r:f:n:o:s:l:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hud:k:r:f:n:o:s:l:D:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -130,6 +135,10 @@ int main(int argc, char **argv)
 
             case 'd':
                 com_path = optarg;
+                break;
+
+            case 'D':
+                sx1261_path = optarg;
                 break;
 
             case 'r': /* <uint> Radio type */
@@ -281,6 +290,8 @@ int main(int argc, char **argv)
     /* Configure the sx1261 for spectral scan */
     memset(&sx1261conf, 0, sizeof sx1261conf);
     sx1261conf.enable = true;
+    strncpy(sx1261conf.spi_path, sx1261_path, sizeof sx1261conf.spi_path);
+    sx1261conf.spi_path[sizeof sx1261conf.spi_path - 1] = '\0'; /* ensure string termination */
     sx1261conf.rssi_offset = rssi_offset;
     sx1261conf.lbt_conf.enable = false;
     if (lgw_sx1261_setconf(&sx1261conf) != LGW_HAL_SUCCESS) {
