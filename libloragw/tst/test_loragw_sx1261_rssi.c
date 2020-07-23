@@ -80,9 +80,11 @@ int main(int argc, char ** argv)
     const char com_path_default[] = COM_PATH_DEFAULT;
     const char * com_path = com_path_default;
     lgw_com_type_t com_type = COM_TYPE_DEFAULT;
+    const char sx1261_path_default[] = SX1261_PATH_DEFAULT;
+    const char * sx1261_path = sx1261_path_default;
 
     /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:uf:")) != -1) {
+    while ((i = getopt(argc, argv, "hd:uf:D:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -92,6 +94,12 @@ int main(int argc, char ** argv)
             case 'd':
                 if (optarg != NULL) {
                     com_path = optarg;
+                }
+                break;
+
+            case 'D':
+                if (optarg != NULL) {
+                    sx1261_path = optarg;
                 }
                 break;
 
@@ -147,7 +155,7 @@ int main(int argc, char ** argv)
     }
 
     /* Connect to the sx1261 radio */
-    x = sx1261_connect(com_type, SX1261_PATH_DEFAULT);
+    x = sx1261_connect(com_type, sx1261_path);
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to connect to the sx1261 using COM %s\n", com_path);
         return EXIT_FAILURE;
@@ -234,8 +242,10 @@ static void usage(void) {
     printf(" %s\n", lgw_version_info());
     printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" -h            print this help\n");
-    printf(" -d <path>     path to access the COM device\n");
+    printf(" -d <path>     path to access the main COM device\n");
     printf("               => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -D [path]     Path to the SX1261 SPI interface (not used for USB)\n");
+    printf("               => default path: " SX1261_PATH_DEFAULT "\n");
     printf(" -u            set COM type as USB (default is SPI)\n");
     printf(" -f <float>    frequency in MHz\n");
 }
