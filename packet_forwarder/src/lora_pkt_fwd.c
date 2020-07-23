@@ -1793,13 +1793,22 @@ int main(int argc, char ** argv)
         pthread_mutex_unlock(&mx_stat_rep);
     }
 
-    /* wait for upstream thread to finish (1 fetch cycle max) */
-    pthread_join(thrid_up, NULL);
-    pthread_cancel(thrid_down); /* don't wait for downstream thread */
-    pthread_cancel(thrid_jit); /* don't wait for jit thread */
+    /* wait for all threads with a COM with the concentrator board to finish (1 fetch cycle max) */
+    i = pthread_join(thrid_up, NULL);
+    if (i != 0) {
+        printf("ERROR: failed to join upstream thread with %d - %s\n", i, strerror(errno));
+    }
+    i = pthread_join(thrid_down, NULL);
+    if (i != 0) {
+        printf("ERROR: failed to join downstream thread with %d - %s\n", i, strerror(errno));
+    }
+    i = pthread_join(thrid_jit, NULL);
+    if (i != 0) {
+        printf("ERROR: failed to join JIT thread with %d - %s\n", i, strerror(errno));
+    }
     if (gps_enabled == true) {
-        pthread_cancel(thrid_gps); /* don't wait for GPS thread */
-        pthread_cancel(thrid_valid); /* don't wait for validation thread */
+        pthread_cancel(thrid_gps); /* don't wait for GPS thread, no access to concentrator board */
+        pthread_cancel(thrid_valid); /* don't wait for validation thread, no access to concentrator board */
 
         i = lgw_gps_disable(gps_tty_fd);
         if (i == LGW_HAL_SUCCESS) {
@@ -2616,7 +2625,7 @@ void thread_down(void) {
 
         /* listen to packets and process them until a new PULL request must be sent */
         recv_time = send_time;
-        while ((int)difftimespec(recv_time, send_time) < keepalive_time) {
+        while (((int)difftimespec(recv_time, send_time) < keepalive_time) && !exit_sig && !quit_sig) {
 
             /* try to receive a datagram */
             msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
@@ -3204,6 +3213,8 @@ void thread_jit(void) {
             }
         }
     }
+
+    MSG("\nINFO: End of JIT thread\n");
 }
 
 /* -------------------------------------------------------------------------- */
