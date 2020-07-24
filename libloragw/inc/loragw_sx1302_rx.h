@@ -110,25 +110,10 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt);
 /* -------------------------------------------------------------------------- */
 /* --- DEBUG FUNCTIONS PROTOTYPES ------------------------------------------- */
 
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
 uint16_t rx_buffer_read_ptr_addr(void);
 
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
 uint16_t rx_buffer_write_ptr_addr(void);
 
-/**
-@brief TODO
-@param TODO
-@return TODO
-*/
 void rx_buffer_dump(FILE * file, uint16_t start_addr, uint16_t end_addr);
 
 #endif

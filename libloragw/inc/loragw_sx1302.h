@@ -260,9 +260,9 @@ uint32_t sx1302_timestamp_counter(bool pps);
 int sx1302_agc_load_firmware(const uint8_t *firmware);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Read the AGC status register for current status
+@param status A pointer to store the current status returned
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_agc_status(uint8_t* status);
 
