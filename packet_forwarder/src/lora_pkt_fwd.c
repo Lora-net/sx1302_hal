@@ -2973,6 +2973,7 @@ void thread_jit(void) {
                             if (tx_status == TX_EMITTING) {
                                 MSG("ERROR: concentrator is currently emitting on rf_chain %d\n", i);
                                 print_tx_status(tx_status);
+								jit_enqueue(&jit_queue[i], current_concentrator_time,&pkt,  JIT_PKT_TYPE_DOWNLINK_CLASS_C); //re-enqueue packet to don't loose it
                                 continue;
                             } else if (tx_status == TX_SCHEDULED) {
                                 MSG("WARNING: a downlink was already scheduled on rf_chain %d, overwritting it...\n", i);
