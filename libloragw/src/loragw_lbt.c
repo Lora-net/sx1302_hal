@@ -180,6 +180,7 @@ int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok) {
     sx1302_agc_mailbox_write(0, 0xFF);
 
     /* Wait for transmit status to be cleared */
+    timeout_start(&tm_start);
     do {
         /* handle timeout */
         if (timeout_check(tm_start, 500) != 0) {
