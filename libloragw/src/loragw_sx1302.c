@@ -1202,6 +1202,7 @@ int sx1302_agc_wait_status(uint8_t status) {
         if (sx1302_agc_status(&val) != LGW_REG_SUCCESS) {
             return LGW_REG_ERROR;
         }
+        /* TODO: add timeout */
     } while (val != status);
 
     return LGW_REG_SUCCESS;
@@ -1663,6 +1664,7 @@ int sx1302_arb_wait_status(uint8_t status) {
         if (sx1302_arb_status(&val) != LGW_REG_SUCCESS) {
             return LGW_REG_ERROR;
         }
+        /* TODO: add timeout */
     } while (val != status);
 
     return LGW_REG_SUCCESS;

@@ -830,6 +830,7 @@ void agc_cal_tx_dc_offset(uint8_t rf_chain, signed char freq, char amp_hal, char
         do {
             lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
             wait_ms(1);
+            /* TODO: addtimeout */
         } while (val == 0);
 
         lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);
