@@ -161,6 +161,10 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.1.0 ###
+
+* HAL: Added support for CN490 full duplex reference design.
+
 ### v1.0.5 ###
 
 * HAL: Fixed packet timestamp issue which was "jumping in time" in specific

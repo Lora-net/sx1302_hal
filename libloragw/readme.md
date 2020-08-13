@@ -33,6 +33,7 @@ The library is composed of the following modules:
 * loragw_sx1302_rx
 * loragw_sx1302_timestamp
 * loragw_stts751
+* loragw_ad5338r
 
 The library also contains basic test programs to demonstrate code use and check
 functionality.
@@ -199,13 +200,18 @@ into account the LoRa demodulation processing time.
 
 ### 2.11. loragw_stts751
 
-This module contains a very basic driver for the STmicroelectronics ST751
-temeprature sensor which is on the CoreCell reference design.
+This module contains a very basic driver for the STmicroelectronics STTS751
+temperature sensor which is on the CoreCell reference design.
 
 ### 2.12. loragw_i2c
 
 This module provides basic function to communicate with I2C devices on the board.
-It is used in this project for accessing the temperature sensor.
+It is used in this project for accessing the temperature sensor, AD5338R DAC...
+
+### 2.13. loragw_ad5338r
+
+This module contains a very basic driver for the Analog Devices AD5338R DAC used
+on the Semtech CN490 Full Duplex reference design to set the PA fixed gain.
 
 ## 3. Software build process
 

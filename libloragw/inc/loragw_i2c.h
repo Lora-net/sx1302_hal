@@ -70,6 +70,16 @@ int i2c_linuxdev_read(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t
 */
 int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t data);
 
+/**
+@brief Write a raw buffer to an I2C port
+@param i2c_fd       I2C port file descriptor index
+@param device_addr  I2C device address
+@param buffer       Buffer to be written to the device
+@param size         Size of the buffer to be written
+@return 0 if I2C data write is successful, -1 else
+*/
+int i2c_linuxdev_write_buffer(int i2c_fd, uint8_t device_addr, uint8_t *buffer, uint8_t size);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
