@@ -624,7 +624,7 @@ int lgw_start(void) {
     sx1302_init(&CONTEXT_TIMESTAMP);
 
     /* Configure PA/LNA LUTs */
-    sx1302_pa_lna_lut_configure();
+    sx1302_pa_lna_lut_configure(&CONTEXT_BOARD);
 
     /* Configure Radio FE */
     sx1302_radio_fe_configure();

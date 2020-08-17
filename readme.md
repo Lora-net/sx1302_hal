@@ -161,6 +161,14 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.1.1 ###
+
+* HAL: Updated SX1302 LNA/PA LUT configuration for Full Duplex CN490 reference
+design.
+* test_loragw_hal_rx/tx: added --fdd option to enable Full Duplex
+* packet forwarder: updated global_conf.json.sx1255.CN490.full-duplex for CN490
+reference design.
+
 ### v1.1.0 ###
 
 * HAL: Added support for CN490 full duplex reference design.

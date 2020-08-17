@@ -30,6 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
+#include <getopt.h>
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -78,6 +79,8 @@ void usage(void) {
     printf(" -z <uint>     Size of the RX packet array to be passed to lgw_receive()\n");
     printf(" -m <uint>     Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]\n");
     printf(" -j            Set radio in single input mode (SX1250 only)\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -101,6 +104,7 @@ int main(int argc, char **argv)
     uint8_t max_rx_pkt = 16;
     bool single_input_mode = false;
     float rssi_offset = 0.0;
+    bool full_duplex = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -139,8 +143,15 @@ int main(int argc, char **argv)
 
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+    /* Parameter parsing */
+    int option_index = 0;
+    static struct option long_options[] = {
+        {"fdd",  no_argument, 0, 0},
+        {0, 0, 0, 0}
+    };
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
+    while ((i = getopt_long (argc, argv, "hja:b:k:r:n:z:m:o:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -231,6 +242,14 @@ int main(int argc, char **argv)
                     rssi_offset = (float)arg_d;
                 }
                 break;
+            case 0:
+                if (strcmp(long_options[option_index].name, "fdd") == 0) {
+                    full_duplex = true;
+                } else {
+                    printf("ERROR: argument parsing options. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                }
+                break;
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -252,7 +271,7 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
-    boardconf.full_duplex = false;
+    boardconf.full_duplex = full_duplex;
     strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
     boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
