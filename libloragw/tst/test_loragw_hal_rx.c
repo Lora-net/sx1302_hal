@@ -123,9 +123,9 @@ int main(int argc, char **argv)
         -400000,
         -200000,
         0,
-        -400000,
-        -200000,
-        -400000 /* lora service */
+        200000,
+        400000,
+        -200000 /* lora service */
     };
 
     const int32_t channel_if_mode1[9] = {

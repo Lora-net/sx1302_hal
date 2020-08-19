@@ -206,10 +206,10 @@ static void usage(void) {
     printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" %s\n", lgw_version_info());
     printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" -h            print this help\n");
-    printf(" -u            set COM type as USB (default is SPI)\n");
-    printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -h         print this help\n");
+    printf(" -u         set COM type as USB (default is SPI)\n");
+    printf(" -d <path>  COM path to be used to connect the concentrator\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
 }
 
 
