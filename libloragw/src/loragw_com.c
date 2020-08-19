@@ -124,6 +124,8 @@ int lgw_com_close(void) {
             break;
     }
 
+    _lgw_com_target = NULL;
+
     return com_stat;
 }
 
