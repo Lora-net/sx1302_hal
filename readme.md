@@ -161,6 +161,11 @@ found in the `libtools` directory.
 
 ## 6. Changelog
 
+### v1.1.2 ###
+
+* packet forwarder: updated global_conf.json.sx1255.CN490.full-duplex with RSSI
+temperature compensation coefficients, and updated RSSI offset for radio 1.
+
 ### v1.1.1 ###
 
 * HAL: Updated SX1302 LNA/PA LUT configuration for Full Duplex CN490 reference
