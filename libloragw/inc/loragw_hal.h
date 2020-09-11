@@ -88,7 +88,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* values available for the 'coderate' parameters (LoRa only) */
 /* NOTE: arbitrary values */
-#define CR_UNDEFINED    0
+#define CR_UNDEFINED    0   /* CR0 exists but is not recommended, so consider it as invalid */
 #define CR_LORA_4_5     0x01
 #define CR_LORA_4_6     0x02
 #define CR_LORA_4_7     0x03
