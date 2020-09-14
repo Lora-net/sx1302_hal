@@ -38,11 +38,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #if DEBUG_I2C == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_SPI_ERROR;}
+    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_I2C_ERROR;}
 #else
     #define DEBUG_MSG(str)
     #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
+    #define CHECK_NULL(a)                if(a==NULL){return LGW_I2C_ERROR;}
 #endif
 
 /* -------------------------------------------------------------------------- */
