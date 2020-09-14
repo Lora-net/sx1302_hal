@@ -2326,6 +2326,7 @@ int sx1302_tx_configure(lgw_radio_type_t radio_type) {
             err |= lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01);
             err |= lgw_reg_w(SX1302_REG_TX_TOP_B_TX_RFFE_IF_CTRL_TX_IF_DST, 0x01);
             break;
+        case LGW_RADIO_TYPE_SX1255:
         case LGW_RADIO_TYPE_SX1257:
             /* SX1255/57 Tx RFFE */
             err |= lgw_reg_w(SX1302_REG_TX_TOP_A_TX_RFFE_IF_CTRL_TX_IF_DST, 0x00);
@@ -2425,6 +2426,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
             pa_en = (tx_lut->lut[pow_index].pa_gain > 0) ? 1 : 0; /* only 1 bit used to control the external PA */
             power = (pa_en << 6) | tx_lut->lut[pow_index].pwr_idx;
             break;
+        case LGW_RADIO_TYPE_SX1255:
         case LGW_RADIO_TYPE_SX1257:
             power = (tx_lut->lut[pow_index].pa_gain << 6) | (tx_lut->lut[pow_index].dac_gain << 4) | tx_lut->lut[pow_index].mix_gain;
             break;
@@ -2440,7 +2442,11 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
     CHECK_ERR(err);
 
     /* Set Tx frequency */
-    freq_reg = SX1302_FREQ_TO_REG(pkt_data->freq_hz); /* TODO: AGC fw to be updated for sx1255 */
+    if (radio_type == LGW_RADIO_TYPE_SX1255) {
+        freq_reg = SX1302_FREQ_TO_REG(pkt_data->freq_hz * 2);
+    } else {
+        freq_reg = SX1302_FREQ_TO_REG(pkt_data->freq_hz);
+    }
     err = lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_H_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 16) & 0xFF);
     CHECK_ERR(err);
     err = lgw_reg_w(SX1302_REG_TX_TOP_TX_RFFE_IF_FREQ_RF_M_FREQ_RF(pkt_data->rf_chain), (freq_reg >> 8) & 0xFF);

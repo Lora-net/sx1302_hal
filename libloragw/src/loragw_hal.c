@@ -946,6 +946,7 @@ int lgw_start(void) {
                 return LGW_HAL_ERROR;
             }
             break;
+        case LGW_RADIO_TYPE_SX1255:
         case LGW_RADIO_TYPE_SX1257:
             DEBUG_MSG("Loading AGC fw for sx125x\n");
             err = sx1302_agc_load_firmware(agc_firmware_sx125x);
