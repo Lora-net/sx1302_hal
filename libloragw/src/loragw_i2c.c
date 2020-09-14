@@ -141,6 +141,31 @@ int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int i2c_linuxdev_write_buffer(int i2c_fd, uint8_t device_addr, uint8_t *buffer, uint8_t size) {
+    struct i2c_rdwr_ioctl_data packets;
+    struct i2c_msg messages[1];
+
+    /* Check input parameters */
+    CHECK_NULL(buffer);
+
+    messages[0].addr = device_addr;
+    messages[0].flags = 0;
+    messages[0].len = size;
+    messages[0].buf = buffer;
+
+    packets.msgs = messages;
+    packets.nmsgs = 1;
+
+    if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
+        DEBUG_PRINTF("ERROR: Write buffer to I2C Device failed (%d, 0x%02x) - %s\n", i2c_fd, device_addr, strerror(errno));
+        return LGW_I2C_ERROR;
+    }
+
+    return LGW_I2C_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int i2c_linuxdev_close(int i2c_fd) {
     int i;
 

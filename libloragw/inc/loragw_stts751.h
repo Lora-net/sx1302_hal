@@ -33,8 +33,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define I2C_PORT_TEMP_SENSOR_0    0x39  /* STTS751-0DP3F */
-#define I2C_PORT_TEMP_SENSOR_1    0x3B  /* STTS751-1DP3F */
+/*
+  0x39: STTS751-0DP3F
+  0x3B: STTS751-1DP3F
+  0x38: STTS751-0DP3F on full duplex CN490 ref design
+  */
+static const uint8_t I2C_PORT_TEMP_SENSOR[] = {0x39, 0x3B, 0x38};
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */

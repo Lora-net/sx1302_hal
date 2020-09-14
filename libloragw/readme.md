@@ -60,6 +60,7 @@ The library is composed of the following modules:
   * loragw_i2c
   * loragw_gps
   * loragw_stts751
+  * loragw_ad5338r
 
 The library also contains basic test programs to demonstrate code use and check
 functionality.
@@ -251,14 +252,19 @@ into account the LoRa demodulation processing time.
 ### 2.11. loragw_stts751
 
 This module contains a very basic driver for the STmicroelectronics ST751
-temeprature sensor which is on the CoreCell reference design.
+temperature sensor which is on the CoreCell reference design.
 
-### 2.12. loragw_i2c
+### 2.12. loragw_ad5338r
+
+This module contains a very basic driver for the Analog Devices AD5338R DAC used
+on the Semtech CN490 Full Duplex reference design to set the PA fixed gain.
+
+### 2.13. loragw_i2c
 
 This module provides basic function to communicate with I2C devices on the board.
-It is used in this project for accessing the temperature sensor.
+It is used in this project for accessing the temperature sensor, the AD5338R DAC...
 
-### 2.13. loragw_sx1261
+### 2.14. loragw_sx1261
 
 This module contains functions to handle the configuration of SX1261 radio for
 Listen-Before-Talk or Spectral Scan functionnalities. In order to communicate
@@ -271,7 +277,7 @@ with the radio, it relies on the following modules:
 This module will also load the sx1261 firmware patch RAM, necessary to support
 Listen-Before-Talk and spectral scan features, from the sx1261_pram.var file.
 
-### 2.14. loragw_lbt
+### 2.15. loragw_lbt
 
 This module contains functions to start and stop the Listen-Before-Talk feature
 when it is enabled. Those functions are called by the lgw_send() function to
@@ -293,7 +299,7 @@ register to inform if the transmit could be done or not.
 not.
 * the HAL stops the scanning, and return the tramsit status to the caller.
 
-### 2.15. loragw_mcu
+### 2.16. loragw_mcu
 
 This module contains the functions to setup the communication interface with the
 STM32 MCU, and to communicate with the sx1302 and the radios when the host and
