@@ -96,6 +96,8 @@ void usage(void) {
     printf(" --nhdr        Send LoRa packet with implicit header\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
 }
 
 /* handle signals */
@@ -138,6 +140,7 @@ int main(int argc, char **argv)
     bool invert_pol = false;
     bool no_header = false;
     bool single_input_mode = false;
+    bool full_duplex = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -171,6 +174,7 @@ int main(int argc, char **argv)
         {"pwid", required_argument, 0, 0},
         {"loop", required_argument, 0, 0},
         {"nhdr", no_argument, 0, 0},
+        {"fdd",  no_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
@@ -399,6 +403,8 @@ int main(int argc, char **argv)
                     }
                 } else if (strcmp(long_options[option_index].name, "nhdr") == 0) {
                     no_header = true;
+                } else if (strcmp(long_options[option_index].name, "fdd") == 0) {
+                    full_duplex = true;
                 } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
                     return EXIT_FAILURE;
@@ -433,7 +439,7 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
-    boardconf.full_duplex = false;
+    boardconf.full_duplex = full_duplex;
     boardconf.com_type = com_type;
     strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
     boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
