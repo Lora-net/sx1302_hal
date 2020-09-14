@@ -211,6 +211,23 @@ file: com_type can be "USB" or "SPI".
 Listen-Before-Talk.
 * Tools: added util_spectral_scan
 
+### v1.1.2 ###
+
+* packet forwarder: updated global_conf.json.sx1255.CN490.full-duplex with RSSI
+temperature compensation coefficients, and updated RSSI offset for radio 1.
+
+### v1.1.1 ###
+
+* HAL: Updated SX1302 LNA/PA LUT configuration for Full Duplex CN490 reference
+design.
+* test_loragw_hal_rx/tx: added --fdd option to enable Full Duplex
+* packet forwarder: updated global_conf.json.sx1255.CN490.full-duplex for CN490
+reference design.
+
+### v1.1.0 ###
+
+* HAL: Added support for CN490 full duplex reference design.
+
 ### v1.0.5 ###
 
 * HAL: Fixed packet timestamp issue which was "jumping in time" in specific
