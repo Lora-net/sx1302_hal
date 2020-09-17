@@ -367,6 +367,7 @@ following fields:
  size | number | RF packet payload size in bytes (unsigned integer)
  data | string | Base64 encoded RF packet payload, padding optional
  ncrc | bool   | If true, disable the CRC of the physical layer (optional)
+ nhdr | bool   | If true, disable the header of the physical layer (optional)
 
 Most fields are optional.
 If a field is omitted, default parameters will be used.

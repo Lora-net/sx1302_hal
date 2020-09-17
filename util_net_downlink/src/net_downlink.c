@@ -1236,6 +1236,7 @@ void prepare_downlink_json( const thread_params_t * params, uint8_t rf_chain, ui
         pream_sz = params->preamb_size[rf_chain];
         json_object_set_number( obj, "prea", pream_sz );
         json_object_set_boolean( obj, "ncrc", true );
+        json_object_set_boolean( obj, "nhdr", false );
         json_object_set_number( obj, "size", params->pl_size[rf_chain] );
 
         /* Fill last bytes of payload with downlink counter (32 bits) */

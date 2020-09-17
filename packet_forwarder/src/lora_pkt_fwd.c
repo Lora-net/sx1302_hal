@@ -2865,6 +2865,12 @@ void thread_down(void) {
                 txpkt.no_crc = (bool)json_value_get_boolean(val);
             }
 
+            /* Parse "No header" flag (optional field) */
+            val = json_object_get_value(txpk_obj,"nhdr");
+            if (val != NULL) {
+                txpkt.no_header = (bool)json_value_get_boolean(val);
+            }
+
             /* parse target frequency (mandatory) */
             val = json_object_get_value(txpk_obj,"freq");
             if (val == NULL) {
