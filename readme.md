@@ -209,6 +209,8 @@ Listen-Before-Talk support.
 file: com_type can be "USB" or "SPI".
 * Packet Forwarder: Changed the parameters to configure the fine timestamps and
 Listen-Before-Talk.
+* Packet Forwarder: Added "nhdr" field parsing from txpk JSON downlink request
+in order to be able to send beacon request from Network Server.
 * Tools: added util_spectral_scan
 
 ### v1.1.2 ###
