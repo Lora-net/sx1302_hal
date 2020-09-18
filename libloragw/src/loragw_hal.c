@@ -805,6 +805,13 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
+    /* Set all GPIOs to 0 */
+    err = sx1302_set_gpio(0x00);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to set all GPIOs to 0\n");
+        return LGW_HAL_ERROR;
+    }
+
     /* Calibrate radios */
     err = sx1302_radio_calibrate(&CONTEXT_RF_CHAIN[0], CONTEXT_BOARD.clksrc, &CONTEXT_TX_GAIN_LUT[0]);
     if (err != LGW_REG_SUCCESS) {
@@ -1103,6 +1110,13 @@ int lgw_start(void) {
             printf("ERROR: failed to setup sx1261 radio\n");
             return LGW_HAL_ERROR;
         }
+    }
+
+    /* Set CONFIG_DONE GPIO to 1 (turn on the corresponding LED) */
+    err = sx1302_set_gpio(0x01);
+    if (err != LGW_REG_SUCCESS) {
+        printf("ERROR: failed to set CONFIG_DONE GPIO\n");
+        return LGW_HAL_ERROR;
     }
 
     /* set hal state */
