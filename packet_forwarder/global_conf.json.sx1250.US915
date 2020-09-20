@@ -14,10 +14,10 @@
             "enable": true,
             "type": "SX1250",
             "freq": 904300000,
-            "rssi_offset": -215.4,
+            "rssi_offset": -207,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": true,
-            "tx_freq_min": 923000000,
+            "tx_freq_min": 902000000,
             "tx_freq_max": 928000000,
             "tx_gain_lut":[
                 {"rf_power": 12, "pa_gain": 0, "pwr_idx": 15},
@@ -42,29 +42,83 @@
             "enable": true,
             "type": "SX1250",
             "freq": 905000000,
-            "rssi_offset": -215.4,
+            "rssi_offset": -207,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": false
         },
-        "chan_multiSF_0": {"enable": true, "radio": 0, "if": -400000},  /* Freq : 903.9 MHz*/
-        "chan_multiSF_1": {"enable": true, "radio": 0, "if": -200000},  /* Freq : 904.1 MHz*/
-        "chan_multiSF_2": {"enable": true, "radio": 0, "if":  0},       /* Freq : 904.3 MHz*/
-        "chan_multiSF_3": {"enable": true, "radio": 0, "if":  200000},  /* Freq : 904.5 MHz*/
-        "chan_multiSF_4": {"enable": true, "radio": 1, "if": -300000},  /* Freq : 904.7 MHz*/
-        "chan_multiSF_5": {"enable": true, "radio": 1, "if": -100000},  /* Freq : 904.9 MHz*/
-        "chan_multiSF_6": {"enable": true, "radio": 1, "if":  100000},  /* Freq : 905.1 MHz*/
-        "chan_multiSF_7": {"enable": true, "radio": 1, "if":  300000},  /* Freq : 905.3 MHz*/
-        "chan_Lora_std":  {"enable": true, "radio": 0, "if":  300000, "bandwidth": 500000, "spread_factor": 8,						/* Freq : 904.6 MHz*/
-                           "implicit_hdr": false, "implicit_payload_length": 17, "implicit_crc_en": false, "implicit_coderate": 1},
-        "chan_FSK":       {"enable": false, "radio": 1, "if":  300000, "bandwidth": 125000, "datarate": 50000}						/* Freq : 868.8 MHz*/
+        "chan_multiSF_0": {
+            /* Channel 8, 903.900 Mhz */
+            "enable": true,
+            "radio": 0,
+            "if": -400000
+        },
+        "chan_multiSF_1": {
+            /* Channel 9, 904.100 Mhz */
+            "enable": true,
+            "radio": 0,
+            "if": -200000
+        },
+        "chan_multiSF_2": {
+            /* Channel 10, 904.300 Mhz */
+            "enable": true,
+            "radio": 0,
+            "if": 0
+        },
+        "chan_multiSF_3": {
+            /* Channel 11, 904.500 Mhz */
+            "enable": true,
+            "radio": 0,
+            "if": 200000
+        },
+        "chan_multiSF_4": {
+            /* Channel 12, 904.700 Mhz */
+            "enable": true,
+            "radio": 1,
+            "if": -300000
+        },
+        "chan_multiSF_5": {
+            /* Channel 13, 904.900 Mhz */
+            "enable": true,
+            "radio": 1,
+            "if": -100000
+        },
+        "chan_multiSF_6": {
+            /* Channel 14, 905.100 Mhz */
+            "enable": true,
+            "radio": 1,
+            "if": 100000
+        },
+        "chan_multiSF_7": {
+            /* Channel 15, 905.300 Mhz */
+            "enable": true,
+            "radio": 1,
+            "if": 300000
+        },
+        "chan_Lora_std": {
+            /* Channel 65 (fat channel), 912.6 Mhz */
+            "enable": true,
+            "radio": 0,
+            "if": 300000,
+            "bandwidth": 500000,
+            "spread_factor": 8
+        },
+        "chan_FSK": {
+            /* disabled */
+            "enable": false,
+            "radio": 0,
+            "if": 300000,
+            "bandwidth": 250000,
+            "datarate": 100000
+        }
     },
 
     "gateway_conf": {
+        "gps_i2c_path": "/dev/i2c-1",
         "gateway_ID": "AA555A0000000000",
         /* change with default server address/ports */
         "server_address": "localhost",
-        "serv_port_up": 1730,
-        "serv_port_down": 1730,
+        "serv_port_up": 1680,
+        "serv_port_down": 1680,
         /* adjust the following parameters for your network */
         "keepalive_interval": 10,
         "stat_interval": 30,
@@ -72,27 +126,6 @@
         /* forward only valid packets */
         "forward_crc_valid": true,
         "forward_crc_error": false,
-        "forward_crc_disabled": false,
-        /* GPS configuration */
-        "gps_tty_path": "/dev/ttyS0",
-        /* GPS reference coordinates */
-        "ref_latitude": 0.0,
-        "ref_longitude": 0.0,
-        "ref_altitude": 0,
-        /* Beaconing parameters */
-        "beacon_period": 0, /* disable class B beacon */
-        "beacon_freq_hz": 869525000,
-        "beacon_datarate": 9,
-        "beacon_bw_hz": 125000,
-        "beacon_power": 14,
-        "beacon_infodesc": 0
-    },
-
-    "debug_conf": {
-        "ref_payload":[
-            {"id": "0xCAFE1234"},
-            {"id": "0xCAFE2345"}
-        ],
-        "log_file": "loragw_hal.log"
+        "forward_crc_disabled": false
     }
 }
