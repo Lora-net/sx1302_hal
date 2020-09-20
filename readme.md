@@ -26,7 +26,7 @@ more details.
 Those programs are included in the project to provide examples on how to use
 the HAL library, and to help the system builder test different parts of it.
 
-### 2.1. packet_frowarder ###
+### 2.1. packet_forwarder ###
 
 The packet forwarder is a program running on the host of a Lora gateway that
 forwards RF packets receive by the concentrator to a server through a IP/UDP
