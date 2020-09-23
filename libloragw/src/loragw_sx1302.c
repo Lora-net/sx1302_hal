@@ -962,6 +962,10 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
     err |= lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_2_GAIN_I_PREAMB, 1);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_FINE_TIMING_B_2_GAIN_I_PAYLOAD, 0);
 
+    /* Set preamble size to 10 (to handle 12 for SF5/SF6 and 8 for SF7->SF12) */
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_TXRX_CFG7_PREAMBLE_SYMB_NB,  0); /* MSB */
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_TXRX_CFG6_PREAMBLE_SYMB_NB, 10); /* LSB */
+
     /* Freq2TimeDrift computation */
     if (calculate_freq_to_time_drift(radio_freq_hz, BW_125KHZ, &mantissa, &exponent) != 0) {
         printf("ERROR: failed to calculate frequency to time drift for LoRa modem\n");
@@ -986,6 +990,7 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
 int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz) {
     uint16_t mantissa = 0;
     uint8_t exponent = 0;
+    uint8_t preamble_nb_symb;
     int err = LGW_REG_SUCCESS;
 
     err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_DC_NOTCH_CFG1_ENABLE, 0x00);
@@ -1041,8 +1046,15 @@ int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t r
     err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG0_MODEM_BW, cfg->bandwidth);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG1_PPM_OFFSET, SET_PPM_ON(cfg->bandwidth, cfg->datarate));
 
-    //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB
-    //SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB
+    /* Set preamble size to 8 for SF7->SF12 and to 12 for SF5->SF6 (aligned with end-device drivers) */
+    if ((cfg->datarate == DR_LORA_SF5) || (cfg->datarate == DR_LORA_SF6)) {
+        preamble_nb_symb = 12;
+    } else {
+        preamble_nb_symb = 8;
+    }
+    printf("INFO: LoRa Service modem: configuring preamble size to %u symbols\n", preamble_nb_symb);
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG7_PREAMBLE_SYMB_NB, (preamble_nb_symb >> 8) & 0xFF); /* MSB */
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_LORA_SERVICE_FSK_TXRX_CFG6_PREAMBLE_SYMB_NB, (preamble_nb_symb >> 0) & 0xFF); /* LSB */
 
     /* Freq2TimeDrift computation */
     if (calculate_freq_to_time_drift(radio_freq_hz, cfg->bandwidth, &mantissa, &exponent) != 0) {
