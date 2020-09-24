@@ -632,10 +632,7 @@ int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain)
     int err = LGW_REG_SUCCESS;
 
     /* Check input parameters */
-    if (if_cfg == NULL) {
-        printf("ERROR: Failed to configure LoRa channelizer\n");
-        return LGW_REG_ERROR;
-    }
+    CHECK_NULL(if_cfg);
 
     /* Select which radio is connected to each multi-SF channel */
     for (i = 0; i < LGW_MULTI_NB; i++) {
@@ -764,8 +761,12 @@ int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_correlator_configure() {
-    int err = LGW_REG_SUCCESS;
+int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg) {
+    int i, err = LGW_REG_SUCCESS;
+    uint8_t channels_mask = 0x00;
+
+    /* Check input parameters */
+    CHECK_NULL(if_cfg);
 
     err |= lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG2_ACC_PNR, 52);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_SF5_CFG4_MSP_PNR, 24);
@@ -811,8 +812,16 @@ int sx1302_lora_correlator_configure() {
 
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE, 0xFF);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0xFF);
+
+    /* Enabled all spreading factors */
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFF); /* 12 11 10 9 8 7 6 5 */
-    err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, 0xFF); /* 1 correlator per channel */
+
+    /* Enable correlator if channel is enabled (1 correlator per channel) */
+    for (i = 0; i < LGW_MULTI_NB; i++) {
+        channels_mask |= (if_cfg[i].enable << i);
+    }
+    DEBUG_PRINTF("INFO: LoRa multi-SF channel enable mask: 0x%02X\n", channels_mask);
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, channels_mask);
 
     /* For debug: get packets with sync_error and header_error in FIFO */
 #if 0

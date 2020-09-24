@@ -189,10 +189,10 @@ int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain)
 
 /**
 @brief Configure the correlator stage of the SX1302 LoRa multi-SF modems
-@param N/A
+@param if_cfg   A pointer to the channels configuration
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_lora_correlator_configure(void);
+int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg);
 
 /**
 @brief Configure the correlator stage of the SX1302 LoRa single-SF modem

@@ -899,7 +899,7 @@ int lgw_start(void) {
     }
 
     /* configure LoRa 'multi' demodulators */
-    err = sx1302_lora_correlator_configure();
+    err = sx1302_lora_correlator_configure(CONTEXT_IF_CHAIN);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to configure SX1302 LoRa modem correlators\n");
         return LGW_HAL_ERROR;
