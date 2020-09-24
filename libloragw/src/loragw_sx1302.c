@@ -808,8 +808,6 @@ int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg) {
     err |= lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG6_MSP_PEAK_NB, 7);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_SF12_CFG7_MSP2_PEAK_NB, 5);
 
-    err |= lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_ENABLE_CLK_EN, 0xFF);
-
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE, 0xFF);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0xFF);
 
@@ -821,6 +819,7 @@ int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg) {
         channels_mask |= (if_cfg[i].enable << i);
     }
     DEBUG_PRINTF("INFO: LoRa multi-SF channel enable mask: 0x%02X\n", channels_mask);
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_CORR_CLOCK_ENABLE_CLK_EN, channels_mask);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_EN_CORR_EN, channels_mask);
 
     /* For debug: get packets with sync_error and header_error in FIFO */
