@@ -1959,7 +1959,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         p->modulation = MOD_LORA;
 
         /* Get CRC status */
-        if (pkt.crc_en || (context->lora_service_cfg.implicit_crc_en == true)) {
+        if (pkt.crc_en || ((ifmod == IF_LORA_STD) && (context->lora_service_cfg.implicit_crc_en == true))) {
             /* CRC enabled */
             if (pkt.payload_crc_error) {
                 p->status = STAT_CRC_BAD;
