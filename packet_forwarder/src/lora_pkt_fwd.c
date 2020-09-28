@@ -315,12 +315,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
     JSON_Object *conf_sx1261_obj = NULL;
     JSON_Object *conf_lbt_obj = NULL;
     JSON_Object *conf_lbtchan_obj = NULL;
-    JSON_Array *conf_txlut_array;
+    JSON_Array *conf_txlut_array = NULL;
     JSON_Array *conf_lbtchan_array = NULL;
+    JSON_Array *conf_demod_array = NULL;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
+    struct lgw_conf_demod_s demodconf;
     struct lgw_conf_ftime_s tsconf;
     struct lgw_conf_sx1261_s sx1261conf;
     uint32_t sf, bw, fdev;
@@ -760,6 +762,30 @@ static int parse_SX130x_configuration(const char * conf_file) {
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for radio %i\n", i);
+            return -1;
+        }
+    }
+
+    /* set configuration for demodulators */
+    memset(&demodconf, 0, sizeof demodconf); /* initialize configuration structure */
+    val = json_object_get_value(conf_obj, "chan_multiSF_All"); /* fetch value (if possible) */
+    if (json_value_get_type(val) != JSONObject) {
+        MSG("INFO: no configuration for LoRa multi-SF spreading factors enabling\n");
+    } else {
+        conf_demod_array = json_object_dotget_array(conf_obj, "chan_multiSF_All.spreading_factor_enable");
+        if ((conf_demod_array != NULL) && (json_array_get_count(conf_demod_array) == LGW_MULTI_NB)) {
+            for (i = 0; i < LGW_MULTI_NB; i++) {
+                if (json_array_get_boolean(conf_demod_array, i) == true) {
+                    demodconf.multisf_datarate |= (1 << i);
+                }
+            }
+        } else {
+            MSG("WARNING: failed to parse chan_multiSF_All.spreading_factor_enable\n");
+            demodconf.multisf_datarate = 0xFF; /* enable all SFs */
+        }
+        /* all parameters parsed, submitting configuration to the HAL */
+        if (lgw_demod_setconf(&demodconf) != LGW_HAL_SUCCESS) {
+            MSG("ERROR: invalid configuration for demodulation parameters\n");
             return -1;
         }
     }
