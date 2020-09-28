@@ -761,7 +761,7 @@ int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg) {
+int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg, struct lgw_conf_demod_s * demod_cfg) {
     int i, err = LGW_REG_SUCCESS;
     uint8_t channels_mask = 0x00;
 
@@ -811,8 +811,9 @@ int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg) {
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ONLY_FIRST_DET_EDGE_ENABLE_ONLY_FIRST_DET_EDGE, 0xFF);
     err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_ENABLE_ACC_CLEAR_ENABLE_CORR_ACC_CLEAR, 0xFF);
 
-    /* Enabled all spreading factors */
-    err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, 0xFF); /* 12 11 10 9 8 7 6 5 */
+    /* Enabled selected spreading factors */
+    err |= lgw_reg_w(SX1302_REG_RX_TOP_CORRELATOR_SF_EN_CORR_SF_EN, demod_cfg->multisf_datarate);
+    DEBUG_PRINTF("INFO: LoRa multi-SF correlator SF enable mask: 0x%02X\n", demod_cfg->multisf_datarate);
 
     /* Enable correlator if channel is enabled (1 correlator per channel) */
     for (i = 0; i < LGW_MULTI_NB; i++) {

@@ -67,6 +67,7 @@
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": false
         },
+        "chan_multiSF_All": {"spreading_factor_enable": [ true, true, true, true, true, true, true, true ]}, /* SF5 -> SF12 */
         "chan_multiSF_0": {"enable": true, "radio": 0, "if": -300000},
         "chan_multiSF_1": {"enable": true, "radio": 0, "if": -100000},
         "chan_multiSF_2": {"enable": true, "radio": 0, "if":  100000},

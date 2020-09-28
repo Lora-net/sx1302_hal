@@ -52,10 +52,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_RX_BANDWIDTH {1000000, 1000000}  /* bandwidth of the radios */
 
 /* concentrator chipset-specific parameters */
-/* to use array parameters, declare a local const and use 'if_chain' as index */
 #define LGW_IF_CHAIN_NB     10      /* number of IF+modem RX chains */
 #define LGW_REF_BW          125000  /* typical bandwidth of data channel */
 #define LGW_MULTI_NB        8       /* number of LoRa 'multi SF' chains */
+#define LGW_MULTI_SF_EN     0xFF    /* bitmask to enable/disable SF for multi-sf correlators  (12 11 10 9 8 7 6 5) */
 
 /* values available for the 'modulation' parameters */
 /* NOTE: arbitrary values */
@@ -204,6 +204,14 @@ struct lgw_conf_rxif_s {
     uint8_t     implicit_payload_length;    /*!> LoRa Service implicit header payload length (number of bytes, 0 for default) */
     bool        implicit_crc_en;            /*!> LoRa Service implicit header CRC enable */
     uint8_t     implicit_coderate;          /*!> LoRa Service implicit header coding rate  */
+};
+
+/**
+@struct lgw_conf_demod_s
+@brief Configuration structure for LoRa/FSK demodulators
+*/
+struct lgw_conf_demod_s {
+    uint8_t     multisf_datarate;   /*!> bitmask to enable spreading-factors for correlators (SF12 - SF5) */
 };
 
 /**
@@ -368,6 +376,7 @@ typedef struct lgw_context_s {
     /* RX context */
     struct lgw_conf_rxrf_s      rf_chain_cfg[LGW_RF_CHAIN_NB];
     struct lgw_conf_rxif_s      if_chain_cfg[LGW_IF_CHAIN_NB];
+    struct lgw_conf_demod_s     demod_cfg;
     struct lgw_conf_rxif_s      lora_service_cfg;                       /* LoRa service channel config parameters */
     struct lgw_conf_rxif_s      fsk_cfg;                                /* FSK channel config parameters */
     /* TX context */
@@ -404,6 +413,13 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf);
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf);
+
+/**
+@brief Configure LoRa/FSK demodulators
+@param conf structure containing the configuration parameters
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_demod_setconf(struct lgw_conf_demod_s * conf);
 
 /**
 @brief Configure the Tx gain LUT

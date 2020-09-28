@@ -78,6 +78,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
 #define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
+#define CONTEXT_DEMOD           lgw_context.demod_cfg
 #define CONTEXT_LORA_SERVICE    lgw_context.lora_service_cfg
 #define CONTEXT_FSK             lgw_context.fsk_cfg
 #define CONTEXT_TX_GAIN_LUT     lgw_context.tx_gain_lut
@@ -126,6 +127,9 @@ static lgw_context_t lgw_context = {
     .board_cfg.full_duplex = false,
     .rf_chain_cfg = {{0}},
     .if_chain_cfg = {{0}},
+    .demod_cfg = {
+        .multisf_datarate = LGW_MULTI_SF_EN
+    },
     .lora_service_cfg = {
         .enable = 0,    /* not used, handled by if_chain_cfg */
         .rf_chain = 0,  /* not used, handled by if_chain_cfg */
@@ -664,6 +668,16 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_demod_setconf(struct lgw_conf_demod_s * conf) {
+    CHECK_NULL(conf);
+
+    CONTEXT_DEMOD.multisf_datarate = conf->multisf_datarate;
+
+    return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf) {
     int i;
 
@@ -898,8 +912,8 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* configure LoRa 'multi' demodulators */
-    err = sx1302_lora_correlator_configure(CONTEXT_IF_CHAIN);
+    /* configure LoRa 'multi-sf' modems */
+    err = sx1302_lora_correlator_configure(CONTEXT_IF_CHAIN, &(CONTEXT_DEMOD));
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to configure SX1302 LoRa modem correlators\n");
         return LGW_HAL_ERROR;
@@ -910,7 +924,7 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
 
-    /* configure LoRa 'stand-alone' modem */
+    /* configure LoRa 'single-sf' modem */
     if (CONTEXT_IF_CHAIN[8].enable == true) {
         err = sx1302_lora_service_correlator_configure(&(CONTEXT_LORA_SERVICE));
         if (err != LGW_REG_SUCCESS) {
