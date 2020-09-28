@@ -303,7 +303,7 @@ static void sig_handler(int sigio) {
 }
 
 static int parse_SX130x_configuration(const char * conf_file) {
-    int i, j;
+    int i, j, number;
     char param_name[32]; /* used to generate variable parameter names */
     const char *str; /* used to store string value from JSON object */
     const char conf_obj_name[] = "SX130x_conf";
@@ -327,6 +327,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     struct lgw_conf_sx1261_s sx1261conf;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
+    size_t size;
 
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
@@ -773,10 +774,16 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("INFO: no configuration for LoRa multi-SF spreading factors enabling\n");
     } else {
         conf_demod_array = json_object_dotget_array(conf_obj, "chan_multiSF_All.spreading_factor_enable");
-        if ((conf_demod_array != NULL) && (json_array_get_count(conf_demod_array) == LGW_MULTI_NB)) {
-            for (i = 0; i < LGW_MULTI_NB; i++) {
-                if (json_array_get_boolean(conf_demod_array, i) == true) {
-                    demodconf.multisf_datarate |= (1 << i);
+        if ((conf_demod_array != NULL) && ((size = json_array_get_count(conf_demod_array)) <= LGW_MULTI_NB)) {
+            for (i = 0; i < (int)size; i++) {
+                number = json_array_get_number(conf_demod_array, i);
+                if (number < 5 || number > 12) {
+                    MSG("WARNING: failed to parse chan_multiSF_All.spreading_factor_enable (wrong value at idx %d)\n", i);
+                    demodconf.multisf_datarate = 0xFF; /* enable all SFs */
+                    break;
+                } else {
+                    /* set corresponding bit in the bitmask SF5 is LSB -> SF12 is MSB */
+                    demodconf.multisf_datarate |= (1 << (number - 5));
                 }
             }
         } else {
