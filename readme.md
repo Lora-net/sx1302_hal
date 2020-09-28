@@ -205,12 +205,15 @@ order to optimize latency during time critical configuration phases.
 Listen-Before-Talk support.
 * HAL: Added support for Listen-Before-Talk with additional sx1261 radio.
 * HAL: Added support for Spectral Scan with additional sx1261 radio.
+* HAL: added lgw_demod_setconf() to set global demodulator settings
 * Packet Forwarder: The type of interface is configurable in the global_conf.json
 file: com_type can be "USB" or "SPI".
 * Packet Forwarder: Changed the parameters to configure the fine timestamps and
 Listen-Before-Talk.
 * Packet Forwarder: Added "nhdr" field parsing from txpk JSON downlink request
 in order to be able to send beacon request from Network Server.
+* Packet Forwarder: Added chan_multiSF_All in global_conf.json to choose which
+spreading factors to enbale for multi-sf demodulators.
 * Tools: added util_spectral_scan
 
 ### v1.1.2 ###
