@@ -45,8 +45,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_SX1302 == 1
-    #define DEBUG_MSG(str)              fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)  fprintf(stderr, fmt, args)
+    #define DEBUG_MSG(str)              fprintf(stdout, str)
+    #define DEBUG_PRINTF(fmt, args...)  fprintf(stdout, fmt, args)
     #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
 #else
     #define DEBUG_MSG(str)

@@ -46,8 +46,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define RAND_RANGE(min, max)        (rand() % (max + 1 - min) + min)
 
-#define DEBUG_MSG(str)                fprintf(stderr, str)
-#define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+#define DEBUG_MSG(str)                fprintf(stdout, str)
+#define DEBUG_PRINTF(fmt, args...)    fprintf(stdout,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */

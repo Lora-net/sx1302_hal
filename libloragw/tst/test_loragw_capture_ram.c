@@ -39,7 +39,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define DEBUG_MSG(str) fprintf(stderr, str)
+#define DEBUG_MSG(str) fprintf(stdout, str)
 
 #define COM_TYPE_DEFAULT LGW_COM_SPI
 #define COM_PATH_DEFAULT "/dev/spidev0.0"
