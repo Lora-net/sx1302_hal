@@ -85,11 +85,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PROTOCOL_VERSION    2           /* v1.6 */
 #define PROTOCOL_JSON_RXPK_FRAME_FORMAT 1
 
-#if 0
-#define XERR_INIT_AVG       128         /* nb of measurements the XTAL correction is averaged on as initial value */
-#else
-#define XERR_INIT_AVG       16
-#endif
+#define XERR_INIT_AVG       64          /* nb of measurements the XTAL correction is averaged on as initial value */
 #define XERR_FILT_COEF      256         /* coefficient for low-pass XTAL error tracking */
 
 #define PKT_PUSH_DATA   0
