@@ -1840,7 +1840,7 @@ int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_cont
             sx1302_arb_debug_write(3, 0xFF); /* double demod enabled for all SF */
         } else if (ftime_context->mode == LGW_FTIME_MODE_HIGH_CAPACITY) {
             printf("ARB: dual demodulation enabled for SF5 -> SF10\n");
-            sx1302_arb_debug_write(3, 0x3F); /* double demod enabled for SF5 -> SF10 */
+            sx1302_arb_debug_write(3, 0x3F); /* double demod enabled for SF10 <- SF5 */
         } else {
             printf("ERROR: fine timestamp mode is not supported (%d)\n", ftime_context->mode);
             return LGW_REG_ERROR;
