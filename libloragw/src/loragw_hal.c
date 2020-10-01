@@ -297,7 +297,10 @@ static int remove_pkt(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt, uint8_t pkt_ind
 
 static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
     uint8_t cpt;
-    int j, k, pkt_idx, pkt_dup_idx, x;
+    int j, k, pkt_dup_idx, x;
+#if DEBUG_HAL == 1
+    int pkt_idx;
+#endif
     bool dup_restart = false;
 
     /* Check input parameters */
@@ -310,14 +313,14 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
     /* --------------------------------------------- */
     /* ---------- For Debug only - START ----------- */
     if (cpt > 0) {
-        printf("<----- Searching for DUPLICATEs ------\n");
+        DEBUG_MSG("<----- Searching for DUPLICATEs ------\n");
     }
     for (j = 0; j < cpt; j++) {
-        printf("  %d: tmst=%u SF=%u CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
+        DEBUG_PRINTF("  %d: tmst=%u SF=%u CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
         if (p[j].ftime_received == true) {
-            printf(" ftime=%u\n", p[j].ftime);
+            DEBUG_PRINTF(" ftime=%u\n", p[j].ftime);
         } else {
-            printf(" ftime=NONE\n");
+            DEBUG_MSG   (" ftime=NONE\n");
         }
     }
     /* ---------- For Debug only - END ------------- */
@@ -337,27 +340,35 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
                 /* We keep the packet which has CRC checked */
                 if ((p[j].status == STAT_CRC_OK) && (p[k].status == STAT_CRC_BAD)) {
                     pkt_dup_idx = k;
+#if DEBUG_HAL == 1
                     pkt_idx = j;
+#endif
                 } else if ((p[j].status == STAT_CRC_BAD) && (p[k].status == STAT_CRC_OK)) {
                     pkt_dup_idx = j;
+#if DEBUG_HAL == 1
                     pkt_idx = k;
+#endif
                 } else {
                     /* we keep the packet which has a fine timestamp */
                     if (p[j].ftime_received == true) {
                         pkt_dup_idx = k;
+#if DEBUG_HAL == 1
                         pkt_idx = j;
+#endif
                     } else {
                         pkt_dup_idx = j;
+#if DEBUG_HAL == 1
                         pkt_idx = k;
+#endif
                     }
                     /* sanity check */
                     if (((p[j].ftime_received == true) && (p[k].ftime_received == true)) ||
                         ((p[j].ftime_received == false) && (p[k].ftime_received == false))) {
-                        printf("WARNING: both duplicates have fine timestamps, or none has ? TBC\n");
+                        DEBUG_MSG("WARNING: both duplicates have fine timestamps, or none has ? TBC\n");
                     }
                 }
                 /* pkt_dup_idx contains the index to be deleted */
-                printf("duplicate found %d:%d, deleting %d\n", pkt_idx, pkt_dup_idx, pkt_dup_idx);
+                DEBUG_PRINTF("duplicate found %d:%d, deleting %d\n", pkt_idx, pkt_dup_idx, pkt_dup_idx);
                 /* Remove duplicated packet from packet array */
                 x = remove_pkt(p, &cpt, pkt_dup_idx);
                 if (x != 0) {
@@ -371,29 +382,33 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
             /* Duplicate found, restart searching for duplicate from first element */
             j = 0;
             dup_restart = false;
-            /*printf( "restarting search for duplicate\n" );*/ /* Too verbose */
+#if 0
+            printf( "restarting search for duplicate\n" ); /* Too verbose */
+#endif
         } else {
             /* No duplicate found, continue... */
             j += 1;
-            /*printf( "no duplicate found\n" );*/ /* Too verbose */
+#if 0
+            printf( "no duplicate found\n" ); /* Too verbose */
+#endif
         }
     }
 
     /* --------------------------------------------- */
     /* ---------- For Debug only - START ----------- */
     if (cpt > 0) {
-        printf("--\n");
+        DEBUG_MSG("--\n");
     }
     for (j = 0; j < cpt; j++) {
-        printf("  %d: tmst=%u SF=%d CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
+        DEBUG_PRINTF("  %d: tmst=%u SF=%d CRC_status=%d freq=%u chan=%u", j, p[j].count_us, p[j].datarate, p[j].status, p[j].freq_hz, p[j].if_chain);
         if (p[j].ftime_received == true) {
-            printf(" ftime=%u\n", p[j].ftime);
+            DEBUG_PRINTF(" ftime=%u\n", p[j].ftime);
         } else {
-            printf(" ftime=NONE\n");
+            DEBUG_MSG   (" ftime=NONE\n");
         }
     }
     if (cpt > 0) {
-        printf( " ------------------------------------>\n\n" );
+        DEBUG_MSG( " ------------------------------------>\n\n" );
     }
     /* ---------- For Debug only - END ------------- */
     /* --------------------------------------------- */
