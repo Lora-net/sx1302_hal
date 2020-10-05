@@ -23,6 +23,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define _XOPEN_SOURCE 500
 #endif
 
+#define _GNU_SOURCE     /* needed for qsort_r to be defined */
+#include <stdlib.h>     /* qsort_r */
+
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
@@ -31,7 +34,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <unistd.h>     /* symlink, unlink */
 #include <fcntl.h>
 #include <inttypes.h>
-#include <stdlib.h>     /* abs */
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -295,6 +297,25 @@ static int remove_pkt(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt, uint8_t pkt_ind
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int compare_pkt_tmst(const void *a, const void *b, void *arg)
+{
+    struct lgw_pkt_rx_s *p = (struct lgw_pkt_rx_s *)a;
+    struct lgw_pkt_rx_s *q = (struct lgw_pkt_rx_s *)b;
+    int *counter = (int *)arg;
+    int p_count, q_count;
+
+    p_count = p->count_us;
+    q_count = q->count_us;
+
+    if (p_count > q_count) {
+        *counter = *counter + 1;
+    }
+
+    return (p_count - q_count);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
     uint8_t cpt;
     int j, k, pkt_dup_idx, x;
@@ -302,6 +323,7 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
     int pkt_idx;
 #endif
     bool dup_restart = false;
+    int counter_qsort_swap = 0;
 
     /* Check input parameters */
     CHECK_NULL(p);
@@ -393,6 +415,10 @@ static int merge_packets(struct lgw_pkt_rx_s * p, uint8_t * nb_pkt) {
 #endif
         }
     }
+
+    /* Sort the packet array by ascending counter_us value */
+    qsort_r(p, cpt, sizeof(p[0]), compare_pkt_tmst, &counter_qsort_swap);
+    DEBUG_PRINTF("%d elements swapped during sorting...\n", counter_qsort_swap);
 
     /* --------------------------------------------- */
     /* ---------- For Debug only - START ----------- */
