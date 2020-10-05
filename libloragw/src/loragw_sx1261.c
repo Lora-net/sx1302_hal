@@ -19,7 +19,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
-#include <stdlib.h>     /* malloc free */
 #include <unistd.h>     /* lseek, close */
 #include <string.h>     /* memcpy */
 

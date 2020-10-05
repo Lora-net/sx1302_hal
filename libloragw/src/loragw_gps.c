@@ -30,8 +30,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <termios.h>    /* tcflush */
 #include <math.h>       /* modf */
 
-#include <stdlib.h>
-
 #include "loragw_gps.h"
 
 /* -------------------------------------------------------------------------- */
