@@ -30,9 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
-#include <time.h>
 #include <unistd.h>     /* symlink, unlink */
-#include <fcntl.h>
 #include <inttypes.h>
 
 #include "loragw_reg.h"

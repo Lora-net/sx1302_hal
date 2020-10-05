@@ -24,7 +24,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdlib.h>     /* malloc free */
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
-#include <string.h>     /* memset */
+#include <string.h>     /* strncmp */
 #include <errno.h>      /* Error number definitions */
 #include <termios.h>    /* POSIX terminal control definitions */
 

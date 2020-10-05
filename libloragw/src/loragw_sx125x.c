@@ -18,7 +18,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
-#include <string.h>     /* memset */
 
 #include "sx125x_com.h"
 #include "loragw_sx125x.h"

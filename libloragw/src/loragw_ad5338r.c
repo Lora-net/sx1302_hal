@@ -15,7 +15,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
-#include <unistd.h>     /* usleep */
 
 #include "loragw_i2c.h"
 #include "loragw_ad5338r.h"

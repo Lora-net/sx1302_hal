@@ -18,15 +18,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
-#include <unistd.h>     /* lseek, close */
-#include <fcntl.h>      /* open */
-#include <string.h>     /* memset */
+#include <string.h>     /* memcmp */
 #include <math.h>       /* pow, cell */
 #include <inttypes.h>
 #include <time.h>
-
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
 
 #include "loragw_reg.h"
 #include "loragw_aux.h"

@@ -20,7 +20,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
-#include <string.h>     /* memset */
 #include <errno.h>      /* errno */
 
 #include <sys/ioctl.h>

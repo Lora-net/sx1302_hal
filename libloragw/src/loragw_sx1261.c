@@ -19,8 +19,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
-#include <unistd.h>     /* lseek, close */
-#include <string.h>     /* memcpy */
+#include <string.h>     /* strncmp */
 
 #include "loragw_sx1261.h"
 #include "loragw_spi.h"

@@ -23,7 +23,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <stdlib.h>     /* rand */
 #include <unistd.h>     /* lseek, close */
-#include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 #include <errno.h>      /* Error number definitions */
 #include <termios.h>    /* POSIX terminal control definitions */
