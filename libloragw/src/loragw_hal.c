@@ -931,7 +931,7 @@ int lgw_start(void) {
     }
 
     /* Configure PA/LNA LUTs */
-    sx1302_pa_lna_lut_configure(&CONTEXT_BOARD);
+    err = sx1302_pa_lna_lut_configure(&CONTEXT_BOARD);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to configure SX1302 PA/LNA LUT\n");
         return LGW_HAL_ERROR;
