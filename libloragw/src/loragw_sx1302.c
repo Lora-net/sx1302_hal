@@ -585,7 +585,7 @@ int sx1302_pa_lna_lut_configure(struct lgw_conf_board_s * context_board) {
     err |= lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_PA_LUT, 0x04);         /* Enable PA: RADIO_CTRL[8] is high when PA_EN=1 & LNA_EN=0 */
     err |= lgw_reg_w(SX1302_REG_AGC_MCU_LUT_TABLE_B_LNA_LUT, 0x02);        /* Enable LNA: RADIO_CTRL[7] is high when PA_EN=0 & LNA_EN=1 */
 
-    return LGW_REG_SUCCESS;
+    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
