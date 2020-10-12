@@ -72,9 +72,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define FW_VERSION_CAL          1 /* Expected version of calibration firmware */
 
-#define RSSI_FSK_POLY_0         86 /* polynomiam coefficients to linearize FSK RSSI */
-#define RSSI_FSK_POLY_1         1
-#define RSSI_FSK_POLY_2         0
+#define RSSI_FSK_POLY_0         90.636423 /* polynomiam coefficients to linearize FSK RSSI */
+#define RSSI_FSK_POLY_1         0.420835
+#define RSSI_FSK_POLY_2         0.007129
+#define RSSI_FSK_POLY_3         -0.000026
 
 #define FREQ_OFFSET_LSB_125KHZ  0.11920929f     /* 125000 * 32 / 2^6 / 2^19 */
 #define FREQ_OFFSET_LSB_250KHZ  0.238418579f    /* 250000 * 32 / 2^6 / 2^19 */
@@ -2103,7 +2104,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         timestamp_correction = ((uint32_t)680000 / context->fsk_cfg.datarate) - 20;
 
         /* RSSI correction */
-        p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2);
+        p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2) + RSSI_FSK_POLY_3 * pow(p->rssic, 3);
 
         /* Undefined for FSK */
         p->coderate = CR_UNDEFINED;
