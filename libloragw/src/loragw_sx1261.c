@@ -316,9 +316,8 @@ int sx1261_calibrate(uint32_t freq_hz) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1261_setup(uint32_t freq_hz) {
+int sx1261_setup(void) {
     int err;
-    int32_t freq_reg;
     uint8_t buff[32];
 
     /* Set Radio in Standby mode */
@@ -326,51 +325,8 @@ int sx1261_setup(uint32_t freq_hz) {
     err = sx1261_reg_w(SX1261_SET_STANDBY, buff, 1);
     CHECK_ERR(err);
 
-    /* Set radio in Frequency Synthesis mode */
-    err = sx1261_reg_w(SX1261_SET_FS, buff, 0);
-    CHECK_ERR(err);
-
     /* Check radio status */
-    err = sx1261_check_status(SX1261_STATUS_MODE_FS | SX1261_STATUS_READY);
-    CHECK_ERR(err);
-
-    /* Set PacketType */
-    buff[0] = 0x00; /* FSK */
-    err = sx1261_reg_w(SX1261_SET_PACKET_TYPE, buff, 1);
-    CHECK_ERR(err);
-
-    /* Set frequency */
-    freq_reg = SX1261_FREQ_TO_REG(freq_hz);
-    buff[0] = (uint8_t)(freq_reg >> 24);
-    buff[1] = (uint8_t)(freq_reg >> 16);
-    buff[2] = (uint8_t)(freq_reg >> 8);
-    buff[3] = (uint8_t)(freq_reg >> 0);
-    err = sx1261_reg_w(SX1261_SET_RF_FREQUENCY, buff, 4);
-    CHECK_ERR(err);
-
-    /* Set modulation params for FSK */
-    buff[0] = 0;    /* bitrate */
-    buff[1] = 0x14; /* bitrate */
-    buff[2] = 0x00; /* bitrate */
-    buff[3] = 0x00; /* Gaussian BT disabled */
-    buff[4] = 0x0A; /* BW_234300 (232.3 kHz DSB)  0x0A fo 232.3 kHz 0x09 for 467 kHz 0x18 for 624 kHz */
-    buff[5] = 0x02; /* FDEV */
-    buff[6] = 0xE9; /* FDEV */
-    buff[7] = 0x0F; /* FDEV */
-    err = sx1261_reg_w(SX1261_SET_MODULATION_PARAMS, buff, 8);
-    CHECK_ERR(err);
-
-    /* Set packet params for FSK */
-    buff[0] = 0x00; /* Preamble length MSB */
-    buff[1] = 0x20; /* Preamble length LSB 32 bits*/
-    buff[2] = 0x05; /* Preamble detector lenght 16 bits */
-    buff[3] = 0x20; /* SyncWordLength 32 bits*/
-    buff[4] = 0x00; /* AddrComp disabled */
-    buff[5] = 0x01; /* PacketType variable size */
-    buff[6] = 0xff; /* PayloadLength 255 bytes */
-    buff[7] = 0x00; /* CRCType 1 Byte */
-    buff[8] = 0x00; /* Whitening disabled*/
-    err = sx1261_reg_w(SX1261_SET_PACKET_PARAMS, buff, 9);
+    err = sx1261_check_status(SX1261_STATUS_MODE_STBY_RC | SX1261_STATUS_READY);
     CHECK_ERR(err);
 
     /* Set Buffer Base address */
@@ -379,29 +335,11 @@ int sx1261_setup(uint32_t freq_hz) {
     err = sx1261_reg_w(SX1261_SET_BUFFER_BASE_ADDRESS, buff, 2);
     CHECK_ERR(err);
 
-    /* Configure RSSI averaging window */
-    buff[0] = 0x08;
-    buff[1] = 0x9B;
-    buff[2] = 0x05 << 2;
-    err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
-    CHECK_ERR(err);
-
     /* sensi adjust */
     buff[0] = 0x08;
     buff[1] = 0xAC;
     buff[2] = 0xCB;
     err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
-    CHECK_ERR(err);
-
-    /* Set Radio in Rx continuous mode */
-    buff[0] = 0xFF;
-    buff[1] = 0xFF;
-    buff[2] = 0xFF;
-    err = sx1261_reg_w(SX1261_SET_RX, buff, 3);
-    CHECK_ERR(err);
-
-    /* Check radio status */
-    err = sx1261_check_status(SX1261_STATUS_MODE_RX | SX1261_STATUS_READY);
     CHECK_ERR(err);
 
     DEBUG_MSG("SX1261: setup for LBT / Spectral Scan done\n");
@@ -597,6 +535,10 @@ int sx1261_lbt_stop(void) {
     buff[1] = 0x9B;
     buff[2] = 0x00;
     err = sx1261_reg_w(SX1261_WRITE_REGISTER, buff, 3);
+    CHECK_ERR(err);
+
+    /* Set FS */
+    err = sx1261_reg_w(SX1261_SET_FS, buff, 0);
     CHECK_ERR(err);
 
     DEBUG_MSG("SX1261: LBT stopped\n");

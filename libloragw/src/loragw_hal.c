@@ -1158,7 +1158,7 @@ int lgw_start(void) {
             return LGW_HAL_ERROR;
         }
 
-        err = sx1261_setup(CONTEXT_RF_CHAIN[0].freq_hz);
+        err = sx1261_setup();
         if (err != LGW_REG_SUCCESS) {
             printf("ERROR: failed to setup sx1261 radio\n");
             return LGW_HAL_ERROR;

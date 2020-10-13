@@ -265,7 +265,7 @@ int main(int argc, char ** argv)
         exit_failure();
     }
 
-    x = sx1261_setup(freq_hz);
+    x = sx1261_setup();
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to setup the sx1261\n");
         exit_failure();
