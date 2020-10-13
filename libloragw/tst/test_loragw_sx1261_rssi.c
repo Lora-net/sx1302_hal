@@ -48,6 +48,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define COM_PATH_DEFAULT    "/dev/spidev0.0"
 #define SX1261_PATH_DEFAULT "/dev/spidev0.1"
 
+#define DEFAULT_FREQ_HZ     868500000U
+
 /* -------------------------------------------------------------------------- */
 /* --- GLOBAL VARIABLES ----------------------------------------------------- */
 
@@ -71,10 +73,15 @@ int main(int argc, char ** argv)
 
     int i, x;
     double arg_d = 0.0;
+    unsigned int arg_u;
 
     uint8_t buff[BUFF_SIZE];
     uint32_t freq_hz = 0;
     float rssi_inst;
+    uint32_t fa = DEFAULT_FREQ_HZ;
+    uint32_t fb = DEFAULT_FREQ_HZ;
+    uint8_t clocksource = 0;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
 
     /* COM interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
@@ -83,8 +90,11 @@ int main(int argc, char ** argv)
     const char sx1261_path_default[] = SX1261_PATH_DEFAULT;
     const char * sx1261_path = sx1261_path_default;
 
+    struct lgw_conf_board_s boardconf;
+    struct lgw_conf_rxrf_s rfconf;
+
     /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:uf:D:")) != -1) {
+    while ((i = getopt(argc, argv, "hd:uf:D:k:r:a:b:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -107,7 +117,57 @@ int main(int argc, char ** argv)
                 com_type = LGW_COM_USB;
                 break;
 
-            case 'f': /* <float> Radio TX frequency in MHz */
+            case 'r': /* <uint> Radio type */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
+                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    switch (arg_u) {
+                        case 1255:
+                            radio_type = LGW_RADIO_TYPE_SX1255;
+                            break;
+                        case 1257:
+                            radio_type = LGW_RADIO_TYPE_SX1257;
+                            break;
+                        default: /* 1250 */
+                            radio_type = LGW_RADIO_TYPE_SX1250;
+                            break;
+                    }
+                }
+                break;
+
+            case 'k': /* <uint> Clock Source */
+                i = sscanf(optarg, "%u", &arg_u);
+                if ((i != 1) || (arg_u > 1)) {
+                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    clocksource = (uint8_t)arg_u;
+                }
+                break;
+
+            case 'a': /* <float> Radio A RX frequency in MHz */
+                i = sscanf(optarg, "%lf", &arg_d);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    fa = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                }
+                break;
+
+            case 'b': /* <float> Radio B RX frequency in MHz */
+                i = sscanf(optarg, "%lf", &arg_d);
+                if (i != 1) {
+                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+                } else {
+                    fb = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                }
+                break;
+
+            case 'f': /* <float> SX1261 Radio RX frequency in MHz */
                 i = sscanf(optarg, "%lf", &arg_d);
                 if (i != 1) {
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
@@ -147,8 +207,46 @@ int main(int argc, char ** argv)
         }
     }
 
+    /* Configure the gateway */
+    memset( &boardconf, 0, sizeof boardconf);
+    boardconf.lorawan_public = true;
+    boardconf.clksrc = clocksource;
+    boardconf.full_duplex = false;
+    boardconf.com_type = com_type;
+    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
+    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
+    if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure board\n");
+        return EXIT_FAILURE;
+    }
+
+    /* set configuration for RF chains */
+    memset( &rfconf, 0, sizeof rfconf);
+    rfconf.enable = true;
+    rfconf.freq_hz = fa;
+    rfconf.type = radio_type;
+    rfconf.rssi_offset = 0.0;
+    rfconf.tx_enable = false;
+    rfconf.single_input_mode = false;
+    if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxrf 0\n");
+        return EXIT_FAILURE;
+    }
+
+    memset( &rfconf, 0, sizeof rfconf);
+    rfconf.enable = true;
+    rfconf.freq_hz = fb;
+    rfconf.type = radio_type;
+    rfconf.rssi_offset = 0.0;
+    rfconf.tx_enable = false;
+    rfconf.single_input_mode = false;
+    if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to configure rxrf 1\n");
+        return EXIT_FAILURE;
+    }
+
     /* Connect to the concentrator board */
-    x = lgw_connect(com_type, com_path);
+    x = lgw_start();
     if (x != LGW_REG_SUCCESS) {
         printf("ERROR: Failed to connect to the concentrator using COM %s\n", com_path);
         return EXIT_FAILURE;
@@ -195,10 +293,16 @@ int main(int argc, char ** argv)
     printf("\n");
 
     /* Disconnect from the sx1261 radio */
-    sx1261_disconnect();
+    x = sx1261_disconnect();
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to disconnect from the SX1261 radio\n");
+    }
 
     /* Disconnect from the concentrator board */
-    lgw_disconnect();
+    x = lgw_stop();
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR: Failed to disconnect from the concentrator\n");
+    }
 
     printf("Disconnected\n");
 
@@ -247,6 +351,10 @@ static void usage(void) {
     printf(" -D [path]     Path to the SX1261 SPI interface (not used for USB)\n");
     printf("               => default path: " SX1261_PATH_DEFAULT "\n");
     printf(" -u            set COM type as USB (default is SPI)\n");
+    printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
+    printf(" -a <float>    Radio A RX frequency in MHz\n");
+    printf(" -b <float>    Radio B RX frequency in MHz\n");
     printf(" -f <float>    frequency in MHz\n");
 }
 
