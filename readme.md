@@ -191,7 +191,11 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
-### v2.0.0 ###
+### v2.0.0-a ###
+
+* WARNING: This is an ALPHA RELEASE to bring support for SX1303 and a
+preliminary support for fine stamping. It also brings preliminary support for
+Listen-Before-Talk and Spectral Scan.
 
 * HAL: Added support for USB interface between the HOST and the concentrator,
 for sx1250 based concentrator only.
