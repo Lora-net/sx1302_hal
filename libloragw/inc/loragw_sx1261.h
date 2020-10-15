@@ -58,7 +58,7 @@ int sx1261_reg_r(sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
 
 int sx1261_load_pram(void);
 int sx1261_calibrate(uint32_t freq_hz);
-int sx1261_setup(uint32_t freq_hz);
+int sx1261_setup(void);
 int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth);
 
 int sx1261_lbt_start(lgw_lbt_scan_time_t scan_time_us, int8_t threshold_dbm);
