@@ -89,8 +89,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define FW_VERSION_AGC      6 /* Expected version of AGC firmware */
-#define FW_VERSION_ARB      2 /* Expected version of arbiter firmware */
+#define FW_VERSION_AGC      10 /* Expected version of AGC firmware */
+#define FW_VERSION_ARB      2  /* Expected version of arbiter firmware */
 
 /* Useful bandwidth of SX125x radios to consider depending on channel bandwidth */
 /* Note: the below values come from lab measurements. For any question, please contact Semtech support */
