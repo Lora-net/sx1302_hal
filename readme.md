@@ -200,7 +200,9 @@ been introduced to handle switching from a USB or a SPI communication interface,
 aligned function prototypes for sx125x, sx1250 and sx1261 radios. For USB, a
 mode has been added to group SPI write commands request to the STM32 MCU, in
 order to optimize latency during time critical configuration phases.
-* HAL: Added preliminary support for Fine Timestamping for TDOA localization.
+* HAL: Added SX1303 support and preliminary support for Fine Timestamping for
+TDOA localization (fine timestamp alignment with Gateway v2 is not guaranteed
+with this release).
 * HAL: Updated AGC firmware to v6: add configurable delay for PA to start, add
 Listen-Before-Talk support.
 * HAL: Added support for Listen-Before-Talk with additional sx1261 radio.
@@ -214,6 +216,7 @@ Listen-Before-Talk.
 in order to be able to send beacon request from Network Server.
 * Packet Forwarder: Added chan_multiSF_All in global_conf.json to choose which
 spreading factors to enbale for multi-sf demodulators.
+* Packet Forwarder: Updated PROTOCOL.md to v1.6.
 * Tools: added util_spectral_scan
 
 ### v1.1.2 ###
