@@ -28,15 +28,15 @@
                 {"rf_power":  6, "pa_gain": 1, "pwr_idx":  4},
                 {"rf_power": 10, "pa_gain": 1, "pwr_idx":  5},
                 {"rf_power": 11, "pa_gain": 1, "pwr_idx":  6},
-                {"rf_power": 12, "pa_gain": 2, "pwr_idx":  7},
+                {"rf_power": 12, "pa_gain": 1, "pwr_idx":  7},
                 {"rf_power": 13, "pa_gain": 1, "pwr_idx":  8},
-                {"rf_power": 14, "pa_gain": 2, "pwr_idx":  9},
-                {"rf_power": 16, "pa_gain": 2, "pwr_idx": 10},
-                {"rf_power": 20, "pa_gain": 3, "pwr_idx": 11},
-                {"rf_power": 23, "pa_gain": 3, "pwr_idx": 12},
-                {"rf_power": 25, "pa_gain": 3, "pwr_idx": 13},
-                {"rf_power": 26, "pa_gain": 3, "pwr_idx": 14},
-                {"rf_power": 27, "pa_gain": 3, "pwr_idx": 15}
+                {"rf_power": 14, "pa_gain": 1, "pwr_idx":  9},
+                {"rf_power": 16, "pa_gain": 1, "pwr_idx": 10},
+                {"rf_power": 20, "pa_gain": 1, "pwr_idx": 11},
+                {"rf_power": 23, "pa_gain": 1, "pwr_idx": 12},
+                {"rf_power": 25, "pa_gain": 1, "pwr_idx": 13},
+                {"rf_power": 26, "pa_gain": 1, "pwr_idx": 14},
+                {"rf_power": 27, "pa_gain": 1, "pwr_idx": 15}
             ]
         },
         "radio_1": {
