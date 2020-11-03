@@ -562,7 +562,7 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     pkt_ftime *= 31.25;
 
     /* Apply current XTAL error correction */
-    pkt_ftime /= lgw_xtal_correct;
+    pkt_ftime *= lgw_xtal_correct;
 
     *result_ftime = (uint32_t)pkt_ftime;
     if (*result_ftime > 1E9) {
