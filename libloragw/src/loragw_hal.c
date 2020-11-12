@@ -749,7 +749,7 @@ int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf) {
             return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pwr_idx > 22) {
-            DEBUG_MSG("ERROR: TX gain LUT: SX1250 power iundex must not exceed 22\n");
+            DEBUG_MSG("ERROR: TX gain LUT: SX1250 power index must not exceed 22\n");
             return LGW_HAL_ERROR;
         }
 
