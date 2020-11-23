@@ -59,7 +59,7 @@ struct timestamp_pps_history_s {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define PRECISION_TIMESTAMP_TS_METRICS_MAX  0xFF
+#define PRECISION_TIMESTAMP_TS_METRICS_MAX  32 /* reduce number of metrics to better match GW v2 fine timestamp (max is 255) */
 #define PRECISION_TIMESTAMP_NB_SYMBOLS      0
 
 /* -------------------------------------------------------------------------- */
@@ -92,6 +92,14 @@ int32_t legacy_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint8_t
 @return The correction to be applied to the packet timestamp, in microseconds
 */
 int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool crc_en, uint8_t payload_length);
+
+
+/**
+@brief TODO
+@param TODO
+@return The correction to be applied to the packet timestamp, in microseconds
+*/
+void timestamp_pps_history_save(uint32_t timestamp_pps_reg);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -249,6 +257,37 @@ int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint
     return timestamp_correction;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void timestamp_pps_history_save(uint32_t timestamp_pps_reg) {
+    /* Store it only if different from the previous one */
+    if ((timestamp_pps_reg != timestamp_pps_history.history[timestamp_pps_history.idx] || (timestamp_pps_history.size == 0))) {
+        /* Select next index */
+        if (timestamp_pps_history.size > 0) {
+            timestamp_pps_history.idx += 1;
+        }
+        if (timestamp_pps_history.idx == MAX_TIMESTAMP_PPS_HISTORY) {
+            timestamp_pps_history.idx = 0;
+        }
+
+        /* Set PPS counter value */
+        timestamp_pps_history.history[timestamp_pps_history.idx] = timestamp_pps_reg;
+
+        /* Add one entry to the history */
+        if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
+            timestamp_pps_history.size += 1;
+        }
+
+#if 1
+        printf("---- timestamp PPS history (idx:%u size:%u) ----\n",  timestamp_pps_history.idx,  timestamp_pps_history.size);
+        for (int i = 0; i < timestamp_pps_history.size; i++) {
+            printf("  %u\n", timestamp_pps_history.history[i]);
+        }
+        printf("--------------------------------\n");
+#endif
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -290,7 +329,6 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
     uint8_t buff_wa[8];
     uint32_t counter_inst_us_raw_27bits_now;
     uint32_t counter_pps_us_raw_27bits_now;
-    uint8_t idx_prev;
 
     /* Get the freerun and pps 32MHz timestamp counters - 8 bytes
             0 -> 3 : PPS counter
@@ -324,32 +362,7 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
     counter_inst_us_raw_27bits_now = (buff[4]<<24) | (buff[5]<<16) | (buff[6]<<8) | buff[7];
 
     /* Store PPS counter to history, for fine timestamp calculation */
-    if (timestamp_pps_history.idx == 0) {
-        idx_prev = MAX_TIMESTAMP_PPS_HISTORY - 1;
-    } else {
-        idx_prev = timestamp_pps_history.idx - 1;
-    }
-    /* Store it only if different from the previous one */
-    if ((counter_pps_us_raw_27bits_now != timestamp_pps_history.history[idx_prev] || (timestamp_pps_history.size == 0))) {
-        /* Add one entry to the history */
-        if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
-            timestamp_pps_history.size += 1;
-        }
-        timestamp_pps_history.history[timestamp_pps_history.idx] = counter_pps_us_raw_27bits_now;
-        if (timestamp_pps_history.idx == (MAX_TIMESTAMP_PPS_HISTORY - 1)) {
-            timestamp_pps_history.idx = 0;
-        } else {
-            timestamp_pps_history.idx += 1;
-        }
-
-#if 0
-        printf("---- timestamp PPS history (idx:%u size:%u) ----\n",  timestamp_pps_history.idx,  timestamp_pps_history.size);
-        for (int i = 0; i < timestamp_pps_history.size; i++) {
-            printf("  %u\n", timestamp_pps_history.history[i]);
-        }
-        printf("--------------------------------\n");
-#endif
-    }
+    timestamp_pps_history_save(counter_pps_us_raw_27bits_now);
 
     /* Scale to 1MHz */
     counter_pps_us_raw_27bits_now /= 32;
@@ -466,25 +479,28 @@ int32_t timestamp_counter_correction(lgw_context_t * context, uint8_t bandwidth,
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, uint8_t sf, uint32_t * result_ftime) {
-    int i, x;
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, uint8_t sf, int32_t if_freq_hz, uint32_t * result_ftime) {
+    int i, x, timestamp_pps_idx, timestamp_pps_idx_next, timestamp_pps_idx_prev;
     int32_t ftime_sum;
     int32_t ftime[256];
     float ftime_mean;
     uint32_t timestamp_cnt_end_of_preamble;
     uint32_t timestamp_pps = 0;
+    uint32_t timestamp_pps_reg = 0;
     uint32_t offset_preamble_hdr;
     uint8_t buff[4];
     uint32_t diff_pps;
     double pkt_ftime;
+    uint8_t ts_metrics_nb_clipped;
+    double xtal_correct;
 
     /* Check input parameters */
     CHECK_NULL(ts_metrics);
     CHECK_NULL(result_ftime);
 
     /* Check if we can calculate a ftime */
-    if ((timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) || (lgw_xtal_correct_ok == false)) {
-        printf("INFO: Cannot compute ftime yet, PPS history is too short or XTal correction is not valid\n");
+    if (timestamp_pps_history.size < MAX_TIMESTAMP_PPS_HISTORY) {
+        printf("INFO: Cannot compute ftime yet, PPS history is too short\n");
         return -1;
     }
 
@@ -492,15 +508,31 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     offset_preamble_hdr =   256 * (1 << sf) * (8 + 4 + (((sf == 5) || (sf == 6)) ? 2 : 0)) +
                             256 * ((1 << sf) / 4 - 1); /* 32e6 / 125e3 = 256 */
 
-    timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr + 2137;
+    timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr + 2138; /* 2138 is the number of 32MHz clock cycle offset b/w GW_V2 and SX1303 decimation/filtering group delay */
 
-    /* Shift the packet corase timestamp which is used to get ref PPS counter */
+    /* Shift the packet coarse timestamp which is used to get ref PPS counter */
     timestamp_cnt = timestamp_cnt_end_of_preamble;
+
+    /* Clip the number of metrics depending on Spreading Factor, reduce fine timestamp variation versus packet duration */
+    switch (sf) {
+        case 12:
+            ts_metrics_nb_clipped = MIN(4, ts_metrics_nb);
+            break;
+        case 11:
+            ts_metrics_nb_clipped = MIN(8, ts_metrics_nb);
+            break;
+        case 10:
+            ts_metrics_nb_clipped = MIN(16, ts_metrics_nb);
+            break;
+        default:
+            ts_metrics_nb_clipped = MIN(32, ts_metrics_nb);
+            break;
+    }
 
 #if 0
     printf("%s\n", __FUNCTION__);
-    printf("ts_metrics_nb*2: %u\n", ts_metrics_nb * 2);
-    for (i = 0; i < (2 * ts_metrics_nb); i++) {
+    printf("ts_metrics_nb_clipped*2: %u\n", ts_metrics_nb_clipped * 2);
+    for (i = 0; i < (2 * ts_metrics_nb_clipped); i++) {
         printf("%d ", ts_metrics[i]);
     }
     printf("\n");
@@ -509,13 +541,13 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     /* Compute the ftime cumulative sum */
     ftime[0] = (int32_t)ts_metrics[0];
     ftime_sum = ftime[0];
-    for (i = 1; i < (2 * ts_metrics_nb); i++) {
+    for (i = 1; i < (2 * ts_metrics_nb_clipped); i++) {
         ftime[i] = ftime[i-1] + ts_metrics[i];
         ftime_sum += ftime[i];
     }
 
     /* Compute the mean of the cumulative sum */
-    ftime_mean = (float)ftime_sum / (float)(2 * ts_metrics_nb);
+    ftime_mean = (float)ftime_sum / (float)(2 * ts_metrics_nb_clipped);
 
     /* Find the last timestamp_pps before packet to use as reference for ftime */
     x = lgw_reg_rb(SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS , &buff[0], 4);
@@ -523,28 +555,50 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
         printf("ERROR: Failed to get timestamp counter value\n");
         return 0;
     }
-    timestamp_pps  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    timestamp_pps |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    timestamp_pps |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    timestamp_pps |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+    timestamp_pps_reg  = (uint32_t)((buff[0] << 24) & 0xFF000000);
+    timestamp_pps_reg |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
+    timestamp_pps_reg |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
+    timestamp_pps_reg |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
 
-    /* Check if timestamp_pps we just read is the reference to be used to compute ftime or not */
-    if ((timestamp_cnt - timestamp_pps) > 32e6) {
-        /* The timestamp_pps we just read is after the packet timestamp, we need to rewind */
-        for (i = 0; i < timestamp_pps_history.size; i++) {
+    /* Ensure that the timestamp PPS history is up-to-date */
+    timestamp_pps_history_save(timestamp_pps_reg);
+
+    /* Check if timestamp_pps_reg we just read is the reference to be used to compute ftime or not */
+    if ((timestamp_cnt - timestamp_pps_reg) > 32e6) {
+        /* The timestamp_pps_reg we just read is after the packet timestamp, we need to rewind */
+        for (timestamp_pps_idx = 0; timestamp_pps_idx < timestamp_pps_history.size; timestamp_pps_idx++) {
             /* search the pps counter in history */
-            if ((timestamp_cnt - timestamp_pps_history.history[i]) < 32e6) {
-                timestamp_pps = timestamp_pps_history.history[i];
-                DEBUG_PRINTF("==> timestamp_pps found at history[%d] => %u\n", i, timestamp_pps);
+            if ((timestamp_cnt - timestamp_pps_history.history[timestamp_pps_idx]) < 32e6) {
+                timestamp_pps = timestamp_pps_history.history[timestamp_pps_idx];
+                DEBUG_PRINTF("==> timestamp_pps found at history[%d] => %u\n", timestamp_pps_idx, timestamp_pps);
                 break;
             }
         }
-        if (i == timestamp_pps_history.size) {
+        if (timestamp_pps_idx == timestamp_pps_history.size) {
             printf("ERROR: failed to find the reference timestamp_pps, cannot compute ftime\n");
             return -1;
         }
+
+        /* Calculate the Xtal error between the reference PPS we just found and the next one */
+        timestamp_pps_idx_next = (timestamp_pps_idx == (MAX_TIMESTAMP_PPS_HISTORY - 1)) ? 0 : timestamp_pps_idx + 1;
+        diff_pps = timestamp_pps_history.history[timestamp_pps_idx_next] - timestamp_pps_history.history[timestamp_pps_idx];
+        xtal_correct = (double)32e6 / (double)(diff_pps);
     } else {
+        /* The timestamp_pps_reg we just read is the reference we use to calculate the fine timestamp */
+        timestamp_pps = timestamp_pps_reg;
         DEBUG_PRINTF("==> timestamp_pps => %u\n", timestamp_pps);
+
+        /* Calculate the Xtal error between the reference PPS we just found and the previous one */
+        timestamp_pps_idx = timestamp_pps_history.idx;
+        timestamp_pps_idx_prev = (timestamp_pps_idx == 0) ? (MAX_TIMESTAMP_PPS_HISTORY - 1) : (timestamp_pps_idx - 1);
+        diff_pps = timestamp_pps_history.history[timestamp_pps_idx] - timestamp_pps_history.history[timestamp_pps_idx_prev];
+        xtal_correct = (double)32e6 / (double)(diff_pps);
+    }
+
+    /* Sanity Check on xtal_correct */
+    if ((xtal_correct > 1.2) || (xtal_correct < 0.8)) {
+        printf("ERROR: xtal_error is invalid (%.15lf)\n", xtal_correct);
+        return -1;
     }
 
     /* Coarse timestamp based on PPS reference */
@@ -558,11 +612,17 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     pkt_ftime = (double)diff_pps + (double)ftime_mean;
     DEBUG_PRINTF("pkt_ftime = %f\n", pkt_ftime);
 
+    /* Add the DC notch filtering delay if IF freq is 0 */
+    if (if_freq_hz == 0) {
+        DEBUG_MSG("Add DC notch delay to fine timestamp\n");
+        pkt_ftime += 10;
+    }
+
     /* Convert fine timestamp from 32 Mhz clock to nanoseconds */
     pkt_ftime *= 31.25;
 
     /* Apply current XTAL error correction */
-    pkt_ftime *= lgw_xtal_correct;
+    pkt_ftime *= xtal_correct;
 
     *result_ftime = (uint32_t)pkt_ftime;
     if (*result_ftime > 1E9) {

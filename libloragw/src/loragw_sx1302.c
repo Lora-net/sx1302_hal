@@ -2072,7 +2072,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         p->ftime_received = false;
         p->ftime = 0;
         if ((pkt.num_ts_metrics_stored > 0) && (pkt.timing_set == true) && (p->status == STAT_CRC_OK)) {
-            err = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt, pkt.rx_rate_sf, &(p->ftime));
+            err = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt, pkt.rx_rate_sf, context->if_chain_cfg[p->if_chain].freq_hz, &(p->ftime));
             if (err == 0) {
                 p->ftime_received = true;
             }

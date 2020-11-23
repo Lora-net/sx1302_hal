@@ -137,10 +137,11 @@ int timestamp_counter_mode(bool ftime_enable);
 @param ts_metrics An array containing timestamp metrics to compute fine timestamp
 @param pkt_coarse_tmst The packet coarse timestamp
 @param sf packet spreading factor, used to shift timestamp from end of header to end of preamble
+@param if_freq_hz the IF frequency, to take into account DC noth delay
 @param result_ftime A pointer to store the resulting fine timestamp
 @return 0 if success, -1 otherwise
 */
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, uint32_t * result_ftime);
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, int32_t if_freq_hz, uint32_t * result_ftime);
 
 /**
 @brief Set the current gateway XTAL correction to be applied when computing the fine timestamp (should be called regularly by upper level)
