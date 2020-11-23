@@ -65,10 +65,6 @@ struct timestamp_pps_history_s {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-/* xtal correction to be applied */
-static bool lgw_xtal_correct_ok = false;
-static double lgw_xtal_correct = 1.0;
-
 /* history of the last PPS timestamps */
 static struct timestamp_pps_history_s timestamp_pps_history = {
     .history = { 0 },
@@ -631,23 +627,6 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     }
 
     DEBUG_PRINTF("==> ftime = %u ns since last PPS (%.15lf)\n", *result_ftime, pkt_ftime);
-
-    return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int set_xtal_correct(bool is_valid, double xtal_correction) {
-    /* Keep status of the current xtal error to be corrected */
-    lgw_xtal_correct_ok = is_valid;
-
-    if (lgw_xtal_correct_ok == true) {
-        lgw_xtal_correct = xtal_correction;
-    } else {
-        lgw_xtal_correct = 1.0;
-    }
-
-    DEBUG_PRINTF("INFO: lgw_xtal_correct_ok:%d, lgw_xtal_correct:%.15lf\n", lgw_xtal_correct_ok, lgw_xtal_correct);
 
     return 0;
 }

@@ -84,7 +84,6 @@ use the LoRa concentrator:
 * lgw_get_eui, to get the sx1302 chip EUI
 * lgw_get_temperature, to get the current temperature
 * lgw_time_on_air, to get the Time On Air of a packet
-* lgw_set_xtal_correct, to set the correction to be applied to compensate XTAL drift (for fine timestamping)
 * lgw_spectral_scan, to scan a particular channel
 
 For an standard application, include only this module.

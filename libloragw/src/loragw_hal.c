@@ -1653,20 +1653,6 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_set_xtal_correct(bool is_valid, double xtal_correction) {
-    int err;
-
-    DEBUG_PRINTF(" --- %s\n", "IN");
-
-    err = set_xtal_correct(is_valid, xtal_correction);
-
-    DEBUG_PRINTF(" --- %s\n", "OUT");
-
-    return err;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int lgw_spectral_scan(uint32_t freq_hz, uint16_t nb_scan, int16_t levels_dbm[static LGW_SPECTRAL_SCAN_RESULT_SIZE], uint16_t results[static LGW_SPECTRAL_SCAN_RESULT_SIZE]) {
     int err;
 

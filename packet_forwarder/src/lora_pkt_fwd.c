@@ -3480,9 +3480,6 @@ void thread_valid(void) {
             }
         }
 
-        /* Send current xtal_correct value to the HAL, for fine timestamping correction */
-        lgw_set_xtal_correct(xtal_correct_ok, xtal_correct);
-
         //printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
     }
     MSG("\nINFO: End of validation thread\n");

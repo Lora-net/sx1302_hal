@@ -551,14 +551,6 @@ const char* lgw_version_info(void);
 uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
 
 /**
-@brief Set the current correction to be applied to compensate XTAL error
-@param is_valid indicates if there is a valid XTAL error correction to be applied
-@param xtal_correction the current value to be used to compensate XTAL error.
-@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
-*/
-int lgw_set_xtal_correct(bool is_valid, double xtal_correction);
-
-/**
 @brief Scan the channel centered on the given frequency
 @param freq_hz channel center frequency
 @param nb_scan number of measures to be done for the scan

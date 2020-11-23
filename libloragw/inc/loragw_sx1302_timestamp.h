@@ -143,14 +143,6 @@ int timestamp_counter_mode(bool ftime_enable);
 */
 int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, int32_t if_freq_hz, uint32_t * result_ftime);
 
-/**
-@brief Set the current gateway XTAL correction to be applied when computing the fine timestamp (should be called regularly by upper level)
-@param is_valid Boolean to indicate if the xtal correction is valid
-@param xtal_correction The current correction to be applied due to XTAL drift
-@return 0 if success, -1 otherwise
-*/
-int set_xtal_correct(bool is_valid, double xtal_correction);
-
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
