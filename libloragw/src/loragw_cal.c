@@ -18,15 +18,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
-#include <stdlib.h>     /* malloc free */
-#include <unistd.h>     /* lseek, close */
-#include <fcntl.h>      /* open */
-#include <string.h>     /* memset */
-#include <inttypes.h>
-#include <math.h>
-
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
+#include <math.h>       /* log10 */
 
 #include "loragw_reg.h"
 #include "loragw_aux.h"
@@ -45,8 +37,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_CAL == 1
-    #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+    #define DEBUG_MSG(str)                fprintf(stdout, str)
+    #define DEBUG_PRINTF(fmt, args...)    fprintf(stdout,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_SPI_ERROR;}
 #else
     #define DEBUG_MSG(str)
@@ -62,7 +54,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CAL_TX_CORR_DURATION    0 /* 0:1ms, 1:2ms, 2:4ms, 3:8ms */
 
 /* -------------------------------------------------------------------------- */
-/* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
+/* --- PRIVATE VARIABLES -------------------------------------------- */
 
 /* Record Rx IQ mismatch corrections from calibration */
 static int8_t rf_rx_image_amp[LGW_RF_CHAIN_NB] = {0, 0};
@@ -293,39 +285,39 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", radio_type);
             return LGW_HAL_ERROR;
     }
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & rx_freq_int, rx);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (rx_freq_frac >> 8), rx);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & rx_freq_frac, rx);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_MSB, 0xFF & tx_freq_int, tx);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_MID, 0xFF & (tx_freq_frac >> 8), tx);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_LSB, 0xFF & tx_freq_frac, tx);
+    sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & rx_freq_int, rx);
+    sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (rx_freq_frac >> 8), rx);
+    sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & rx_freq_frac, rx);
+    sx125x_reg_w(SX125x_REG_FRF_TX_MSB, 0xFF & tx_freq_int, tx);
+    sx125x_reg_w(SX125x_REG_FRF_TX_MID, 0xFF & (tx_freq_frac >> 8), tx);
+    sx125x_reg_w(SX125x_REG_FRF_TX_LSB, 0xFF & tx_freq_frac, tx);
 
     /* Radio settings for calibration */
     //sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_ZIN, 1, rx); /* Default: 1 */
     //sx125x_reg_w(SX125x_RX_ANA_GAIN__BB_GAIN, 15, rx); /* Default: 15 */
     //sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_GAIN, 1, rx); /* Default: 1 */
-    lgw_sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, 0, rx);
-    lgw_sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, 6, rx);
+    sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, 0, rx);
+    sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, 6, rx);
     //sx125x_reg_w(SX125x_RX_BW__ADC_BW, 7, rx);  /* Default: 7 */
-    lgw_sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, 0, rx);
-    lgw_sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, tx);
+    sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, 0, rx);
+    sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, tx);
     //sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, tx); /* Default: 0 */
-    lgw_sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, tx);
+    sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, tx);
     //sx125x_reg_w(SX125x_CLK_SELECT__DAC_CLK_SELECT, 0, tx); /* Use internal clock, in case no Tx connection from SX1302, Default: 0  */
     if (use_loopback == true) {
-        lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, 3, tx);
-        lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, 10, tx); //8
-        lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, tx);
-        lgw_sx125x_reg_w(SX125x_REG_MODE, 15, tx);
+        sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, 3, tx);
+        sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, 10, tx); //8
+        sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, tx);
+        sx125x_reg_w(SX125x_REG_MODE, 15, tx);
     } else {
-        lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, 3, tx);
-        lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, 15, tx);
-        lgw_sx125x_reg_w(SX125x_REG_MODE, 3, rx);
-        lgw_sx125x_reg_w(SX125x_REG_MODE, 13, tx);
+        sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, 3, tx);
+        sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, 15, tx);
+        sx125x_reg_w(SX125x_REG_MODE, 3, rx);
+        sx125x_reg_w(SX125x_REG_MODE, 13, tx);
     }
     wait_ms(10);
-    lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS__RX_PLL_LOCKED, &rx_pll_locked, rx);
-    lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS__TX_PLL_LOCKED, &tx_pll_locked, tx);
+    sx125x_reg_r(SX125x_REG_MODE_STATUS__RX_PLL_LOCKED, &rx_pll_locked, rx);
+    sx125x_reg_r(SX125x_REG_MODE_STATUS__TX_PLL_LOCKED, &tx_pll_locked, tx);
     if ((rx_pll_locked == 0) || (tx_pll_locked == 0)) {
         DEBUG_MSG("ERROR: PLL failed to lock\n");
         return LGW_HAL_ERROR;
@@ -441,32 +433,32 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", radio_type);
             return LGW_HAL_ERROR;
     }
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & rx_freq_int, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (rx_freq_frac >> 8), rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & rx_freq_frac, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_MSB, 0xFF & tx_freq_int, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_MID, 0xFF & (tx_freq_frac >> 8), rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_LSB, 0xFF & tx_freq_frac, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & rx_freq_int, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (rx_freq_frac >> 8), rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & rx_freq_frac, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_TX_MSB, 0xFF & tx_freq_int, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_TX_MID, 0xFF & (tx_freq_frac >> 8), rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_TX_LSB, 0xFF & tx_freq_frac, rf_chain);
 
     /* Radio settings for calibration */
-    //lgw_sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_ZIN, 1, rf_chain); /* Default: 1 */
-    //lgw_sx125x_reg_w(SX125x_RX_ANA_GAIN__BB_GAIN, 15, rf_chain); /* Default: 15 */
-    //lgw_sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_GAIN, 1, rf_chain); /* Default: 1 */
-    lgw_sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, 0, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, 6, rf_chain);
-    //lgw_sx125x_reg_w(SX125x_RX_BW__ADC_BW, 7, rf_chain);  /* Default: 7 */
-    lgw_sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, 0, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, rf_chain);
-    //lgw_sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, rf_chain); /* Default: 0 */
-    lgw_sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__DAC_CLK_SELECT, 1, rf_chain); /* Use external clock from SX1302 */
-    lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, dac_gain, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, mix_gain, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_MODE, 15, rf_chain);
+    //sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_ZIN, 1, rf_chain); /* Default: 1 */
+    //sx125x_reg_w(SX125x_RX_ANA_GAIN__BB_GAIN, 15, rf_chain); /* Default: 15 */
+    //sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_GAIN, 1, rf_chain); /* Default: 1 */
+    sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, 0, rf_chain);
+    sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, 6, rf_chain);
+    //sx125x_reg_w(SX125x_RX_BW__ADC_BW, 7, rf_chain);  /* Default: 7 */
+    sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, 0, rf_chain);
+    sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, rf_chain);
+    //sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, rf_chain); /* Default: 0 */
+    sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, rf_chain);
+    sx125x_reg_w(SX125x_REG_CLK_SELECT__DAC_CLK_SELECT, 1, rf_chain); /* Use external clock from SX1302 */
+    sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, dac_gain, rf_chain);
+    sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, mix_gain, rf_chain);
+    sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, rf_chain);
+    sx125x_reg_w(SX125x_REG_MODE, 15, rf_chain);
     wait_ms(1);
-    lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS__RX_PLL_LOCKED, &rx_pll_locked, rf_chain);
-    lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS__TX_PLL_LOCKED, &tx_pll_locked, rf_chain);
+    sx125x_reg_r(SX125x_REG_MODE_STATUS__RX_PLL_LOCKED, &rx_pll_locked, rf_chain);
+    sx125x_reg_r(SX125x_REG_MODE_STATUS__TX_PLL_LOCKED, &tx_pll_locked, rf_chain);
     if ((rx_pll_locked == 0) || (tx_pll_locked == 0)) {
         DEBUG_MSG("ERROR: PLL failed to lock\n");
         return LGW_HAL_ERROR;
@@ -833,6 +825,7 @@ void agc_cal_tx_dc_offset(uint8_t rf_chain, signed char freq, char amp_hal, char
         do {
             lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_CFG_VALID, &val);
             wait_ms(1);
+            /* TODO: addtimeout */
         } while (val == 0);
 
         lgw_reg_r(SX1302_REG_RADIO_FE_SIG_ANA_ABS_LSB_CORR_ABS_OUT, &abs_lsb);

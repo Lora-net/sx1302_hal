@@ -3,7 +3,7 @@
 	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-	  (C)2019 Semtech
+	  (C)2020 Semtech
 
 SX1302 LoRa Gateway project
 ===========================
@@ -37,7 +37,7 @@ link, and emits RF packets that are sent by the server.
 	    |
 	+- -|- - - - - - - - - - - - -+        xxxxxxxxxxxx          +--------+
 	|+--+-----------+     +------+|       xx x  x     xxx        |        |
-	||              |     |      ||      xx  Internet  xx        |        |
+	||              | USB |      ||      xx  Internet  xx        |        |
 	|| Concentrator |<----+ Host |<------xx     or    xx-------->|        |
 	||              | SPI |      ||      xx  Intranet  xx        | Server |
 	|+--------------+     +------+|       xxxx   x   xxxx        |        |
@@ -72,6 +72,21 @@ local CSV file.
 
 Please refer to the readme.md file located in the util_net_downlink directory
 for more details.
+
+### 2.3. util_chip_id ###
+
+This utility configures the SX1302 to be able to retrieve its EUI. It can then
+be used as a Gateway ID.
+
+### 2.4. util_boot ###
+
+On used for a USB gateway, this software switches the concentrator in DFU mode
+in order to program its internal STM32 MCU.
+
+### 2.5. util_spectral_scan ###
+
+This software allows to scan the spectral band using the additional sx1261 radio
+of the Semtech Corecell reference design.
 
 ## 3. Helper scripts
 
@@ -152,14 +167,102 @@ set, do:
 
 `make clean all`
 
-## 5. Third party libraries
+## 5. USB
+
+This project provides support for both SPI or USB gateways. For USB interface,
+the concentrator board has a STM32 MCU with which the linux host will
+communicate to configure the sx1302 and the associated radios. The STM32 acts
+as a USB <-> SPI bridge.
+
+The STM32 MCU has to be programmed with the binary provided in the `mcu_bin`
+directory of this project. For more details about how to flash it, please refer
+to the `util_boot/readme.md` instructions.
+
+Each test utility of the project can be used using the `-u -d /dev/ttyACMx'
+command line option, or with the proper configuration in the packet forwarder
+global_conf.json file.
+
+## 6. Third party libraries
 
 This project relies on several third-party open source libraries, that can be
 found in the `libtools` directory.
 * parson: a JSON parser (http://kgabis.github.com/parson/)
 * tinymt32: a pseudo-random generator (only used for debug/test)
 
-## 6. Changelog
+## 7. Changelog
+
+### v2.0.0 ###
+
+> #### New features
+
+* Added support for USB interface between the HOST and the concentrator,
+for sx1250 based concentrator only.
+* Added support for Listen-Before-Talk for AS923 region, using the additional
+sx1261 radio from the Semtech Corecell reference design v3.
+* Added support for Spectral Scan with additional sx1261 radio from the Semtech
+Corecell reference design v3.
+* Added support for SX1303 chip, for further Fine Timestamping support.
+* Merged the master-fdd-cn490 branch to bring support for CN490 Full-Duplex
+reference design. It is an integration of the releases v1.1.0, v1.1.1, v1.1.2
+described below.
+
+> #### Changes
+
+* HAL: Reworked the complete communication layer. A new loragw_com module has
+been introduced to handle switching from a USB or a SPI communication interface,
+aligned function prototypes for sx125x, sx1250 and sx1261 radios. For USB, a
+mode has been added to group SPI write commands request to the STM32 MCU, in
+order to optimize latency during time critical configuration phases.
+* HAL: Added preliminary support for Fine Timestamping for TDOA localization.
+* HAL: Updated AGC firmware to v6: add configurable delay for PA to start, add
+Listen-Before-Talk support.
+* HAL: Added new API function lgw_demod_setconf() to set global demodulator
+settings.
+* HAL: Added new API functions for Spectral Scan.
+* Packet Forwarder: The type of interface is configurable in the
+global_conf.json file: com_type can be "USB" or "SPI".
+* Packet Forwarder: Changed the parameters to configure fine timestamping in the
+global_conf.json.
+* Packet Forwarder: Added sections to configure the spectral scan and
+Listen-Before-Talk features.
+* Packet Forwarder: Added a new thread for background spectral scan example,
+to show how to use the spectral scan API provided by the HAL, without
+interfering with the main tasks of the gateway (aka Receive uplinks and transmit
+downlinks).
+* Packet Forwarder: Added "nhdr" field parsing from "txpk" JSON downlink request
+in order to be able to send beacon request from Network Server.
+* Packet Forwarder: Added chan_multiSF_All in global_conf.json to choose which
+spreading factors to enable for multi-sf demodulators.
+* Packet Forwarder: Updated PROTOCOL.md to v1.6.
+* Tools: added util_spectral_scan, a standalone spectral scanner utility.
+
+> #### Notes
+
+* This release has been validated on the Semtech Corecell reference design v3
+with USB interface.
+
+### v1.1.2 ###
+
+> Integrated in ***v2.0.0*** from ***master-fdd-cn490*** branch.
+
+* packet forwarder: updated global_conf.json.sx1255.CN490.full-duplex with RSSI
+temperature compensation coefficients, and updated RSSI offset for radio 1.
+
+### v1.1.1 ###
+
+> Integrated in ***v2.0.0*** from ***master-fdd-cn490*** branch.
+
+* HAL: Updated SX1302 LNA/PA LUT configuration for Full Duplex CN490 reference
+design.
+* test_loragw_hal_rx/tx: added --fdd option to enable Full Duplex
+* packet forwarder: updated global_conf.json.sx1255.CN490.full-duplex for CN490
+reference design.
+
+### v1.1.0 ###
+
+> Integrated in ***v2.0.0*** from ***master-fdd-cn490*** branch.
+
+* HAL: Added support for CN490 full duplex reference design.
 
 ### v1.0.5 ###
 
@@ -210,7 +313,7 @@ calibration
 
 * HAL: Initial private release for TAP program
 
-## 7. Legal notice
+## 8. Legal notice
 
 The information presented in this project documentation does not form part of
 any quotation or contract, is believed to be accurate and reliable and may be

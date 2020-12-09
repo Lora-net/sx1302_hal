@@ -129,6 +129,7 @@ and associated metadata with the following fields:
  time | string | UTC time of pkt RX, us precision, ISO 8601 'compact' format
  tmms | number | GPS time of pkt RX, number of milliseconds since 06.Jan.1980
  tmst | number | Internal timestamp of "RX finished" event (32b unsigned)
+ ftime| number | fine timestamp, number of nanoseconds since last PPS [0..999999999] (Optional)
  freq | number | RX central frequency in MHz (unsigned float, Hz precision)
  chan | number | Concentrator "IF" channel used for RX (unsigned integer)
  rfch | number | Concentrator "RF chain" used for RX (unsigned integer)
@@ -150,17 +151,21 @@ Example (white-spaces, indentation and newlines added for readability):
 ``` json
 {"rxpk":[
 	{
-		"time":"2013-03-31T16:21:17.528002Z",
 		"tmst":3512348611,
+		"time":"2020-10-01T09:30:52.592567Z",
+		"tmms":1285579871592,
+		"ftime":85224290,
 		"chan":2,
 		"rfch":0,
 		"freq":866.349812,
+		"mid":3,
 		"stat":1,
 		"modu":"LORA",
 		"datr":"SF7BW125",
 		"codr":"4/6",
 		"rssi":-35,
 		"lsnr":5.1,
+		"foff":-3313,
 		"size":32,
 		"data":"-DS4CGaDCdG+48eJNM3Vai-zDpsR71Pn9CPA9uCON84"
 	},{
@@ -367,6 +372,7 @@ following fields:
  size | number | RF packet payload size in bytes (unsigned integer)
  data | string | Base64 encoded RF packet payload, padding optional
  ncrc | bool   | If true, disable the CRC of the physical layer (optional)
+ nhdr | bool   | If true, disable the header of the physical layer (optional)
 
 Most fields are optional.
 If a field is omitted, default parameters will be used.
@@ -453,6 +459,12 @@ Examples (white-spaces, indentation and newlines added for readability):
 ```
 
 ## 7. Revisions
+
+### v1.6 ###
+* Added "mid" field in "rxpk" for concentrator modem ID used to demodulate pkt
+* Added "foff" field in "rxpk" for frequency offset measured
+* Added "rssis" field in "rxpk" for signal RSSI measured.
+* Added "ftime" field in "rxpk" for fine timestamping
 
 ### v1.5 ###
 * Moved TX_POWER from "error" category to "warn" category in "txpk_ack" object

@@ -27,6 +27,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "config.h"     /* library configuration options (dynamically generated) */
 
+#include "loragw_com.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED TYPES ------------------------------------------------ */
 
@@ -44,14 +46,12 @@ struct lgw_reg_s {
 /* -------------------------------------------------------------------------- */
 /* --- INTERNAL SHARED FUNCTIONS -------------------------------------------- */
 
-int reg_w_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value);
-int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value);
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 #define LGW_REG_SUCCESS  0
 #define LGW_REG_ERROR    -1
+#define LGW_REG_WARNING  -2
 
 #define SX1302_REG_COMMON_PAGE_PAGE 0
 #define SX1302_REG_COMMON_CTRL0_CLK32_RIF_CTRL 1
@@ -1432,14 +1432,15 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, 
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief Connect LoRa concentrator by opening SPI link
-@param spidev_path path to the SPI device to be used to connect to the SX1302
+@brief Connect LoRa concentrator by opening COM link
+@param com_type type of COM interface to be used (SPI or USB)
+@param com_path path to the COM device to be used to connect to the SX1302
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
-int lgw_connect(const char * spidev_path);
+int lgw_connect(const lgw_com_type_t com_type, const char * com_path);
 
 /**
-@brief Disconnect LoRa concentrator by closing SPI link
+@brief Disconnect LoRa concentrator by closing COM link
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_disconnect(void);
@@ -1472,19 +1473,28 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size);
 /**
 @brief LoRa concentrator register burst read
 @param register_id register number in the data structure describing registers
-@param data pointer to byte array that will be written from the LoRa concentrator
+@param data pointer to byte array to store the data read from the LoRa concentrator
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
 
 /**
-TODO
+@brief LoRa concentrator memory burst write
+@param mem_addr the address of the memory section to write to
+@param data pointer to byte array that will be written from the LoRa concentrator
+@param size size of the transfer, in byte(s)
+@return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_mem_wb(uint16_t mem_addr, const uint8_t *data, uint16_t size);
 
 /**
-TODO
+@brief LoRa concentrator memory burst read
+@param mem_addr the address of the memory section to read from
+@param data pointer to byte array to store the data read from the LoRa concentrator
+@param size size of the transfer, in byte(s)
+@param fifo_mode the type of memory to read from
+@return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_mem_rb(uint16_t mem_addr, uint8_t *data, uint16_t size, bool fifo_mode);
 

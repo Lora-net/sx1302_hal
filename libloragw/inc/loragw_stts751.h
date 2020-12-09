@@ -33,23 +33,30 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define I2C_PORT_TEMP_SENSOR_0    0x39  /* STTS751-0DP3F */
-#define I2C_PORT_TEMP_SENSOR_1    0x3B  /* STTS751-1DP3F */
+/*
+  0x39: STTS751-0DP3F
+  0x3B: STTS751-1DP3F
+  0x38: STTS751-0DP3F on full duplex CN490 ref design
+  */
+static const uint8_t I2C_PORT_TEMP_SENSOR[] = {0x39, 0x3B, 0x38};
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Configure the temperature sensor (ST TS751)
+@param i2c_fd file descriptor to access the sensor through I2C
+@param i2c_addr the I2C device address of the sensor
+@return LGW_I2C_ERROR if fails, LGW_I2C_SUCCESS otherwise
 */
 int stts751_configure(int i2c_fd, uint8_t i2c_addr);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Get the temperature from the sensor
+@param i2c_fd file descriptor to access the sensor through I2C
+@param i2c_addr the I2C device address of the sensor
+@param temperature pointer to store the temerature read from sensor
+@return LGW_I2C_ERROR if fails, LGW_I2C_SUCCESS otherwise
 */
 int stts751_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature);
 

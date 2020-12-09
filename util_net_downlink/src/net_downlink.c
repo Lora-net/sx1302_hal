@@ -851,7 +851,7 @@ int main( int argc, char **argv )
             {
                 if( is_first == true )
                 {
-                    fprintf(log_file, "tmst,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data\n");
+                    fprintf(log_file, "tmst,ftime,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data\n");
                     is_first = false;
                 }
                 log_csv( log_file, &databuf_up[12] );
@@ -930,6 +930,22 @@ static void log_csv(FILE * file, uint8_t * buf)
                 return;
             }
             fprintf(file, "%u", (uint32_t)json_value_get_number( val ) );
+
+            /* optional field */
+            val = json_object_get_value( rxpk, "ftime" );
+            if( val != NULL )
+            {
+
+                if( json_value_get_type( val ) != JSONNumber )
+                {
+                    printf( "ERROR: wrong type for tmst\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                fprintf(file, ",%u", (uint32_t)json_value_get_number( val ) );
+            } else {
+                fprintf(file, "," );
+            }
 
             val = json_object_get_value( rxpk, "chan" );
             if( json_value_get_type( val ) != JSONNumber )
@@ -1220,6 +1236,7 @@ void prepare_downlink_json( const thread_params_t * params, uint8_t rf_chain, ui
         pream_sz = params->preamb_size[rf_chain];
         json_object_set_number( obj, "prea", pream_sz );
         json_object_set_boolean( obj, "ncrc", true );
+        json_object_set_boolean( obj, "nhdr", false );
         json_object_set_number( obj, "size", params->pl_size[rf_chain] );
 
         /* Fill last bytes of payload with downlink counter (32 bits) */

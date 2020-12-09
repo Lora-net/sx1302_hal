@@ -43,7 +43,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_TYPE_DEFAULT LGW_COM_SPI
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -65,10 +66,13 @@ static void gps_process_coords(void);
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -u        set COM type as USB (default is SPI)\n");
+    printf(" -d <path> COM path to be used to connect the concentrator\n");
+    printf("            => default path (SPI): " COM_PATH_DEFAULT "\n");
+    printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
 }
 
 static void sig_handler(int sigio) {
@@ -170,8 +174,9 @@ static void gps_process_coords(void) {
 int main(int argc, char **argv)
 {
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -180,7 +185,7 @@ int main(int argc, char **argv)
 
     /* concentrator variables */
     uint8_t clocksource = 0;
-    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
 
@@ -193,11 +198,19 @@ int main(int argc, char **argv)
     enum gps_msg latest_msg; /* keep track of latest NMEA/UBX message parsed */
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hk:r:")) != -1) {
+    while ((i = getopt (argc, argv, "hk:r:d:u")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
+            case 'u':
+                com_type = LGW_COM_USB;
                 break;
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
@@ -234,13 +247,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Check arguments */
-    if (radio_type == LGW_RADIO_TYPE_NONE) {
-        printf("ERROR: radio type must be specified\n");
-        usage();
-        exit(EXIT_FAILURE);
-    }
-
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
@@ -253,10 +259,12 @@ int main(int argc, char **argv)
     printf("Beginning of test for loragw_gps.c\n");
     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     /* Open and configure GPS */
@@ -272,8 +280,9 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    boardconf.com_type = com_type;
+    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
+    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -405,10 +414,12 @@ int main(int argc, char **argv)
         lgw_stop();
     }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     printf("\nEnd of test for loragw_gps.c\n");

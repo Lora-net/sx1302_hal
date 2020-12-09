@@ -3,7 +3,7 @@
 	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-	  (C)2019 Semtech
+	  (C)2020 Semtech
 
 LoRa concentrator HAL user manual
 =================================
@@ -21,18 +21,46 @@ radio used to send and receive packets wirelessly using LoRa or FSK modulations.
 
 The library is composed of the following modules:
 
-* loragw_hal
-* loragw_reg
-* loragw_spi
-* loragw_i2c
-* loragw_aux
-* loragw_gps
-* loragw_sx125x
-* loragw_sx1250
-* loragw_sx1302
-* loragw_sx1302_rx
-* loragw_sx1302_timestamp
-* loragw_stts751
+1. abstraction layer
+  * loragw_hal
+  * loragw_reg
+  * loragw_aux
+  * loragw_cal
+  * loragw_lbt
+  * loragw_sx1302
+  * loragw_sx1302_rx
+  * loragw_sx1302_timestamp
+  * loragw_sx125x
+  * loragw_sx1250
+  * loragw_sx1261
+
+2. communication layer for sx1302
+  * loragw_com
+  * loragw_spi
+  * loragw_usb
+
+3. communication layer for sx1255/SX1257 radios
+  * sx125x_com
+  * sx125x_spi
+
+4. communication layer for sx1250 radios
+  * sx1250_com
+  * sx1250_spi
+  * sx1250_usb
+
+5. communication layer for STM32 MCU (USB)
+  * loragw_mcu
+
+6. communication layer for sx1261 radio (LBT / Spectral Scan)
+  * sx1261_com
+  * sx1261_spi
+  * sx1261_usb
+
+7. peripherals
+  * loragw_i2c
+  * loragw_gps
+  * loragw_stts751
+  * loragw_ad5338r
 
 The library also contains basic test programs to demonstrate code use and check
 functionality.
@@ -51,6 +79,15 @@ use the LoRa concentrator:
 * lgw_receive, to fetch packets if any was received
 * lgw_send, to send a single packet (non-blocking, see warning in usage section)
 * lgw_status, to check when a packet has effectively been sent
+* lgw_get_trigcnt, to get the value of the sx1302 internal counter at last PPS
+* lgw_get_instcnt, to get the value of the sx1302 internal counter
+* lgw_get_eui, to get the sx1302 chip EUI
+* lgw_get_temperature, to get the current temperature
+* lgw_time_on_air, to get the Time On Air of a packet
+* lgw_spectral_scan_start, to start scaning a particular channel
+* lgw_spectral_scan_get_status, to get the status of the current scan
+* lgw_spectral_scan_get_results, to get the results of the completed scan
+* lgw_spectral_scan_abort, to abort curretn scan
 
 For an standard application, include only this module.
 The use of this module is detailed on the usage section.
@@ -85,10 +122,12 @@ of by address:
 * lgw_reg_w, write a named register
 * lgw_reg_rb, read a name register in burst
 * lgw_reg_wb, write a named register in burst
+* lgw_mem_rb, read from a memory section in burst
+* lgw_mem_wb, write to a memory section in burst
 
 This module handles read-only registers protection, multi-byte registers
 management, signed registers management, read-modify-write routines for
-sub-byte registers and read/write burst fragmentation to respect SPI maximum
+sub-byte registers and read/write burst fragmentation to respect SPI/USB maximum
 burst length constraints.
 
 It make the code much easier to read and to debug.
@@ -102,15 +141,21 @@ application.
 **/!\ Warning** please be sure to have a good understanding of the LoRa
 concentrator inner working before accessing the internal registers directly.
 
-### 2.3. loragw_spi
+### 2.3. loragw_com
 
 This module contains the functions to access the LoRa concentrator register
-array through the SPI interface:
+array through the SPI or USB interfaces:
 
-* lgw_spi_r to read one byte
-* lgw_spi_w to write one byte
-* lgw_spi_rb to read two bytes or more
-* lgw_spi_wb to write two bytes or more
+* lgw_com_r to read one byte
+* lgw_com_w to write one byte
+* lgw_com_rb to read two bytes or more
+* lgw_com_wb to write two bytes or more
+
+This modules is an abstract interface, it then relies on the following modules
+to actually perform the interfacing:
+
+* loragw_spi : for SPI interface
+* loragw_usb : for USB interface
 
 Please *do not* include that module directly into your application.
 
@@ -171,11 +216,20 @@ also be converted to/from UTC time using lgw_cnt2utc/lgw_utc2cnt functions.
 ### 2.6. loragw_sx125x
 
 This module contains functions to handle the configuration of SX1255 and
-SX1257 radios.
+SX1257 radios. In order to communicate with the radio, it relies on the
+following modules:
+
+* sx125x_com : abstract interfacing to select USB or SPI interface
+* sx125x_spi : implementation of the SPI interface
 
 ### 2.7. loragw_sx1250
 
-This module contains functions to handle the configuration of SX1250 radios.
+This module contains functions to handle the configuration of SX1250 radios. In
+order to communicate with the radio, it relies on the following modules:
+
+* sx1250_com : abstract interfacing to select USB or SPI interface
+* sx1250_spi : implementation of the SPI interface
+* sx1250_usb : implementation of the USB interface
 
 ### 2.8. loragw_sx1302
 
@@ -200,12 +254,76 @@ into account the LoRa demodulation processing time.
 ### 2.11. loragw_stts751
 
 This module contains a very basic driver for the STmicroelectronics ST751
-temeprature sensor which is on the CoreCell reference design.
+temperature sensor which is on the CoreCell reference design.
 
-### 2.12. loragw_i2c
+### 2.12. loragw_ad5338r
+
+This module contains a very basic driver for the Analog Devices AD5338R DAC used
+on the Semtech CN490 Full Duplex reference design to set the PA fixed gain.
+
+### 2.13. loragw_i2c
 
 This module provides basic function to communicate with I2C devices on the board.
-It is used in this project for accessing the temperature sensor.
+It is used in this project for accessing the temperature sensor, the AD5338R DAC...
+
+### 2.14. loragw_sx1261
+
+This module contains functions to handle the configuration of SX1261 radio for
+Listen-Before-Talk or Spectral Scan functionnalities. In order to communicate
+with the radio, it relies on the following modules:
+
+* sx1261_com : abstract interfacing to select USB or SPI interface
+* sx1261_spi : implementation of the SPI interface
+* sx1261_usb : implementation of the USB interface
+
+This module will also load the sx1261 firmware patch RAM, necessary to support
+Listen-Before-Talk and spectral scan features, from the sx1261_pram.var file.
+
+### 2.15. loragw_lbt
+
+This module contains functions to start and stop the Listen-Before-Talk feature
+when it is enabled. Those functions are called by the lgw_send() function to
+ensure that the concentrator is allowed to transmit.
+
+Listen-Before-Talk (LBT) and Spectral Scan features need an additional sx1261
+radio to be configured.
+
+The Listen-Before-Talk feature works as follows:
+
+* the HAL configures the sx1261 for scanning the channel on which it needs to
+transmit.
+* the SX1261 will scan the channel and set a GPIO to high or low depending if
+the channel is busy or not (according to scanning parameters)
+* the sx1302 AGC firmware will check the status of this GPIO before actually
+starting the transmit, to ensure it is allowed. The AGC fw sets its status
+register to inform if the transmit could be done or not.
+* the HAL waits for the transmit to be initiated and checks if it was allowed or
+not.
+* the HAL stops the scanning, and return the tramsit status to the caller.
+
+### 2.16. loragw_mcu
+
+This module contains the functions to setup the communication interface with the
+STM32 MCU, and to communicate with the sx1302 and the radios when the host and
+the concentrator are connected through USB llink.
+
+The MCU acts as a simple USB <-> SPI bridge. This means that the HAL running on
+the host is the same, for both SPI or USB gateways.
+
+But, as the USB communication link brings a 1ms latency for each transfer, the
+MCU provides a mean to group register write requests in one single USB transfer.
+It is necessary when a particular configuration has to be done in a time
+critical task.
+
+For this, 2 new functions has been added:
+* lgw_com_set_write_mode, to indicate if the following calls to lgw_com_w(b)
+need to be grouped on a single USB transfer (BULK mode) or not (SINGLE mode).
+* lgw_com_flush, to actually perform the USB transfer of all grouped commands
+if BULK mode was selected.
+
+Both functions will do nothing in case of SPI.
+
+The same mechanism can be used to configure the sx1261 radio.
 
 ## 3. Software build process
 
@@ -270,20 +388,7 @@ The library will not work if there is a mismatch between the hardware version
 and the library version. You can use the test program test_loragw_reg to check
 if the hardware registers match their software declaration.
 
-### 4.2. SPI communication
-
-loragw_spi contains 4 SPI functions (read, write, burst read, burst write) that
-are platform-dependant.
-The functions must be rewritten depending on the SPI bridge you use:
-
-* SPI master matched to the Linux SPI device driver (provided)
-* SPI over USB using FTDI components (not provided)
-* native SPI using a microcontroller peripheral (not provided)
-
-You can use the test program test_loragw_spi to check with a logic analyser
-that the SPI communication is working
-
-### 4.3. GPS receiver (or other GNSS system)
+### 4.2. GPS receiver (or other GNSS system)
 
 To use the GPS module of the library, the host must be connected to a GPS
 receiver via a serial link (or an equivalent receiver using a different
@@ -303,6 +408,12 @@ The GPS receiver **MUST** send UBX messages shortly after sending a PPS pulse
 on to allow internal concentrator timestamps to be converted to absolute GPS time.
 If the GPS receiver sends a GGA NMEA sentence, the gateway 3D position will
 also be available.
+
+### 4.3. Additionnal SX1261 radio
+
+In order to perform Listen-Before-Talk and/or Spectral Scan, an additional SX1261
+radio is required. Its internal firmware also needs to be patched (patch RAM) to
+support those particular features.
 
 ## 5. Usage
 

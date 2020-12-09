@@ -197,8 +197,7 @@ different system constraints.
                       concentrator TX buffer before its actual departure time.
         TX_MARGIN_DELAY: Packet collision check margin
 
-6. License
------------
+### 6. License
 
 Copyright (C) 2019, SEMTECH S.A.
 All rights reserved.
@@ -226,8 +225,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-6. License for Parson library
-------------------------------
+#### 7. License for Parson library
 
 Parson ( http://kgabis.github.com/parson/ )
 Copyright (C) 2012 Krzysztof Gabis

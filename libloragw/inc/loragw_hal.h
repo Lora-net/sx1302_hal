@@ -22,6 +22,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
+#include "loragw_com.h"
+
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
@@ -42,7 +44,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* return status code */
 #define LGW_HAL_SUCCESS     0
 #define LGW_HAL_ERROR       -1
-#define LGW_LBT_ISSUE       1
+#define LGW_LBT_NOT_ALLOWED 1
 
 /* radio-specific parameters */
 #define LGW_XTAL_FREQU      32000000            /* frequency of the RF reference oscillator */
@@ -50,10 +52,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_RX_BANDWIDTH {1000000, 1000000}  /* bandwidth of the radios */
 
 /* concentrator chipset-specific parameters */
-/* to use array parameters, declare a local const and use 'if_chain' as index */
 #define LGW_IF_CHAIN_NB     10      /* number of IF+modem RX chains */
 #define LGW_REF_BW          125000  /* typical bandwidth of data channel */
 #define LGW_MULTI_NB        8       /* number of LoRa 'multi SF' chains */
+#define LGW_MULTI_SF_EN     0xFF    /* bitmask to enable/disable SF for multi-sf correlators  (12 11 10 9 8 7 6 5) */
 
 /* values available for the 'modulation' parameters */
 /* NOTE: arbitrary values */
@@ -86,7 +88,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* values available for the 'coderate' parameters (LoRa only) */
 /* NOTE: arbitrary values */
-#define CR_UNDEFINED    0
+#define CR_UNDEFINED    0   /* CR0 exists but is not recommended, so consider it as invalid */
 #define CR_LORA_4_5     0x01
 #define CR_LORA_4_6     0x02
 #define CR_LORA_4_7     0x03
@@ -126,6 +128,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* Maximum size of Tx gain LUT */
 #define TX_GAIN_LUT_SIZE_MAX 16
 
+/* Listen-Before-Talk */
+#define LGW_LBT_CHANNEL_NB_MAX 16 /* Maximum number of LBT channels */
+
+/* Spectral Scan */
+#define LGW_SPECTRAL_SCAN_RESULT_SIZE 33 /* The number of results returned by spectral scan function, to be used for memory allocation */
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -147,10 +155,11 @@ typedef enum {
 @brief Configuration structure for board specificities
 */
 struct lgw_conf_board_s {
-    bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
-    uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
-    bool    full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
-    char    spidev_path[64];/*!> Path to access the SPI device to connect to the SX1302 */
+    bool            lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
+    uint8_t         clksrc;         /*!> Index of RF chain which provides clock to concentrator */
+    bool            full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
+    lgw_com_type_t  com_type;       /*!> The COMmunication interface (SPI/USB) to connect to the SX1302 */
+    char            com_path[64];   /*!> Path to access the COM device to connect to the SX1302 */
 };
 
 /**
@@ -198,6 +207,14 @@ struct lgw_conf_rxif_s {
 };
 
 /**
+@struct lgw_conf_demod_s
+@brief Configuration structure for LoRa/FSK demodulators
+*/
+struct lgw_conf_demod_s {
+    uint8_t     multisf_datarate;   /*!> bitmask to enable spreading-factors for correlators (SF12 - SF5) */
+};
+
+/**
 @struct lgw_pkt_rx_s
 @brief Structure containing the metadata of a packet that was received and a pointer to the payload
 */
@@ -221,6 +238,8 @@ struct lgw_pkt_rx_s {
     uint16_t    crc;            /*!> CRC that was received in the payload */
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
+    bool        ftime_received; /*!> a fine timestamp has been received */
+    uint32_t    ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
 };
 
 /**
@@ -288,13 +307,62 @@ struct lgw_conf_debug_s {
 };
 
 /**
-@struct lgw_conf_debug_s
-@brief Configuration structure for debug
+@enum lgw_ftime_mode_t
+@brief Fine timestamping modes
 */
-struct lgw_conf_timestamp_s {
-    bool enable_precision_ts;
-    uint8_t max_ts_metrics;
-    uint8_t nb_symbols;
+typedef enum {
+    LGW_FTIME_MODE_HIGH_CAPACITY,   /*!> fine timestamps for SF5 -> SF10 */
+    LGW_FTIME_MODE_ALL_SF           /*!> fine timestamps for SF5 -> SF12 */
+} lgw_ftime_mode_t;
+
+/**
+@struct lgw_conf_ftime_s
+@brief Configuration structure for fine timestamping
+*/
+struct lgw_conf_ftime_s {
+    bool enable;              /*!> Enable / Disable fine timestamping */
+    lgw_ftime_mode_t mode;    /*!> Fine timestamping mode */
+};
+
+/**
+@enum lgw_lbt_scan_time_t
+@brief Radio types that can be found on the LoRa Gateway
+*/
+typedef enum {
+    LGW_LBT_SCAN_TIME_128_US    = 128,
+    LGW_LBT_SCAN_TIME_5000_US   = 5000,
+} lgw_lbt_scan_time_t;
+
+/**
+@brief Structure containing a Listen-Before-Talk channel configuration
+*/
+struct lgw_conf_chan_lbt_s{
+    uint32_t            freq_hz;           /*!> LBT channel frequency */
+    uint8_t             bandwidth;         /*!> LBT channel bandwidth */
+    lgw_lbt_scan_time_t scan_time_us;      /*!> LBT channel carrier sense time */
+    uint16_t            transmit_time_ms;  /*!> LBT channel transmission duration when allowed */
+};
+
+/**
+@struct lgw_conf_lbt_s
+@brief Configuration structure for listen-before-talk
+*/
+struct lgw_conf_lbt_s {
+    bool                        enable;             /*!> enable or disable LBT */
+    int8_t                      rssi_target;        /*!> RSSI threshold to detect if channel is busy or not (dBm) */
+    uint8_t                     nb_channel;         /*!> number of LBT channels */
+    struct lgw_conf_chan_lbt_s  channels[LGW_LBT_CHANNEL_NB_MAX];  /*!> LBT channels configuration */
+};
+
+/**
+@struct lgw_conf_sx1261_s
+@brief Configuration structure for additional SX1261 radio used for LBT and Spectral Scan
+*/
+struct lgw_conf_sx1261_s {
+    bool                        enable;             /*!> enable or disable SX1261 radio */
+    char                        spi_path[64];       /*!> Path to access the SPI device to connect to the SX1261 (not used for USB com type) */
+    int8_t                      rssi_offset;        /*!> value to be applied to the sx1261 RSSI value (dBm) */
+    struct lgw_conf_lbt_s       lbt_conf;           /*!> listen-before-talk configuration */
 };
 
 /**
@@ -308,15 +376,29 @@ typedef struct lgw_context_s {
     /* RX context */
     struct lgw_conf_rxrf_s      rf_chain_cfg[LGW_RF_CHAIN_NB];
     struct lgw_conf_rxif_s      if_chain_cfg[LGW_IF_CHAIN_NB];
+    struct lgw_conf_demod_s     demod_cfg;
     struct lgw_conf_rxif_s      lora_service_cfg;                       /* LoRa service channel config parameters */
     struct lgw_conf_rxif_s      fsk_cfg;                                /* FSK channel config parameters */
     /* TX context */
     struct lgw_tx_gain_lut_s    tx_gain_lut[LGW_RF_CHAIN_NB];
     /* Misc */
-    struct lgw_conf_timestamp_s timestamp_cfg;
+    struct lgw_conf_ftime_s     ftime_cfg;
+    struct lgw_conf_sx1261_s    sx1261_cfg;
     /* Debug */
     struct lgw_conf_debug_s     debug_cfg;
 } lgw_context_t;
+
+/**
+@struct lgw_spectral_scan_status_t
+@brief Spectral Scan status
+*/
+typedef enum lgw_spectral_scan_status_e {
+    LGW_SPECTRAL_SCAN_STATUS_NONE,
+    LGW_SPECTRAL_SCAN_STATUS_ON_GOING,
+    LGW_SPECTRAL_SCAN_STATUS_ABORTED,
+    LGW_SPECTRAL_SCAN_STATUS_COMPLETED,
+    LGW_SPECTRAL_SCAN_STATUS_UNKNOWN
+} lgw_spectral_scan_status_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -345,22 +427,36 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf);
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf);
 
 /**
+@brief Configure LoRa/FSK demodulators
+@param conf structure containing the configuration parameters
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_demod_setconf(struct lgw_conf_demod_s * conf);
+
+/**
 @brief Configure the Tx gain LUT
-@param pointer to structure defining the LUT
+@param conf pointer to structure defining the LUT
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_txgain_setconf(uint8_t rf_chain, struct lgw_tx_gain_lut_s * conf);
 
 /**
-@brief Configure the precision timestamp
+@brief Configure the fine timestamping
+@param conf pointer to structure defining the config to be applied
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_ftime_setconf(struct lgw_conf_ftime_s * conf);
+
+/*
+@brief Configure the SX1261 radio for LBT/Spectral Scan
 @param pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_timestamp_setconf(struct lgw_conf_timestamp_s * conf);
+int lgw_sx1261_setconf(struct lgw_conf_sx1261_s * conf);
 
 /**
 @brief Configure the debug context
-@param pointer to structure defining the config to be applied
+@param conf pointer to structure defining the config to be applied
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_debug_setconf(struct lgw_conf_debug_s * conf);
@@ -464,7 +560,36 @@ const char* lgw_version_info(void);
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s * packet);
+uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
+
+/**
+@brief Start scaning the channel centered on the given frequency
+@param freq_hz channel center frequency
+@param nb_scan number of measures to be done for the scan
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_spectral_scan_start(uint32_t freq_hz, uint16_t nb_scan);
+
+/**
+@brief Get the current scan status
+@param status a pointer to the returned status
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_spectral_scan_get_status(lgw_spectral_scan_status_t * status);
+
+/**
+@brief Get the channel scan results
+@param levels an array containing the power levels for which the scan results are given
+@param values ar array containing the results of the scan for each power levels
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_spectral_scan_get_results(int16_t levels_dbm[static LGW_SPECTRAL_SCAN_RESULT_SIZE], uint16_t results[static LGW_SPECTRAL_SCAN_RESULT_SIZE]);
+
+/**
+@brief Abort the current scan
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_spectral_scan_abort();
 
 #endif
 

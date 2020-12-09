@@ -7,7 +7,7 @@
   (C)2019 Semtech
 
 Description:
-    Minimum test program for the sx1250 module
+    Minimum test program for the sx1250_com module
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
@@ -30,8 +30,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <signal.h>     /* sigaction */
 #include <unistd.h>     /* getopt, access */
 
-#include "loragw_spi.h"
 #include "loragw_aux.h"
+#include "loragw_com.h"
 #include "loragw_reg.h"
 #include "loragw_hal.h"
 #include "loragw_sx1250.h"
@@ -45,7 +45,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define BUFF_SIZE           16
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_TYPE_DEFAULT    LGW_COM_SPI
+#define COM_PATH_DEFAULT    "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- GLOBAL VARIABLES ----------------------------------------------------- */
@@ -59,6 +60,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 
 static void sig_handler(int sigio);
 static void usage(void);
+static void exit_failure();
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
@@ -73,12 +75,13 @@ int main(int argc, char ** argv)
     int cycle_number = 0;
     int i, x;
 
-    /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:")) != -1) {
+    while ((i = getopt(argc, argv, "hd:u")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -87,8 +90,12 @@ int main(int argc, char ** argv)
 
             case 'd':
                 if (optarg != NULL) {
-                    spidev_path = optarg;
+                    com_path = optarg;
                 }
+                break;
+
+            case 'u':
+                com_type = LGW_COM_USB;
                 break;
 
             default:
@@ -106,15 +113,18 @@ int main(int argc, char ** argv)
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
 
+
     /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(com_type, com_path);
     if (x != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to connect to the concentrator using SPI %s\n", spidev_path);
+        printf("ERROR: Failed to connect to the concentrator using COM %s\n", com_path);
         return EXIT_FAILURE;
     }
 
@@ -137,14 +147,30 @@ int main(int argc, char ** argv)
 
     /* Set Radio in Standby mode */
     test_buff[0] = (uint8_t)STDBY_XOSC;
-    sx1250_write_command(0, SET_STANDBY, test_buff, 1);
-    sx1250_write_command(1, SET_STANDBY, test_buff, 1);
+    x = sx1250_reg_w(SET_STANDBY, test_buff, 1, 0);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR(%d): Failed to configure sx1250_0\n", __LINE__);
+        exit_failure();
+    }
+    x = sx1250_reg_w(SET_STANDBY, test_buff, 1, 1);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR(%d): Failed to configure sx1250_1\n", __LINE__);
+        exit_failure();
+    }
     wait_ms(10);
 
     test_buff[0] = 0x00;
-    sx1250_read_command(0, GET_STATUS, test_buff, 1);
+    x = sx1250_reg_r(GET_STATUS, test_buff, 1, 0);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR(%d): Failed to get sx1250_0 status\n", __LINE__);
+        exit_failure();
+    }
     printf("Radio0: get_status: 0x%02X\n", test_buff[0]);
-    sx1250_read_command(1, GET_STATUS, test_buff, 1);
+    x = sx1250_reg_r(GET_STATUS, test_buff, 1, 1);
+    if (x != LGW_REG_SUCCESS) {
+        printf("ERROR(%d): Failed to get sx1250_1 status\n", __LINE__);
+        exit_failure();
+    }
     printf("Radio1: get_status: 0x%02X\n", test_buff[0]);
 
     /* databuffer R/W stress test */
@@ -154,7 +180,7 @@ int main(int argc, char ** argv)
         test_buff[2] = rand() & 0xFF;
         test_buff[3] = rand() & 0xFF;
         test_val = (test_buff[0] << 24) | (test_buff[1] << 16) | (test_buff[2] << 8) | (test_buff[3] << 0);
-        sx1250_write_command(0, SET_RF_FREQUENCY, test_buff, 4);
+        sx1250_reg_w(SET_RF_FREQUENCY, test_buff, 4, 0);
 
         read_buff[0] = 0x08;
         read_buff[1] = 0x8B;
@@ -163,7 +189,7 @@ int main(int argc, char ** argv)
         read_buff[4] = 0x00;
         read_buff[5] = 0x00;
         read_buff[6] = 0x00;
-        sx1250_read_command(0, READ_REGISTER, read_buff, 7);
+        sx1250_reg_r(READ_REGISTER, read_buff, 7, 0);
         read_val = (read_buff[3] << 24) | (read_buff[4] << 16) | (read_buff[5] << 8) | (read_buff[6] << 0);
 
         printf("Cycle %i > ", cycle_number);
@@ -182,10 +208,12 @@ int main(int argc, char ** argv)
     lgw_disconnect();
     printf("End of test for loragw_spi_sx1250.c\n");
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     return 0;
@@ -204,13 +232,24 @@ static void sig_handler(int sigio) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+static void exit_failure() {
+    lgw_disconnect();
+
+    printf("End of test for loragw_spi_sx1250.c\n");
+
+    exit(EXIT_FAILURE);
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 static void usage(void) {
     printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" %s\n", lgw_version_info());
     printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" -h            print this help\n");
-    printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
+    printf(" -d <path>     path of the COM device used to access the concentrator\n");
+    printf("               => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -u            set COM type as USB (default is SPI)\n");
 }
 
 /* --- EOF ------------------------------------------------------------------ */

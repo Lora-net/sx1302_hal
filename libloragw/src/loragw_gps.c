@@ -23,14 +23,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
-#include <errno.h>
+#include <errno.h>      /* strerrno */
 
 #include <time.h>       /* struct timespec */
 #include <fcntl.h>      /* open */
 #include <termios.h>    /* tcflush */
 #include <math.h>       /* modf */
-
-#include <stdlib.h>
 
 #include "loragw_gps.h"
 

@@ -1,14 +1,28 @@
 {
     "SX130x_conf": {
-        "spidev_path": "/dev/spidev0.0",
+        "com_type": "SPI",
+        "com_path": "/dev/spidev0.0",
         "lorawan_public": true,
         "clksrc": 0,
         "antenna_gain": 0, /* antenna gain, in dBi */
         "full_duplex": false,
-        "precision_timestamp": {
+        "fine_timestamp": {
             "enable": false,
-            "max_ts_metrics": 255,
-            "nb_symbols": 1
+            "mode": "all_sf" /* high_capacity or all_sf */
+        },
+        "sx1261_conf": {
+            "spi_path": "/dev/spidev0.1",
+            "rssi_offset": 0, /* dB */
+            "spectral_scan": {
+                "enable": false,
+                "freq_start": 903900000,
+                "nb_chan": 8,
+                "nb_scan": 2000,
+                "pace_s": 10
+            },
+            "lbt": {
+                "enable": false /* LBT for 500 Khz channels is not supported */
+            }
         },
         "radio_0": {
             "enable": true,
@@ -46,6 +60,7 @@
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": false
         },
+        "chan_multiSF_All": {"spreading_factor_enable": [ 5, 6, 7, 8, 9, 10, 11, 12 ]},
         "chan_multiSF_0": {"enable": true, "radio": 0, "if": -400000},  /* Freq : 903.9 MHz*/
         "chan_multiSF_1": {"enable": true, "radio": 0, "if": -200000},  /* Freq : 904.1 MHz*/
         "chan_multiSF_2": {"enable": true, "radio": 0, "if":  0},       /* Freq : 904.3 MHz*/

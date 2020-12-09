@@ -62,6 +62,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define STRINGIFY(x)    #x
 #define STR(x)          STRINGIFY(x)
 
+#define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -82,10 +84,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define FETCH_SLEEP_MS      10          /* nb of ms waited when a fetch return no packets */
 #define BEACON_POLL_MS      50          /* time in ms between polling of beacon TX status */
 
-#define PROTOCOL_VERSION    2           /* v1.3 */
+#define PROTOCOL_VERSION    2           /* v1.6 */
 #define PROTOCOL_JSON_RXPK_FRAME_FORMAT 1
 
-#define XERR_INIT_AVG       128         /* nb of measurements the XTAL correction is averaged on as initial value */
+#define XERR_INIT_AVG       16          /* nb of measurements the XTAL correction is averaged on as initial value */
 #define XERR_FILT_COEF      256         /* coefficient for low-pass XTAL error tracking */
 
 #define PKT_PUSH_DATA   0
@@ -116,6 +118,18 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BEACON_BW_HZ        125000
 #define DEFAULT_BEACON_POWER        14
 #define DEFAULT_BEACON_INFODESC     0
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE TYPES -------------------------------------------------------- */
+
+/* spectral scan */
+typedef struct spectral_scan_s {
+    bool enable;            /* enable spectral scan thread */
+    uint32_t freq_hz_start; /* first channel frequency, in Hz */
+    uint8_t nb_chan;        /* number of channels to scan (200kHz between each channel) */
+    uint16_t nb_scan;       /* number of scan points for each frequency scan */
+    uint32_t pace_s;        /* number of seconds between 2 scans in the thread */
+} spectral_scan_t;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -234,6 +248,7 @@ static int8_t antenna_gain = 0;
 static struct lgw_tx_gain_lut_s txlut[LGW_RF_CHAIN_NB]; /* TX gain table */
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
+static bool tx_enable[LGW_RF_CHAIN_NB] = {false}; /* Is TX enabled for a given RF chain ? */
 
 static uint32_t nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
 static uint32_t nb_pkt_received_lora = 0;
@@ -241,6 +256,18 @@ static uint32_t nb_pkt_received_fsk = 0;
 
 static struct lgw_conf_debug_s debugconf;
 static uint32_t nb_pkt_received_ref[16];
+
+/* Interface type */
+static lgw_com_type_t com_type = LGW_COM_SPI;
+
+/* Spectral Scan */
+static spectral_scan_t spectral_scan_params = {
+    .enable = false,
+    .freq_hz_start = 0,
+    .nb_chan = 0,
+    .nb_scan = 0,
+    .pace_s = 10
+};
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -271,6 +298,7 @@ void thread_down(void);
 void thread_jit(void);
 void thread_gps(void);
 void thread_valid(void);
+void thread_spectral_scan(void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -295,7 +323,7 @@ static void sig_handler(int sigio) {
 }
 
 static int parse_SX130x_configuration(const char * conf_file) {
-    int i, j;
+    int i, j, number;
     char param_name[32]; /* used to generate variable parameter names */
     const char *str; /* used to store string value from JSON object */
     const char conf_obj_name[] = "SX130x_conf";
@@ -304,14 +332,23 @@ static int parse_SX130x_configuration(const char * conf_file) {
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_txgain_obj;
     JSON_Object *conf_ts_obj;
-    JSON_Array *conf_txlut_array;
+    JSON_Object *conf_sx1261_obj = NULL;
+    JSON_Object *conf_scan_obj = NULL;
+    JSON_Object *conf_lbt_obj = NULL;
+    JSON_Object *conf_lbtchan_obj = NULL;
+    JSON_Array *conf_txlut_array = NULL;
+    JSON_Array *conf_lbtchan_array = NULL;
+    JSON_Array *conf_demod_array = NULL;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
-    struct lgw_conf_timestamp_s tsconf;
+    struct lgw_conf_demod_s demodconf;
+    struct lgw_conf_ftime_s tsconf;
+    struct lgw_conf_sx1261_s sx1261conf;
     uint32_t sf, bw, fdev;
     bool sx1250_tx_lut;
+    size_t size;
 
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
@@ -331,15 +368,27 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
-    str = json_object_get_string(conf_obj, "spidev_path");
-    if (str != NULL) {
-        strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
-        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    str = json_object_get_string(conf_obj, "com_type");
+    if (str == NULL) {
+        MSG("ERROR: com_type must be configured in %s\n", conf_file);
+        return -1;
+    } else if (!strncmp(str, "SPI", 3) || !strncmp(str, "spi", 3)) {
+        boardconf.com_type = LGW_COM_SPI;
+    } else if (!strncmp(str, "USB", 3) || !strncmp(str, "usb", 3)) {
+        boardconf.com_type = LGW_COM_USB;
     } else {
-        MSG("ERROR: spidev path must be configured in %s\n", conf_file);
+        MSG("ERROR: invalid com type: %s (should be SPI or USB)\n", str);
         return -1;
     }
-
+    com_type = boardconf.com_type;
+    str = json_object_get_string(conf_obj, "com_path");
+    if (str != NULL) {
+        strncpy(boardconf.com_path, str, sizeof boardconf.com_path);
+        boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
+    } else {
+        MSG("ERROR: com_path must be configured in %s\n", conf_file);
+        return -1;
+    }
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
@@ -361,7 +410,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: spidev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.spidev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: com_type %s, com_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", (boardconf.com_type == LGW_COM_SPI) ? "SPI" : "USB", boardconf.com_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
@@ -381,41 +430,223 @@ static int parse_SX130x_configuration(const char * conf_file) {
     MSG("INFO: antenna_gain %d dBi\n", antenna_gain);
 
     /* set timestamp configuration */
-    conf_ts_obj = json_object_get_object(conf_obj, "precision_timestamp");
+    conf_ts_obj = json_object_get_object(conf_obj, "fine_timestamp");
     if (conf_ts_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object for precision timestamp\n", conf_file);
+        MSG("INFO: %s does not contain a JSON object for fine timestamp\n", conf_file);
     } else {
         val = json_object_get_value(conf_ts_obj, "enable"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONBoolean) {
-            tsconf.enable_precision_ts = (bool)json_value_get_boolean(val);
+            tsconf.enable = (bool)json_value_get_boolean(val);
         } else {
-            MSG("WARNING: Data type for precision_timestamp.enable seems wrong, please check\n");
-            tsconf.enable_precision_ts = false;
+            MSG("WARNING: Data type for fine_timestamp.enable seems wrong, please check\n");
+            tsconf.enable = false;
         }
-        if (tsconf.enable_precision_ts == true) {
-            val = json_object_get_value(conf_ts_obj, "max_ts_metrics"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                tsconf.max_ts_metrics = (uint8_t)json_value_get_number(val);
+        if (tsconf.enable == true) {
+            str = json_object_get_string(conf_ts_obj, "mode");
+            if (str == NULL) {
+                MSG("ERROR: fine_timestamp.mode must be configured in %s\n", conf_file);
+                return -1;
+            } else if (!strncmp(str, "high_capacity", 13) || !strncmp(str, "HIGH_CAPACITY", 13)) {
+                tsconf.mode = LGW_FTIME_MODE_HIGH_CAPACITY;
+            } else if (!strncmp(str, "all_sf", 6) || !strncmp(str, "ALL_SF", 6)) {
+                tsconf.mode = LGW_FTIME_MODE_ALL_SF;
             } else {
-                MSG("WARNING: Data type for precision_timestamp.max_ts_metrics seems wrong, please check\n");
-                tsconf.max_ts_metrics = 0xFF;
+                MSG("ERROR: invalid fine timestamp mode: %s (should be high_capacity or all_sf)\n", str);
+                return -1;
             }
-            val = json_object_get_value(conf_ts_obj, "nb_symbols"); /* fetch value (if possible) */
-            if (json_value_get_type(val) == JSONNumber) {
-                tsconf.nb_symbols = (uint8_t)json_value_get_number(val);
-            } else {
-                MSG("WARNING: Data type for precision_timestamp.nb_symbols seems wrong, please check\n");
-                tsconf.nb_symbols = 1;
-            }
-            MSG("INFO: Configuring precision timestamp: max_ts_metrics:%u, nb_symbols:%u\n", tsconf.max_ts_metrics, tsconf.nb_symbols);
+            MSG("INFO: Configuring precision timestamp with %s mode\n", str);
 
             /* all parameters parsed, submitting configuration to the HAL */
-            if (lgw_timestamp_setconf(&tsconf) != LGW_HAL_SUCCESS) {
-                MSG("ERROR: Failed to configure precision timestamp\n");
+            if (lgw_ftime_setconf(&tsconf) != LGW_HAL_SUCCESS) {
+                MSG("ERROR: Failed to configure fine timestamp\n");
                 return -1;
             }
         } else {
             MSG("INFO: Configuring legacy timestamp\n");
+        }
+    }
+
+    /* set SX1261 configuration */
+    memset(&sx1261conf, 0, sizeof sx1261conf); /* initialize configuration structure */
+    conf_sx1261_obj = json_object_get_object(conf_obj, "sx1261_conf"); /* fetch value (if possible) */
+    if (conf_sx1261_obj == NULL) {
+        MSG("INFO: no configuration for SX1261\n");
+    } else {
+        /* Global SX1261 configuration */
+        str = json_object_get_string(conf_sx1261_obj, "spi_path");
+        if (str != NULL) {
+            strncpy(sx1261conf.spi_path, str, sizeof sx1261conf.spi_path);
+            sx1261conf.spi_path[sizeof sx1261conf.spi_path - 1] = '\0'; /* ensure string termination */
+        } else {
+            MSG("INFO: SX1261 spi_path is not configured in %s\n", conf_file);
+        }
+        val = json_object_get_value(conf_sx1261_obj, "rssi_offset"); /* fetch value (if possible) */
+        if (json_value_get_type(val) == JSONNumber) {
+            sx1261conf.rssi_offset = (int8_t)json_value_get_number(val);
+        } else {
+            MSG("WARNING: Data type for sx1261_conf.rssi_offset seems wrong, please check\n");
+            sx1261conf.rssi_offset = 0;
+        }
+
+        /* Spectral Scan configuration */
+        conf_scan_obj = json_object_get_object(conf_sx1261_obj, "spectral_scan"); /* fetch value (if possible) */
+        if (conf_scan_obj == NULL) {
+            MSG("INFO: no configuration for Spectral Scan\n");
+        } else {
+            val = json_object_get_value(conf_scan_obj, "enable"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONBoolean) {
+                /* Enable background spectral scan thread in packet forwarder */
+                spectral_scan_params.enable = (bool)json_value_get_boolean(val);
+            } else {
+                MSG("WARNING: Data type for spectral_scan.enable seems wrong, please check\n");
+            }
+            if (spectral_scan_params.enable == true) {
+                /* Enable the sx1261 radio hardware configuration to allow spectral scan */
+                sx1261conf.enable = true;
+                MSG("INFO: Spectral Scan with SX1261 is enabled\n");
+
+                /* Get Spectral Scan Parameters */
+                val = json_object_get_value(conf_scan_obj, "freq_start"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    spectral_scan_params.freq_hz_start = (uint32_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for spectral_scan.freq_start seems wrong, please check\n");
+                }
+                val = json_object_get_value(conf_scan_obj, "nb_chan"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    spectral_scan_params.nb_chan = (uint8_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for spectral_scan.nb_chan seems wrong, please check\n");
+                }
+                val = json_object_get_value(conf_scan_obj, "nb_scan"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    spectral_scan_params.nb_scan = (uint16_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for spectral_scan.nb_scan seems wrong, please check\n");
+                }
+                val = json_object_get_value(conf_scan_obj, "pace_s"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    spectral_scan_params.pace_s = (uint32_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for spectral_scan.pace_s seems wrong, please check\n");
+                }
+            }
+        }
+
+        /* LBT configuration */
+        conf_lbt_obj = json_object_get_object(conf_sx1261_obj, "lbt"); /* fetch value (if possible) */
+        if (conf_lbt_obj == NULL) {
+            MSG("INFO: no configuration for LBT\n");
+        } else {
+            val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
+            if (json_value_get_type(val) == JSONBoolean) {
+                sx1261conf.lbt_conf.enable = (bool)json_value_get_boolean(val);
+            } else {
+                MSG("WARNING: Data type for lbt.enable seems wrong, please check\n");
+            }
+            if (sx1261conf.lbt_conf.enable == true) {
+                /* Enable the sx1261 radio hardware configuration to allow spectral scan */
+                sx1261conf.enable = true;
+                MSG("INFO: Listen-Before-Talk with SX1261 is enabled\n");
+
+                val = json_object_get_value(conf_lbt_obj, "rssi_target"); /* fetch value (if possible) */
+                if (json_value_get_type(val) == JSONNumber) {
+                    sx1261conf.lbt_conf.rssi_target = (int8_t)json_value_get_number(val);
+                } else {
+                    MSG("WARNING: Data type for lbt.rssi_target seems wrong, please check\n");
+                    sx1261conf.lbt_conf.rssi_target = 0;
+                }
+                /* set LBT channels configuration */
+                conf_lbtchan_array = json_object_get_array(conf_lbt_obj, "channels");
+                if (conf_lbtchan_array != NULL) {
+                    sx1261conf.lbt_conf.nb_channel = json_array_get_count(conf_lbtchan_array);
+                    MSG("INFO: %u LBT channels configured\n", sx1261conf.lbt_conf.nb_channel);
+                }
+                for (i = 0; i < (int)sx1261conf.lbt_conf.nb_channel; i++) {
+                    /* Sanity check */
+                    if (i >= LGW_LBT_CHANNEL_NB_MAX) {
+                        MSG("ERROR: LBT channel %d not supported, skip it\n", i);
+                        break;
+                    }
+                    /* Get LBT channel configuration object from array */
+                    conf_lbtchan_obj = json_array_get_object(conf_lbtchan_array, i);
+
+                    /* Channel frequency */
+                    val = json_object_dotget_value(conf_lbtchan_obj, "freq_hz"); /* fetch value (if possible) */
+                    if (val != NULL) {
+                        if (json_value_get_type(val) == JSONNumber) {
+                            sx1261conf.lbt_conf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
+                        } else {
+                            MSG("WARNING: Data type for lbt.channels[%d].freq_hz seems wrong, please check\n", i);
+                            sx1261conf.lbt_conf.channels[i].freq_hz = 0;
+                        }
+                    } else {
+                        MSG("ERROR: no frequency defined for LBT channel %d\n", i);
+                        return -1;
+                    }
+
+                    /* Channel bandiwdth */
+                    val = json_object_dotget_value(conf_lbtchan_obj, "bandwidth"); /* fetch value (if possible) */
+                    if (val != NULL) {
+                        if (json_value_get_type(val) == JSONNumber) {
+                            bw = (uint32_t)json_value_get_number(val);
+                            switch(bw) {
+                                case 500000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_500KHZ; break;
+                                case 250000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_250KHZ; break;
+                                case 125000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_125KHZ; break;
+                                default: sx1261conf.lbt_conf.channels[i].bandwidth = BW_UNDEFINED;
+                            }
+                        } else {
+                            MSG("WARNING: Data type for lbt.channels[%d].freq_hz seems wrong, please check\n", i);
+                            sx1261conf.lbt_conf.channels[i].bandwidth = BW_UNDEFINED;
+                        }
+                    } else {
+                        MSG("ERROR: no bandiwdth defined for LBT channel %d\n", i);
+                        return -1;
+                    }
+
+                    /* Channel scan time */
+                    val = json_object_dotget_value(conf_lbtchan_obj, "scan_time_us"); /* fetch value (if possible) */
+                    if (val != NULL) {
+                        if (json_value_get_type(val) == JSONNumber) {
+                            if ((uint16_t)json_value_get_number(val) == 128) {
+                                sx1261conf.lbt_conf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_128_US;
+                            } else if ((uint16_t)json_value_get_number(val) == 5000) {
+                                sx1261conf.lbt_conf.channels[i].scan_time_us = LGW_LBT_SCAN_TIME_5000_US;
+                            } else {
+                                MSG("ERROR: scan time not supported for LBT channel %d, must be 128 or 5000\n", i);
+                                return -1;
+                            }
+                        } else {
+                            MSG("WARNING: Data type for lbt.channels[%d].scan_time_us seems wrong, please check\n", i);
+                            sx1261conf.lbt_conf.channels[i].scan_time_us = 0;
+                        }
+                    } else {
+                        MSG("ERROR: no scan_time_us defined for LBT channel %d\n", i);
+                        return -1;
+                    }
+
+                    /* Channel transmit time */
+                    val = json_object_dotget_value(conf_lbtchan_obj, "transmit_time_ms"); /* fetch value (if possible) */
+                    if (val != NULL) {
+                        if (json_value_get_type(val) == JSONNumber) {
+                            sx1261conf.lbt_conf.channels[i].transmit_time_ms = (uint16_t)json_value_get_number(val);
+                        } else {
+                            MSG("WARNING: Data type for lbt.channels[%d].transmit_time_ms seems wrong, please check\n", i);
+                            sx1261conf.lbt_conf.channels[i].transmit_time_ms = 0;
+                        }
+                    } else {
+                        MSG("ERROR: no transmit_time_ms defined for LBT channel %d\n", i);
+                        return -1;
+                    }
+                }
+            }
+        }
+
+        /* all parameters parsed, submitting configuration to the HAL */
+        if (lgw_sx1261_setconf(&sx1261conf) != LGW_HAL_SUCCESS) {
+            MSG("ERROR: Failed to configure the SX1261 radio\n");
+            return -1;
         }
     }
 
@@ -476,6 +707,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
             val = json_object_dotget_value(conf_obj, param_name);
             if (json_value_get_type(val) == JSONBoolean) {
                 rfconf.tx_enable = (bool)json_value_get_boolean(val);
+                tx_enable[i] = rfconf.tx_enable; /* update global context for later check */
                 if (rfconf.tx_enable == true) {
                     /* tx is enabled on this rf chain, we need its frequency range */
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_freq_min", i);
@@ -587,6 +819,36 @@ static int parse_SX130x_configuration(const char * conf_file) {
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for radio %i\n", i);
+            return -1;
+        }
+    }
+
+    /* set configuration for demodulators */
+    memset(&demodconf, 0, sizeof demodconf); /* initialize configuration structure */
+    val = json_object_get_value(conf_obj, "chan_multiSF_All"); /* fetch value (if possible) */
+    if (json_value_get_type(val) != JSONObject) {
+        MSG("INFO: no configuration for LoRa multi-SF spreading factors enabling\n");
+    } else {
+        conf_demod_array = json_object_dotget_array(conf_obj, "chan_multiSF_All.spreading_factor_enable");
+        if ((conf_demod_array != NULL) && ((size = json_array_get_count(conf_demod_array)) <= LGW_MULTI_NB)) {
+            for (i = 0; i < (int)size; i++) {
+                number = json_array_get_number(conf_demod_array, i);
+                if (number < 5 || number > 12) {
+                    MSG("WARNING: failed to parse chan_multiSF_All.spreading_factor_enable (wrong value at idx %d)\n", i);
+                    demodconf.multisf_datarate = 0xFF; /* enable all SFs */
+                    break;
+                } else {
+                    /* set corresponding bit in the bitmask SF5 is LSB -> SF12 is MSB */
+                    demodconf.multisf_datarate |= (1 << (number - 5));
+                }
+            }
+        } else {
+            MSG("WARNING: failed to parse chan_multiSF_All.spreading_factor_enable\n");
+            demodconf.multisf_datarate = 0xFF; /* enable all SFs */
+        }
+        /* all parameters parsed, submitting configuration to the HAL */
+        if (lgw_demod_setconf(&demodconf) != LGW_HAL_SUCCESS) {
+            MSG("ERROR: invalid configuration for demodulation parameters\n");
             return -1;
         }
     }
@@ -1176,6 +1438,7 @@ int main(int argc, char ** argv)
     pthread_t thrid_gps;
     pthread_t thrid_valid;
     pthread_t thrid_jit;
+    pthread_t thrid_ss;
 
     /* network socket creation */
     struct addrinfo hints;
@@ -1347,7 +1610,7 @@ int main(int argc, char ** argv)
     /* look for server address w/ downstream port */
     i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
     if (i != 0) {
-        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
+        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", serv_addr, serv_port_down, gai_strerror(i));
         exit(EXIT_FAILURE);
     }
 
@@ -1358,7 +1621,7 @@ int main(int argc, char ** argv)
         else break; /* success, get out of loop */
     }
     if (q == NULL) {
-        MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+        MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_down);
         i = 1;
         for (q=result; q!=NULL; q=q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
@@ -1376,10 +1639,12 @@ int main(int argc, char ** argv)
     }
     freeaddrinfo(result);
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
@@ -1406,30 +1671,39 @@ int main(int argc, char ** argv)
     }
 
     /* spawn threads to manage upstream and downstream */
-    i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
+    i = pthread_create(&thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create upstream thread\n");
         exit(EXIT_FAILURE);
     }
-    i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
+    i = pthread_create(&thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
         exit(EXIT_FAILURE);
     }
-    i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
+    i = pthread_create(&thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create JIT thread\n");
         exit(EXIT_FAILURE);
     }
 
+    /* spawn thread for background spectral scan */
+    if (spectral_scan_params.enable == true) {
+        i = pthread_create(&thrid_ss, NULL, (void * (*)(void *))thread_spectral_scan, NULL);
+        if (i != 0) {
+            MSG("ERROR: [main] impossible to create Spectral Scan thread\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
     /* spawn thread to manage GPS */
     if (gps_enabled == true) {
-        i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
+        i = pthread_create(&thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create GPS thread\n");
             exit(EXIT_FAILURE);
         }
-        i = pthread_create( &thrid_valid, NULL, (void * (*)(void *))thread_valid, NULL);
+        i = pthread_create(&thrid_valid, NULL, (void * (*)(void *))thread_valid, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create validation thread\n");
             exit(EXIT_FAILURE);
@@ -1597,7 +1871,9 @@ int main(int argc, char ** argv)
         } else {
             printf("# GPS sync is disabled\n");
         }
+        pthread_mutex_lock(&mx_concent);
         i = lgw_get_temperature(&temperature);
+        pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
             printf("### Concentrator temperature unknown ###\n");
         } else {
@@ -1616,13 +1892,28 @@ int main(int argc, char ** argv)
         pthread_mutex_unlock(&mx_stat_rep);
     }
 
-    /* wait for upstream thread to finish (1 fetch cycle max) */
-    pthread_join(thrid_up, NULL);
-    pthread_cancel(thrid_down); /* don't wait for downstream thread */
-    pthread_cancel(thrid_jit); /* don't wait for jit thread */
+    /* wait for all threads with a COM with the concentrator board to finish (1 fetch cycle max) */
+    i = pthread_join(thrid_up, NULL);
+    if (i != 0) {
+        printf("ERROR: failed to join upstream thread with %d - %s\n", i, strerror(errno));
+    }
+    i = pthread_join(thrid_down, NULL);
+    if (i != 0) {
+        printf("ERROR: failed to join downstream thread with %d - %s\n", i, strerror(errno));
+    }
+    i = pthread_join(thrid_jit, NULL);
+    if (i != 0) {
+        printf("ERROR: failed to join JIT thread with %d - %s\n", i, strerror(errno));
+    }
+    if (spectral_scan_params.enable == true) {
+        i = pthread_join(thrid_ss, NULL);
+        if (i != 0) {
+            printf("ERROR: failed to join Spectral Scan thread with %d - %s\n", i, strerror(errno));
+        }
+    }
     if (gps_enabled == true) {
-        pthread_cancel(thrid_gps); /* don't wait for GPS thread */
-        pthread_cancel(thrid_valid); /* don't wait for validation thread */
+        pthread_cancel(thrid_gps); /* don't wait for GPS thread, no access to concentrator board */
+        pthread_cancel(thrid_valid); /* don't wait for validation thread, no access to concentrator board */
 
         i = lgw_gps_disable(gps_tty_fd);
         if (i == LGW_HAL_SUCCESS) {
@@ -1646,10 +1937,12 @@ int main(int argc, char ** argv)
         }
     }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     MSG("INFO: Exiting packet forwarder program\n");
@@ -1870,6 +2163,17 @@ void thread_up(void) {
                         MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                         exit(EXIT_FAILURE);
                     }
+                }
+            }
+
+            /* Fine timestamp */
+            if (p->ftime_received == true) {
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"ftime\":%u", p->ftime);
+                if (j > 0) {
+                    buff_index += j;
+                } else {
+                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    exit(EXIT_FAILURE);
                 }
             }
 
@@ -2426,7 +2730,7 @@ void thread_down(void) {
 
         /* listen to packets and process them until a new PULL request must be sent */
         recv_time = send_time;
-        while ((int)difftimespec(recv_time, send_time) < keepalive_time) {
+        while (((int)difftimespec(recv_time, send_time) < keepalive_time) && !exit_sig && !quit_sig) {
 
             /* try to receive a datagram */
             msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
@@ -2666,6 +2970,12 @@ void thread_down(void) {
                 txpkt.no_crc = (bool)json_value_get_boolean(val);
             }
 
+            /* Parse "No header" flag (optional field) */
+            val = json_object_get_value(txpk_obj,"nhdr");
+            if (val != NULL) {
+                txpkt.no_header = (bool)json_value_get_boolean(val);
+            }
+
             /* parse target frequency (mandatory) */
             val = json_object_get_value(txpk_obj,"freq");
             if (val == NULL) {
@@ -2683,6 +2993,11 @@ void thread_down(void) {
                 continue;
             }
             txpkt.rf_chain = (uint8_t)json_value_get_number(val);
+            if (tx_enable[txpkt.rf_chain] == false) {
+                MSG("WARNING: [down] TX is not enabled on RF chain %u, TX aborted\n", txpkt.rf_chain);
+                json_value_free(root_val);
+                continue;
+            }
 
             /* parse TX power (optional field) */
             val = json_object_get_value(txpk_obj,"powe");
@@ -2984,9 +3299,15 @@ void thread_jit(void) {
 
                         /* send packet to concentrator */
                         pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
+                        if (spectral_scan_params.enable == true) {
+                            result = lgw_spectral_scan_abort();
+                            if (result != LGW_HAL_SUCCESS) {
+                                MSG("WARNING: [jit%d] lgw_spectral_scan_abort failed\n", i);
+                            }
+                        }
                         result = lgw_send(&pkt);
                         pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
-                        if (result == LGW_HAL_ERROR) {
+                        if (result != LGW_HAL_SUCCESS) {
                             pthread_mutex_lock(&mx_meas_dw);
                             meas_nb_tx_fail += 1;
                             pthread_mutex_unlock(&mx_meas_dw);
@@ -3009,6 +3330,8 @@ void thread_jit(void) {
             }
         }
     }
+
+    MSG("\nINFO: End of JIT thread\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3238,9 +3561,126 @@ void thread_valid(void) {
                 // fprintf(log_file,"%.18lf,\"track\"\n", xtal_correct); // DEBUG
             }
         }
-        // printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
+
+        //printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
     }
     MSG("\nINFO: End of validation thread\n");
+}
+
+/* -------------------------------------------------------------------------- */
+/* --- THREAD 6: BACKGROUND SPECTRAL SCAN                           --------- */
+
+void thread_spectral_scan(void) {
+    int i, x;
+    uint32_t freq_hz = spectral_scan_params.freq_hz_start;
+    uint32_t freq_hz_stop = spectral_scan_params.freq_hz_start + spectral_scan_params.nb_chan * 200E3;
+    int16_t levels[LGW_SPECTRAL_SCAN_RESULT_SIZE];
+    uint16_t results[LGW_SPECTRAL_SCAN_RESULT_SIZE];
+    struct timeval tm_start;
+    lgw_spectral_scan_status_t status;
+    uint8_t tx_status = TX_FREE;
+    bool spectral_scan_started;
+    bool exit_thread = false;
+
+    /* main loop task */
+    while (!exit_sig && !quit_sig) {
+        /* Pace the scan thread (1 sec min), and avoid waiting several seconds when exit */
+        for (i = 0; i < (int)(spectral_scan_params.pace_s ? spectral_scan_params.pace_s : 1); i++) {
+            if (exit_sig || quit_sig) {
+                exit_thread = true;
+                break;
+            }
+            wait_ms(1000);
+        }
+        if (exit_thread == true) {
+            break;
+        }
+
+        spectral_scan_started = false;
+
+        /* Start spectral scan (if no downlink programmed) */
+        pthread_mutex_lock(&mx_concent);
+        /* -- Check if there is a downlink programmed */
+        for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
+            if (tx_enable[i] == true) {
+                x = lgw_status((uint8_t)i, TX_STATUS, &tx_status);
+                if (x != LGW_HAL_SUCCESS) {
+                    printf("ERROR: failed to get TX status on chain %d\n", i);
+                } else {
+                    if (tx_status == TX_SCHEDULED || tx_status == TX_EMITTING) {
+                        printf("INFO: skip spectral scan (downlink programmed on RF chain %d)\n", i);
+                        break; /* exit for loop */
+                    }
+                }
+            }
+        }
+        if (tx_status != TX_SCHEDULED && tx_status != TX_EMITTING) {
+            x = lgw_spectral_scan_start(freq_hz, spectral_scan_params.nb_scan);
+            if (x != 0) {
+                printf("ERROR: spectral scan start failed\n");
+                pthread_mutex_unlock(&mx_concent);
+                continue; /* main while loop */
+            }
+            spectral_scan_started = true;
+        }
+        pthread_mutex_unlock(&mx_concent);
+
+        if (spectral_scan_started == true) {
+            /* Wait for scan to be completed */
+            status = LGW_SPECTRAL_SCAN_STATUS_UNKNOWN;
+            timeout_start(&tm_start);
+            do {
+                /* handle timeout */
+                if (timeout_check(tm_start, 2000) != 0) {
+                    printf("ERROR: %s: TIMEOUT on Spectral Scan\n", __FUNCTION__);
+                    break;  /* do while */
+                }
+
+                /* get spectral scan status */
+                pthread_mutex_lock(&mx_concent);
+                x = lgw_spectral_scan_get_status(&status);
+                pthread_mutex_unlock(&mx_concent);
+                if (x != 0) {
+                    printf("ERROR: spectral scan status failed\n");
+                    break; /* do while */
+                }
+
+                /* wait a bit before checking status again */
+                wait_ms(10);
+            } while (status != LGW_SPECTRAL_SCAN_STATUS_COMPLETED && status != LGW_SPECTRAL_SCAN_STATUS_ABORTED);
+
+            if (status == LGW_SPECTRAL_SCAN_STATUS_COMPLETED) {
+                /* Get spectral scan results */
+                memset(levels, 0, sizeof levels);
+                memset(results, 0, sizeof results);
+                pthread_mutex_lock(&mx_concent);
+                x = lgw_spectral_scan_get_results(levels, results);
+                pthread_mutex_unlock(&mx_concent);
+                if (x != 0) {
+                    printf("ERROR: spectral scan get results failed\n");
+                    continue; /* main while loop */
+                }
+
+                /* print results */
+                printf("SPECTRAL SCAN - %u Hz: ", freq_hz);
+                for (i = 0; i < LGW_SPECTRAL_SCAN_RESULT_SIZE; i++) {
+                    printf("%u ", results[i]);
+                }
+                printf("\n");
+
+                /* Next frequency to scan */
+                freq_hz += 200000; /* 200kHz channels */
+                if (freq_hz >= freq_hz_stop) {
+                    freq_hz = spectral_scan_params.freq_hz_start;
+                }
+            } else if (status == LGW_SPECTRAL_SCAN_STATUS_ABORTED) {
+                printf("INFO: %s: spectral scan has been aborted\n", __FUNCTION__);
+            } else {
+                printf("ERROR: %s: spectral scan status us unexpected 0x%02X\n", __FUNCTION__, status);
+            }
+        }
+    }
+    printf("\nINFO: End of Spectral Scan thread\n");
 }
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -38,7 +38,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_TYPE_DEFAULT LGW_COM_SPI
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
@@ -67,11 +68,14 @@ static void sig_handler(int sigio) {
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
-    printf( " -p        Test PPS trig counter when set\n" );
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -u        set COM type as USB (default is SPI)\n");
+    printf(" -d <path> COM path to be used to connect the concentrator\n");
+    printf("            => default path (SPI): " COM_PATH_DEFAULT "\n");
+    printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
+    printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
+    printf(" -p        Test PPS trig counter when set\n" );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -80,8 +84,9 @@ void usage(void) {
 int main(int argc, char **argv)
 {
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -90,7 +95,7 @@ int main(int argc, char **argv)
     uint32_t fb = DEFAULT_FREQ_HZ;
     unsigned int arg_u;
     uint8_t clocksource = 0;
-    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -114,11 +119,16 @@ int main(int argc, char **argv)
     const uint8_t channel_rfchain[9] = { 1, 1, 1, 0, 0, 0, 0, 0, 1 };
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hk:r:p")) != -1) {
+    while ((i = getopt (argc, argv, "hk:r:pd:u")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
@@ -151,6 +161,9 @@ int main(int argc, char **argv)
             case 'p':
                 trig_cnt = true;
                 break;
+            case 'u':
+                com_type = LGW_COM_USB;
+                break;
             default:
                 printf("ERROR: argument parsing\n");
                 usage();
@@ -168,26 +181,29 @@ int main(int argc, char **argv)
 
     printf("===== sx1302 counter test =====\n");
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     /* Configure the gateway */
-    memset( &boardconf, 0, sizeof boardconf);
+    memset(&boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    boardconf.com_type = com_type;
+    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
+    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
     }
 
     /* set configuration for RF chains */
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = true;
     rfconf.freq_hz = fa;
     rfconf.type = radio_type;
@@ -198,7 +214,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = true;
     rfconf.freq_hz = fb;
     rfconf.type = radio_type;
@@ -247,10 +263,12 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     printf("=========== Test End ===========\n");

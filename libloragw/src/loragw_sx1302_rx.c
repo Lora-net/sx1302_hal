@@ -31,8 +31,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_SX1302 == 1
-    #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr, fmt, args)
+    #define DEBUG_MSG(str)                fprintf(stdout, str)
+    #define DEBUG_PRINTF(fmt, args...)    fprintf(stdout, fmt, args)
     #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
 #else
     #define DEBUG_MSG(str)
@@ -92,9 +92,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
-/* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
@@ -132,23 +129,23 @@ int rx_buffer_del(rx_buffer_t * self) {
 int rx_buffer_fetch(rx_buffer_t * self) {
     int i, res;
     uint8_t buff[2];
-    int32_t msb;
+    uint8_t payload_len;
+    uint16_t next_pkt_idx;
+    int idx;
+    uint16_t nb_bytes_1, nb_bytes_2;
 
     /* Check input params */
     CHECK_NULL(self);
 
     /* Check if there is data in the FIFO */
     lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    /* Workaround concentrator chip issue:
-        - read MSB again
-        - if MSB changed, read the full size gain
-     */
-    lgw_reg_r(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, &msb);
-    if (buff[0] != (uint8_t)msb) {
-        lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
-    }
+    nb_bytes_1 = (buff[0] << 8) | (buff[1] << 0);
 
-    self->buffer_size  = (buff[0] << 8) | (buff[1] << 0);
+    /* Workaround for multi-byte read issue: read again and ensure new read is not lower than the previous one */
+    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    nb_bytes_2 = (buff[0] << 8) | (buff[1] << 0);
+
+    self->buffer_size = (nb_bytes_2 > nb_bytes_1) ? nb_bytes_2 : nb_bytes_1;
 
     /* Fetch bytes from fifo if any */
     if (self->buffer_size > 0) {
@@ -162,36 +159,60 @@ int rx_buffer_fetch(rx_buffer_t * self) {
             return LGW_REG_ERROR;
         }
 
-        /* print debug info : TODO to be removed */
+        /* print debug info */
         DEBUG_MSG("RX_BUFFER: ");
         for (i = 0; i < self->buffer_size; i++) {
             DEBUG_PRINTF("%02X ", self->buffer[i]);
         }
         DEBUG_MSG("\n");
 
-    }
-
-    /* Parse buffer to get number of packet fetched */
-    uint8_t payload_len;
-    uint16_t next_pkt_idx;
-    int idx = 0;
-    while (idx < self->buffer_size) {
-        if ((self->buffer[idx] != SX1302_PKT_SYNCWORD_BYTE_0) || (self->buffer[idx + 1] != SX1302_PKT_SYNCWORD_BYTE_1)) {
-            printf("ERROR: syncword not found in rx_buffer\n");
-            return LGW_REG_ERROR;
+        /* Sanity check: is there at least 1 complete packet in the buffer */
+        if (self->buffer_size < (SX1302_PKT_HEAD_METADATA + SX1302_PKT_TAIL_METADATA)) {
+            printf("WARNING: not enough data to have a complete packet, discard rx_buffer\n");
+            return rx_buffer_del(self);
         }
-        /* One packet found in the buffer */
-        self->buffer_pkt_nb += 1;
 
-        /* Compute the number of bytes for thsi packet */
-        payload_len = SX1302_PKT_PAYLOAD_LENGTH(self->buffer, idx);
-        next_pkt_idx =  SX1302_PKT_HEAD_METADATA +
-                        payload_len +
-                        SX1302_PKT_TAIL_METADATA +
-                        (2 * SX1302_PKT_NUM_TS_METRICS(self->buffer, idx + payload_len));
+        /* Sanity check: is there a syncword at 0 ? If not, move to the first syncword found */
+        idx = 0;
+        while (idx <= (self->buffer_size - 2)) {
+            if ((self->buffer[idx] == SX1302_PKT_SYNCWORD_BYTE_0) && (self->buffer[idx + 1] == SX1302_PKT_SYNCWORD_BYTE_1)) {
+                DEBUG_PRINTF("INFO: syncword found at idx %d\n", idx);
+                break;
+            } else {
+                printf("INFO: syncword not found at idx %d\n", idx);
+                idx += 1;
+            }
+        }
+        if (idx > self->buffer_size - 2) {
+            printf("WARNING: no syncword found, discard rx_buffer\n");
+            return rx_buffer_del(self);
+        }
+        if (idx != 0) {
+            printf("INFO: re-sync rx_buffer at idx %d\n", idx);
+            memmove((void *)(self->buffer), (void *)(self->buffer + idx), self->buffer_size - idx);
+            self->buffer_size -= idx;
+        }
 
-        /* Move to next packet */
-        idx += (int)next_pkt_idx;
+        /* Rewind and parse buffer to get the number of packet fetched */
+        idx = 0;
+        while (idx < self->buffer_size) {
+            if ((self->buffer[idx] != SX1302_PKT_SYNCWORD_BYTE_0) || (self->buffer[idx + 1] != SX1302_PKT_SYNCWORD_BYTE_1)) {
+                printf("WARNING: syncword not found at idx %d, discard the rx_buffer\n", idx);
+                return rx_buffer_del(self);
+            }
+            /* One packet found in the buffer */
+            self->buffer_pkt_nb += 1;
+
+            /* Compute the number of bytes for this packet */
+            payload_len = SX1302_PKT_PAYLOAD_LENGTH(self->buffer, idx);
+            next_pkt_idx =  SX1302_PKT_HEAD_METADATA +
+                            payload_len +
+                            SX1302_PKT_TAIL_METADATA +
+                            (2 * SX1302_PKT_NUM_TS_METRICS(self->buffer, idx + payload_len));
+
+            /* Move to next packet */
+            idx += (int)next_pkt_idx;
+        }
     }
 
     /* Initialize the current buffer index to iterate on */
@@ -220,10 +241,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
 
     /* Get pkt sync words */
     if ((self->buffer[self->buffer_index] != SX1302_PKT_SYNCWORD_BYTE_0) || (self->buffer[self->buffer_index + 1] != SX1302_PKT_SYNCWORD_BYTE_1)) {
-        printf("INFO: searching syncword...\n");
-        self->buffer_index += 1;
         return LGW_REG_ERROR;
-        /* TODO: while loop until syncword found ?? */
     }
     DEBUG_PRINTF("INFO: pkt syncword found at index %u\n", self->buffer_index);
 
@@ -239,7 +257,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     /* Check if we have a complete packet in the rx buffer fetched */
     if((self->buffer_index + pkt_num_bytes) > self->buffer_size) {
         printf("WARNING: aborting truncated message (size=%u)\n", self->buffer_size);
-        return LGW_REG_ERROR;
+        return LGW_REG_WARNING;
     }
 
     /* Get the checksum as received in the RX buffer */
@@ -254,7 +272,7 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     /* Check if the checksum is correct */
     if (checksum_rcv != checksum_calc) {
         printf("WARNING: checksum failed (got:0x%02X calc:0x%02X)\n", checksum_rcv, checksum_calc);
-        return LGW_REG_ERROR;
+        return LGW_REG_WARNING;
     } else {
         DEBUG_PRINTF("Packet checksum OK (0x%02X)\n", checksum_rcv);
     }
@@ -286,6 +304,12 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
     pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
 
+    /* TS metrics: it is expected the nb_symbols parameter is set to 0 here */
+    for (i = 0; i < (pkt->num_ts_metrics_stored * 2); i++) {
+        pkt->timestamp_avg[i] = (int8_t)SX1302_PKT_NUM_TS_METRICS(self->buffer, self->buffer_index + pkt->rxbytenb_modem + 1 + i);
+        pkt->timestamp_stddev[i] = 0; /* no stddev when nb_symbols == 0 */
+    }
+
     DEBUG_MSG   ("-----------------\n");
     DEBUG_PRINTF("  modem:      %u\n", pkt->modem_id);
     DEBUG_PRINTF("  chan:       %u\n", pkt->rx_channel_in);
@@ -298,6 +322,14 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     DEBUG_PRINTF("  codr:       %u\n", pkt->coding_rate);
     DEBUG_PRINTF("  datr:       %u\n", pkt->rx_rate_sf);
     DEBUG_PRINTF("  num_ts:     %u\n", pkt->num_ts_metrics_stored);
+    if (pkt->num_ts_metrics_stored > 0) {
+        DEBUG_MSG("  ts_avg:     ");
+        for (i = 0; i < (pkt->num_ts_metrics_stored * 2); i++) {
+            DEBUG_PRINTF("%d ", pkt->timestamp_avg[i]);
+        }
+        DEBUG_MSG("\n");
+        DEBUG_MSG("  ts_stdev:   NONE (nb_symbols=0)\n");
+    }
     DEBUG_MSG   ("-----------------\n");
 
     /* Sanity checks: check the range of few metadata */

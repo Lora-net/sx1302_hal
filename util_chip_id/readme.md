@@ -4,7 +4,7 @@
 	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-	  (C)2019 Semtech
+	  (C)2020 Semtech
 
 Utility to get SX1302 chip EUI
 ==============================
@@ -24,9 +24,14 @@ will display a short help and version informations.
 
 ### 2.2. SPI options ###
 
-`-d filename`
+`-d spidev_path`
 use the Linux SPI device driver, but with an explicit path, for systems with
 several SPI device drivers, or uncommon numbering scheme.
+
+### 2.3. USB options ###
+
+`-u -d tty_path`
+use the TTY path associated with the gateway.
 
 ## 3. Legal notice
 

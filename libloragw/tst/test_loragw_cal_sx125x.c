@@ -7,7 +7,7 @@
   (C)2019 Semtech
 
 Description:
-    Minimum test program for HAL calibration
+    Minimum test program for HAL calibration for sx1255/sx1257 radios
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
@@ -35,6 +35,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
+#include "loragw_com.h"
 #include "loragw_sx1302.h"
 #include "loragw_sx125x.h"
 #include "loragw_aux.h"
@@ -45,13 +46,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define RAND_RANGE(min, max)        (rand() % (max + 1 - min) + min)
 
-#define DEBUG_MSG(str)                fprintf(stderr, str)
-#define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+#define DEBUG_MSG(str)                fprintf(stdout, str)
+#define DEBUG_PRINTF(fmt, args...)    fprintf(stdout,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_TYPE_DEFAULT LGW_COM_SPI
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
@@ -98,13 +100,12 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
-    printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
+    printf(" -u        Set COM type as USB (default is SPI)\n");
+    printf(" -d [path] Path to the COM interface\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
     printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
-    printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
-    printf(" -j        Set radio in single input mode (SX1250 only)\n");
-    printf(" -f <float> Radio TX frequency in MHz\n");
+    printf(" -r <uint> Radio type (1255, 1257)\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain [0..3]\n");
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
@@ -149,32 +150,32 @@ int setup_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uin
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", radio_type);
             return LGW_HAL_ERROR;
     }
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & rx_freq_int, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (rx_freq_frac >> 8), rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & rx_freq_frac, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_MSB, 0xFF & tx_freq_int, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_MID, 0xFF & (tx_freq_frac >> 8), rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_FRF_TX_LSB, 0xFF & tx_freq_frac, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_RX_MSB, 0xFF & rx_freq_int, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_RX_MID, 0xFF & (rx_freq_frac >> 8), rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_RX_LSB, 0xFF & rx_freq_frac, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_TX_MSB, 0xFF & tx_freq_int, rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_TX_MID, 0xFF & (tx_freq_frac >> 8), rf_chain);
+    sx125x_reg_w(SX125x_REG_FRF_TX_LSB, 0xFF & tx_freq_frac, rf_chain);
 
     /* Radio settings for calibration */
-    //lgw_sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_ZIN, 1, rf_chain); /* Default: 1 */
-    //lgw_sx125x_reg_w(SX125x_RX_ANA_GAIN__BB_GAIN, 15, rf_chain); /* Default: 15 */
-    //lgw_sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_GAIN, 1, rf_chain); /* Default: 1 */
-    lgw_sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, 0, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, 6, rf_chain);
-    //lgw_sx125x_reg_w(SX125x_RX_BW__ADC_BW, 7, rf_chain);  /* Default: 7 */
-    lgw_sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, 0, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, rf_chain);
-    //lgw_sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, rf_chain); /* Default: 0 */
-    lgw_sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__DAC_CLK_SELECT, 1, rf_chain); /* Use external clock from SX1302 */
-    lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, dac_gain, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, mix_gain, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, rf_chain);
-    lgw_sx125x_reg_w(SX125x_REG_MODE, 15, rf_chain);
+    //sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_ZIN, 1, rf_chain); /* Default: 1 */
+    //sx125x_reg_w(SX125x_RX_ANA_GAIN__BB_GAIN, 15, rf_chain); /* Default: 15 */
+    //sx125x_reg_w(SX125x_RX_ANA_GAIN__LNA_GAIN, 1, rf_chain); /* Default: 1 */
+    sx125x_reg_w(SX125x_REG_RX_BW__BB_BW, 0, rf_chain);
+    sx125x_reg_w(SX125x_REG_RX_BW__ADC_TRIM, 6, rf_chain);
+    //sx125x_reg_w(SX125x_RX_BW__ADC_BW, 7, rf_chain);  /* Default: 7 */
+    sx125x_reg_w(SX125x_REG_RX_PLL_BW__PLL_BW, 0, rf_chain);
+    sx125x_reg_w(SX125x_REG_TX_BW__PLL_BW, 0, rf_chain);
+    //sx125x_reg_w(SX125x_TX_BW__ANA_BW, 0, rf_chain); /* Default: 0 */
+    sx125x_reg_w(SX125x_REG_TX_DAC_BW, 5, rf_chain);
+    sx125x_reg_w(SX125x_REG_CLK_SELECT__DAC_CLK_SELECT, 1, rf_chain); /* Use external clock from SX1302 */
+    sx125x_reg_w(SX125x_REG_TX_GAIN__DAC_GAIN, dac_gain, rf_chain);
+    sx125x_reg_w(SX125x_REG_TX_GAIN__MIX_GAIN, mix_gain, rf_chain);
+    sx125x_reg_w(SX125x_REG_CLK_SELECT__RF_LOOPBACK_EN, 1, rf_chain);
+    sx125x_reg_w(SX125x_REG_MODE, 15, rf_chain);
     wait_ms(1);
-    lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS__RX_PLL_LOCKED, &rx_pll_locked, rf_chain);
-    lgw_sx125x_reg_r(SX125x_REG_MODE_STATUS__TX_PLL_LOCKED, &tx_pll_locked, rf_chain);
+    sx125x_reg_r(SX125x_REG_MODE_STATUS__RX_PLL_LOCKED, &rx_pll_locked, rf_chain);
+    sx125x_reg_r(SX125x_REG_MODE_STATUS__TX_PLL_LOCKED, &tx_pll_locked, rf_chain);
     if ((rx_pll_locked == 0) || (tx_pll_locked == 0)) {
         DEBUG_MSG("ERROR: PLL failed to lock\n");
         return LGW_HAL_ERROR;
@@ -460,22 +461,17 @@ int test_capture_ram(uint8_t rf_chain) {
 int main(int argc, char **argv)
 {
     int i, x;
-    uint32_t ft = DEFAULT_FREQ_HZ;
-    double arg_d = 0.0;
     unsigned int arg_u;
     uint8_t clocksource = 0;
     uint8_t rf_chain = 0;
-    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
-    bool single_input_mode = false;
-
-    struct lgw_conf_board_s boardconf;
-    struct lgw_conf_rxrf_s rfconf;
+    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1257;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     /* Initialize TX gain LUT */
     txlut.size = 1;
@@ -492,22 +488,26 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hjf:k:r:c:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hk:r:c:d:u", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
                 break;
 
+            case 'u':
+                com_type = LGW_COM_USB;
+                break;
+
             case 'd':
                 if (optarg != NULL) {
-                    spidev_path = optarg;
+                    com_path = optarg;
                 }
                 break;
 
             case 'r': /* <uint> Radio type */
                 i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
+                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257))) {
                     printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
@@ -518,8 +518,8 @@ int main(int argc, char **argv)
                         case 1257:
                             radio_type = LGW_RADIO_TYPE_SX1257;
                             break;
-                        default: /* 1250 */
-                            radio_type = LGW_RADIO_TYPE_SX1250;
+                        default:
+                            /* should not happen */
                             break;
                     }
                 }
@@ -542,20 +542,6 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     rf_chain = (uint8_t)arg_u;
-                }
-                break;
-
-            case 'j':
-                single_input_mode = true;
-                break;
-
-            case 'f': /* <float> Radio TX frequency in MHz */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
 
@@ -599,50 +585,17 @@ int main(int argc, char **argv)
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+    /* USB is currently not supported for sx1255/sx1257 radios */
+    if (com_type == LGW_COM_USB) {
+        printf("ERROR: USB interface is currently not supported for sx1255/sx1257 radios\n");
         exit(EXIT_FAILURE);
     }
 
-    /* Configure the gateway */
-    memset(&boardconf, 0, sizeof boardconf);
-    boardconf.lorawan_public = true;
-    boardconf.clksrc = clocksource;
-    boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
-    if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
-        printf("ERROR: failed to configure board\n");
-        return EXIT_FAILURE;
-    }
-
-    memset(&rfconf, 0, sizeof rfconf);
-    rfconf.enable = ((rf_chain == 0) ? true : false);
-    rfconf.freq_hz = ft;
-    rfconf.type = radio_type;
-    rfconf.tx_enable = true;
-    rfconf.single_input_mode = single_input_mode;
-    if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
-        printf("ERROR: failed to configure rxrf 0\n");
-        return EXIT_FAILURE;
-    }
-
-    memset(&rfconf, 0, sizeof rfconf);
-    rfconf.enable = ((rf_chain == 1) ? true : false);
-    rfconf.freq_hz = ft;
-    rfconf.type = radio_type;
-    rfconf.tx_enable = true;
-    rfconf.single_input_mode = single_input_mode;
-    if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
-        printf("ERROR: failed to configure rxrf 1\n");
-        return EXIT_FAILURE;
-    }
-
-    if (txlut.size > 0) {
-        if (lgw_txgain_setconf(rf_chain, &txlut) != LGW_HAL_SUCCESS) {
-            printf("ERROR: failed to configure txgain lut\n");
-            return EXIT_FAILURE;
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh start") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -650,15 +603,15 @@ int main(int argc, char **argv)
     fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
-    x = lgw_connect(spidev_path);
+    x = lgw_connect(com_type, com_path);
     if (x != 0) {
         printf("ERROR: failed to connect the gateway\n");
         return EXIT_FAILURE;
     }
 
-    sx1302_radio_reset(rf_chain, LGW_RADIO_TYPE_SX1257);
+    sx1302_radio_reset(rf_chain, radio_type);
     sx1302_radio_clock_select(clocksource);
-    sx1302_radio_set_mode(rf_chain, LGW_RADIO_TYPE_SX1257);
+    sx1302_radio_set_mode(rf_chain, radio_type);
 
     printf("Loading CAL fw for sx125x\n");
     if (sx1302_agc_load_firmware(cal_firmware_sx125x) != LGW_HAL_SUCCESS) {
@@ -680,8 +633,8 @@ int main(int argc, char **argv)
 
     //test_capture_ram(rf_chain);
 
-    sx1302_radio_reset(0, LGW_RADIO_TYPE_SX1257);
-    sx1302_radio_reset(1, LGW_RADIO_TYPE_SX1257);
+    sx1302_radio_reset(0, radio_type);
+    sx1302_radio_reset(1, radio_type);
 
     /* disconnect the gateway */
     x = lgw_disconnect();
@@ -693,10 +646,12 @@ int main(int argc, char **argv)
     /* Close log file */
     fclose(fp);
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
+    if (com_type == LGW_COM_SPI) {
+        /* Board reset */
+        if (system("./reset_lgw.sh stop") != 0) {
+            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     printf("=========== Test End ===========\n");

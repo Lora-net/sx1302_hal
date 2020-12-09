@@ -31,25 +31,20 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define LGW_SPI_SUCCESS     0
 #define LGW_SPI_ERROR       -1
-#define LGW_BURST_CHUNK     1024
 
 #define SPI_SPEED       2000000
-
-#define LGW_SPI_MUX_TARGET_SX1302   0x00
-#define LGW_SPI_MUX_TARGET_RADIOA   0x01
-#define LGW_SPI_MUX_TARGET_RADIOB   0x02
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
 @brief LoRa concentrator SPI setup (configure I/O and peripherals)
-@param spidev_path path to the SPI device to be used to connect to the SX1302
+@param com_path path to the SPI device to be used to connect to the SX1302
 @param spi_target_ptr pointer on a generic pointer to SPI target (implementation dependant)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
+int lgw_spi_open(const char * com_path, void **com_target_ptr);
 
 /**
 @brief LoRa concentrator SPI close
@@ -57,7 +52,7 @@ int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-int lgw_spi_close(void *spi_target);
+int lgw_spi_close(void *com_target);
 
 /**
 @brief LoRa concentrator SPI single-byte write
@@ -66,7 +61,7 @@ int lgw_spi_close(void *spi_target);
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
+int lgw_spi_w(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI single-byte read
@@ -75,7 +70,18 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
+int lgw_spi_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
+
+/**
+@brief LoRa concentrator SPI single-byte read-modify-write
+@param spi_target generic pointer to SPI target (implementation dependant)
+@param address 7-bit register address
+@param offs start offset of the bits to be modified
+@param leng number of bits to be modified
+@param data value to be written in the selected bits
+@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+*/
+int lgw_spi_rmw(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write
@@ -85,7 +91,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
+int lgw_spi_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read
@@ -95,7 +101,12 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+int lgw_spi_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+
+/**
+ *
+ **/
+uint16_t lgw_spi_chunk_size(void);
 
 #endif
 

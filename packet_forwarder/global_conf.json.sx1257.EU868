@@ -1,15 +1,11 @@
 {
     "SX130x_conf": {
-        "spidev_path": "/dev/spidev0.0",
+        "com_type": "SPI",
+        "com_path": "/dev/spidev0.0",
         "lorawan_public": true,
         "clksrc": 0,
         "antenna_gain": 0, /* antenna gain, in dBi */
         "full_duplex": false,
-        "precision_timestamp": {
-            "enable": false,
-            "max_ts_metrics": 255,
-            "nb_symbols": 1
-        },
         "radio_0": {
             "enable": true,
             "type": "SX1257",
@@ -46,6 +42,7 @@
             "rssi_tcomp": {"coeff_a": -0.006, "coeff_b": 0.789, "coeff_c": -14.992, "coeff_d": 1988.572, "coeff_e": 105236.996},
             "tx_enable": false
         },
+        "chan_multiSF_All": {"spreading_factor_enable": [ 5, 6, 7, 8, 9, 10, 11, 12 ]},
         "chan_multiSF_0": {"enable": true, "radio": 1, "if": -400000},
         "chan_multiSF_1": {"enable": true, "radio": 1, "if": -200000},
         "chan_multiSF_2": {"enable": true, "radio": 1, "if":  0},

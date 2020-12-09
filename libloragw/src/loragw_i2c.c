@@ -18,10 +18,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
-#include <stdlib.h>     /* malloc free */
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
-#include <string.h>     /* memset */
 #include <errno.h>      /* errno */
 
 #include <sys/ioctl.h>
@@ -36,13 +34,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_I2C == 1
-    #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_SPI_ERROR;}
+    #define DEBUG_MSG(str)                fprintf(stdout, str)
+    #define DEBUG_PRINTF(fmt, args...)    fprintf(stdout,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_I2C_ERROR;}
 #else
     #define DEBUG_MSG(str)
     #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
+    #define CHECK_NULL(a)                if(a==NULL){return LGW_I2C_ERROR;}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -133,6 +131,31 @@ int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_
 
     if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
         DEBUG_PRINTF("ERROR: Write to I2C Device failed (%d, 0x%02x, 0x%02x) - %s\n", i2c_fd, device_addr, reg_addr, strerror(errno));
+        return LGW_I2C_ERROR;
+    }
+
+    return LGW_I2C_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int i2c_linuxdev_write_buffer(int i2c_fd, uint8_t device_addr, uint8_t *buffer, uint8_t size) {
+    struct i2c_rdwr_ioctl_data packets;
+    struct i2c_msg messages[1];
+
+    /* Check input parameters */
+    CHECK_NULL(buffer);
+
+    messages[0].addr = device_addr;
+    messages[0].flags = 0;
+    messages[0].len = size;
+    messages[0].buf = buffer;
+
+    packets.msgs = messages;
+    packets.nmsgs = 1;
+
+    if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
+        DEBUG_PRINTF("ERROR: Write buffer to I2C Device failed (%d, 0x%02x) - %s\n", i2c_fd, device_addr, strerror(errno));
         return LGW_I2C_ERROR;
     }
 

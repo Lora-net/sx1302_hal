@@ -32,10 +32,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 #define TX_START_DELAY          1500    /* microseconds */
-                                        /* TODO: get this value from HAL? */
 #define TX_MARGIN_DELAY         1000    /* Packet overlap margin in microseconds */
-                                        /* TODO: How much margin should we take? */
-#define TX_JIT_DELAY            30000   /* Pre-delay to program packet for TX in microseconds */
+#define TX_JIT_DELAY            40000   /* Pre-delay to program packet for TX in microseconds */
 #define TX_MAX_ADVANCE_DELAY    ((JIT_NUM_BEACON_IN_QUEUE + 1) * 128 * 1E6) /* Maximum advance delay accepted for a TX packet, compared to current time */
 
 #define BEACON_GUARD            3000000 /* Interval where no ping slot can be placed,
@@ -173,7 +171,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
         packet->tx_mode = TIMESTAMPED;
 
         /* Search for the ASAP timestamp to be given to the packet */
-        asap_count_us = time_us + 1E6; /* TODO: Take 1 second margin, to be refined */
+        asap_count_us = time_us + 2 * TX_JIT_DELAY; /* margin */
         if (queue->num_pkt == 0) {
             /* If the jit queue is empty, we can insert this packet */
             MSG_DEBUG(DEBUG_JIT, "DEBUG: insert IMMEDIATE downlink, first in JiT queue (count_us=%u)\n", asap_count_us);

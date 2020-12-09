@@ -44,7 +44,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
+#define COM_TYPE_DEFAULT LGW_COM_SPI
+#define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
@@ -64,6 +65,9 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
+    printf(" -u         Set COM type as USB (default is SPI)\n");
+    printf(" -d <path>  COM path to be used to connect the concentrator\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
     printf(" -k <uint>  Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint>  RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint>  Radio type (1255, 1257, 1250)\n");
@@ -73,14 +77,15 @@ void usage(void) {
     printf(" -s <uint>  LoRa datarate 0:random, [5..12]\n");
     printf(" -b <uint>  LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
     printf(" -l <uint>  FSK/LoRa preamble length, [6..65535]\n");
-    printf(" -d <uint>  FSK frequency deviation in kHz [1:250]\n");
-    printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -n <uint>  Number of packets to be sent\n");
     printf(" -z <uint>  size of packets to be sent 0:random, [9..255]\n");
     printf(" -t <uint>  TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger\n");
     printf(" -p <int>   RF power in dBm\n");
     printf(" -i         Send LoRa packet using inverted modulation polarity\n");
     printf(" -j         Set radio in single input mode (SX1250 only)\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --fdev <uint>  FSK frequency deviation in kHz [1:250]\n");
+    printf(" --br   <float> FSK bitrate in kbps [0.5:250]\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --pa   <uint> PA gain SX125x:[0..3], SX1250:[0,1]\n");
     printf(" --dig  <uint> sx1302 digital gain for sx125x [0..3]\n");
@@ -91,6 +96,8 @@ void usage(void) {
     printf(" --nhdr        Send LoRa packet with implicit header\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
 }
 
 /* handle signals */
@@ -133,6 +140,7 @@ int main(int argc, char **argv)
     bool invert_pol = false;
     bool no_header = false;
     bool single_input_mode = false;
+    bool full_duplex = false;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -144,8 +152,9 @@ int main(int argc, char **argv)
     bool trig_delay = false;
 
     /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char * com_path = com_path_default;
+    lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
@@ -156,6 +165,8 @@ int main(int argc, char **argv)
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
+        {"fdev", required_argument, 0, 0},
+        {"br",   required_argument, 0, 0},
         {"pa",   required_argument, 0, 0},
         {"dac",  required_argument, 0, 0},
         {"dig",  required_argument, 0, 0},
@@ -163,15 +174,24 @@ int main(int argc, char **argv)
         {"pwid", required_argument, 0, 0},
         {"loop", required_argument, 0, 0},
         {"nhdr", no_argument, 0, 0},
+        {"fdd",  no_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:ud:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'u':
+                com_type = LGW_COM_USB;
+                break;
+            case 'd': /* <char> COM path */
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
             case 'i': /* Send packet using inverted modulation polarity */
                 invert_pol = true;
@@ -223,24 +243,6 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     freq_offset = (int32_t)arg_i;
-                }
-                break;
-            case 'd': /* <uint> FSK frequency deviation */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
-                    printf("ERROR: invalid FSK frequency deviation\n");
-                    return EXIT_FAILURE;
-                } else {
-                    fdev_khz = (uint8_t)arg_u;
-                }
-                break;
-            case 'q': /* <float> FSK bitrate */
-                i = sscanf(optarg, "%f", &xf);
-                if ((i != 1) || (xf < 0.5) || (xf > 250)) {
-                    printf("ERROR: invalid FSK bitrate\n");
-                    return EXIT_FAILURE;
-                } else {
-                    br_kbps = xf;
                 }
                 break;
             case 't': /* <uint> Trigger delay in ms */
@@ -328,7 +330,23 @@ int main(int argc, char **argv)
                 }
                 break;
             case 0:
-                if (strcmp(long_options[option_index].name, "pa") == 0) {
+                if (strcmp(long_options[option_index].name, "fdev") == 0) {
+                    i = sscanf(optarg, "%u", &arg_u);
+                    if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
+                        printf("ERROR: invalid FSK frequency deviation\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        fdev_khz = (uint8_t)arg_u;
+                    }
+                } else if (strcmp(long_options[option_index].name, "br") == 0) {
+                    i = sscanf(optarg, "%f", &xf);
+                    if ((i != 1) || (xf < 0.5) || (xf > 250)) {
+                        printf("ERROR: invalid FSK bitrate\n");
+                        return EXIT_FAILURE;
+                    } else {
+                        br_kbps = xf;
+                    }
+                } else if (strcmp(long_options[option_index].name, "pa") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --pa argument. Use -h to print help\n");
@@ -385,6 +403,8 @@ int main(int argc, char **argv)
                     }
                 } else if (strcmp(long_options[option_index].name, "nhdr") == 0) {
                     no_header = true;
+                } else if (strcmp(long_options[option_index].name, "fdd") == 0) {
+                    full_duplex = true;
                 } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
                     return EXIT_FAILURE;
@@ -419,9 +439,10 @@ int main(int argc, char **argv)
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
-    boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+    boardconf.full_duplex = full_duplex;
+    boardconf.com_type = com_type;
+    strncpy(boardconf.com_path, com_path, sizeof boardconf.com_path);
+    boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -457,10 +478,12 @@ int main(int argc, char **argv)
     }
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
+        if (com_type == LGW_COM_SPI) {
         /* Board reset */
-        if (system("./reset_lgw.sh start") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
+            if (system("./reset_lgw.sh start") != 0) {
+                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+                exit(EXIT_FAILURE);
+            }
         }
 
         /* connect, configure and start the LoRa concentrator */
@@ -553,7 +576,7 @@ int main(int argc, char **argv)
             x = lgw_send(&pkt);
             if (x != 0) {
                 printf("ERROR: failed to send packet\n");
-                return EXIT_FAILURE;
+                break;
             }
             /* wait for packet to finish sending */
             do {
@@ -573,13 +596,14 @@ int main(int argc, char **argv)
         x = lgw_stop();
         if (x != 0) {
             printf("ERROR: failed to stop the gateway\n");
-            return EXIT_FAILURE;
         }
 
-        /* Board reset */
-        if (system("./reset_lgw.sh stop") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
+        if (com_type == LGW_COM_SPI) {
+            /* Board reset */
+            if (system("./reset_lgw.sh stop") != 0) {
+                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
 

@@ -57,18 +57,6 @@ void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, ui
 */
 int dbg_check_payload(struct lgw_conf_debug_s * context, FILE * file, uint8_t * payload_received, uint8_t size, uint8_t ref_payload_idx, uint8_t sf);
 
-/**
-@brief
-@param
-*/
-void dbg_init_gpio(void);
-
-/**
-@brief
-@param
-*/
-void dbg_toggle_gpio(void);
-
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

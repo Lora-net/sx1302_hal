@@ -46,48 +46,56 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 /**
-@struct sx1302_if_cfg_t
-@brief TODO
+@enum sx1302_model_id_t
+@brief
 */
-typedef struct {
-    bool        if_enable;
-    bool        if_rf_chain; /* for each IF, 0 -> radio A, 1 -> radio B */
-    int32_t     if_freq; /* relative to radio frequency, +/- in Hz */
-} sx1302_if_cfg_t;
+typedef enum {
+    CHIP_MODEL_ID_SX1302 = 0x02, /* SX1302 can be 0x00 or 0x02 */
+    CHIP_MODEL_ID_SX1303 = 0x03,
+    CHIP_MODEL_ID_UNKNOWN
+} sx1302_model_id_t;
 
 /**
-@struct sx1302_lora_service_cfg_t
-@brief TODO
+@enum sx1302_rx_frequency_tracking_t
+@brief Frequency Tracking mode
 */
-typedef struct {
-    uint8_t     lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
-    uint8_t     lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
-    bool        lora_rx_implicit_hdr; /* implicit header setting for LoRa standalone modem */
-    uint8_t     lora_rx_implicit_length; /* implicit header payload length setting for LoRa standalone modem */
-    bool        lora_rx_implicit_crc_en; /* implicit header payload crc enable setting for LoRa standalone modem */
-    uint8_t     lora_rx_implicit_coderate; /* implicit header payload coderate setting for LoRa standalone modem */
-} sx1302_lora_service_cfg_t;
+typedef enum {
+    RX_FREQ_TRACK_OFF  = 0x00,
+    RX_FREQ_TRACK_ON   = 0x01,
+    RX_FREQ_TRACK_AUTO = 0x03
+} sx1302_rx_frequency_tracking_t;
 
 /**
-@struct sx1302_fsk_cfg_t
-@brief TODO
+@enum sx1302_rx_fine_timing_mode_t
+@brief Fine Timing mode
 */
-typedef struct {
-    uint8_t     fsk_rx_bw; /* bandwidth setting of FSK modem */
-    uint32_t    fsk_rx_dr; /* FSK modem datarate in bauds */
-    uint8_t     fsk_sync_word_size; /* default number of bytes for FSK sync word */
-    uint64_t    fsk_sync_word; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
-} sx1302_fsk_cfg_t;
+typedef enum {
+    RX_FINE_TIMING_MODE_ABS     = 0x01,
+    RX_FINE_TIMING_MODE_LINEAR  = 0x02,
+    RX_FINE_TIMING_MODE_AUTO    = 0x03
+} sx1302_rx_fine_timing_mode_t;
+
+/**
+@enum sx1302_rx_dft_peak_mode_t
+@brief DFT peak mode
+*/
+typedef enum {
+    RX_DFT_PEAK_MODE_DISABLED    = 0x00,
+    RX_DFT_PEAK_MODE_FULL        = 0x01,
+    RX_DFT_PEAK_MODE_TRACK       = 0x02,
+    RX_DFT_PEAK_MODE_AUTO        = 0x03
+} sx1302_rx_dft_peak_mode_t;
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Initialize sx1302 for operating, and needed internal structures (rx_buffer,....)
+@param conf a pointer to the fine timestamp configuration context
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
 */
-void sx1302_init(struct lgw_conf_timestamp_s *conf);
+int sx1302_init(const struct lgw_conf_ftime_s *conf);
 
 /**
 @brief Get the SX1302 unique identifier
@@ -95,6 +103,13 @@ void sx1302_init(struct lgw_conf_timestamp_s *conf);
 @return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
 */
 int sx1302_get_eui(uint64_t * eui);
+
+/**
+@brief Get the SX1302/SX1303 Chip Model ID
+@param model_id pointer to the memory holding the Chip Model ID
+@return LGW_REG_SUCCESS if no error, LGW_REG_ERROR otherwise
+*/
+int sx1302_get_model_id(sx1302_model_id_t * model_id);
 
 /**
 @brief Check AGC & ARB MCUs parity error, and update timestamp counter wraping status
@@ -145,10 +160,10 @@ int sx1302_radio_calibrate(struct lgw_conf_rxrf_s * context_rf_chain, uint8_t cl
 
 /**
 @brief Configure the PA and LNA LUTs
-@param N/A
+@param context_board A pointer to the current board configuration context
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_pa_lna_lut_configure(void);
+int sx1302_pa_lna_lut_configure(struct lgw_conf_board_s * context_board);
 
 /**
 @brief Configure the Radio Front-End stage of the SX1302
@@ -158,9 +173,9 @@ int sx1302_pa_lna_lut_configure(void);
 int sx1302_radio_fe_configure(void);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Returns the type of the given modem index (LoRa MultiSF, LoRa SingleSF, FSK)
+@param if_chain the index if the IF chain
+@return The IF chain type
 */
 uint8_t sx1302_get_ifmod_config(uint8_t if_chain);
 
@@ -174,10 +189,11 @@ int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain)
 
 /**
 @brief Configure the correlator stage of the SX1302 LoRa multi-SF modems
-@param N/A
+@param if_cfg       A pointer to the channels configuration
+@param demod_cfg    A pointer to the demodulators configuration
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_lora_correlator_configure(void);
+int sx1302_lora_correlator_configure(struct lgw_conf_rxif_s * if_cfg, struct lgw_conf_demod_s * demod_cfg);
 
 /**
 @brief Configure the correlator stage of the SX1302 LoRa single-SF modem
@@ -238,16 +254,16 @@ int sx1302_gps_enable(bool enable);
 uint32_t sx1302_timestamp_counter(bool pps);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Load firmware to AGC MCU memory
+@param firmware A pointer to the fw binary to be loaded
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_agc_load_firmware(const uint8_t *firmware);
 
 /**
-@brief TODO
-@param TODO
-@return TODO
+@brief Read the AGC status register for current status
+@param status A pointer to store the current status returned
+@return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
 int sx1302_agc_status(uint8_t* status);
 
@@ -277,7 +293,7 @@ int sx1302_agc_mailbox_write(uint8_t mailbox, uint8_t value);
 @param TODO
 @return TODO
 */
-int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, uint8_t fdd_mode);
+int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_gain, uint8_t dec_gain, bool full_duplex, bool lbt_enable);
 
 /**
 @brief TODO
@@ -319,7 +335,7 @@ int sx1302_arb_debug_write(uint8_t reg_id, uint8_t value);
 @param TODO
 @return TODO
 */
-int sx1302_arb_start(uint8_t version);
+int sx1302_arb_start(uint8_t version, const struct lgw_conf_ftime_s * ftime_context);
 
 /**
 @brief TODO
@@ -367,14 +383,15 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p);
 
 /**
 @brief Configure the delay to be applied by the SX1302 for TX to start
-@param rf_chain     The RF chain index to be configured
-@param radio_type   The type of radio for this RF chain
-@param modulation   The modulation used for the TX
-@param bandwidth    The bandwidth used for the TX
-@param delay        The TX start delay calculated and applied
+@param rf_chain      RF chain index to be configured
+@param radio_type    Type of radio for this RF chain
+@param modulation    Modulation used for the TX
+@param bandwidth     Bandwidth used for the TX
+@param chirp_lowpass Chirp Low Pass filtering configuration
+@param delay         TX start delay calculated and applied
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint16_t * delay);
+int sx1302_tx_set_start_delay(uint8_t rf_chain, lgw_radio_type_t radio_type, uint8_t modulation, uint8_t bandwidth, uint8_t chirp_lowpass, uint16_t * delay);
 
 /**
 @brief Compute the offset to be applied on RSSI for temperature compensation
@@ -419,6 +436,20 @@ int sx1302_tx_configure(lgw_radio_type_t radio_type);
 @return TODO
 */
 int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, bool lwan_public, struct lgw_conf_rxif_s * context_fsk, struct lgw_pkt_tx_s * pkt_data);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+int sx1302_set_gpio(uint8_t gpio_reg_val);
+
+/**
+@brief TODO
+@param TODO
+@return TODO
+*/
+double sx1302_dc_notch_delay(double if_freq_hz);
 
 #endif
 
