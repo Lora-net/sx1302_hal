@@ -63,8 +63,8 @@
         "gateway_ID": "AA555A0000000000",
         /* change with default server address/ports */
         "server_address": "localhost",
-        "serv_port_up": 1730,
-        "serv_port_down": 1730,
+        "serv_port_up": 1680,
+        "serv_port_down": 1680,
         /* adjust the following parameters for your network */
         "keepalive_interval": 10,
         "stat_interval": 30,
@@ -73,26 +73,6 @@
         "forward_crc_valid": true,
         "forward_crc_error": false,
         "forward_crc_disabled": false,
-        /* GPS configuration */
-        "gps_tty_path": "/dev/ttyS0",
-        /* GPS reference coordinates */
-        "ref_latitude": 0.0,
-        "ref_longitude": 0.0,
-        "ref_altitude": 0,
-        /* Beaconing parameters */
-        "beacon_period": 0,
-        "beacon_freq_hz": 869525000,
-        "beacon_datarate": 9,
-        "beacon_bw_hz": 125000,
-        "beacon_power": 14,
-        "beacon_infodesc": 0
     },
 
-    "debug_conf": {
-        "ref_payload":[
-            {"id": "0xCAFE1234"},
-            {"id": "0xCAFE2345"}
-        ],
-        "log_file": "loragw_hal.log"
-    }
 }
