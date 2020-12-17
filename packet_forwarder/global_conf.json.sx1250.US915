@@ -111,7 +111,6 @@
             "datarate": 100000
         }
     },
-
     "gateway_conf": {
         "gps_i2c_path": "/dev/i2c-1",
         "gateway_ID": "AA555A0000000000",
