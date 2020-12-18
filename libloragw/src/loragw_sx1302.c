@@ -49,7 +49,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 #define CHECK_ERR(a)                    if(a==-1){return LGW_REG_ERROR;}
 
-#define IF_HZ_TO_REG(f)     ((f << 5) / 15625)
+#define IF_HZ_TO_REG(f)     ((f * 32) / 15625)
 
 #define SX1302_FREQ_TO_REG(f)   (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
 
@@ -1897,6 +1897,9 @@ int sx1302_fetch(uint8_t * nb_pkt) {
 int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     int err;
     int ifmod; /* type of if_chain/modem a packet was received by */
+    int32_t if_freq_hz;
+    int32_t if_freq_error;
+    double pkt_freq_error;
     uint16_t payload_crc16_calc;
     uint8_t cr;
     int32_t timestamp_correction;
@@ -2065,14 +2068,32 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
                 break;
         }
 
+        /* Adjust the frequency offset with channel IF frequency error:
+        When the channel IF frequency has been configured, a precision error may have been introduced
+        due to the register precision. We calculate this error here, and adjust the returned frequency error
+        accordingly. */
+        if_freq_hz = context->if_chain_cfg[p->if_chain].freq_hz; /* The IF frequency set in the registers, is the offset from the zero IF. */
+        if_freq_error = if_freq_hz - (IF_HZ_TO_REG(if_freq_hz) * 15625 / 32); /* The error corresponds to how many Hz are missing to get to actual 0 IF. */
+        /* Example to better understand what we get here:
+            - For a channel set to IF 400000Hz
+            - The IF frequency register will actually be set to 399902Hz due to its resolution
+            - This means that the modem, to shift to 0 IF, will apply -399902, instead of -400000.
+            - This means that the modem will be centered +98hz above the real 0 IF
+            - As the freq_offset given is supposed to be relative to the 0 IF, we add this resolution error to it */
+        p->freq_offset += if_freq_error;
+
         /* Get timestamp correction to be applied to count_us */
         timestamp_correction = timestamp_counter_correction(context, p->bandwidth, p->datarate, p->coderate, pkt.crc_en, pkt.rxbytenb_modem, RX_DFT_PEAK_MODE_AUTO);
 
-        /* Compute fine timestmap for packets coming from the modem optimized for fine timestamping, if CRC is OK */
+        /* Compute fine timestamp for packets coming from the modem optimized for fine timestamping, if CRC is OK */
         p->ftime_received = false;
         p->ftime = 0;
         if ((pkt.num_ts_metrics_stored > 0) && (pkt.timing_set == true) && (p->status == STAT_CRC_OK)) {
-            err = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt, pkt.rx_rate_sf, context->if_chain_cfg[p->if_chain].freq_hz, &(p->ftime));
+            /* The actual packet frequency error compared to the channel frequency, need to compute the ftime */
+            pkt_freq_error = ((double)(p->freq_hz + p->freq_offset) / (double)(p->freq_hz)) - 1.0;
+
+            /* Compute the fine timestamp */
+            err = precise_timestamp_calculate(pkt.num_ts_metrics_stored, &pkt.timestamp_avg[0], pkt.timestamp_cnt, pkt.rx_rate_sf, context->if_chain_cfg[p->if_chain].freq_hz, pkt_freq_error, &(p->ftime));
             if (err == 0) {
                 p->ftime_received = true;
             }
@@ -2691,7 +2712,7 @@ int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, 
                 DEBUG_MSG("Note: preamble length adjusted to respect minimum FSK preamble size\n");
             }
             buff[0] = (uint8_t)(pkt_data->preamble >> 8);
-            buff[1] = (uint8_t)(pkt_data->preamble >> 8);
+            buff[1] = (uint8_t)(pkt_data->preamble >> 0);
             err = lgw_reg_wb(SX1302_REG_TX_TOP_FSK_PREAMBLE_SIZE_MSB_PREAMBLE_SIZE(pkt_data->rf_chain), buff, 2);
             CHECK_ERR(err);
 
@@ -2797,8 +2818,6 @@ double sx1302_dc_notch_delay(double if_freq_khz) {
     } else {
         delay = 1.7e-6 * pow(if_freq_khz, 4) + 2.4e-6 * pow(if_freq_khz, 3) - 0.0101 * pow(if_freq_khz, 2) - 0.01275 * if_freq_khz + 10.2922;
     }
-
-    printf("SX1302: DC notch filter delay : %f\n", delay);
 
     /* Number of 32MHz clock cycles */
     return delay;

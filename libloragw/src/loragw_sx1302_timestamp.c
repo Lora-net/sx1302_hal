@@ -475,7 +475,7 @@ int32_t timestamp_counter_correction(lgw_context_t * context, uint8_t bandwidth,
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, uint8_t sf, int32_t if_freq_hz, uint32_t * result_ftime) {
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, uint8_t sf, int32_t if_freq_hz, double pkt_freq_error, uint32_t * result_ftime) {
     int i, x, timestamp_pps_idx, timestamp_pps_idx_next, timestamp_pps_idx_prev;
     int32_t ftime_sum;
     int32_t ftime[256];
@@ -503,6 +503,9 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     /* Coarse timestamp correction to match with GW v2 (end of header -> end of preamble) */
     offset_preamble_hdr =   256 * (1 << sf) * (8 + 4 + (((sf == 5) || (sf == 6)) ? 2 : 0)) +
                             256 * ((1 << sf) / 4 - 1); /* 32e6 / 125e3 = 256 */
+
+    /* Take the packet frequency error in account in the offset */
+    offset_preamble_hdr += ((double)offset_preamble_hdr * pkt_freq_error + 0.5);
 
     timestamp_cnt_end_of_preamble = timestamp_cnt - offset_preamble_hdr + 2138; /* 2138 is the number of 32MHz clock cycle offset b/w GW_V2 and SX1303 decimation/filtering group delay */
 

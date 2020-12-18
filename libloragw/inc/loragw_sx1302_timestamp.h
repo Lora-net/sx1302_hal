@@ -141,7 +141,7 @@ int timestamp_counter_mode(bool ftime_enable);
 @param result_ftime A pointer to store the resulting fine timestamp
 @return 0 if success, -1 otherwise
 */
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, int32_t if_freq_hz, uint32_t * result_ftime);
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, int32_t if_freq_hz, double pkt_freq_error, uint32_t * result_ftime);
 
 #endif
 

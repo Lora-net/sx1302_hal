@@ -285,7 +285,7 @@ int main(int argc, char **argv)
 
     /* Launch Spectral Scan on each channels */
     for (j = 0; j < nb_channels; j++) {
-        x = lgw_spectral_scan_start(freq_hz, 2000);
+        x = lgw_spectral_scan_start(freq_hz, nb_scan);
         if (x != 0) {
             printf("ERROR: spectral scan start failed\n");
             continue;

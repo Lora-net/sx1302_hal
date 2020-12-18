@@ -26,7 +26,7 @@ more details.
 Those programs are included in the project to provide examples on how to use
 the HAL library, and to help the system builder test different parts of it.
 
-### 2.1. packet_frowarder ###
+### 2.1. packet_forwarder ###
 
 The packet forwarder is a program running on the host of a Lora gateway that
 forwards RF packets receive by the concentrator to a server through a IP/UDP
@@ -190,6 +190,22 @@ found in the `libtools` directory.
 * tinymt32: a pseudo-random generator (only used for debug/test)
 
 ## 7. Changelog
+
+### v2.0.1 ###
+
+> #### Updates
+
+The fine timestamping feature has been fully validated with this release.
+
+> #### Changes
+
+* HAL: Adjusted the freq_offset field of received packets, to take into account
+the channel IF resolution error.
+* HAL: Refined the fine timestamp offset compared to Gateway v2, by taking into
+account the frequency offset of the received packet.
+* HAL: Fixed the preamble length for FSK downlinks
+* MCU: Removed the binary compiled in debug mode.
+* util_spectral_scan: actually use the nb_scan input argument which was ignored.
 
 ### v2.0.0 ###
 
