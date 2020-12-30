@@ -3165,7 +3165,6 @@ void thread_gps_i2c(void) {
 
         /* poll gps for count of buffer bytes */
         while (i2c_gps_available(&n_queued)) {
-            MSG("WARNING: n_avail failed\n");
             wait_ms(DELAY_ON_I2C_GLITCH);
         }
 
@@ -3173,7 +3172,6 @@ void thread_gps_i2c(void) {
             wait_ms(200);
             continue;
         } else if (n_queued == 0x8000 || n_queued == 0x80) {
-            MSG("WARNING: [gps] n_queued value 0x%zx appears to be glitchy\n", n_queued);
             wait_ms(DELAY_ON_I2C_GLITCH);
             continue;
         }
@@ -3209,7 +3207,6 @@ void thread_gps_i2c(void) {
                         frame_size = 0;
                     } else if (latest_msg == INVALID) {
                         /* message header received but message appears to be corrupted */
-                        MSG("WARNING: [gps] could not get a valid message from GPS (no time)\n");
                         frame_size = 0;
                     } else if (latest_msg == UBX_NAV_TIMEGPS) {
                         gps_process_sync();
