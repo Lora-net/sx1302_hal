@@ -14,7 +14,7 @@
       "enable": true,
       "type": "SX1250",
       "freq": 917200000,
-      "rssi_offset": -207,
+      "rssi_offset": -215.4,
       "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
       "tx_enable": true,
       "tx_freq_min": 916700000,
