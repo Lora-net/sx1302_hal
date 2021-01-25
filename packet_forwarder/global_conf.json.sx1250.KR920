@@ -1,6 +1,6 @@
 {
   "SX130x_conf": {
-    "spidev_path": "/dev/spidev1.2",
+    "spidev_path": "/dev/spidev0.0",
     "lorawan_public": true,
     "clksrc": 0,
     "antenna_gain": 0,
@@ -98,7 +98,7 @@
   "gateway_conf": {
       "gateway_ID": "AA555A0000000000",
       /* change with default server address/ports */
-      "server_address": "helium-miner",
+      "server_address": "localhost",
       "serv_port_up": 1680,
       "serv_port_down": 1680,
       /* adjust the following parameters for your network */
