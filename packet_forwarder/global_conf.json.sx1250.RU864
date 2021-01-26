@@ -31,11 +31,11 @@
                 {"rf_power": 20, "pa_gain": 1, "pwr_idx": 12},
                 {"rf_power": 21, "pa_gain": 1, "pwr_idx": 13},
                 {"rf_power": 22, "pa_gain": 1, "pwr_idx": 14},
-                {"rf_power": 23, "pa_gain": 1, "pwr_idx": 16},
-                {"rf_power": 24, "pa_gain": 1, "pwr_idx": 17},
-                {"rf_power": 25, "pa_gain": 1, "pwr_idx": 18},
+                {"rf_power": 23, "pa_gain": 1, "pwr_idx": 15},
+                {"rf_power": 24, "pa_gain": 1, "pwr_idx": 16},
+                {"rf_power": 25, "pa_gain": 1, "pwr_idx": 17},
                 {"rf_power": 26, "pa_gain": 1, "pwr_idx": 19},
-                {"rf_power": 27, "pa_gain": 1, "pwr_idx": 22}
+                {"rf_power": 27, "pa_gain": 1, "pwr_idx": 20}
             ]
         },
         "radio_1": {
