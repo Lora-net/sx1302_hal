@@ -13,7 +13,7 @@
         "radio_0": {
             "enable": true,
             "type": "SX1250",
-            "freq": 867500000,
+            "freq": 868100000,
             "rssi_offset": -215.4,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": true,
@@ -41,47 +41,47 @@
         "radio_1": {
             "enable": true,
             "type": "SX1250",
-            "freq": 868500000,
+            "freq": 869400000,
             "rssi_offset": -215.4,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": false
         },
-        "chan_multiSF_0": {
+        "chan_multiSF_0": { //868.9, 25mW, 0.1% DC
             "enable": true,
             "radio": 1,
-            "if": -400000
+            "if": -500000
         },
-        "chan_multiSF_1": {
+        "chan_multiSF_1": { //869.1, 25mW, 0.1% DC
             "enable": true,
             "radio": 1,
-            "if": -200000
+            "if": -300000
         },
-        "chan_multiSF_2": {
+        "chan_multiSF_2": { //869.4, 500mW, 10% DC
             "enable": true,
             "radio": 1,
             "if": 0
         },
-        "chan_multiSF_3": {
+        "chan_multiSF_3": { //867.7, 25mW, 1% DC
             "enable": true,
             "radio": 0,
             "if": -400000
         },
-        "chan_multiSF_4": {
+        "chan_multiSF_4": { //867.9, 25mW, 1% DC
             "enable": true,
             "radio": 0,
             "if": -200000
         },
-        "chan_multiSF_5": {
+        "chan_multiSF_5": { //868.1, 25mW, 1% DC
             "enable": true,
             "radio": 0,
             "if": 0
         },
-        "chan_multiSF_6": {
+        "chan_multiSF_6": { //868.3, 25mW, 1% DC
             "enable": true,
             "radio": 0,
             "if": 200000
         },
-        "chan_multiSF_7": {
+        "chan_multiSF_7": { //868.5, 25mW, 1% DC
             "enable": true,
             "radio": 0,
             "if": 400000
