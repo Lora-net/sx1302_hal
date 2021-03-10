@@ -89,8 +89,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define FW_VERSION_AGC      10 /* Expected version of AGC firmware */
-#define FW_VERSION_ARB      2  /* Expected version of arbiter firmware */
+#define FW_VERSION_AGC_SX1250   10 /* Expected version of AGC firmware for sx1250 based gateway */
+                                   /* v10 is same as v6 with improved channel check time for LBT */
+#define FW_VERSION_AGC_SX125X   6  /* Expected version of AGC firmware for sx1255/sx1257 based gateway */
+#define FW_VERSION_ARB          2  /* Expected version of arbiter firmware */
 
 /* Useful bandwidth of SX125x radios to consider depending on channel bandwidth */
 /* Note: the below values come from lab measurements. For any question, please contact Semtech support */
@@ -845,6 +847,7 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
 
 int lgw_start(void) {
     int i, err;
+    uint8_t fw_version_agc;
 
     DEBUG_PRINTF(" --- %s\n", "IN");
 
@@ -892,7 +895,7 @@ int lgw_start(void) {
                     err = sx125x_setup(i, CONTEXT_BOARD.clksrc, true, CONTEXT_RF_CHAIN[i].type, CONTEXT_RF_CHAIN[i].freq_hz);
                     break;
                 default:
-                    DEBUG_PRINTF("ERROR: RADIO TYPE NOT SUPPORTED (RF_CHAIN %d)\n", i);
+                    printf("ERROR: RADIO TYPE NOT SUPPORTED (RF_CHAIN %d)\n", i);
                     return LGW_HAL_ERROR;
             }
             if (err != LGW_REG_SUCCESS) {
@@ -1009,6 +1012,7 @@ int lgw_start(void) {
                 printf("ERROR: failed to load AGC firmware for sx1250\n");
                 return LGW_HAL_ERROR;
             }
+            fw_version_agc = FW_VERSION_AGC_SX1250;
             break;
         case LGW_RADIO_TYPE_SX1255:
         case LGW_RADIO_TYPE_SX1257:
@@ -1018,11 +1022,13 @@ int lgw_start(void) {
                 printf("ERROR: failed to load AGC firmware for sx125x\n");
                 return LGW_HAL_ERROR;
             }
+            fw_version_agc = FW_VERSION_AGC_SX125X;
             break;
         default:
-            break;
+            printf("ERROR: failed to load AGC firmware, radio type not supported (%d)\n", CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type);
+            return LGW_HAL_ERROR;
     }
-    err = sx1302_agc_start(FW_VERSION_AGC, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, CONTEXT_BOARD.full_duplex, CONTEXT_SX1261.lbt_conf.enable);
+    err = sx1302_agc_start(fw_version_agc, CONTEXT_RF_CHAIN[CONTEXT_BOARD.clksrc].type, SX1302_AGC_RADIO_GAIN_AUTO, SX1302_AGC_RADIO_GAIN_AUTO, CONTEXT_BOARD.full_duplex, CONTEXT_SX1261.lbt_conf.enable);
     if (err != LGW_REG_SUCCESS) {
         printf("ERROR: failed to start AGC firmware\n");
         return LGW_HAL_ERROR;
@@ -1098,7 +1104,7 @@ int lgw_start(void) {
 
             err = stts751_configure(ts_fd, ts_addr);
             if (err != LGW_I2C_SUCCESS) {
-                printf("INFO: no temeprature sensor found on port 0x%02X\n", ts_addr);
+                printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
                 i2c_linuxdev_close(ts_fd);
                 ts_fd = -1;
             } else {
@@ -1107,7 +1113,7 @@ int lgw_start(void) {
             }
         }
         if (i == sizeof I2C_PORT_TEMP_SENSOR) {
-            printf("ERROR: no temeprature sensor found.\n");
+            printf("ERROR: no temperature sensor found.\n");
             return LGW_HAL_ERROR;
         }
 

@@ -191,6 +191,18 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
+### v2.0.2 ###
+
+> #### Updates
+
+Fixed AGC firmware version check for sx1255/sx1257 based platforms (full-duplex
+gateways...).
+
+> #### Changes
+
+* HAL: AGC firmware version for sx1255/sx1257 based gateways is v6.
+* HAL: minor cosmetic changes & typo fixing.
+
 ### v2.0.1 ###
 
 > #### Updates

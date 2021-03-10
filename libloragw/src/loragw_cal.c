@@ -571,7 +571,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     int16_t offset_i_tmp = 0;
     int16_t offset_q_tmp = 0;
 
-    printf("IQ sequence:");
+    printf("IQ sequence:\n");
     for (i = 0; i < 9; i++) {
         if (index[i] == 0) {
             offset_i_tmp = offset_i_tmp + 0;
@@ -613,7 +613,7 @@ int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain
     sx1302_agc_wait_status(0x0c + 20);
 
 #if DEBUG_CAL == 1
-    printf("TX_SIG values returned by signal analyzer:\n");
+    printf("TX_SIG values returned by signal analyzer:");
     for (i = 0; i < 40; i++) {
         if (i%5 == 0) {
             printf("\n");
