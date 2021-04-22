@@ -146,8 +146,6 @@ const char * cmd_get_str(const uint8_t cmd) {
             return "REQ_RESET";
         case ORDER_ID__REQ_WRITE_GPIO:
             return "REQ_WRITE_GPIO";
-        case ORDER_ID__REQ_SPI:
-            return "REQ_SPI";
         case ORDER_ID__REQ_MULTIPLE_SPI:
             return "REQ_MULTIPLE_SPI";
         default:
@@ -197,6 +195,10 @@ int write_req(int fd, order_id_t cmd, const uint8_t * payload, uint16_t payload_
     int n;
     /* performances variables */
     struct timeval tm;
+    /* debug variables */
+#if DEBUG_MCU == 1
+    struct timeval write_tv;
+#endif
 
     /* Record function start time */
     _meas_time_start(&tm);
@@ -231,7 +233,10 @@ int write_req(int fd, order_id_t cmd, const uint8_t * payload, uint16_t payload_
         }
     }
 
-    DEBUG_PRINTF("\nINFO: write_req 0x%02X (%s) done, id:0x%02X\n", cmd, cmd_get_str(cmd), buf_w[0]);
+#if DEBUG_MCU == 1
+    gettimeofday(&write_tv, NULL);
+#endif
+    DEBUG_PRINTF("\nINFO: %ld.%ld: write_req 0x%02X (%s) done, id:0x%02X, size:%u\n", write_tv.tv_sec, write_tv.tv_usec, cmd, cmd_get_str(cmd), buf_w[0], payload_size);
 
 #if DEBUG_VERBOSE
     int i;
@@ -261,6 +266,10 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
     int nb_read = 0;
     /* performances variables */
     struct timeval tm;
+    /* debug variables */
+#if DEBUG_MCU == 1
+    struct timeval read_tv;
+#endif
 
     /* Record function start time */
     _meas_time_start(&tm);
@@ -274,7 +283,10 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
         perror("ERROR: Unable to read /dev/ttyACMx - ");
         return -1;
     } else {
-        DEBUG_PRINTF("INFO: read %d bytes for header from gateway\n", n);
+#if DEBUG_MCU == 1
+        gettimeofday(&read_tv, NULL);
+#endif
+        DEBUG_PRINTF("INFO: %ld.%ld: read %d bytes for header from gateway\n", read_tv.tv_sec, read_tv.tv_usec, n);
     }
 
     /* Compute time spent in this function */
@@ -317,7 +329,10 @@ int read_ack(int fd, uint8_t * hdr, uint8_t * buf, size_t buf_size) {
                 perror("ERROR: Unable to read /dev/ttyACMx - ");
                 return -1;
             } else {
-                DEBUG_PRINTF("INFO: read %d bytes from gateway\n", n);
+#if DEBUG_MCU == 1
+                gettimeofday(&read_tv, NULL);
+#endif
+                DEBUG_PRINTF("INFO: %ld.%ld: read %d bytes from gateway\n", read_tv.tv_sec, read_tv.tv_usec, n);
                 nb_read += n;
             }
         } while (nb_read < (int)size); /* we want to read only the expected payload, not more */
@@ -450,29 +465,6 @@ int decode_ack_gpio_access(const uint8_t * hdr, const uint8_t * payload, uint8_t
     DEBUG_PRINTF("   id:           0x%02X\n", cmd_get_id(hdr));
     DEBUG_PRINTF("   size:         %u\n", cmd_get_size(hdr));
     DEBUG_PRINTF("   status:       %u\n", *write_status);
-#endif
-
-    return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int decode_ack_spi_access(const uint8_t * hdr, const uint8_t * payload) {
-    /* sanity checks */
-    if ((hdr == NULL) || (payload == NULL)) {
-        printf("ERROR: invalid parameter\n");
-        return -1;
-    }
-
-    if (cmd_get_type(hdr) != ORDER_ID__ACK_SPI) {
-        printf("ERROR: wrong ACK type for ACK_SPI (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_SPI, cmd_get_type(hdr));
-        return -1;
-    }
-
-#if DEBUG_VERBOSE
-    DEBUG_MSG   ("## ACK_SPI_ACCESS\n");
-    DEBUG_PRINTF("   id:           0x%02X\n", cmd_get_id(hdr));
-    DEBUG_PRINTF("   size:         %u\n", cmd_get_size(hdr));
 #endif
 
     return 0;

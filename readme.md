@@ -191,6 +191,30 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
+### v2.1.0 ###
+
+> #### Updates
+
+This release only targets USB Corecell (no change for SPI connexion type).
+The USB-SPI bridge firmware, which runs on the STM32 MCU of the USB Corecell, has
+been updated for API clean-up and robustness improvements.
+
+> #### Changes
+
+* MCU: USB-SPI bridge firmware binary v1.0.0.
+	* Removed obsolete commands (ORDER_ID__REQ_SPI, ORDER_ID__ACK_SPI)
+	* Command index shifted after obsolete commands removal (ORDER_ID__REQ_MULTIPLE_SPI, ORDER_ID__ACK_MULTIPLE_SPI)
+	* Command parser sends ORDER_ID__UNKNOW_CMD in case of wrong command size.
+	* Code clean-up (typo fixed, comments added...)
+	* Implemented Error_Handler() function to reset the MCU in case of fatal error.
+	* Fixed a potential roll-over issue in read_write_spi() function.
+	* Increased delay tolerance for host feedback on USB transfers.
+* HAL: Command interface updated for MCU firmware v1.0.0.
+	* Removed obsolete commands from enum order_id_e
+	* Shifted commands enum index according to USB-SPI bridge update.
+	* Removed decode_ack_spi_access() unused function.
+* HAL: Added timing debug information under DEBUG_MCU.
+
 ### v2.0.2 ###
 
 > #### Updates

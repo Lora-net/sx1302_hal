@@ -28,7 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-static const char mcu_version_string[] = "00.02.06";
+static const char mcu_version_string[] = "01.00.00";
 
 #define MAX_SIZE_COMMAND ( 4200 )
 #define MAX_SPI_COMMAND ( MAX_SIZE_COMMAND - CMD_OFFSET__DATA - 1 )
@@ -45,18 +45,16 @@ typedef enum order_id_e
     ORDER_ID__REQ_BOOTLOADER_MODE = 0x02,
     ORDER_ID__REQ_RESET           = 0x03,
     ORDER_ID__REQ_WRITE_GPIO      = 0x04,
-    ORDER_ID__REQ_SPI             = 0x05, /* deprecated */
-    ORDER_ID__REQ_MULTIPLE_SPI    = 0x06,
+    ORDER_ID__REQ_MULTIPLE_SPI    = 0x05,
 
     ORDER_ID__ACK_PING            = 0x40,
     ORDER_ID__ACK_GET_STATUS      = 0x41,
     ORDER_ID__ACK_BOOTLOADER_MODE = 0x42,
     ORDER_ID__ACK_RESET           = 0x43,
     ORDER_ID__ACK_WRITE_GPIO      = 0x44,
-    ORDER_ID__ACK_SPI             = 0x45, /* deprecated */
-    ORDER_ID__ACK_MULTIPLE_SPI    = 0x46,
+    ORDER_ID__ACK_MULTIPLE_SPI    = 0x45,
 
-    ORDER_ID__UNKNOW_CMD = 0xFF
+    ORDER_ID__CMD_ERROR = 0xFF
 } order_id_t;
 
 typedef enum
