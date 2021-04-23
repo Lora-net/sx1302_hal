@@ -1419,7 +1419,7 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
             printf("ERROR: failed to set voltage by ad5338r\n");
             return LGW_HAL_ERROR;
         }
-        printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(2.51), (uint8_t)VOLTAGE2HEX_L(2.51));
+        printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(3.08), (uint8_t)VOLTAGE2HEX_L(3.08));
     }
 
     /* Start Listen-Before-Talk */
