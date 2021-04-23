@@ -259,7 +259,7 @@ temperature sensor which is on the CoreCell reference design.
 ### 2.12. loragw_ad5338r
 
 This module contains a very basic driver for the Analog Devices AD5338R DAC used
-on the Semtech CN490 Full Duplex reference design to set the PA fixed gain.
+on the Semtech CN490/US915 Full Duplex reference design to set the PA fixed gain.
 
 ### 2.13. loragw_i2c
 

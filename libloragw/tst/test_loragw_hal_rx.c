@@ -84,7 +84,7 @@ void usage(void) {
     printf(" -m <uint>     Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]\n");
     printf(" -j            Set radio in single input mode (SX1250 only)\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
-    printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
+    printf(" --fdd         Enable Full-Duplex mode (CN490/US915 FDD reference design)\n");
 }
 
 /* -------------------------------------------------------------------------- */

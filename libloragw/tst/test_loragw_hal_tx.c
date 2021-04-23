@@ -97,7 +97,7 @@ void usage(void) {
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
-    printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
+    printf(" --fdd         Enable Full-Duplex mode (CN490/US915 FDD reference design)\n");
 }
 
 /* handle signals */

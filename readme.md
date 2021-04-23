@@ -191,6 +191,21 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
+### v2.0.2-FDD-US915 ###
+
+> #### Updates
+
+Added support for US915 full-duplex reference design.
+
+WARNING: do not use this version with CN490 reference design without adjusting
+AD5338R voltage.
+
+> #### Changes
+
+* HAL: Updated AD5338R voltage to adjust PA gain for US915 design.
+* Packet Forwarder: Added global_conf.json.sx1257.US915.full-duplex.cavity-duplexer
+to be used with US915 full-duplex reference design.
+
 ### v2.0.2 ###
 
 > #### Updates

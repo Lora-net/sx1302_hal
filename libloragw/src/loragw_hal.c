@@ -1117,7 +1117,7 @@ int lgw_start(void) {
             return LGW_HAL_ERROR;
         }
 
-        /* Configure ADC AD338R for full duplex (CN490 reference design) */
+        /* Configure ADC AD338R for full duplex reference design */
         if (CONTEXT_BOARD.full_duplex == true) {
             err = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_DAC_AD5338R, &ad_fd);
             if (err != LGW_I2C_SUCCESS) {
@@ -1411,9 +1411,9 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
         return LGW_HAL_ERROR;
     }
 
-    /* Set PA gain with AD5338R when using full duplex CN490 ref design */
+    /* Set PA gain with AD5338R when using full duplex ref design */
     if (CONTEXT_BOARD.full_duplex == true) {
-        uint8_t volt_val[AD5338R_CMD_SIZE] = {0x39, VOLTAGE2HEX_H(2.51), VOLTAGE2HEX_L(2.51)}; /* set to 2.51V */
+        uint8_t volt_val[AD5338R_CMD_SIZE] = {0x39, VOLTAGE2HEX_H(3.08), VOLTAGE2HEX_L(3.08)}; /* set to 3.08V */
         err = ad5338r_write(ad_fd, I2C_PORT_DAC_AD5338R, volt_val);
         if (err != LGW_I2C_SUCCESS) {
             printf("ERROR: failed to set voltage by ad5338r\n");
