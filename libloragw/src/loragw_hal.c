@@ -52,7 +52,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- DEBUG CONSTANTS ------------------------------------------------------ */
 
 #define HAL_DEBUG_FILE_LOG  0
-
+#define ENABLE_TEMP_SENSOR 0
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -1093,6 +1093,7 @@ int lgw_start(void) {
     dbg_init_random();
 
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+#if ENABLE_TEMP_SENSOR
         /* Find the temperature sensor on the known supported ports */
         for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
             ts_addr = I2C_PORT_TEMP_SENSOR[i];
@@ -1142,6 +1143,7 @@ int lgw_start(void) {
             }
             printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(0), (uint8_t)VOLTAGE2HEX_L(0));
         }
+#endif
     }
 
     /* Connect to the external sx1261 for LBT or Spectral Scan */
@@ -1222,6 +1224,7 @@ int lgw_stop(void) {
     }
 
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+#if ENABLE_TEMP_SENSOR
         DEBUG_MSG("INFO: Closing I2C for temperature sensor\n");
         x = i2c_linuxdev_close(ts_fd);
         if (x != 0) {
@@ -1237,6 +1240,7 @@ int lgw_stop(void) {
                 err = LGW_HAL_ERROR;
             }
         }
+#endif
     }
 
     CONTEXT_STARTED = false;
@@ -1286,12 +1290,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("WARNING: not enough space allocated, fetched %d packet(s), %d will be left in RX buffer\n", nb_pkt_fetched, nb_pkt_left);
     }
 
+#if ENABLE_TEMP_SENSOR
     /* Apply RSSI temperature compensation */
     res = lgw_get_temperature(&current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
     }
+#endif
 
     /* Iterate on the RX buffer to get parsed packets */
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {

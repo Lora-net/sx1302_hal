@@ -2,7 +2,7 @@
 
 curPath=`pwd`
 
-if [ "$1" == "build" ]; then
+if [ "$1" == "all" ]; then
   cpu=$(arch)
 
   if [ "$cpu" == "x86_64" ]; then
@@ -21,6 +21,11 @@ fi
 
 if [ "$1" != "install" ]; then
   echo usage: ./build.sh build, or ./build.sh install
+  exit 1
+fi
+
+if [ "$1" == "install" ]; then
+  make install && make install_conf
   exit 1
 fi
 
