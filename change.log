@@ -1,0 +1,32 @@
+change.log
+
+1.add openwrt platorm by zhaoyu at 2021.05.21
+  168K    ./boot
+  168K    ./chip_id
+  8.0K    ./global_conf.json.sx1250.AS923.USB
+  8.0K    ./global_conf.json.sx1250.CN490
+  8.0K    ./global_conf.json.sx1250.CN490.USB
+  8.0K    ./global_conf.json.sx1250.EU868
+  8.0K    ./global_conf.json.sx1250.EU868.USB
+  8.0K    ./global_conf.json.sx1250.US915
+  8.0K    ./global_conf.json.sx1250.US915.USB
+  4.0K    ./global_conf.json.sx1255.CN490.full-duplex
+  8.0K    ./global_conf.json.sx1257.EU868
+  256K    ./lora_pkt_fwd
+  56K     ./net_downlink
+  4.0K    ./reset_lgw.sh
+  172K    ./spectral_scan
+  4.0K    ./start.sh
+  184K    ./test_loragw_cal_sx125x
+  52K     ./test_loragw_capture_ram
+  172K    ./test_loragw_com
+  172K    ./test_loragw_com_sx1250
+  172K    ./test_loragw_com_sx1261
+  172K    ./test_loragw_counter
+  180K    ./test_loragw_gps
+  176K    ./test_loragw_hal_rx
+  180K    ./test_loragw_hal_tx
+  168K    ./test_loragw_i2c
+  168K    ./test_loragw_reg
+  172K    ./test_loragw_sx1261_rssi
+  168K    ./test_loragw_toa
