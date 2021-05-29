@@ -1114,7 +1114,7 @@ int lgw_start(void) {
         }
         if (i == sizeof I2C_PORT_TEMP_SENSOR) {
             printf("ERROR: no temperature sensor found.\n");
-            return LGW_HAL_ERROR;
+            return LGW_I2C_SUCCESS; //TODO:
         }
 
         /* Configure ADC AD338R for full duplex (CN490 reference design) */
@@ -1609,7 +1609,8 @@ int lgw_get_temperature(float* temperature) {
 
     DEBUG_PRINTF(" --- %s\n", "OUT");
 
-    return err;
+    return LGW_HAL_SUCCESS; //TODO: Fix Temp Sensor
+    //return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
