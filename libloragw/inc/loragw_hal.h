@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 
 #include "loragw_com.h"
+#include "loragw_i2c.h"
 
 #include "config.h"     /* library configuration options (dynamically generated) */
 
@@ -158,6 +159,7 @@ struct lgw_conf_board_s {
     bool            lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
     uint8_t         clksrc;         /*!> Index of RF chain which provides clock to concentrator */
     bool            full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
+    lgw_temp_type_t  temp_type;     /*!> The external device type to use for temperature adjusted RSSI reading */
     lgw_com_type_t  com_type;       /*!> The COMmunication interface (SPI/USB) to connect to the SX1302 */
     char            com_path[64];   /*!> Path to access the COM device to connect to the SX1302 */
 };

@@ -24,6 +24,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "config.h"    /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
+/* --- PUBLIC TYPES --------------------------------------------------------- */
+
+typedef enum temp_type_e {
+	LGW_TEMP_UNKNOWN,
+	LGW_TEMP_FAKE,
+    LGW_TEMP_SHT3x
+} lgw_temp_type_t;
+
+
+/* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 #define LGW_I2C_SUCCESS     0
@@ -79,6 +89,11 @@ int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_
 @return 0 if I2C data write is successful, -1 else
 */
 int i2c_linuxdev_write_buffer(int i2c_fd, uint8_t device_addr, uint8_t *buffer, uint8_t size);
+
+/**
+ *
+ **/
+lgw_temp_type_t lgw_temp_type(void);
 
 #endif
 

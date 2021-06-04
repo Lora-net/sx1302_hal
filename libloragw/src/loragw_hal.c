@@ -72,6 +72,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 #define CONTEXT_STARTED         lgw_context.is_started
+#define CONTEXT_TEMP_TYPE		lgw_context.board_cfg.temp_type
 #define CONTEXT_COM_TYPE        lgw_context.board_cfg.com_type
 #define CONTEXT_COM_PATH        lgw_context.board_cfg.com_path
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
@@ -122,6 +123,7 @@ the _start and _send functions assume they are valid.
 */
 static lgw_context_t lgw_context = {
     .is_started = false,
+	.board_cfg.temp_type = LGW_TEMP_UNKNOWN,
     .board_cfg.com_type = LGW_COM_SPI,
     .board_cfg.com_path = "/dev/spidev0.0",
     .board_cfg.lorawan_public = true,
@@ -468,6 +470,7 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
     CONTEXT_COM_TYPE = conf->com_type;
+    CONTEXT_TEMP_TYPE = conf->temp_type;
     strncpy(CONTEXT_COM_PATH, conf->com_path, sizeof CONTEXT_COM_PATH);
     CONTEXT_COM_PATH[sizeof CONTEXT_COM_PATH - 1] = '\0'; /* ensure string termination */
 
@@ -1596,21 +1599,32 @@ int lgw_get_temperature(float* temperature) {
     CHECK_NULL(temperature);
 
     switch (CONTEXT_COM_TYPE) {
-        case LGW_COM_SPI:
-            err = stts751_get_temperature(ts_fd, ts_addr, temperature);
-            break;
-        case LGW_COM_USB:
-            err = lgw_com_get_temperature(temperature);
-            break;
-        default:
-            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
-            break;
+		case LGW_COM_SPI:
+			err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+			break;
+		case LGW_COM_USB:
+			err = lgw_com_get_temperature(temperature);
+			break;
+		default:
+			printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+			break;
+	}
+
+    //Always prefer the reference temperature methods, and only fall though to third party options if they fail.
+    if(err == LGW_HAL_ERROR) {
+		if (CONTEXT_TEMP_TYPE == LGW_TEMP_FAKE) {
+			printf("WARNING: Temperature reading has been faked. \n"); //Be explicit that a faked reading is not recommenced.
+			*temperature = 30.0f;
+			err = LGW_HAL_SUCCESS;
+		}
     }
+    /*
+	 *
+	 */
 
     DEBUG_PRINTF(" --- %s\n", "OUT");
 
-    return LGW_HAL_SUCCESS; //TODO: Fix Temp Sensor
-    //return err;
+    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

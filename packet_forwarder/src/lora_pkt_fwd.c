@@ -258,6 +258,7 @@ static struct lgw_conf_debug_s debugconf;
 static uint32_t nb_pkt_received_ref[16];
 
 /* Interface type */
+static lgw_temp_type_t temp_type = LGW_TEMP_UNKNOWN; /* Default to fail unless explicit in conf file that we are faking temperature */
 static lgw_com_type_t com_type = LGW_COM_SPI;
 
 /* Spectral Scan */
@@ -368,6 +369,18 @@ static int parse_SX130x_configuration(const char * conf_file) {
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
+    str = json_object_get_string(conf_obj, "temp_type");
+    if (str == NULL) {
+    	boardconf.temp_type = LGW_TEMP_UNKNOWN;
+    } else if (!strncmp(str, "FAKE", 3) || !strncmp(str, "fake", 3)) {
+        boardconf.temp_type = LGW_TEMP_FAKE;
+    } else if (!strncmp(str, "SHT3x", 3) || !strncmp(str, "sht", 3) || !strncmp(str, "SHT", 3)) {
+        boardconf.temp_type = LGW_TEMP_SHT3x;
+    } else {
+        MSG("ERROR: invalid temperature module type: %s (should be undefined, FAKE or SHT3x)\n", str);
+        return -1;
+    }
+    temp_type = boardconf.temp_type;
     str = json_object_get_string(conf_obj, "com_type");
     if (str == NULL) {
         MSG("ERROR: com_type must be configured in %s\n", conf_file);
