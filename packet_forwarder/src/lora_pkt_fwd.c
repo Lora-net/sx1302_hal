@@ -374,10 +374,10 @@ static int parse_SX130x_configuration(const char * conf_file) {
     	boardconf.temp_type = LGW_TEMP_UNKNOWN;
     } else if (!strncmp(str, "FAKE", 3) || !strncmp(str, "fake", 3)) {
         boardconf.temp_type = LGW_TEMP_FAKE;
-    } else if (!strncmp(str, "SHT3x", 3) || !strncmp(str, "sht", 3) || !strncmp(str, "SHT", 3)) {
-        boardconf.temp_type = LGW_TEMP_SHT3x;
+    } else if (!strncmp(str, "sht", 3) || !strncmp(str, "SHT", 3)) {
+        boardconf.temp_type = LGW_TEMP_SHT;
     } else {
-        MSG("ERROR: invalid temperature module type: %s (should be undefined, FAKE or SHT3x)\n", str);
+        MSG("ERROR: invalid temperature module type: %s (should be undefined, FAKE or SHT)\n", str);
         return -1;
     }
     temp_type = boardconf.temp_type;

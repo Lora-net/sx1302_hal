@@ -41,11 +41,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define STTS751_REG_TEMP_H      0x00
+#define STTS751_REG_TEMP_L      0x02
 #define STTS751_REG_STATUS      0x01
 #define STTS751_STATUS_TRIPT    BIT(0)
 #define STTS751_STATUS_TRIPL    BIT(5)
 #define STTS751_STATUS_TRIPH    BIT(6)
-#define STTS751_REG_TEMP_L      0x02
 #define STTS751_REG_CONF        0x03
 #define STTS751_CONF_RES_MASK   0x0C
 #define STTS751_CONF_RES_SHIFT  2

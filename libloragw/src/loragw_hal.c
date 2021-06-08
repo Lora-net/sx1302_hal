@@ -45,6 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx1302.h"
 #include "loragw_sx1302_timestamp.h"
 #include "loragw_stts751.h"
+#include "loragw_sht.h"
 #include "loragw_ad5338r.h"
 #include "loragw_debug.h"
 
@@ -1095,30 +1096,70 @@ int lgw_start(void) {
     /* Configure the pseudo-random generator (For Debug) */
     dbg_init_random();
 
-    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
-        /* Find the temperature sensor on the known supported ports */
-        for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
-            ts_addr = I2C_PORT_TEMP_SENSOR[i];
-            err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
-                return LGW_HAL_ERROR;
-            }
+    if (CONTEXT_TEMP_TYPE != LGW_TEMP_UNKNOWN) {
+    	switch(CONTEXT_TEMP_TYPE) {
+			case LGW_TEMP_FAKE: /* Has a positive value */
+				printf("WARNING: Using fake temperature readings.\n");
+				break;
+    		case LGW_TEMP_SHT:
+    			/* Find the temperature sensor on the known supported ports */
+    			for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SHT_SENSOR); i++) {
+    				ts_addr = I2C_PORT_TEMP_SHT_SENSOR[i];
+    				err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+    				if (err != LGW_I2C_SUCCESS) {
+    					printf("ERROR: failed to open I2C for SHT temperature sensor on port 0x%02X\n", ts_addr);
+    					return LGW_HAL_ERROR;
+    				}
 
-            err = stts751_configure(ts_fd, ts_addr);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
-                i2c_linuxdev_close(ts_fd);
-                ts_fd = -1;
-            } else {
-                printf("INFO: found temperature sensor on port 0x%02X\n", ts_addr);
-                break;
-            }
-        }
-        if (i == sizeof I2C_PORT_TEMP_SENSOR) {
-            printf("ERROR: no temperature sensor found.\n");
-            return LGW_I2C_SUCCESS; //TODO:
-        }
+    				err = sht_configure(ts_fd, ts_addr);
+    				if (err != LGW_I2C_SUCCESS) {
+    					printf("INFO: no SHT temperature sensor found on port 0x%02X\n", ts_addr);
+    					i2c_linuxdev_close(ts_fd);
+    					ts_fd = -1;
+    				} else {
+    					printf("INFO: found SHT temperature sensor on port 0x%02X\n", ts_addr);
+    					break;
+    				}
+    			}
+    			if (i == sizeof I2C_PORT_TEMP_SENSOR) {
+    				printf("ERROR: no SHT temperature sensor found.\n");
+    				return LGW_I2C_SUCCESS; //TODO:
+    			}
+    			break;
+    		default:
+    			printf("ERROR: Unable to configure custom temperature sensor (Shouldn't happen).\n");
+    			return LGW_I2C_SUCCESS; //TODO:
+    			break;
+    	}
+    	//TODO: Setup SHT
+    }
+
+    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+    	if (CONTEXT_TEMP_TYPE == LGW_TEMP_UNKNOWN) {
+			/* Find the temperature sensor on the known supported ports */
+			for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
+				ts_addr = I2C_PORT_TEMP_SENSOR[i];
+				err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+				if (err != LGW_I2C_SUCCESS) {
+					printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
+					return LGW_HAL_ERROR;
+				}
+
+				err = stts751_configure(ts_fd, ts_addr);
+				if (err != LGW_I2C_SUCCESS) {
+					printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
+					i2c_linuxdev_close(ts_fd);
+					ts_fd = -1;
+				} else {
+					printf("INFO: found temperature sensor on port 0x%02X\n", ts_addr);
+					break;
+				}
+			}
+			if (i == sizeof I2C_PORT_TEMP_SENSOR) {
+				printf("ERROR: no temperature sensor found.\n");
+				return LGW_I2C_SUCCESS; //TODO:
+			}
+    	}
 
         /* Configure ADC AD338R for full duplex (CN490 reference design) */
         if (CONTEXT_BOARD.full_duplex == true) {
@@ -1598,26 +1639,31 @@ int lgw_get_temperature(float* temperature) {
 
     CHECK_NULL(temperature);
 
-    switch (CONTEXT_COM_TYPE) {
-		case LGW_COM_SPI:
-			err = stts751_get_temperature(ts_fd, ts_addr, temperature);
-			break;
-		case LGW_COM_USB:
-			err = lgw_com_get_temperature(temperature);
-			break;
-		default:
-			printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
-			break;
-	}
-
-    //Always prefer the reference temperature methods, and only fall though to third party options if they fail.
-    if(err == LGW_HAL_ERROR) {
-		if (CONTEXT_TEMP_TYPE == LGW_TEMP_FAKE) {
+   	switch (CONTEXT_TEMP_TYPE) {
+		case LGW_TEMP_FAKE:
 			printf("WARNING: Temperature reading has been faked. \n"); //Be explicit that a faked reading is not recommenced.
 			*temperature = 30.0f;
 			err = LGW_HAL_SUCCESS;
-		}
-    }
+			break;
+		case LGW_TEMP_SHT:
+			printf("WARNING: SHTxx Temperature reading needs developing. \n"); //TODO: Make this really use the module
+			static uint8_t sht_addr = 0x70;
+			err = sht_get_temperature(ts_fd, sht_addr, temperature);
+			break;
+		default:
+			//If no third party temperature module is configured, assume setup conforms to Corecell reference design.
+		    switch (CONTEXT_COM_TYPE) {
+				case LGW_COM_SPI:
+					err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+					break;
+				case LGW_COM_USB:
+					err = lgw_com_get_temperature(temperature);
+					break;
+				default:
+					printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+					break;
+			}
+	}
     /*
 	 *
 	 */

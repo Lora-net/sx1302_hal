@@ -29,7 +29,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 typedef enum temp_type_e {
 	LGW_TEMP_UNKNOWN,
 	LGW_TEMP_FAKE,
-    LGW_TEMP_SHT3x
+    LGW_TEMP_SHT
 } lgw_temp_type_t;
 
 
