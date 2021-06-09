@@ -37,7 +37,7 @@ init() {
 
 reset() {
     echo "CoreCell reset through GPIO$SX1302_RESET_PIN..."
-    echo "SX1261 reset through GPIO$SX1302_RESET_PIN..."
+    echo "SX1261 reset through GPIO$SX1261_RESET_PIN..."
     echo "CoreCell power enable through GPIO$SX1302_POWER_EN_PIN..."
     echo "CoreCell ADC reset through GPIO$AD5338R_RESET_PIN..."
 
