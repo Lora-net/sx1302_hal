@@ -23,6 +23,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_i2c.h"
 #include "loragw_sht.h"
 
+#include <sys/ioctl.h>
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
+#include <unistd.h> /* usleep */
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -39,23 +44,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
-/* all measurement commands return T (CRC) RH (CRC) */
-#define SHTC1_CMD_MEASURE_HPM 0x7866
-#define SHTC1_CMD_MEASURE_LPM 0x609C
-
-//static const uint16_t SHTC3_CMD_SLEEP = 0xB098;
-//static const uint16_t SHTC3_CMD_WAKEUP = 0x3517;
-
-#define CRC8_LEN 1
-#define CRC8_POLYNOMIAL 0x31
-#define CRC8_INIT 0xFF
-
-#define SENSIRION_COMMAND_SIZE 2
-
-#define SENSIRION_WORD_SIZE 2
-#define SENSIRION_NUM_WORDS(x) (sizeof(x) / SENSIRION_WORD_SIZE)
-#define SENSIRION_MAX_BUFFER_WORDS 32
 
 #define NO_ERROR 0
 /* deprecated defines, use NO_ERROR or custom error codes instead */
@@ -95,7 +83,6 @@ int sht3c_sleep(int i2c_fd, uint8_t i2c_addr) {
 
 int sht_configure(int i2c_fd, uint8_t i2c_addr) {
     int err;
-    //uint8_t val;
 
     /* Check Input Params */
     if (i2c_fd <= 0) {
@@ -104,18 +91,18 @@ int sht_configure(int i2c_fd, uint8_t i2c_addr) {
     }
 
     err = sht3c_wakeup(i2c_fd, i2c_addr);
-    //err = sht3c_sleep(i2c_fd, i2c_addr);
+    err = sht3c_sleep(i2c_fd, i2c_addr);
 
     return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature) {
-    int err;
-    uint8_t high_byte, low_byte;
-    int8_t h;
-    uint16_t words[2];
+	int err;
+	#define BUFFER_SIZE 6
+    uint8_t buf[BUFFER_SIZE] = {0};
+
+    static uint8_t READTEMP_REG = 0x78; /* Reg Addr of Temp Data */
 
     /* Check Input Params */
     if (i2c_fd <= 0) {
@@ -123,45 +110,68 @@ int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature) {
         return LGW_I2C_ERROR;
     }
 
-    //(void)sht3c_wakeup(i2c_fd, i2c_addr);
+    (void)sht3c_wakeup(i2c_fd, i2c_addr);
+
+    usleep(250000); /* Just wait instead of using clock stretching */
 
     /* Send measure command */
-    err = i2c_linuxdev_write(i2c_fd, i2c_addr, 0x78, 0x66); /* ..., ..., Address, Command */
-    if (err != 0) {
-        printf("ERROR: failed to request temperature from I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+    err = i2c_linuxdev_write(i2c_fd, i2c_addr, READTEMP_REG, 0x66); /* ..., ..., Address, Command */
+    if (err < 0) {
+        printf("ERROR: failed to request temperature from I2C device 0x%02X (err=%i) \n", i2c_addr, err);
         return LGW_I2C_ERROR;
     }
 
-    /* Read Temperature LSB */
-    while ( (err != 0) || (low_byte == 0x00) ) {
-    	err = i2c_linuxdev_read(i2c_fd, i2c_addr, 0x78, &low_byte);
-    }
-	if (err != 0) {
-		printf("ERROR: failed to read low byte of I2C device 0x%02X (err=%i) (byte=0x%02X)\n", i2c_addr, err, low_byte);
-	    return LGW_I2C_ERROR;
-	} else {
-		printf("DEBUG: SUCCESSS read low byte of I2C device 0x%02X (err=%i) (byte=0x%02X)\n", i2c_addr, err, low_byte);
-	}
+    usleep(250000); /* Just wait instead of using clock stretching */
 
-    /* Read Temperature MSB */
-    err = i2c_linuxdev_read(i2c_fd, i2c_addr, 0x78, &high_byte);
-    if (err != 0) {
-        printf("ERROR: failed to read high byte of I2C device 0x%02X (err=%i)\n", i2c_addr, err);
+    /* Setup request structure */
+    struct i2c_rdwr_ioctl_data packets;
+    struct i2c_msg messages[2];
+
+    messages[0].addr = i2c_addr;
+    messages[0].flags= 0;
+    messages[0].len = 1;
+    messages[0].buf = &READTEMP_REG;
+
+    messages[1].addr = i2c_addr;
+    messages[1].flags = I2C_M_RD;
+    messages[1].len = BUFFER_SIZE; /* Number of bytes to receive from I2C device. */
+    messages[1].buf = buf;
+
+    packets.msgs = messages;
+    packets.nmsgs = 2;
+
+    /* Send request packet */
+    err = ioctl(i2c_fd, I2C_RDWR, &packets);
+    if (err < 0) {
+        DEBUG_PRINTF("ERROR: Read from I2C Device failed (%d, 0x%02x, 0x%02x) - %s\n", i2c_fd, device_addr, reg_addr, strerror(err));
         return LGW_I2C_ERROR;
-    } else {
-    	printf("DEBUG: SUCCESSS read high byte of I2C device 0x%02X (err=%i)\n", i2c_addr, err);
     }
 
-    h = (int8_t)high_byte;
-    words[0] = ((h << 8) | low_byte);
+    if ( (buf[0] == 0x00) && (buf[1] == 0x00) && (buf[3] == 0x00) && (buf[4] == 0x00) ) return LGW_I2C_ERROR;
 
-    *temperature = ((21875 * (int32_t)words[0]) >> 13) - 45000;
+    /* Read Temperature */
+    {
+    	/* measurement commands return T (CRC) RH (CRC) */
+		uint8_t high_byte, low_byte;
+		uint16_t words[2];
 
-    //*humidity = ((12500 * (int32_t)words[1]) >> 13); //Not used for loragw
+		high_byte = (uint8_t)buf[0];
+		low_byte = buf[1];
+		words[0] = ((uint16_t)high_byte << 8) | low_byte;
+		*temperature = ( ((21875 * (int32_t)words[0]) >> 13) - 45000 );
+		*temperature = *temperature / 1000; //Keep on own line to decimal
+		DEBUG_PRINTF("Temperature: %f C (h:0x%02X l:0x%02X)\n", *temperature, high_byte, low_byte);
 
-    DEBUG_PRINTF("Temperature: %f C (h:0x%02X l:0x%02X)\n", *temperature, high_byte, low_byte);
+		high_byte = (uint8_t)buf[3];
+		low_byte = buf[4];
+		words[1] = ((uint16_t)high_byte << 8) | low_byte;
+		float humidity = (12500 * (int32_t)words[1]) >> 13; //Not used for loragw
+		humidity = humidity / 1000; //Keep on own line to decimal
+		DEBUG_PRINTF("Humidity: %f %% (h:0x%02X l:0x%02X)\n", humidity, high_byte, low_byte);
 
-    //(void)sht3c_sleep(i2c_fd, i2c_addr);
+    }
+
+    (void)sht3c_sleep(i2c_fd, i2c_addr);
 
     return LGW_I2C_SUCCESS;
 }

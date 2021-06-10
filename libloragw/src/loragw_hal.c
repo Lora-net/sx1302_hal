@@ -1646,9 +1646,8 @@ int lgw_get_temperature(float* temperature) {
 			err = LGW_HAL_SUCCESS;
 			break;
 		case LGW_TEMP_SHT:
-			printf("WARNING: SHTxx Temperature reading needs developing. \n"); //TODO: Make this really use the module
-			static uint8_t sht_addr = 0x70;
-			err = sht_get_temperature(ts_fd, sht_addr, temperature);
+			printf("WARNING: SHTxx usage readings under development. \n");
+			err = sht_get_temperature(ts_fd, ts_addr, temperature); //TODO: Bring in Relative Humidity as well
 			break;
 		default:
 			//If no third party temperature module is configured, assume setup conforms to Corecell reference design.
