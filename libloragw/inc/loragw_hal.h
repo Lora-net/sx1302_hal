@@ -549,7 +549,7 @@ int lgw_get_eui(uint64_t * eui);
 @param temperature The temperature measured, in degree celcius
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_temperature(float * temperature);
+int lgw_get_temperature(float * temperature, float * humidity);
 
 /**
 @brief Allow user to check the version/options of the library once compiled

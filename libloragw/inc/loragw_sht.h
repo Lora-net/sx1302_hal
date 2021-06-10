@@ -56,7 +56,7 @@ int sht_configure(int i2c_fd, uint8_t i2c_addr);
 @param temperature pointer to store the temperature read from sensor
 @return LGW_I2C_ERROR if fails, LGW_I2C_SUCCESS otherwise
 */
-int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature);
+int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature, float * humidity);
 
 #endif
 

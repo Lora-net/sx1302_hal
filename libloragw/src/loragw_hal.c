@@ -1297,7 +1297,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t nb_pkt_fetched = 0;
     uint8_t nb_pkt_found = 0;
     uint8_t nb_pkt_left = 0;
-    float current_temperature = 0.0, rssi_temperature_offset = 0.0;
+    float current_temperature = 0.0, rssi_temperature_offset = 0.0, current_humidity = -1;
     /* performances variables */
     struct timeval tm;
 
@@ -1331,7 +1331,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Apply RSSI temperature compensation */
-    res = lgw_get_temperature(&current_temperature);
+    res = lgw_get_temperature(&current_temperature, &current_humidity);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
@@ -1632,7 +1632,7 @@ int lgw_get_eui(uint64_t* eui) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_get_temperature(float* temperature) {
+int lgw_get_temperature(float* temperature, float * humidity) {
     int err = LGW_HAL_ERROR;
 
     DEBUG_PRINTF(" --- %s\n", "IN");
@@ -1643,20 +1643,23 @@ int lgw_get_temperature(float* temperature) {
 		case LGW_TEMP_FAKE:
 			printf("WARNING: Temperature reading has been faked. \n"); //Be explicit that a faked reading is not recommenced.
 			*temperature = 30.0f;
+			*humidity = -1.0f; /* Not supported by this sensor */
 			err = LGW_HAL_SUCCESS;
 			break;
 		case LGW_TEMP_SHT:
 			printf("WARNING: SHTxx usage readings under development. \n");
-			err = sht_get_temperature(ts_fd, ts_addr, temperature); //TODO: Bring in Relative Humidity as well
+			err = sht_get_temperature(ts_fd, ts_addr, temperature, humidity);
 			break;
 		default:
 			//If no third party temperature module is configured, assume setup conforms to Corecell reference design.
 		    switch (CONTEXT_COM_TYPE) {
 				case LGW_COM_SPI:
 					err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+					*humidity = -1.0f; /* Not supported by this sensor */
 					break;
 				case LGW_COM_USB:
 					err = lgw_com_get_temperature(temperature);
+					*humidity = -1.0f; /* Not supported by this sensor */
 					break;
 				default:
 					printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);

@@ -97,7 +97,7 @@ int sht_configure(int i2c_fd, uint8_t i2c_addr) {
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature) {
+int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature, float * humidity) {
 	int err;
 	#define BUFFER_SIZE 6
     uint8_t buf[BUFFER_SIZE] = {0};
@@ -165,8 +165,8 @@ int sht_get_temperature(int i2c_fd, uint8_t i2c_addr, float * temperature) {
 		high_byte = (uint8_t)buf[3];
 		low_byte = buf[4];
 		words[1] = ((uint16_t)high_byte << 8) | low_byte;
-		float humidity = (12500 * (int32_t)words[1]) >> 13; //Not used for loragw
-		humidity = humidity / 1000; //Keep on own line to decimal
+		*humidity = (12500 * (int32_t)words[1]) >> 13; //Not used for loragw
+		*humidity = *humidity / 1000; //Keep on own line to decimal
 		DEBUG_PRINTF("Humidity: %f %% (h:0x%02X l:0x%02X)\n", humidity, high_byte, low_byte);
 
     }
