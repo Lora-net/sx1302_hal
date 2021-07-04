@@ -531,12 +531,13 @@ enum gps_msg lgw_parse_nmea(const char *serial_buff, int buff_size) {
         NMEA sentence format: $xxRMC,time,status,lat,NS,long,EW,spd,cog,date,mv,mvEW,posMode*cs<CR><LF>
         Valid fix: $GPRMC,083559.34,A,4717.11437,N,00833.91522,E,0.004,77.52,091202,,,A*00
         No fix: $GPRMC,,V,,,,,,,,,,N*00
+        AnotherFix: $GNRMC,021813.000,A,4825.12060,N,10240.00001,W,0.00,0.00,250621,,,A,V*16  <-- invalid checksum because position change to protect the innocent
         */
         memcpy(parser_buf, serial_buff, buff_size);
         parser_buf[buff_size] = '\0';
         nb_fields = str_chop(parser_buf, buff_size, ',', str_index, ARRAY_SIZE(str_index));
-        if (nb_fields != 13) {
-            DEBUG_MSG("Warning: invalid RMC sentence (number of fields)\n");
+        if (nb_fields < 13 || nb_fields > 14 ) {
+            DEBUG_MSG("Warning: invalid RMC sentence (expected 13 or 14 fields, but saw %d) \n",nb_fields);
             return IGNORED;
         }
         /* parse GPS status */
