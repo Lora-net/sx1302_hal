@@ -191,11 +191,20 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
+### v2.0.2-FDD-US915-Ceramic ###
+
+> #### Changes
+
+* Packet Forwarder: Added global_conf.json.sx1257.US915.full-duplex.ceramic-duplexer
+to be used with US915 full-duplex PCB_E653V01A reference design (with ceramic
+duplexer).
+
 ### v2.0.2-FDD-US915 ###
 
 > #### Updates
 
-Added support for US915 full-duplex reference design.
+Added support for US915 full-duplex PCB_E652V01A reference design (with high
+performance cavity duplexer).
 
 WARNING: do not use this version with CN490 reference design without adjusting
 AD5338R voltage.
@@ -204,7 +213,7 @@ AD5338R voltage.
 
 * HAL: Updated AD5338R voltage to adjust PA gain for US915 design.
 * Packet Forwarder: Added global_conf.json.sx1257.US915.full-duplex.cavity-duplexer
-to be used with US915 full-duplex reference design.
+to be used with US915 full-duplex "high performance" reference design.
 
 ### v2.0.2 ###
 
