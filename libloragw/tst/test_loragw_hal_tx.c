@@ -520,7 +520,7 @@ int main(int argc, char **argv)
         } else {
             pkt.modulation = MOD_LORA;
             pkt.coderate = CR_LORA_4_5;
-            pkt.no_crc = true;
+            pkt.no_crc = false;
         }
         pkt.invert_pol = invert_pol;
         pkt.preamble = preamble;
