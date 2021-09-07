@@ -191,6 +191,14 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
+### v2.0.2-FDD-US915-Tx-LUT ###
+
+> #### Changes
+
+* Packet Forwarder: Updated TX gain LUT in
+global_conf.json.sx1257.US915.full-duplex.* files for more robustness during
+the radio calibration phase.
+
 ### v2.0.2-FDD-US915-Ceramic ###
 
 > #### Changes

@@ -21,17 +21,17 @@
             "tx_freq_min": 923000000,
             "tx_freq_max": 928000000,
             "tx_gain_lut":[
-				{"rf_power": 17, "pa_gain": 1, "dac_gain": 0, "mix_gain": 10, "dig_gain": 2},
-				{"rf_power": 18, "pa_gain": 1, "dac_gain": 0, "mix_gain":  10, "dig_gain": 1},
-				{"rf_power": 19, "pa_gain": 1, "dac_gain": 3, "mix_gain":  6, "dig_gain": 2},
-        {"rf_power": 20, "pa_gain": 1, "dac_gain": 2, "mix_gain": 7, "dig_gain": 0},
-				{"rf_power": 21, "pa_gain": 1, "dac_gain": 0, "mix_gain": 14, "dig_gain": 3},
-				{"rf_power": 22, "pa_gain": 1, "dac_gain": 1, "mix_gain": 11, "dig_gain": 2},
-				{"rf_power": 23, "pa_gain": 1, "dac_gain": 0, "mix_gain": 15, "dig_gain": 3},
-				{"rf_power": 24, "pa_gain": 1, "dac_gain": 3, "mix_gain": 7, "dig_gain": 0},
-        {"rf_power": 25, "pa_gain": 1, "dac_gain": 2, "mix_gain": 11, "dig_gain": 2},
-        {"rf_power": 26, "pa_gain": 1, "dac_gain": 0, "mix_gain": 14, "dig_gain": 1},
-				{"rf_power": 27, "pa_gain": 1, "dac_gain": 0, "mix_gain": 14, "dig_gain": 0}
+                {"rf_power": 17, "pa_gain": 1, "dac_gain": 0, "mix_gain": 11, "dig_gain": 3},
+                {"rf_power": 18, "pa_gain": 1, "dac_gain": 1, "mix_gain": 10, "dig_gain": 3},
+                {"rf_power": 19, "pa_gain": 1, "dac_gain": 0, "mix_gain": 12, "dig_gain": 3},
+                {"rf_power": 20, "pa_gain": 1, "dac_gain": 1, "mix_gain": 11, "dig_gain": 3},
+                {"rf_power": 21, "pa_gain": 1, "dac_gain": 2, "mix_gain": 10, "dig_gain": 3},
+                {"rf_power": 22, "pa_gain": 1, "dac_gain": 0, "mix_gain": 12, "dig_gain": 2},
+                {"rf_power": 23, "pa_gain": 1, "dac_gain": 1, "mix_gain": 11, "dig_gain": 2},
+                {"rf_power": 24, "pa_gain": 1, "dac_gain": 3, "mix_gain": 10, "dig_gain": 3},
+                {"rf_power": 25, "pa_gain": 1, "dac_gain": 2, "mix_gain": 11, "dig_gain": 2},
+                {"rf_power": 26, "pa_gain": 1, "dac_gain": 0, "mix_gain": 14, "dig_gain": 1},
+                {"rf_power": 27, "pa_gain": 1, "dac_gain": 0, "mix_gain": 14, "dig_gain": 0}
             ]
         },
         "radio_1": {
