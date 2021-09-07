@@ -95,6 +95,8 @@ void usage(void) {
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --nhdr        Send LoRa packet with implicit header\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf(" --ncrc        Send packet without payload CRC\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
     printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
     printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
@@ -139,6 +141,7 @@ int main(int argc, char **argv)
     uint16_t preamble = 8;
     bool invert_pol = false;
     bool no_header = false;
+    bool no_crc = false;
     bool single_input_mode = false;
     bool full_duplex = false;
 
@@ -174,6 +177,7 @@ int main(int argc, char **argv)
         {"pwid", required_argument, 0, 0},
         {"loop", required_argument, 0, 0},
         {"nhdr", no_argument, 0, 0},
+        {"ncrc", no_argument, 0, 0},
         {"fdd",  no_argument, 0, 0},
         {0, 0, 0, 0}
     };
@@ -403,6 +407,8 @@ int main(int argc, char **argv)
                     }
                 } else if (strcmp(long_options[option_index].name, "nhdr") == 0) {
                     no_header = true;
+                } else if (strcmp(long_options[option_index].name, "ncrc") == 0) {
+                    no_crc = true;
                 } else if (strcmp(long_options[option_index].name, "fdd") == 0) {
                     full_duplex = true;
                 } else {
@@ -422,9 +428,9 @@ int main(int argc, char **argv)
         printf("Sending %i CW on %u Hz (Freq. offset %d kHz) at %i dBm\n", nb_pkt, ft, freq_offset, rf_power);
     }
     else if (strcmp(mod, "FSK") == 0) {
-        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, fdev_khz, br_kbps, size, preamble, rf_power);
+        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload %s CRC, %i symbols preamble) at %i dBm\n", nb_pkt, ft, fdev_khz, br_kbps, size, (no_crc ? "without":"with"), preamble, rf_power);
     } else {
-        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
+        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload %s CRC, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, (no_crc ? "without":"with"), preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
     }
 
     /* Configure signal handling */
@@ -514,17 +520,16 @@ int main(int argc, char **argv)
         }
         else if( strcmp( mod, "FSK" ) == 0 ) {
             pkt.modulation = MOD_FSK;
-            pkt.no_crc = false;
             pkt.datarate = br_kbps * 1e3;
             pkt.f_dev = fdev_khz;
         } else {
             pkt.modulation = MOD_LORA;
             pkt.coderate = CR_LORA_4_5;
-            pkt.no_crc = false;
         }
         pkt.invert_pol = invert_pol;
         pkt.preamble = preamble;
         pkt.no_header = no_header;
+        pkt.no_crc = no_crc;
         pkt.payload[0] = 0x40; /* Confirmed Data Up */
         pkt.payload[1] = 0xAB;
         pkt.payload[2] = 0xAB;
