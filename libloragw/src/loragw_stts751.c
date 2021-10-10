@@ -83,7 +83,7 @@ int stts751_configure(int i2c_fd, uint8_t i2c_addr) {
 
     /* Check Input Params */
     if (i2c_fd <= 0) {
-        printf("ERROR: invalid I2C file descriptor\n");
+        DEBUG_PRINTF("ERROR: invalid I2C file descriptor\n");
         return LGW_I2C_ERROR;
     }
 
