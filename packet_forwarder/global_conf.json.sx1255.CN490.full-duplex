@@ -5,7 +5,11 @@
         "lorawan_public": true,
         "clksrc": 0,
         "antenna_gain": 0, /* antenna gain, in dBi */
+        /* RSSI temperature compensation configuration */
+        "temp_dev_path": "/dev/i2c-1",
+        /* Full duplex configuration */
         "full_duplex": true,
+        "pa_dev_path": "/dev/i2c-1",
         "radio_0": {
             "enable": true,
             "type": "SX1255",

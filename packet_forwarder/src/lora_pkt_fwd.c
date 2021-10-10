@@ -403,6 +403,14 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for clksrc seems wrong, please check\n");
         boardconf.clksrc = 0;
     }
+    str = json_object_get_string(conf_obj, "temp_dev_path");
+    if (str != NULL) {
+        strncpy(boardconf.temp_dev_path, str, sizeof boardconf.temp_dev_path);
+        boardconf.temp_dev_path[sizeof boardconf.temp_dev_path - 1] = '\0'; /* ensure string termination */
+    } else {
+        MSG("ERROR: temp_dev_path must be configured in %s\n", conf_file);
+        return -1;
+    }
     val = json_object_get_value(conf_obj, "full_duplex"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.full_duplex = (bool)json_value_get_boolean(val);
@@ -410,7 +418,15 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: com_type %s, com_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", (boardconf.com_type == LGW_COM_SPI) ? "SPI" : "USB", boardconf.com_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    str = json_object_get_string(conf_obj, "pa_dev_path");
+    if (str != NULL) {
+        strncpy(boardconf.pa_dev_path, str, sizeof boardconf.pa_dev_path);
+        boardconf.pa_dev_path[sizeof boardconf.pa_dev_path - 1] = '\0'; /* ensure string termination */
+    } else {
+        MSG("ERROR: pa_dev_path must be configured in %s\n", conf_file);
+        return -1;
+    }
+    MSG("INFO: com_type %s, com_path %s, lorawan_public %d, clksrc %d, temp_dev_path %s, full_duplex %d, pa_dev_path %s\n", (boardconf.com_type == LGW_COM_SPI) ? "SPI" : "USB", boardconf.com_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.temp_dev_path, boardconf.full_duplex, boardconf.pa_dev_path);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
@@ -1884,9 +1900,17 @@ int main(int argc, char ** argv)
         /* generate a JSON report (will be sent to server by upstream thread) */
         pthread_mutex_lock(&mx_stat_rep);
         if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
+            if (i != LGW_HAL_SUCCESS) {
+                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+            } else {
+                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
+            }
         } else {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
+            if (i != LGW_HAL_SUCCESS) {
+                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+            } else {
+                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
+            }
         }
         report_ready = true;
         pthread_mutex_unlock(&mx_stat_rep);

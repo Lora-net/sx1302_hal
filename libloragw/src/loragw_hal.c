@@ -75,6 +75,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_COM_TYPE        lgw_context.board_cfg.com_type
 #define CONTEXT_COM_PATH        lgw_context.board_cfg.com_path
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
+#define CONTEXT_TEMP_DEV_PATH   lgw_context.board_cfg.temp_dev_path
+#define CONTEXT_PA_DEV_PATH     lgw_context.board_cfg.pa_dev_path
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
 #define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
@@ -126,7 +128,9 @@ static lgw_context_t lgw_context = {
     .board_cfg.com_path = "/dev/spidev0.0",
     .board_cfg.lorawan_public = true,
     .board_cfg.clksrc = 0,
+    .board_cfg.temp_dev_path = "/dev/i2c-1",
     .board_cfg.full_duplex = false,
+    .board_cfg.pa_dev_path = "/dev/i2c-1",
     .rf_chain_cfg = {{0}},
     .if_chain_cfg = {{0}},
     .demod_cfg = {
@@ -466,16 +470,15 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     /* set internal config according to parameters */
     CONTEXT_LWAN_PUBLIC = conf->lorawan_public;
     CONTEXT_BOARD.clksrc = conf->clksrc;
+    strncpy(CONTEXT_TEMP_DEV_PATH, conf->temp_dev_path, sizeof CONTEXT_TEMP_DEV_PATH);
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
+    strncpy(CONTEXT_PA_DEV_PATH, conf->pa_dev_path, sizeof CONTEXT_PA_DEV_PATH);
     CONTEXT_COM_TYPE = conf->com_type;
     strncpy(CONTEXT_COM_PATH, conf->com_path, sizeof CONTEXT_COM_PATH);
     CONTEXT_COM_PATH[sizeof CONTEXT_COM_PATH - 1] = '\0'; /* ensure string termination */
 
-    DEBUG_PRINTF("Note: board configuration: com_type: %s, com_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",   (CONTEXT_COM_TYPE == LGW_COM_SPI) ? "SPI" : "USB",
-                                                                                                                            CONTEXT_COM_PATH,
-                                                                                                                            CONTEXT_LWAN_PUBLIC,
-                                                                                                                            CONTEXT_BOARD.clksrc,
-                                                                                                                            CONTEXT_BOARD.full_duplex);
+    DEBUG_PRINTF("Note: board configuration: com_type:%s, com_path:%s, lorawan_public:%d, clksrc:%d, temp_dev_path:%s, full_duplex:%d, pa_dev_path:%s\n",
+      (CONTEXT_COM_TYPE == LGW_COM_SPI) ? "SPI" : "USB", CONTEXT_COM_PATH, CONTEXT_LWAN_PUBLIC, CONTEXT_BOARD.clksrc, CONTEXT_TEMP_DEV_PATH, CONTEXT_BOARD.full_duplex, CONTEXT_PA_DEV_PATH);
 
     return LGW_HAL_SUCCESS;
 }
@@ -1093,33 +1096,35 @@ int lgw_start(void) {
     dbg_init_random();
 
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
-        /* Find the temperature sensor on the known supported ports */
-        for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
-            ts_addr = I2C_PORT_TEMP_SENSOR[i];
-            err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
+        /* Find the temperature sensor on the known supported ports (if enabled) */
+        if (CONTEXT_TEMP_DEV_PATH[0] != '\0') {
+            for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
+                ts_addr = I2C_PORT_TEMP_SENSOR[i];
+                err = i2c_linuxdev_open(CONTEXT_TEMP_DEV_PATH, ts_addr, &ts_fd);
+                if (err != LGW_I2C_SUCCESS) {
+                    printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
+                    return LGW_HAL_ERROR;
+                }
+
+                err = stts751_configure(ts_fd, ts_addr);
+                if (err != LGW_I2C_SUCCESS) {
+                    printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
+                    i2c_linuxdev_close(ts_fd);
+                    ts_fd = -1;
+                } else {
+                    printf("INFO: found temperature sensor on port 0x%02X\n", ts_addr);
+                    break;
+                }
+            }
+            if (i == sizeof I2C_PORT_TEMP_SENSOR) {
+                printf("ERROR: no temperature sensor found.\n");
                 return LGW_HAL_ERROR;
             }
-
-            err = stts751_configure(ts_fd, ts_addr);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
-                i2c_linuxdev_close(ts_fd);
-                ts_fd = -1;
-            } else {
-                printf("INFO: found temperature sensor on port 0x%02X\n", ts_addr);
-                break;
-            }
-        }
-        if (i == sizeof I2C_PORT_TEMP_SENSOR) {
-            printf("ERROR: no temperature sensor found.\n");
-            return LGW_HAL_ERROR;
         }
 
         /* Configure ADC AD338R for full duplex (CN490 reference design) */
         if (CONTEXT_BOARD.full_duplex == true) {
-            err = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_DAC_AD5338R, &ad_fd);
+            err = i2c_linuxdev_open(CONTEXT_PA_DEV_PATH, I2C_PORT_DAC_AD5338R, &ad_fd);
             if (err != LGW_I2C_SUCCESS) {
                 printf("ERROR: failed to open I2C for ad5338r\n");
                 return LGW_HAL_ERROR;
@@ -1222,13 +1227,14 @@ int lgw_stop(void) {
     }
 
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
-        DEBUG_MSG("INFO: Closing I2C for temperature sensor\n");
-        x = i2c_linuxdev_close(ts_fd);
-        if (x != 0) {
-            printf("ERROR: failed to close I2C temperature sensor device (err=%i)\n", x);
-            err = LGW_HAL_ERROR;
+        if (CONTEXT_TEMP_DEV_PATH[0] != '\0') {
+            DEBUG_MSG("INFO: Closing I2C for temperature sensor\n");
+            x = i2c_linuxdev_close(ts_fd);
+            if (x != 0) {
+                printf("ERROR: failed to close I2C temperature sensor device (err=%i)\n", x);
+                err = LGW_HAL_ERROR;
+            }
         }
-
         if (CONTEXT_BOARD.full_duplex == true) {
             DEBUG_MSG("INFO: Closing I2C for AD5338R\n");
             x = i2c_linuxdev_close(ad_fd);
@@ -1286,11 +1292,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("WARNING: not enough space allocated, fetched %d packet(s), %d will be left in RX buffer\n", nb_pkt_fetched, nb_pkt_left);
     }
 
-    /* Apply RSSI temperature compensation */
-    res = lgw_get_temperature(&current_temperature);
-    if (res != LGW_I2C_SUCCESS) {
-        printf("ERROR: failed to get current temperature\n");
-        return LGW_HAL_ERROR;
+    /* Read board temperature (if enabled) */
+    if (((CONTEXT_COM_TYPE == LGW_COM_SPI) && (CONTEXT_TEMP_DEV_PATH[0] != '\0')) || (CONTEXT_COM_TYPE != LGW_COM_SPI)) {
+        res = lgw_get_temperature(&current_temperature);
+        if (res != LGW_I2C_SUCCESS) {
+            printf("ERROR: failed to get current temperature\n");
+            return LGW_HAL_ERROR;
+        }
     }
 
     /* Iterate on the RX buffer to get parsed packets */
@@ -1309,10 +1317,13 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         pkt_data[nb_pkt_found].rssic += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
         pkt_data[nb_pkt_found].rssis += CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_offset;
 
-        rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
-        pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
-        pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
-        DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB (current temperature %.1f C)\n", rssi_temperature_offset, current_temperature);
+        /* Apply RSSI temperature compensation (if enabled) */
+        if (((CONTEXT_COM_TYPE == LGW_COM_SPI) && (CONTEXT_TEMP_DEV_PATH[0] != '\0')) || (CONTEXT_COM_TYPE != LGW_COM_SPI)) {
+            rssi_temperature_offset = sx1302_rssi_get_temperature_offset(&CONTEXT_RF_CHAIN[pkt_data[nb_pkt_found].rf_chain].rssi_tcomp, current_temperature);
+            pkt_data[nb_pkt_found].rssic += rssi_temperature_offset;
+            pkt_data[nb_pkt_found].rssis += rssi_temperature_offset;
+            DEBUG_PRINTF("INFO: RSSI temperature offset applied: %.3f dB (current temperature %.1f C)\n", rssi_temperature_offset, current_temperature);
+        }
     }
 
     DEBUG_PRINTF("INFO: nb pkt found:%u left:%u\n", nb_pkt_found, nb_pkt_left);
