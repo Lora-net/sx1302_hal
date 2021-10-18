@@ -44,8 +44,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx1261.h"
 #include "loragw_sx1302.h"
 #include "loragw_sx1302_timestamp.h"
-#include "loragw_stts751.h"
-#include "loragw_ad5338r.h"
+// #include "loragw_stts751.h"
+// #include "loragw_ad5338r.h"
 #include "loragw_debug.h"
 
 /* -------------------------------------------------------------------------- */
@@ -203,11 +203,11 @@ static lgw_context_t lgw_context = {
 FILE * log_file = NULL;
 
 /* I2C temperature sensor handles */
-static int     ts_fd = -1;
-static uint8_t ts_addr = 0xFF;
+// static int     ts_fd = -1;
+// static uint8_t ts_addr = 0xFF;
 
 /* I2C AD5338 handles */
-static int     ad_fd = -1;
+// static int     ad_fd = -1;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -1092,57 +1092,57 @@ int lgw_start(void) {
     /* Configure the pseudo-random generator (For Debug) */
     dbg_init_random();
 
-    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
-        /* Find the temperature sensor on the known supported ports */
-        for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
-            ts_addr = I2C_PORT_TEMP_SENSOR[i];
-            err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
-                return LGW_HAL_ERROR;
-            }
-
-            err = stts751_configure(ts_fd, ts_addr);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
-                i2c_linuxdev_close(ts_fd);
-                ts_fd = -1;
-            } else {
-                printf("INFO: found temperature sensor on port 0x%02X\n", ts_addr);
-                break;
-            }
-        }
-        if (i == sizeof I2C_PORT_TEMP_SENSOR) {
-            printf("ERROR: no temperature sensor found.\n");
-            return LGW_HAL_ERROR;
-        }
-
-        /* Configure ADC AD338R for full duplex (CN490 reference design) */
-        if (CONTEXT_BOARD.full_duplex == true) {
-            err = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_DAC_AD5338R, &ad_fd);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: failed to open I2C for ad5338r\n");
-                return LGW_HAL_ERROR;
-            }
-
-            err = ad5338r_configure(ad_fd, I2C_PORT_DAC_AD5338R);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: failed to configure ad5338r\n");
-                i2c_linuxdev_close(ad_fd);
-                ad_fd = -1;
-                return LGW_HAL_ERROR;
-            }
-
-            /* Turn off the PA: set DAC output to 0V */
-            uint8_t volt_val[AD5338R_CMD_SIZE] = { 0x39, (uint8_t)VOLTAGE2HEX_H(0), (uint8_t)VOLTAGE2HEX_L(0) };
-            err = ad5338r_write(ad_fd, I2C_PORT_DAC_AD5338R, volt_val);
-            if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: AD5338R: failed to set DAC output to 0V\n");
-                return LGW_HAL_ERROR;
-            }
-            printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(0), (uint8_t)VOLTAGE2HEX_L(0));
-        }
-    }
+//    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+//        /* Find the temperature sensor on the known supported ports */
+//        for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
+//            ts_addr = I2C_PORT_TEMP_SENSOR[i];
+//            err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+//            if (err != LGW_I2C_SUCCESS) {
+//                printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
+//                return LGW_HAL_ERROR;
+//            }
+//
+//            err = stts751_configure(ts_fd, ts_addr);
+//            if (err != LGW_I2C_SUCCESS) {
+//                printf("INFO: no temperature sensor found on port 0x%02X\n", ts_addr);
+//                i2c_linuxdev_close(ts_fd);
+//                ts_fd = -1;
+//            } else {
+//                printf("INFO: found temperature sensor on port 0x%02X\n", ts_addr);
+//                break;
+//            }
+//        }
+//        if (i == sizeof I2C_PORT_TEMP_SENSOR) {
+//            printf("ERROR: no temperature sensor found.\n");
+//            return LGW_HAL_ERROR;
+//        }
+//
+//        /* Configure ADC AD338R for full duplex (CN490 reference design) */
+//        if (CONTEXT_BOARD.full_duplex == true) {
+//            err = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_DAC_AD5338R, &ad_fd);
+//            if (err != LGW_I2C_SUCCESS) {
+//                printf("ERROR: failed to open I2C for ad5338r\n");
+//                return LGW_HAL_ERROR;
+//            }
+//
+//            err = ad5338r_configure(ad_fd, I2C_PORT_DAC_AD5338R);
+//            if (err != LGW_I2C_SUCCESS) {
+//                printf("ERROR: failed to configure ad5338r\n");
+//                i2c_linuxdev_close(ad_fd);
+//                ad_fd = -1;
+//                return LGW_HAL_ERROR;
+//            }
+//
+//            /* Turn off the PA: set DAC output to 0V */
+//            uint8_t volt_val[AD5338R_CMD_SIZE] = { 0x39, (uint8_t)VOLTAGE2HEX_H(0), (uint8_t)VOLTAGE2HEX_L(0) };
+//            err = ad5338r_write(ad_fd, I2C_PORT_DAC_AD5338R, volt_val);
+//            if (err != LGW_I2C_SUCCESS) {
+//                printf("ERROR: AD5338R: failed to set DAC output to 0V\n");
+//                return LGW_HAL_ERROR;
+//            }
+//            printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(0), (uint8_t)VOLTAGE2HEX_L(0));
+//        }
+//    }
 
     /* Connect to the external sx1261 for LBT or Spectral Scan */
     if (CONTEXT_SX1261.enable == true) {
@@ -1221,23 +1221,23 @@ int lgw_stop(void) {
         err = LGW_HAL_ERROR;
     }
 
-    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
-        DEBUG_MSG("INFO: Closing I2C for temperature sensor\n");
-        x = i2c_linuxdev_close(ts_fd);
-        if (x != 0) {
-            printf("ERROR: failed to close I2C temperature sensor device (err=%i)\n", x);
-            err = LGW_HAL_ERROR;
-        }
-
-        if (CONTEXT_BOARD.full_duplex == true) {
-            DEBUG_MSG("INFO: Closing I2C for AD5338R\n");
-            x = i2c_linuxdev_close(ad_fd);
-            if (x != 0) {
-                printf("ERROR: failed to close I2C AD5338R device (err=%i)\n", x);
-                err = LGW_HAL_ERROR;
-            }
-        }
-    }
+//    if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
+//        DEBUG_MSG("INFO: Closing I2C for temperature sensor\n");
+//        x = i2c_linuxdev_close(ts_fd);
+//        if (x != 0) {
+//            printf("ERROR: failed to close I2C temperature sensor device (err=%i)\n", x);
+//            err = LGW_HAL_ERROR;
+//        }
+//
+//        if (CONTEXT_BOARD.full_duplex == true) {
+//            DEBUG_MSG("INFO: Closing I2C for AD5338R\n");
+//            x = i2c_linuxdev_close(ad_fd);
+//            if (x != 0) {
+//                printf("ERROR: failed to close I2C AD5338R device (err=%i)\n", x);
+//                err = LGW_HAL_ERROR;
+//            }
+//        }
+//   }
 
     CONTEXT_STARTED = false;
 
@@ -1253,7 +1253,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t nb_pkt_fetched = 0;
     uint8_t nb_pkt_found = 0;
     uint8_t nb_pkt_left = 0;
-    float current_temperature = 0.0, rssi_temperature_offset = 0.0;
+    float current_temperature = 30.0;
+    float rssi_temperature_offset;
     /* performances variables */
     struct timeval tm;
 
@@ -1287,11 +1288,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Apply RSSI temperature compensation */
-    res = lgw_get_temperature(&current_temperature);
-    if (res != LGW_I2C_SUCCESS) {
-        printf("ERROR: failed to get current temperature\n");
-        return LGW_HAL_ERROR;
-    }
+//    res = lgw_get_temperature(&current_temperature);
+//    if (res != LGW_I2C_SUCCESS) {
+//        printf("ERROR: failed to get current temperature\n");
+//        return LGW_HAL_ERROR;
+//    }
 
     /* Iterate on the RX buffer to get parsed packets */
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
@@ -1412,15 +1413,15 @@ int lgw_send(struct lgw_pkt_tx_s * pkt_data) {
     }
 
     /* Set PA gain with AD5338R when using full duplex CN490 ref design */
-    if (CONTEXT_BOARD.full_duplex == true) {
-        uint8_t volt_val[AD5338R_CMD_SIZE] = {0x39, VOLTAGE2HEX_H(2.51), VOLTAGE2HEX_L(2.51)}; /* set to 2.51V */
-        err = ad5338r_write(ad_fd, I2C_PORT_DAC_AD5338R, volt_val);
-        if (err != LGW_I2C_SUCCESS) {
-            printf("ERROR: failed to set voltage by ad5338r\n");
-            return LGW_HAL_ERROR;
-        }
-        printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(2.51), (uint8_t)VOLTAGE2HEX_L(2.51));
-    }
+//    if (CONTEXT_BOARD.full_duplex == true) {
+//        uint8_t volt_val[AD5338R_CMD_SIZE] = {0x39, VOLTAGE2HEX_H(2.51), VOLTAGE2HEX_L(2.51)}; /* set to 2.51V */
+//        err = ad5338r_write(ad_fd, I2C_PORT_DAC_AD5338R, volt_val);
+//        if (err != LGW_I2C_SUCCESS) {
+//            printf("ERROR: failed to set voltage by ad5338r\n");
+//            return LGW_HAL_ERROR;
+//        }
+//        printf("INFO: AD5338R: Set DAC output to 0x%02X 0x%02X\n", (uint8_t)VOLTAGE2HEX_H(2.51), (uint8_t)VOLTAGE2HEX_L(2.51));
+//    }
 
     /* Start Listen-Before-Talk */
     if (CONTEXT_SX1261.lbt_conf.enable == true) {
@@ -1589,27 +1590,28 @@ int lgw_get_eui(uint64_t* eui) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_temperature(float* temperature) {
-    int err = LGW_HAL_ERROR;
+//    int err = LGW_HAL_ERROR;
 
-    DEBUG_PRINTF(" --- %s\n", "IN");
+//    DEBUG_PRINTF(" --- %s\n", "IN");
 
     CHECK_NULL(temperature);
-
-    switch (CONTEXT_COM_TYPE) {
-        case LGW_COM_SPI:
-            err = stts751_get_temperature(ts_fd, ts_addr, temperature);
-            break;
-        case LGW_COM_USB:
-            err = lgw_com_get_temperature(temperature);
-            break;
-        default:
-            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
-            break;
-    }
-
-    DEBUG_PRINTF(" --- %s\n", "OUT");
-
-    return err;
+    *temperature = 30.0;
+    return LGW_HAL_SUCCESS;
+//    switch (CONTEXT_COM_TYPE) {
+//        case LGW_COM_SPI:
+//            err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+//            break;
+//        case LGW_COM_USB:
+//            err = lgw_com_get_temperature(temperature);
+//            break;
+//        default:
+//            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
+//            break;
+//    }
+//
+//    DEBUG_PRINTF(" --- %s\n", "OUT");
+//
+//    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

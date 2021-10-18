@@ -37,6 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+#include "loragw_sx1302.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
     unsigned int arg_u;
     uint8_t clocksource = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
+    sx1302_model_id_t model_id;
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -195,6 +197,14 @@ int main(int argc, char **argv)
     if (x != 0) {
         printf("ERROR: failed to start the gateway\n");
         return EXIT_FAILURE;
+    }
+
+    /* get the concentrator chip model */
+    x = sx1302_get_model_id(&model_id);
+    if (x != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to get concentrator chip model\n");
+    } else {
+        printf("\nINFO: concentrator chip model ID: 0x%02X\n", model_id);
     }
 
     /* get the concentrator EUI */

@@ -72,6 +72,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 
 #define JSON_CONF_DEFAULT   "global_conf.json"
+#define JSON_CONF_LOCAL		"local_conf.json"
 
 #define DEFAULT_SERVER      127.0.0.1   /* hostname also supported */
 #define DEFAULT_PORT_UP     1780
@@ -1431,6 +1432,8 @@ int main(int argc, char ** argv)
     /* configuration file related */
     const char defaut_conf_fname[] = JSON_CONF_DEFAULT;
     const char * conf_fname = defaut_conf_fname; /* pointer to a string we won't touch */
+    const char default_local_conf_fname[] = JSON_CONF_LOCAL;
+    const char * local_conf_fname = default_local_conf_fname;
 
     /* threads */
     pthread_t thrid_up;
@@ -1543,6 +1546,17 @@ int main(int argc, char ** argv)
         }
     } else {
         MSG("ERROR: [main] failed to find any configuration file named %s\n", conf_fname);
+        exit(EXIT_FAILURE);
+    }
+    /* load local configuration files */
+    if (access(local_conf_fname, R_OK) == 0) { /* if there is a local conf, parse it  */
+        MSG("INFO: found configuration file %s, parsing it\n", local_conf_fname);
+        x = parse_gateway_configuration(local_conf_fname);
+        if (x != 0) {
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        MSG("ERROR: [main] failed to find any configuration file named %s\n", local_conf_fname);
         exit(EXIT_FAILURE);
     }
 
@@ -1875,9 +1889,9 @@ int main(int argc, char ** argv)
         i = lgw_get_temperature(&temperature);
         pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
-            printf("### Concentrator temperature unknown ###\n");
+//            printf("### Concentrator temperature unknown ###\n");
         } else {
-            printf("### Concentrator temperature: %.0f C ###\n", temperature);
+//            printf("### Concentrator temperature: %.0f C ###\n", temperature);
         }
         printf("##### END #####\n");
 
@@ -3334,6 +3348,51 @@ void thread_jit(void) {
     MSG("\nINFO: End of JIT thread\n");
 }
 
+static void modify_os_time(const uint32_t ppm_tstamp)
+{
+    struct timespec y;
+    struct timespec tv;
+    static bool time_already_set = false;
+    struct timeval stamp;
+    gettimeofday(&stamp, NULL);
+    int time_diff = 0;
+    lgw_cnt2utc(time_reference_gps, ppm_tstamp, &y);
+    if ((!gps_enabled) || time_already_set)
+    {
+        return;
+    }
+    if (y.tv_sec < 1583402711) // time less than '2020-03-05 18:00:00'
+    {
+        return;
+    }
+
+    MSG("INFO: [modify_os_time] local_time=%ld, gps_time=%ld\n", stamp.tv_sec, y.tv_sec);
+    time_diff = abs(y.tv_sec - stamp.tv_sec);
+
+    if (time_diff < 10)
+    {
+        time_already_set = true;
+        MSG("INFO: [modify_os_time] The difference between the system time(%ld) and the GPS time(%ld) is less than 10 seconds. Use the system time.\n", stamp.tv_sec, y.tv_sec);
+        return;
+    }
+
+    tv.tv_sec = y.tv_sec;
+    tv.tv_nsec = 0;
+
+    int ret = clock_settime(CLOCK_REALTIME, &tv);
+    if (0 == ret)
+    {
+        time_already_set = true;
+        time_t t;
+        struct tm* local;
+        char buf[128] = {0};
+        t = time(NULL);
+        local = localtime(&t);
+        strftime(buf, 64, "%Y-%m-%d %H:%M:%S", local);  
+        MSG("INFO: [modify_os_time] System time has been synchronized via GPS, %s\n", buf);
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 4: PARSE GPS MESSAGE AND KEEP GATEWAY IN SYNC ----------------- */
 
@@ -3361,6 +3420,7 @@ static void gps_process_sync(void) {
     /* try to update time reference with the new GPS time & timestamp */
     pthread_mutex_lock(&mx_timeref);
     i = lgw_gps_sync(&time_reference_gps, trig_tstamp, utc, gps_time);
+    modify_os_time(trig_tstamp);
     pthread_mutex_unlock(&mx_timeref);
     if (i != LGW_GPS_SUCCESS) {
         MSG("WARNING: [gps] GPS out of sync, keeping previous time reference\n");
