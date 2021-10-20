@@ -1,6 +1,7 @@
 FROM balenalib/raspberry-pi-debian:buster-build as sx1302-hal-builder
 
 ENV ROOT_DIR=/opt
+ENV OUTPUT_DIR=/opt/output
 
 WORKDIR "$ROOT_DIR"
 
