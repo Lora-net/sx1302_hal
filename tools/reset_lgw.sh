@@ -12,7 +12,7 @@
 #
 
 if [ -z "$2" ]; then 
-    SX1302_RESET_PIN=38
+    echo "SX1302_RESET_PIN parameter not passed in, using value from the environment ${SX1302_RESET_PIN}"
 else
     SX1302_RESET_PIN=$2
 fi
