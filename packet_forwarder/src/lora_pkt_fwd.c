@@ -54,6 +54,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_reg.h"
 #include "loragw_gps.h"
+#include "loragw_sx1302.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -1485,6 +1486,7 @@ int main(int argc, char ** argv)
     uint32_t inst_tstamp;
     uint64_t eui;
     float temperature;
+    sx1302_model_id_t model_id;
 
     /* statistics variable */
     time_t t;
@@ -1682,6 +1684,14 @@ int main(int argc, char ** argv)
         printf("ERROR: failed to get concentrator EUI\n");
     } else {
         printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
+    }
+
+    /* get the concentrator chip model */
+    i = sx1302_get_model_id(&model_id);
+    if (i != LGW_HAL_SUCCESS) {
+        printf("ERROR: failed to get concentrator chip model\n");
+    } else {
+        printf("INFO: concentrator chip model ID: 0x%02X\n", model_id);
     }
 
     /* spawn threads to manage upstream and downstream */
