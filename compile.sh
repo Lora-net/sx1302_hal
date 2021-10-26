@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -euxo pipefail
 
 build_all() {
     make clean

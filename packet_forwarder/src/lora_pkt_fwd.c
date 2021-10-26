@@ -1899,9 +1899,9 @@ int main(int argc, char ** argv)
         i = lgw_get_temperature(&temperature);
         pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
-           MSG_DEBUG("### Concentrator temperature unknown ###\n");
+        //    printf("### Concentrator temperature unknown ###\n");
         } else {
-           MSG_DEBUG("### Concentrator temperature: %.0f C ###\n", temperature);
+        //    printf("### Concentrator temperature: %.0f C ###\n", temperature);
         }
         printf("##### END #####\n");
 
