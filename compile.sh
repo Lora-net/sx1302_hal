@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -eux
 
 build_all() {
     make clean
