@@ -1113,8 +1113,7 @@ int lgw_start(void) {
             }
         }
         if (i == sizeof I2C_PORT_TEMP_SENSOR) {
-            printf("ERROR: no temperature sensor found.\n");
-            return LGW_HAL_ERROR;
+            printf("WARNING: no temperature sensor found.\n");
         }
 
         /* Configure ADC AD338R for full duplex (CN490 reference design) */
@@ -1222,13 +1221,6 @@ int lgw_stop(void) {
     }
 
     if (CONTEXT_COM_TYPE == LGW_COM_SPI) {
-        DEBUG_MSG("INFO: Closing I2C for temperature sensor\n");
-        x = i2c_linuxdev_close(ts_fd);
-        if (x != 0) {
-            printf("ERROR: failed to close I2C temperature sensor device (err=%i)\n", x);
-            err = LGW_HAL_ERROR;
-        }
-
         if (CONTEXT_BOARD.full_duplex == true) {
             DEBUG_MSG("INFO: Closing I2C for AD5338R\n");
             x = i2c_linuxdev_close(ad_fd);
@@ -1253,7 +1245,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     uint8_t nb_pkt_fetched = 0;
     uint8_t nb_pkt_found = 0;
     uint8_t nb_pkt_left = 0;
-    float current_temperature = 0.0, rssi_temperature_offset = 0.0;
+    float current_temperature = 15.0, rssi_temperature_offset = 0.0;
     /* performances variables */
     struct timeval tm;
 
@@ -1284,13 +1276,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     if (nb_pkt_fetched > max_pkt) {
         nb_pkt_left = nb_pkt_fetched - max_pkt;
         printf("WARNING: not enough space allocated, fetched %d packet(s), %d will be left in RX buffer\n", nb_pkt_fetched, nb_pkt_left);
-    }
-
-    /* Apply RSSI temperature compensation */
-    res = lgw_get_temperature(&current_temperature);
-    if (res != LGW_I2C_SUCCESS) {
-        printf("ERROR: failed to get current temperature\n");
-        return LGW_HAL_ERROR;
     }
 
     /* Iterate on the RX buffer to get parsed packets */
@@ -1589,27 +1574,7 @@ int lgw_get_eui(uint64_t* eui) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_temperature(float* temperature) {
-    int err = LGW_HAL_ERROR;
-
-    DEBUG_PRINTF(" --- %s\n", "IN");
-
-    CHECK_NULL(temperature);
-
-    switch (CONTEXT_COM_TYPE) {
-        case LGW_COM_SPI:
-            err = stts751_get_temperature(ts_fd, ts_addr, temperature);
-            break;
-        case LGW_COM_USB:
-            err = lgw_com_get_temperature(temperature);
-            break;
-        default:
-            printf("ERROR(%s:%d): wrong communication type (SHOULD NOT HAPPEN)\n", __FUNCTION__, __LINE__);
-            break;
-    }
-
-    DEBUG_PRINTF(" --- %s\n", "OUT");
-
-    return err;
+    return LGW_HAL_ERROR;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
