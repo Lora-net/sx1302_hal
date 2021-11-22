@@ -9,7 +9,7 @@ CROSS_COMPILE ?=
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 
-CFLAGS := -O2 -Wall -Wextra -std=c99 -I. -I../../libtools/inc
+MYCFLAGS := -O2 -Wall -Wextra -std=c99 -I. -I../../libtools/inc
 
 ### linking options
 
@@ -45,17 +45,17 @@ endif
 ### rules
 
 %.o : %.c
-	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) -c $(MYCFLAGS) $< -o $@
 
 ### test programs
 
 payload_crc: payload_crc.o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(MYCFLAGS) -o $@ $^
 
 payload_diff: payload_diff.o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(MYCFLAGS) -o $@ $^
 
 payload_gen: payload_gen.o
-	$(CC) $(CFLAGS) -L../../libtools -o $@ $^ $(LIBS)
+	$(CC) $(MYCFLAGS) -L../../libtools -o $@ $^ $(LIBS)
 
 ### EOF

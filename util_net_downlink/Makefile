@@ -41,7 +41,7 @@ APP_LIBS := -lparson -lbase64 -lpthread
 LIB_PATH := ../libtools
 
 ### Expand build options
-CFLAGS := -std=c99 $(WARN_CFLAGS) $(OPT_CFLAGS) $(DEBUG_CFLAGS)
+MYCFLAGS := -std=c99 $(WARN_CFLAGS) $(OPT_CFLAGS) $(DEBUG_CFLAGS)
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 
@@ -74,7 +74,7 @@ $(OBJDIR):
 
 ### Compile main program
 $(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c | $(OBJDIR)
-	$(CC) -c $< -o $@ $(CFLAGS) -Iinc -I../libtools/inc
+	$(CC) -c $< -o $@ $(MYCFLAGS) -Iinc -I../libtools/inc
 
 ### Link everything together
 $(APP_NAME): $(OBJDIR)/$(APP_NAME).o
