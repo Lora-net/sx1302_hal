@@ -23,16 +23,20 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEBUG_BEACON    0
 #define DEBUG_LOG       1
 
-#define MSG(args...) printf(args) /* message that is destined to the user */
+#define MSG(args...) printf(args); fflush(stdout) /* message that is destined to the user */
 #define MSG_DEBUG(FLAG, fmt, ...)                                                                         \
             do  {                                                                                         \
-                if (FLAG)                                                                                 \
+                if (FLAG) {                                                                               \
                     fprintf(stdout, "%s:%d:%s(): " fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+                    fflush(stdout);                                                                       \
+                }                                                                                         \
             } while (0)
 #define MSG_PRINTF(FLAG, fmt, ...)                                                                         \
             do  {                                                                                         \
-                if (FLAG)                                                                                 \
+                if (FLAG) {                                                                               \
                     fprintf(stdout, fmt, ##__VA_ARGS__); \
+                    fflush(stdout);                                                                       \
+                }                                                                                         \
             } while (0)
 
 #endif
