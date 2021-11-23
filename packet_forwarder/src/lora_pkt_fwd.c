@@ -1639,14 +1639,6 @@ int main(int argc, char ** argv)
     }
     freeaddrinfo(result);
 
-    if (com_type == LGW_COM_SPI) {
-        /* Board reset */
-        if (system("./reset_lgw.sh start") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-
     for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
         for (m = 0; m < 8; m++) {
             nb_pkt_log[l][m] = 0;
@@ -1934,14 +1926,6 @@ int main(int argc, char ** argv)
             MSG("INFO: concentrator stopped successfully\n");
         } else {
             MSG("WARNING: failed to stop concentrator successfully\n");
-        }
-    }
-
-    if (com_type == LGW_COM_SPI) {
-        /* Board reset */
-        if (system("./reset_lgw.sh stop") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
         }
     }
 
