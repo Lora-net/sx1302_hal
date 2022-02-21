@@ -2839,6 +2839,8 @@ void thread_down(void) {
                 continue;
             }
 
+            int rcv_delay = 1000 * difftimespec(recv_time, send_time);
+
             /* if the datagram is an ACK, check token */
             if (buff_down[3] == PKT_PULL_ACK) {
                 if ((buff_down[1] == token_h) && (buff_down[2] == token_l)) {
@@ -2850,7 +2852,7 @@ void thread_down(void) {
                         pthread_mutex_lock(&mx_meas_dw);
                         meas_dw_ack_rcv += 1;
                         pthread_mutex_unlock(&mx_meas_dw);
-                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                        MSG("INFO: [down] PULL_ACK received in %i ms\n", rcv_delay);
                     }
                 } else { /* out-of-sync token */
                     MSG("INFO: [down] received out-of-sync ACK\n");
@@ -2859,8 +2861,12 @@ void thread_down(void) {
             }
 
             /* the datagram is a PULL_RESP */
+            struct timespec now;
+            clock_gettime(CLOCK_REALTIME, &now);
+            struct tm* now_repr = localtime(&now.tv_sec);
             buff_down[msg_len] = 0; /* add string terminator, just to be safe */
-            MSG("INFO: [down] PULL_RESP received  - token[%d:%d] :)\n", buff_down[1], buff_down[2]); /* very verbose */
+            MSG("INFO: [down] PULL_RESP received in %i ms at %.2i:%.2i:%.2i.%i - token[%d:%d] :)\n", rcv_delay,
+                now_repr->tm_hour, now_repr->tm_min, now_repr->tm_sec, (int)(now.tv_nsec / 1E6), buff_down[1], buff_down[2]); /* very verbose */
             printf("\nJSON down: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
 
             /* initialize TX struct and try to parse JSON */
