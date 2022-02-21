@@ -217,6 +217,17 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
         packet->count_us = asap_count_us;
     }
 
+    /* Improve the current criteria check by determining if:
+     * - the packet was scheduled in the past
+     * - the packet is scheduled for the future
+     * Time is an overflowing time with us precision.
+     * Calculate 2-ways time difference between scheduled time and current time.
+     * This helps find out if the scheduled is closer to the "left" (past) or "right" (future).
+     */
+    uint32_t diff_future = packet->count_us - time_us;
+    uint32_t diff_past = time_us - packet->count_us;
+    bool future_packet = diff_future <= diff_past;
+
     /* Check criteria_1: is it already too late to send this packet ?
      *  The packet should arrive at least at (tmst - TX_START_DELAY) to be programmed into concentrator
      *  Note: - Also add some margin, to be checked how much is needed, if needed
@@ -224,8 +235,10 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
      *
      *  Warning: unsigned arithmetic (handle roll-over)
      *      t_packet < t_current + TX_START_DELAY + MARGIN
+     *  New condition:
+     *      t_current - t_packet > TX_START_DELAY + MARGIN
      */
-    if ((packet->count_us - time_us) <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY)) {
+    if (!future_packet && diff_past >= (TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY)) {
         MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, already too late to send it (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
         pthread_mutex_unlock(&mx_jit_queue);
         return JIT_ERROR_TOO_LATE;
@@ -241,9 +254,11 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
      *
      *  Warning: unsigned arithmetic (handle roll-over)
                 t_packet > t_current + TX_MAX_ADVANCE_DELAY
+     *  New condition:
+     *          t_packet - t_current > TX_MAX_ADVANCE_DELAY
      */
     if ((pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_A) || (pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_B)) {
-        if ((packet->count_us - time_us) > TX_MAX_ADVANCE_DELAY) {
+        if (future_packet && diff_future > TX_MAX_ADVANCE_DELAY) {
             MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, timestamp seems wrong, too much in advance (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
             pthread_mutex_unlock(&mx_jit_queue);
             return JIT_ERROR_TOO_EARLY;
