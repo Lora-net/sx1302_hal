@@ -160,6 +160,8 @@ static uint32_t net_mac_l; /* Least Significant Nibble, network order */
 /* network sockets */
 static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
+static struct addrinfo* addr_up; /* remote address of the server for upstream traffic */
+static struct addrinfo* addr_down; /* remote address of the server for downstream traffic */
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
@@ -1415,7 +1417,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     buff_ack[buff_index] = 0; /* add string terminator, for safety */
 
     /* send datagram to server */
-    return send(sock_down, (void *)buff_ack, buff_index, 0);
+    return sendto(sock_down, (void *)buff_ack, buff_index, 0, addr_down->ai_addr, addr_down->ai_addrlen);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1442,8 +1444,8 @@ int main(int argc, char ** argv)
 
     /* network socket creation */
     struct addrinfo hints;
-    struct addrinfo *result; /* store result of getaddrinfo */
-    struct addrinfo *q; /* pointer to move into *result data */
+    struct addrinfo *result_up; /* store result of getaddrinfo */
+    struct addrinfo *result_down; /* store result of getaddrinfo */
     char host_name[64];
     char port_name[64];
 
@@ -1576,68 +1578,52 @@ int main(int argc, char ** argv)
     hints.ai_socktype = SOCK_DGRAM;
 
     /* look for server address w/ upstream port */
-    i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
+    i = getaddrinfo(serv_addr, serv_port_up, &hints, &result_up);
     if (i != 0) {
         MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
         exit(EXIT_FAILURE);
     }
 
     /* try to open socket for upstream traffic */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+    for (addr_up=result_up; addr_up!=NULL; addr_up=addr_up->ai_next) {
+        sock_up = socket(addr_up->ai_family, addr_up->ai_socktype,addr_up->ai_protocol);
         if (sock_up == -1) continue; /* try next field */
         else break; /* success, get out of loop */
     }
-    if (q == NULL) {
+    if (addr_up == NULL) {
         MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
         i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
-            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
+        for (addr_up=result_up; addr_up!=NULL; addr_up=addr_up->ai_next) {
+            getnameinfo(addr_up->ai_addr, addr_up->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+            MSG("INFO: [up] result_up %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
         }
         exit(EXIT_FAILURE);
     }
 
-    /* connect so we can send/receive packet with the server only */
-    i = connect(sock_up, q->ai_addr, q->ai_addrlen);
-    if (i != 0) {
-        MSG("ERROR: [up] connect returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    freeaddrinfo(result);
-
     /* look for server address w/ downstream port */
-    i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
+    i = getaddrinfo(serv_addr, serv_port_down, &hints, &result_down);
     if (i != 0) {
         MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", serv_addr, serv_port_down, gai_strerror(i));
         exit(EXIT_FAILURE);
     }
 
     /* try to open socket for downstream traffic */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock_down = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+    for (addr_down=result_down; addr_down!=NULL; addr_down=addr_down->ai_next) {
+        sock_down = socket(addr_down->ai_family, addr_down->ai_socktype,addr_down->ai_protocol);
         if (sock_down == -1) continue; /* try next field */
         else break; /* success, get out of loop */
     }
-    if (q == NULL) {
+    if (addr_down == NULL) {
         MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_down);
         i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
-            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
+        for (addr_down=result_down; addr_down!=NULL; addr_down=addr_down->ai_next) {
+            getnameinfo(addr_down->ai_addr, addr_down->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+            MSG("INFO: [down] result_down %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
         }
         exit(EXIT_FAILURE);
     }
-
-    /* connect so we can send/receive packet with the server only */
-    i = connect(sock_down, q->ai_addr, q->ai_addrlen);
-    if (i != 0) {
-        MSG("ERROR: [down] connect returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    freeaddrinfo(result);
 
     for (l = 0; l < LGW_IF_CHAIN_NB; l++) {
         for (m = 0; m < 8; m++) {
@@ -1929,6 +1915,8 @@ int main(int argc, char ** argv)
         }
     }
 
+    freeaddrinfo(result_up);
+    freeaddrinfo(result_down);
     MSG("INFO: Exiting packet forwarder program\n");
     exit(EXIT_SUCCESS);
 }
@@ -2451,7 +2439,7 @@ void thread_up(void) {
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
         /* send datagram to server */
-        send(sock_up, (void *)buff_up, buff_index, 0);
+        sendto(sock_up, (void *)buff_up, buff_index, 0, addr_up->ai_addr, addr_up->ai_addrlen);
         clock_gettime(CLOCK_MONOTONIC, &send_time);
         pthread_mutex_lock(&mx_meas_up);
         meas_up_dgram_sent += 1;
@@ -2459,7 +2447,7 @@ void thread_up(void) {
 
         /* wait for acknowledge (in 2 times, to catch extra packets) */
         for (i=0; i<2; ++i) {
-            j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
+            j = recvfrom(sock_up, (void *)buff_ack, sizeof buff_ack, 0, addr_up->ai_addr, &(addr_up->ai_addrlen));
             clock_gettime(CLOCK_MONOTONIC, &recv_time);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
@@ -2717,7 +2705,7 @@ void thread_down(void) {
         buff_req[2] = token_l;
 
         /* send PULL request and record time */
-        send(sock_down, (void *)buff_req, sizeof buff_req, 0);
+        sendto(sock_down, (void *)buff_req, sizeof buff_req, 0, addr_down->ai_addr, addr_down->ai_addrlen);
         clock_gettime(CLOCK_MONOTONIC, &send_time);
         pthread_mutex_lock(&mx_meas_dw);
         meas_dw_pull_sent += 1;
@@ -2730,7 +2718,7 @@ void thread_down(void) {
         while (((int)difftimespec(recv_time, send_time) < keepalive_time) && !exit_sig && !quit_sig) {
 
             /* try to receive a datagram */
-            msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
+            msg_len = recvfrom(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0, addr_down->ai_addr, &(addr_down->ai_addrlen));
             clock_gettime(CLOCK_MONOTONIC, &recv_time);
 
             /* Pre-allocate beacon slots in JiT queue, to check downlink collisions */
