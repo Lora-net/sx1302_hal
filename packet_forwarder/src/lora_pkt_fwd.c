@@ -46,6 +46,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <pthread.h>
 
+#include <czmq.h>
+
 #include "trace.h"
 #include "jitqueue.h"
 #include "parson.h"
@@ -150,6 +152,9 @@ static char serv_port_up[8] = STR(DEFAULT_PORT_UP); /* server port for upstream 
 static char serv_port_down[8] = STR(DEFAULT_PORT_DW); /* server port for downstream traffic */
 static int keepalive_time = DEFAULT_KEEPALIVE; /* send a PULL_DATA request every X seconds, negative = disabled */
 
+/* zmq configuration variables */
+static char zitf_up_endpoint[128] = "ipc:///tmp/lora-pkt-fwd/up.ipc";
+
 /* statistics collection configuration variables */
 static unsigned stat_interval = DEFAULT_STAT; /* time interval (in sec) at which statistics are collected and displayed */
 
@@ -162,6 +167,9 @@ static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
 static struct addrinfo* addr_up; /* remote address of the server for upstream traffic */
 static struct addrinfo* addr_down; /* remote address of the server for downstream traffic */
+
+/* zmq sockets */
+static zsock_t* z_pub_sock = NULL;
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
@@ -1085,6 +1093,16 @@ static int parse_gateway_configuration(const char * conf_file) {
         MSG("INFO: upstream PUSH_DATA time-out is configured to %u ms\n", (unsigned)(push_timeout_half.tv_usec / 500));
     }
 
+    /* zmq endpoints */
+    if ((str = json_object_get_string(conf_obj, "zmq_up_endpoint")) != NULL) {
+        size_t val_len = strlen(str);
+        if (val_len < sizeof(zitf_up_endpoint)) {
+            strncpy(zitf_up_endpoint, str, val_len);
+            zitf_up_endpoint[val_len] = 0;
+            MSG("INFO: zmq interface up endpoint is configured to %s\n", zitf_up_endpoint);
+        }
+    }
+
     /* packet filtering parameters */
     val = json_object_get_value(conf_obj, "forward_crc_valid");
     if (json_value_get_type(val) == JSONBoolean) {
@@ -1420,6 +1438,37 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     return sendto(sock_down, (void *)buff_ack, buff_index, 0, addr_down->ai_addr, addr_down->ai_addrlen);
 }
 
+static bool zitf_setup() {
+    z_pub_sock = zsock_new_pub(zitf_up_endpoint);
+    return z_pub_sock != NULL;
+}
+
+static void zitf_destroy() {
+    zsock_destroy(&z_pub_sock);
+}
+
+static void zitf_up_publish(const void* data, size_t sz) {
+    zmsg_t* m = zmsg_new();
+    if (m == NULL) {
+        return;
+    }
+    // send up message as 2 parts:
+    // 1. binary header
+    // 2. json data
+    if (zmsg_addmem(m, data, 12) != 0) {
+        zmsg_destroy(&m);
+        return;
+    }
+    if (zmsg_addmem(m, data + 12, sz - 12) != 0) {
+        zmsg_destroy(&m);
+        return;
+    }
+    if (zmsg_send(&m, z_pub_sock) != 0) {
+        MSG("ERROR: Failed to send up frame\n");
+        zmsg_destroy(&m);
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
@@ -1629,6 +1678,14 @@ int main(int argc, char ** argv)
         for (m = 0; m < 8; m++) {
             nb_pkt_log[l][m] = 0;
         }
+    }
+
+    /* setup zmq interface */
+    bool zmq_ok = zitf_setup();
+    if (zmq_ok) {
+        MSG("INFO: [main] zmq interface is setup\n");
+    } else {
+        MSG("ERROR: [main] failed to setup zmq interface\n");
     }
 
     /* starting the concentrator */
@@ -1906,6 +1963,7 @@ int main(int argc, char ** argv)
         /* shut down network sockets */
         shutdown(sock_up, SHUT_RDWR);
         shutdown(sock_down, SHUT_RDWR);
+        zitf_destroy();
         /* stop the hardware */
         i = lgw_stop();
         if (i == LGW_HAL_SUCCESS) {
@@ -2468,6 +2526,7 @@ void thread_up(void) {
             }
         }
         pthread_mutex_unlock(&mx_meas_up);
+        zitf_up_publish(buff_up, buff_index);
     }
     MSG("\nINFO: End of upstream thread\n");
 }
