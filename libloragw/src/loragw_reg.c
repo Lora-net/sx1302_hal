@@ -1163,34 +1163,40 @@ int reg_r(uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-/* Concentrator connect */
-int lgw_connect(const lgw_com_type_t com_type, const char * com_path) {
+/* Concentrator connect with chip version */
+int lgw_connect_with_version(const lgw_com_type_t com_type, const char * com_path, uint8_t* version) {
     int com_stat = LGW_COM_SUCCESS;
-    uint8_t u = 0;
 
     /* check COM link status */
     if (com_path == NULL) {
-        DEBUG_MSG("ERROR: COM PATH IS NOT SET\n");
+        printf("ERROR: COM PATH IS NOT SET\n");
         return LGW_REG_ERROR;
     }
 
     /* open the COM link */
     com_stat = lgw_com_open(com_type, com_path);
     if (com_stat != LGW_COM_SUCCESS) {
-        DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
+        printf("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;
     }
 
     /* check SX1302 version */
-    com_stat = lgw_com_r(LGW_SPI_MUX_TARGET_SX1302, loregs[SX1302_REG_COMMON_VERSION_VERSION].addr, &u);
+    com_stat = lgw_com_r(LGW_SPI_MUX_TARGET_SX1302, loregs[SX1302_REG_COMMON_VERSION_VERSION].addr, version);
     if (com_stat != LGW_COM_SUCCESS) {
-        DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+        printf("ERROR READING CHIP VERSION REGISTER\n");
         return LGW_REG_ERROR;
     }
-    printf("Note: chip version is 0x%02X (v%u.%u)\n", u, (u >> 4) & 0x0F, u & 0x0F) ;
+    printf("Note: chip version is 0x%02X (v%u.%u)\n", *version, (*version >> 4) & 0x0F, *version & 0x0F) ;
 
-    DEBUG_MSG("Note: success connecting the concentrator\n");
+    printf("Note: success connecting the concentrator\n");
     return LGW_REG_SUCCESS;
+}
+
+
+/* Concentrator connect */
+int lgw_connect(const lgw_com_type_t com_type, const char * com_path) {
+    uint8_t u = 0;
+    return lgw_connect_with_version(com_type, com_path, &u);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
