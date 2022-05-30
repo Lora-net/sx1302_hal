@@ -195,6 +195,7 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
             printf("ERROR: failed to ping the concentrator MCU\n");
             return LGW_USB_ERROR;
         }
+        mcu_save_version(gw_info.version + 1);
         if (strncmp(gw_info.version + 1, mcu_version_string, sizeof mcu_version_string) != 0) {
             printf("WARNING: MCU version mismatch (expected:%s, got:%s)\n", mcu_version_string, gw_info.version);
         }

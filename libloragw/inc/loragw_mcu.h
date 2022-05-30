@@ -190,6 +190,11 @@ int mcu_spi_store(uint8_t * in_out_buf, size_t buf_size);
 */
 int mcu_spi_flush(int fd);
 
+/**
+ *
+*/
+void mcu_save_version(char * version);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

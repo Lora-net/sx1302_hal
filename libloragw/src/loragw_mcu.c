@@ -73,6 +73,8 @@ static spi_req_bulk_t spi_bulk_buffer = {
     .buffer = { 0 }
 };
 
+static char mcu_version[9];
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
@@ -483,8 +485,13 @@ int decode_ack_spi_bulk(const uint8_t * hdr, const uint8_t * payload) {
         return -1;
     }
 
-    if (cmd_get_type(hdr) != ORDER_ID__ACK_MULTIPLE_SPI) {
-        printf("ERROR: wrong ACK type for ACK_MULTIPLE_SPI (expected:0x%02X, got 0x%02X)\n", ORDER_ID__ACK_MULTIPLE_SPI, cmd_get_type(hdr));
+    order_id_t command = ORDER_ID__ACK_MULTIPLE_SPI;
+
+    // ORDER_ID__ACK_MULTIPLE_SPI in firmware versions prior to 1.0.0 was 0x46 instead of 0x45
+    if (strcmp(mcu_version, mcu_version_string) < 0) command = command + 1;
+
+    if (cmd_get_type(hdr) != command) {
+        printf("ERROR: wrong ACK type for ACK_MULTIPLE_SPI (expected:0x%02X, got 0x%02X)\n", command, cmd_get_type(hdr));
         return -1;
     }
 
@@ -610,6 +617,10 @@ int mcu_get_status(int fd, s_status * status) {
     return 0;
 }
 
+void mcu_save_version(char * version) {
+    strcpy(mcu_version, version);
+}
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int mcu_gpio_write(int fd, uint8_t gpio_port, uint8_t gpio_id, uint8_t gpio_value) {
@@ -649,7 +660,12 @@ int mcu_spi_write(int fd, uint8_t * in_out_buf, size_t buf_size) {
     /* Check input parameters */
     CHECK_NULL(in_out_buf);
 
-    if (write_req(fd, ORDER_ID__REQ_MULTIPLE_SPI, in_out_buf, buf_size) != 0) {
+    order_id_t command = ORDER_ID__REQ_MULTIPLE_SPI;
+
+    // ORDER_ID__REQ_MULTIPLE_SPI in firmware versions prior to 1.0.0 was 0x06 instead of 0x05
+    if (strcmp(mcu_version, mcu_version_string) < 0) command = command + 1;
+
+    if (write_req(fd, command, in_out_buf, buf_size) != 0) {
         printf("ERROR: failed to write REQ_MULTIPLE_SPI request\n");
         return -1;
     }
