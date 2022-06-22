@@ -31,7 +31,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>
 #include <signal.h>     /* sigaction */
 #include <getopt.h>     /* getopt_long */
+#include <time.h>
 
+#include "parson.h"
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
@@ -48,7 +50,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define COM_PATH_DEFAULT "/dev/spidev0.0"
 
 #define DEFAULT_CLK_SRC     0
+#define DEFAULT_RF_CHAIN    0
 #define DEFAULT_FREQ_HZ     868500000U
+#define DEFAULT_SF          0
+#define DEFAULT_BW          0
+#define DEFAULT_PREAMB_LEN  8
+
+#define TX_CHANNELS_MIN     2
+#define TX_CHANNELS_MAX     64
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -56,6 +65,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* Signal handling variables */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
+
+/* TX frequency hopping variables */
+static uint32_t tx_channels[TX_CHANNELS_MAX] = { 0 };
+static uint8_t frequency_hopping_nb_channels = 0;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -68,59 +81,112 @@ void usage(void) {
     printf(" -u         Set COM type as USB (default is SPI)\n");
     printf(" -d <path>  COM path to be used to connect the concentrator\n");
     printf("            => default path: " COM_PATH_DEFAULT "\n");
-    printf(" -k <uint>  Concentrator clock source (Radio A or Radio B) [0..1]\n");
-    printf(" -c <uint>  RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
+    printf(" -k <uint>  Concentrator clock source (Radio A or Radio B) [0..1], default:%d\n", DEFAULT_CLK_SRC);
+    printf(" -c <uint>  RF chain to be used for TX (Radio A or Radio B) [0..1], default:%d\n", DEFAULT_RF_CHAIN);
     printf(" -r <uint>  Radio type (1255, 1257, 1250)\n");
-    printf(" -f <float> Radio TX frequency in MHz\n");
-    printf(" -m <str>   modulation type ['CW', 'LORA', 'FSK']\n");
+    printf(" -f <float> Radio TX frequency in MHz, default:%uHz\n", DEFAULT_FREQ_HZ);
+    printf(" -m <str>   modulation type ['CW', 'LORA', 'FSK'], default:LORA\n");
     printf(" -o <int>   CW frequency offset from Radio TX frequency in kHz [-65..65]\n");
-    printf(" -s <uint>  LoRa datarate 0:random, [5..12]\n");
-    printf(" -b <uint>  LoRa bandwidth in khz 0:random, [125, 250, 500]\n");
-    printf(" -l <uint>  FSK/LoRa preamble length, [6..65535]\n");
+    printf(" -s <uint>  LoRa datarate 0:random, [5..12], default:random\n");
+    printf(" -b <uint>  LoRa bandwidth in khz 0:random, [125, 250, 500], default:random\n");
+    printf(" -l <uint>  FSK/LoRa preamble length, [6..65535], default:%d\n", DEFAULT_PREAMB_LEN);
     printf(" -n <uint>  Number of packets to be sent\n");
-    printf(" -z <uint>  size of packets to be sent 0:random, [9..255]\n");
+    printf(" -z <uint>  size of packets to be sent 0:random, [9..255], default:random\n");
     printf(" -t <uint>  TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger\n");
     printf(" -p <int>   RF power in dBm\n");
     printf(" -i         Send LoRa packet using inverted modulation polarity\n");
     printf(" -j         Set radio in single input mode (SX1250 only)\n");
-    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" --fdev <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" --br   <float> FSK bitrate in kbps [0.5:250]\n");
-    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" --pa   <uint> PA gain SX125x:[0..3], SX1250:[0,1]\n");
     printf(" --dig  <uint> sx1302 digital gain for sx125x [0..3]\n");
     printf(" --dac  <uint> sx125x DAC gain [0..3]\n");
     printf(" --mix  <uint> sx125x MIX gain [5..15]\n");
     printf(" --pwid <uint> sx1250 power index [0..22]\n");
-    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" --nhdr        Send LoRa packet with implicit header\n");
-    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
-    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
+    printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf(" --hop <filename> Enable random frequency hopping mode on channels specified in the given config file\n");
 }
 
 /* handle signals */
-static void sig_handler(int sigio)
-{
+static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = 1;
-    }
-    else if((sigio == SIGINT) || (sigio == SIGTERM)) {
+    } else if((sigio == SIGINT) || (sigio == SIGTERM)) {
         exit_sig = 1;
     }
+}
+
+static int parse_channels_configuration(const char * conf_file) {
+    JSON_Value *root_val = NULL;
+    JSON_Object *conf_channels_obj = NULL;
+    JSON_Array *conf_channels_array = NULL;
+    JSON_Value *val = NULL;
+    int i;
+
+    /* try to parse JSON */
+    root_val = json_parse_file_with_comments(conf_file);
+    if (root_val == NULL) {
+        printf("ERROR: %s is not a valid JSON file\n", conf_file);
+        return -1;
+    }
+
+    /* Get configuration object */
+    conf_channels_obj = json_value_get_object(root_val);
+    if (conf_channels_obj == NULL) {
+        printf("ERROR: failed to get TX channels configuration object\n");
+        return -1;
+    }
+
+    /* Parse channels configuration */
+    conf_channels_array = json_object_get_array(conf_channels_obj, "channels");
+    if (conf_channels_array != NULL) {
+        frequency_hopping_nb_channels = (uint8_t)json_array_get_count(conf_channels_array);
+        if ((frequency_hopping_nb_channels < TX_CHANNELS_MIN) || (frequency_hopping_nb_channels > TX_CHANNELS_MAX)) {
+            printf("ERROR: wrong TX channels number (%d), should be [%d..%d]\n", frequency_hopping_nb_channels, TX_CHANNELS_MIN, TX_CHANNELS_MAX);
+            return -1;
+        } else {
+            printf("INFO: %u TX channels configured for frequency hopping\n", frequency_hopping_nb_channels);
+        }
+    }
+
+    for (i = 0; i < (int)frequency_hopping_nb_channels; i++) {
+        /* Channel frequency */
+        val = json_object_dotget_value(json_array_get_object(conf_channels_array, i), "freq_hz"); /* fetch value (if possible) */
+        if (val != NULL) {
+            if (json_value_get_type(val) == JSONNumber) {
+                tx_channels[i] = (uint32_t)json_value_get_number(val);
+                printf("tx_channels[%d]:%u\n", i, tx_channels[i]);
+            } else {
+                printf("ERROR: Data type for tx_channels[%d].freq_hz seems wrong, please check\n", i);
+                return -1;
+            }
+        } else {
+            printf("ERROR: no frequency defined for TX channel %d\n", i);
+            return -1;
+        }
+    }
+
+    json_value_free(root_val);
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
     int8_t rf_power = 0;
-    uint8_t sf = 0;
-    uint16_t bw_khz = 0;
+    uint8_t sf = DEFAULT_SF;
+    uint16_t bw_khz = DEFAULT_BW;
     uint32_t nb_pkt = 1;
     unsigned int nb_loop = 1, cnt_loop;
     uint8_t size = 0;
@@ -133,10 +199,10 @@ int main(int argc, char **argv)
     int arg_i;
     char arg_s[64];
     float xf = 0.0;
-    uint8_t clocksource = 0;
-    uint8_t rf_chain = 0;
+    uint8_t clocksource = DEFAULT_CLK_SRC;
+    uint8_t rf_chain = DEFAULT_RF_CHAIN;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
-    uint16_t preamble = 8;
+    uint16_t preamble = DEFAULT_PREAMB_LEN;
     bool invert_pol = false;
     bool no_header = false;
     bool single_input_mode = false;
@@ -150,6 +216,7 @@ int main(int argc, char **argv)
     uint32_t count_us;
     uint32_t trig_delay_us = 1000000;
     bool trig_delay = false;
+    uint8_t previous_tx_channel = 0xFF;
 
     /* SPI interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
@@ -157,6 +224,9 @@ int main(int argc, char **argv)
     lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+
+    /* configuration file related */
+    const char * hop_filename = NULL; /* pointer to a string we won't touch */
 
     /* Initialize TX gain LUT */
     txlut.size = 0;
@@ -175,11 +245,12 @@ int main(int argc, char **argv)
         {"loop", required_argument, 0, 0},
         {"nhdr", no_argument, 0, 0},
         {"fdd",  no_argument, 0, 0},
+        {"hop", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:ud:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long(argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:ud:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -405,6 +476,8 @@ int main(int argc, char **argv)
                     no_header = true;
                 } else if (strcmp(long_options[option_index].name, "fdd") == 0) {
                     full_duplex = true;
+                } else if (strcmp(long_options[option_index].name, "hop") == 0) {
+                    hop_filename = optarg;
                 } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
                     return EXIT_FAILURE;
@@ -420,23 +493,33 @@ int main(int argc, char **argv)
     /* Summary of packet parameters */
     if (strcmp(mod, "CW") == 0) {
         printf("Sending %i CW on %u Hz (Freq. offset %d kHz) at %i dBm\n", nb_pkt, ft, freq_offset, rf_power);
-    }
-    else if (strcmp(mod, "FSK") == 0) {
-        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, ft, fdev_khz, br_kbps, size, preamble, rf_power);
+    } else if (strcmp(mod, "FSK") == 0) {
+        printf("Sending %i FSK packets (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm\n", nb_pkt, fdev_khz, br_kbps, size, preamble, rf_power);
     } else {
-        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
+        printf("Sending %i LoRa packets (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
+    }
+
+    /* load configuration file for frequency hopping */
+    if (hop_filename != NULL) {
+        x = parse_channels_configuration(hop_filename);
+        if (x != 0) {
+            exit(EXIT_FAILURE);
+        }
+
+        /* seed for random channel selection */
+        srand(time(NULL));
     }
 
     /* Configure signal handling */
-    sigemptyset( &sigact.sa_mask );
+    sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     sigact.sa_handler = sig_handler;
-    sigaction( SIGQUIT, &sigact, NULL );
-    sigaction( SIGINT, &sigact, NULL );
-    sigaction( SIGTERM, &sigact, NULL );
+    sigaction(SIGQUIT, &sigact, NULL);
+    sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
 
     /* Configure the gateway */
-    memset( &boardconf, 0, sizeof boardconf);
+    memset(&boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = full_duplex;
@@ -448,7 +531,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = true; /* rf chain 0 needs to be enabled for calibration to work on sx1257 */
     rfconf.freq_hz = ft;
     rfconf.type = radio_type;
@@ -459,7 +542,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    memset( &rfconf, 0, sizeof rfconf);
+    memset(&rfconf, 0, sizeof rfconf);
     rfconf.enable = (((rf_chain == 1) || (clocksource == 1)) ? true : false);
     rfconf.freq_hz = ft;
     rfconf.type = radio_type;
@@ -479,7 +562,7 @@ int main(int argc, char **argv)
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
         if (com_type == LGW_COM_SPI) {
-        /* Board reset */
+            /* Board reset */
             if (system("./reset_lgw.sh start") != 0) {
                 printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
                 exit(EXIT_FAILURE);
@@ -507,12 +590,11 @@ int main(int argc, char **argv)
                 pkt.tx_mode = TIMESTAMPED;
             }
         }
-        if ( strcmp( mod, "CW" ) == 0 ) {
+        if (strcmp(mod, "CW") == 0) {
             pkt.modulation = MOD_CW;
             pkt.freq_offset = freq_offset;
             pkt.f_dev = fdev_khz;
-        }
-        else if( strcmp( mod, "FSK" ) == 0 ) {
+        } else if (strcmp(mod, "FSK") == 0) {
             pkt.modulation = MOD_FSK;
             pkt.no_crc = false;
             pkt.datarate = br_kbps * 1e3;
@@ -539,18 +621,29 @@ int main(int argc, char **argv)
         }
 
         for (i = 0; i < (int)nb_pkt; i++) {
-            if (trig_delay == true) {
-                if (trig_delay_us > 0) {
-                    lgw_get_instcnt(&count_us);
-                    printf("count_us:%u\n", count_us);
-                    pkt.count_us = count_us + trig_delay_us;
-                    printf("programming TX for %u\n", pkt.count_us);
-                } else {
-                    printf("programming TX for next PPS (GPS)\n");
-                }
+            /* Override TX frequency if hopping mode is selected */
+            if (frequency_hopping_nb_channels > 0) {
+                uint8_t channel_selected;
+
+                /* randomly select a channel among the given list, avoiding 2 consecutive TX on same frequency */
+                do {
+                    channel_selected = (uint8_t)RAND_RANGE(0, frequency_hopping_nb_channels - 1) ;
+                } while (channel_selected == previous_tx_channel);
+
+                /* store for next round */
+                previous_tx_channel = channel_selected;
+
+                /* set selected frequency */
+                pkt.freq_hz = tx_channels[channel_selected];
             }
 
-            if( strcmp( mod, "LORA" ) == 0 ) {
+            /* Set transmit time if scheduled TX mode selected */
+            if (pkt.tx_mode == TIMESTAMPED) {
+                lgw_get_instcnt(&count_us);
+                pkt.count_us = count_us + trig_delay_us;
+            }
+
+            if (strcmp(mod, "LORA") == 0) {
                 pkt.datarate = (sf == 0) ? (uint8_t)RAND_RANGE(5, 12) : sf;
             }
 
@@ -584,13 +677,29 @@ int main(int argc, char **argv)
                 lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
             } while ((tx_status != TX_FREE) && (quit_sig != 1) && (exit_sig != 1));
 
+            printf("(%d) TX done - %uHz - ", i + 1, pkt.freq_hz);
+            switch (pkt.tx_mode) {
+                case IMMEDIATE:
+                    printf("IMMEDIATE\n");
+                    break;
+                case ON_GPS:
+                    printf("PPS\n");
+                    break;
+                case TIMESTAMPED:
+                    printf("%uus\n", pkt.count_us);
+                    break;
+                default:
+                    break;
+            }
+
+            /* check if exit has been requested */
             if ((quit_sig == 1) || (exit_sig == 1)) {
                 break;
             }
-            printf("TX done\n");
+
         }
 
-        printf( "\nNb packets sent: %u (%u)\n", i, cnt_loop + 1 );
+        printf("\nNb packets sent: %u (%u)\n", i, cnt_loop + 1);
 
         /* Stop the gateway */
         x = lgw_stop();

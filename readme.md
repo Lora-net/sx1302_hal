@@ -191,6 +191,24 @@ found in the `libtools` directory.
 
 ## 7. Changelog
 
+### 2.1.0-experimental-poc-hybrid-testing ###
+
+> #### Updates
+
+This version is an experimental proposal for an update of the test utility
+`test_loragw_hal_tx` from the `libloragw` library which allows to perform random
+channel hopping when testing gateway packet transmission.
+
+> #### Changes
+
+* TST: Added a new option `--hop` to the `test_loragw_hal_tx` utility tool to
+indicate it has to randomly select a channel among the provided list for each
+transmitted packet. This option takes a JSON file as parameters for channels
+frequency definition. A JSON configuration file example is provided, named
+`channels_conf.json`. The utility will also avoid repeating on the same channel
+twice. This option can be used for testing in specific regions which require
+transmission to be equally distributed among X channels.
+
 ### v2.1.0 ###
 
 > #### Updates
