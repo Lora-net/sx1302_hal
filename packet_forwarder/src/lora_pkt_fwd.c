@@ -315,12 +315,12 @@ void thread_spectral_scan(void);
 
 static void usage( void )
 {
-    printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" %s\n", lgw_version_info());
-    printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" -h  print this help\n");
-    printf(" -c <filename>  use config file other than 'global_conf.json'\n");
-    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    MSG_DEBUG(DEBUG_PKT_FWD,"~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    MSG_DEBUG(DEBUG_PKT_FWD," %s\n", lgw_version_info());
+    MSG_DEBUG(DEBUG_PKT_FWD,"~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    MSG_DEBUG(DEBUG_PKT_FWD," -h  print this help\n");
+    MSG_DEBUG(DEBUG_PKT_FWD," -c <filename>  use config file other than 'global_conf.json'\n");
+    MSG_DEBUG(DEBUG_PKT_FWD,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 static void sig_handler(int sigio) {
@@ -738,17 +738,17 @@ static int parse_SX130x_configuration(const char * conf_file) {
                         conf_txgain_obj = json_array_get_object(conf_txlut_array, 0);
                         val = json_object_dotget_value(conf_txgain_obj, "pwr_idx");
                         if (val != NULL) {
-                            printf("INFO: Configuring Tx Gain LUT for rf_chain %u with %u indexes for sx1250\n", i, txlut[i].size);
+                            MSG_DEBUG(DEBUG_PKT_FWD,"INFO: Configuring Tx Gain LUT for rf_chain %u with %u indexes for sx1250\n", i, txlut[i].size);
                             sx1250_tx_lut = true;
                         } else {
-                            printf("INFO: Configuring Tx Gain LUT for rf_chain %u with %u indexes for sx125x\n", i, txlut[i].size);
+                            MSG_DEBUG(DEBUG_PKT_FWD,"INFO: Configuring Tx Gain LUT for rf_chain %u with %u indexes for sx125x\n", i, txlut[i].size);
                             sx1250_tx_lut = false;
                         }
                         /* Parse the table */
                         for (j = 0; j < (int)txlut[i].size; j++) {
                              /* Sanity check */
                             if (j >= TX_GAIN_LUT_SIZE_MAX) {
-                                printf("ERROR: TX Gain LUT [%u] index %d not supported, skip it\n", i, j);
+                                MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: TX Gain LUT [%u] index %d not supported, skip it\n", i, j);
                                 break;
                             }
                             /* Get TX gain object from LUT */
@@ -758,7 +758,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
                             if (json_value_get_type(val) == JSONNumber) {
                                 txlut[i].lut[j].rf_power = (int8_t)json_value_get_number(val);
                             } else {
-                                printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "rf_power", j);
+                                MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Data type for %s[%d] seems wrong, please check\n", "rf_power", j);
                                 txlut[i].lut[j].rf_power = 0;
                             }
                             /* PA gain */
@@ -766,7 +766,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
                             if (json_value_get_type(val) == JSONNumber) {
                                 txlut[i].lut[j].pa_gain = (uint8_t)json_value_get_number(val);
                             } else {
-                                printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "pa_gain", j);
+                                MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Data type for %s[%d] seems wrong, please check\n", "pa_gain", j);
                                 txlut[i].lut[j].pa_gain = 0;
                             }
                             if (sx1250_tx_lut == false) {
@@ -775,7 +775,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
                                 if (json_value_get_type(val) == JSONNumber) {
                                     txlut[i].lut[j].dig_gain = (uint8_t)json_value_get_number(val);
                                 } else {
-                                    printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "dig_gain", j);
+                                    MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Data type for %s[%d] seems wrong, please check\n", "dig_gain", j);
                                     txlut[i].lut[j].dig_gain = 0;
                                 }
                                 /* DAC gain */
@@ -783,7 +783,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
                                 if (json_value_get_type(val) == JSONNumber) {
                                     txlut[i].lut[j].dac_gain = (uint8_t)json_value_get_number(val);
                                 } else {
-                                    printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "dac_gain", j);
+                                    MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Data type for %s[%d] seems wrong, please check\n", "dac_gain", j);
                                     txlut[i].lut[j].dac_gain = 3; /* This is the only dac_gain supported for now */
                                 }
                                 /* MIX gain */
@@ -791,7 +791,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
                                 if (json_value_get_type(val) == JSONNumber) {
                                     txlut[i].lut[j].mix_gain = (uint8_t)json_value_get_number(val);
                                 } else {
-                                    printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "mix_gain", j);
+                                    MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Data type for %s[%d] seems wrong, please check\n", "mix_gain", j);
                                     txlut[i].lut[j].mix_gain = 0;
                                 }
                             } else {
@@ -803,7 +803,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
                                 if (json_value_get_type(val) == JSONNumber) {
                                     txlut[i].lut[j].pwr_idx = (uint8_t)json_value_get_number(val);
                                 } else {
-                                    printf("WARNING: Data type for %s[%d] seems wrong, please check\n", "pwr_idx", j);
+                                    MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Data type for %s[%d] seems wrong, please check\n", "pwr_idx", j);
                                     txlut[i].lut[j].pwr_idx = 0;
                                 }
                             }
@@ -1558,7 +1558,7 @@ int main(int argc, char ** argv)
             break;
 
         default:
-            printf( "ERROR: argument parsing options, use -h option for help\n" );
+            MSG_DEBUG(DEBUG_PKT_FWD, "ERROR: argument parsing options, use -h option for help\n" );
             usage( );
             return EXIT_FAILURE;
         }
@@ -1601,11 +1601,11 @@ int main(int argc, char ** argv)
     if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
         i = lgw_gps_enable(gps_tty_path, "ubx7", 0, &gps_tty_fd); /* HAL only supports u-blox 7 for now */
         if (i != LGW_GPS_SUCCESS) {
-            printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
+            MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
             gps_enabled = false;
             gps_ref_valid = false;
         } else {
-            printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
+            MSG_DEBUG(DEBUG_PKT_FWD,"INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
             gps_enabled = true;
             gps_ref_valid = false;
         }
@@ -1700,9 +1700,9 @@ int main(int argc, char ** argv)
     /* get the concentrator EUI */
     i = lgw_get_eui(&eui);
     if (i != LGW_HAL_SUCCESS) {
-        printf("ERROR: failed to get concentrator EUI\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: failed to get concentrator EUI\n");
     } else {
-        printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
+        MSG_DEBUG(DEBUG_PKT_FWD,"INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
     }
 
     /* spawn threads to manage upstream and downstream */
@@ -1851,70 +1851,70 @@ int main(int argc, char ** argv)
         }
 
         /* display a report */
-        printf("\n##### %s #####\n", stat_timestamp);
-        printf("### [UPSTREAM] ###\n");
-        printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
-        printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
-        printf("# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
-        printf("# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
-        printf("# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
-        printf("### [DOWNSTREAM] ###\n");
-        printf("# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
-        printf("# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
-        printf("# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok+cp_nb_tx_fail), cp_dw_payload_byte);
-        printf("# TX errors: %u\n", cp_nb_tx_fail);
+        MSG_DEBUG(DEBUG_PKT_FWD,"\n##### %s #####\n", stat_timestamp);
+        MSG_DEBUG(DEBUG_PKT_FWD,"### [UPSTREAM] ###\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
+        MSG_DEBUG(DEBUG_PKT_FWD,"### [DOWNSTREAM] ###\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok+cp_nb_tx_fail), cp_dw_payload_byte);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# TX errors: %u\n", cp_nb_tx_fail);
         if (cp_nb_tx_requested != 0 ) {
-            printf("# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
-            printf("# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
-            printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
-            printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
         }
-        printf("### SX1302 Status ###\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"### SX1302 Status ###\n");
         pthread_mutex_lock(&mx_concent);
         i  = lgw_get_instcnt(&inst_tstamp);
         i |= lgw_get_trigcnt(&trig_tstamp);
         pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
-            printf("# SX1302 counter unknown\n");
+            MSG_DEBUG(DEBUG_PKT_FWD,"# SX1302 counter unknown\n");
         } else {
-            printf("# SX1302 counter (INST): %u\n", inst_tstamp);
-            printf("# SX1302 counter (PPS):  %u\n", trig_tstamp);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# SX1302 counter (INST): %u\n", inst_tstamp);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# SX1302 counter (PPS):  %u\n", trig_tstamp);
         }
-        printf("# BEACON queued: %u\n", cp_nb_beacon_queued);
-        printf("# BEACON sent so far: %u\n", cp_nb_beacon_sent);
-        printf("# BEACON rejected: %u\n", cp_nb_beacon_rejected);
-        printf("### [JIT] ###\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"# BEACON queued: %u\n", cp_nb_beacon_queued);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# BEACON sent so far: %u\n", cp_nb_beacon_sent);
+        MSG_DEBUG(DEBUG_PKT_FWD,"# BEACON rejected: %u\n", cp_nb_beacon_rejected);
+        MSG_DEBUG(DEBUG_PKT_FWD,"### [JIT] ###\n");
         /* get timestamp captured on PPM pulse  */
         jit_print_queue (&jit_queue[0], false, DEBUG_LOG);
-        printf("#--------\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"#--------\n");
         jit_print_queue (&jit_queue[1], false, DEBUG_LOG);
-        printf("### [GPS] ###\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"### [GPS] ###\n");
         if (gps_enabled == true) {
             /* no need for mutex, display is not critical */
             if (gps_ref_valid == true) {
-                printf("# Valid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
+                MSG_DEBUG(DEBUG_PKT_FWD,"# Valid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
             } else {
-                printf("# Invalid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
+                MSG_DEBUG(DEBUG_PKT_FWD,"# Invalid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
             }
             if (coord_ok == true) {
-                printf("# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+                MSG_DEBUG(DEBUG_PKT_FWD,"# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
             } else {
-                printf("# no valid GPS coordinates available yet\n");
+                MSG_DEBUG(DEBUG_PKT_FWD,"# no valid GPS coordinates available yet\n");
             }
         } else if (gps_fake_enable == true) {
-            printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+            MSG_DEBUG(DEBUG_PKT_FWD,"# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
         } else {
-            printf("# GPS sync is disabled\n");
+            MSG_DEBUG(DEBUG_PKT_FWD,"# GPS sync is disabled\n");
         }
         pthread_mutex_lock(&mx_concent);
         i = lgw_get_temperature(&temperature);
         pthread_mutex_unlock(&mx_concent);
         if (i != LGW_HAL_SUCCESS) {
-            printf("### Concentrator temperature unknown ###\n");
+            MSG_DEBUG(DEBUG_PKT_FWD,"### Concentrator temperature unknown ###\n");
         } else {
-            printf("### Concentrator temperature: %.0f C ###\n", temperature);
+            MSG_DEBUG(DEBUG_PKT_FWD,"### Concentrator temperature: %.0f C ###\n", temperature);
         }
-        printf("##### END #####\n");
+        MSG_DEBUG(DEBUG_PKT_FWD,"##### END #####\n");
 
         /* generate a JSON report (will be sent to server by upstream thread) */
         pthread_mutex_lock(&mx_stat_rep);
@@ -1930,20 +1930,20 @@ int main(int argc, char ** argv)
     /* wait for all threads with a COM with the concentrator board to finish (1 fetch cycle max) */
     i = pthread_join(thrid_up, NULL);
     if (i != 0) {
-        printf("ERROR: failed to join upstream thread with %d - %s\n", i, strerror(errno));
+        MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: failed to join upstream thread with %d - %s\n", i, strerror(errno));
     }
     i = pthread_join(thrid_down, NULL);
     if (i != 0) {
-        printf("ERROR: failed to join downstream thread with %d - %s\n", i, strerror(errno));
+        MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: failed to join downstream thread with %d - %s\n", i, strerror(errno));
     }
     i = pthread_join(thrid_jit, NULL);
     if (i != 0) {
-        printf("ERROR: failed to join JIT thread with %d - %s\n", i, strerror(errno));
+        MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: failed to join JIT thread with %d - %s\n", i, strerror(errno));
     }
     if (spectral_scan_params.enable == true) {
         i = pthread_join(thrid_ss, NULL);
         if (i != 0) {
-            printf("ERROR: failed to join Spectral Scan thread with %d - %s\n", i, strerror(errno));
+            MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: failed to join Spectral Scan thread with %d - %s\n", i, strerror(errno));
         }
     }
     if (gps_enabled == true) {
@@ -2137,7 +2137,7 @@ void thread_up(void) {
             meas_up_pkt_fwd += 1;
             meas_up_payload_byte += p->size;
             pthread_mutex_unlock(&mx_meas_up);
-            printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
+            MSG_DEBUG(DEBUG_PKT_FWD, "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
 
             /* Start of packet, add inter-packet separator if necessary */
             if (pkt_in_dgram == 0) {
@@ -2494,7 +2494,7 @@ void thread_up(void) {
         ++buff_index;
         buff_up[buff_index] = 0; /* add string terminator, for safety */
 
-        printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
+        MSG_DEBUG(DEBUG_PKT_FWD,"\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
         /* send datagram to server */
         sendto(sock_up, (void *)buff_up, buff_index, 0, addr_up->ai_addr, addr_up->ai_addrlen);
@@ -2860,7 +2860,7 @@ void thread_down(void) {
 
                         /* display beacon payload */
                         MSG("INFO: Beacon queued (count_us=%u, freq_hz=%u, size=%u):\n", beacon_pkt.count_us, beacon_pkt.freq_hz, beacon_pkt.size);
-                        printf( "   => " );
+                        MSG_DEBUG(DEBUG_PKT_FWD, "   => " );
                         for (i = 0; i < beacon_pkt.size; ++i) {
                             MSG("%02X ", beacon_pkt.payload[i]);
                         }
@@ -2926,7 +2926,7 @@ void thread_down(void) {
             buff_down[msg_len] = 0; /* add string terminator, just to be safe */
             MSG("INFO: [down] PULL_RESP received in %i ms at %.2i:%.2i:%.2i.%i - token[%d:%d] :)\n", rcv_delay,
                 now_repr->tm_hour, now_repr->tm_min, now_repr->tm_sec, (int)(now.tv_nsec / 1E6), buff_down[1], buff_down[2]); /* very verbose */
-            printf("\nJSON down: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
+            MSG_DEBUG(DEBUG_PKT_FWD,"\nJSON down: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
 
             /* initialize TX struct and try to parse JSON */
             memset(&txpkt, 0, sizeof txpkt);
@@ -3237,7 +3237,7 @@ void thread_down(void) {
                     /* this RF power is not supported, throw a warning, and use the closest lower power supported */
                     warning_result = JIT_ERROR_TX_POWER;
                     warning_value = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
-                    printf("WARNING: Requested TX power is not supported (%ddBm), actual power used: %ddBm\n", txpkt.rf_power, warning_value);
+                    MSG_DEBUG(DEBUG_PKT_FWD,"WARNING: Requested TX power is not supported (%ddBm), actual power used: %ddBm\n", txpkt.rf_power, warning_value);
                     txpkt.rf_power = txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
                 }
             }
@@ -3249,7 +3249,7 @@ void thread_down(void) {
                 pthread_mutex_unlock(&mx_concent);
                 jit_result = jit_enqueue(&jit_queue[txpkt.rf_chain], current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {
-                    printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
+                    MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
                 } else {
                     /* In case of a warning having been raised before, we notify it */
                     jit_result = warning_result;
@@ -3655,10 +3655,10 @@ void thread_spectral_scan(void) {
             if (tx_enable[i] == true) {
                 x = lgw_status((uint8_t)i, TX_STATUS, &tx_status);
                 if (x != LGW_HAL_SUCCESS) {
-                    printf("ERROR: failed to get TX status on chain %d\n", i);
+                    MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: failed to get TX status on chain %d\n", i);
                 } else {
                     if (tx_status == TX_SCHEDULED || tx_status == TX_EMITTING) {
-                        printf("INFO: skip spectral scan (downlink programmed on RF chain %d)\n", i);
+                        MSG_DEBUG(DEBUG_PKT_FWD,"INFO: skip spectral scan (downlink programmed on RF chain %d)\n", i);
                         break; /* exit for loop */
                     }
                 }
@@ -3667,7 +3667,7 @@ void thread_spectral_scan(void) {
         if (tx_status != TX_SCHEDULED && tx_status != TX_EMITTING) {
             x = lgw_spectral_scan_start(freq_hz, spectral_scan_params.nb_scan);
             if (x != 0) {
-                printf("ERROR: spectral scan start failed\n");
+                MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: spectral scan start failed\n");
                 pthread_mutex_unlock(&mx_concent);
                 continue; /* main while loop */
             }
@@ -3682,7 +3682,7 @@ void thread_spectral_scan(void) {
             do {
                 /* handle timeout */
                 if (timeout_check(tm_start, 2000) != 0) {
-                    printf("ERROR: %s: TIMEOUT on Spectral Scan\n", __FUNCTION__);
+                    MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: %s: TIMEOUT on Spectral Scan\n", __FUNCTION__);
                     break;  /* do while */
                 }
 
@@ -3691,7 +3691,7 @@ void thread_spectral_scan(void) {
                 x = lgw_spectral_scan_get_status(&status);
                 pthread_mutex_unlock(&mx_concent);
                 if (x != 0) {
-                    printf("ERROR: spectral scan status failed\n");
+                    MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: spectral scan status failed\n");
                     break; /* do while */
                 }
 
@@ -3707,16 +3707,16 @@ void thread_spectral_scan(void) {
                 x = lgw_spectral_scan_get_results(levels, results);
                 pthread_mutex_unlock(&mx_concent);
                 if (x != 0) {
-                    printf("ERROR: spectral scan get results failed\n");
+                    MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: spectral scan get results failed\n");
                     continue; /* main while loop */
                 }
 
                 /* print results */
-                printf("SPECTRAL SCAN - %u Hz: ", freq_hz);
+                MSG_DEBUG(DEBUG_PKT_FWD,"SPECTRAL SCAN - %u Hz: ", freq_hz);
                 for (i = 0; i < LGW_SPECTRAL_SCAN_RESULT_SIZE; i++) {
-                    printf("%u ", results[i]);
+                    MSG_DEBUG(DEBUG_PKT_FWD,"%u ", results[i]);
                 }
-                printf("\n");
+                MSG_DEBUG(DEBUG_PKT_FWD,"\n");
 
                 /* Next frequency to scan */
                 freq_hz += 200000; /* 200kHz channels */
@@ -3724,13 +3724,13 @@ void thread_spectral_scan(void) {
                     freq_hz = spectral_scan_params.freq_hz_start;
                 }
             } else if (status == LGW_SPECTRAL_SCAN_STATUS_ABORTED) {
-                printf("INFO: %s: spectral scan has been aborted\n", __FUNCTION__);
+                MSG_DEBUG(DEBUG_PKT_FWD,"INFO: %s: spectral scan has been aborted\n", __FUNCTION__);
             } else {
-                printf("ERROR: %s: spectral scan status us unexpected 0x%02X\n", __FUNCTION__, status);
+                MSG_DEBUG(DEBUG_PKT_FWD,"ERROR: %s: spectral scan status us unexpected 0x%02X\n", __FUNCTION__, status);
             }
         }
     }
-    printf("\nINFO: End of Spectral Scan thread\n");
+    MSG_DEBUG(DEBUG_PKT_FWD,"\nINFO: End of Spectral Scan thread\n");
 }
 
 /* --- EOF ------------------------------------------------------------------ */

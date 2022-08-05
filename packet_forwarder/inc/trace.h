@@ -21,7 +21,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEBUG_JIT_ERROR 1
 #define DEBUG_TIMERSYNC 0
 #define DEBUG_BEACON    0
-#define DEBUG_LOG       1
+#define DEBUG_LOG       0
 
 #define MSG(args...) printf(args); fflush(stdout) /* message that is destined to the user */
 #define MSG_DEBUG(FLAG, fmt, ...)                                                                         \
