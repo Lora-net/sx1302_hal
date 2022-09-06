@@ -478,15 +478,7 @@ int main(int argc, char **argv)
     }
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
-        if (com_type == LGW_COM_SPI) {
-        /* Board reset */
-            if (system("./reset_lgw.sh start") != 0) {
-                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        /* connect, configure and start the LoRa concentrator */
+       /* connect, configure and start the LoRa concentrator */
         x = lgw_start();
         if (x != 0) {
             printf("ERROR: failed to start the gateway\n");
@@ -596,14 +588,6 @@ int main(int argc, char **argv)
         x = lgw_stop();
         if (x != 0) {
             printf("ERROR: failed to stop the gateway\n");
-        }
-
-        if (com_type == LGW_COM_SPI) {
-            /* Board reset */
-            if (system("./reset_lgw.sh stop") != 0) {
-                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-                exit(EXIT_FAILURE);
-            }
         }
     }
 
