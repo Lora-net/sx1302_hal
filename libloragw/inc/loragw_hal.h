@@ -160,6 +160,7 @@ struct lgw_conf_board_s {
     bool            full_duplex;    /*!> Indicates if the gateway operates in full duplex mode or not */
     lgw_com_type_t  com_type;       /*!> The COMmunication interface (SPI/USB) to connect to the SX1302 */
     char            com_path[64];   /*!> Path to access the COM device to connect to the SX1302 */
+    char            i2c_device[64]; /*!> Path to access the I2C device next to the SX1302 */
 };
 
 /**

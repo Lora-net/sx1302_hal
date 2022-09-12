@@ -75,6 +75,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CONTEXT_COM_TYPE        lgw_context.board_cfg.com_type
 #define CONTEXT_COM_PATH        lgw_context.board_cfg.com_path
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
+#define CONTEXT_I2C_DEVICE      lgw_context.board_cfg.i2c_device
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
 #define CONTEXT_IF_CHAIN        lgw_context.if_chain_cfg
@@ -122,6 +123,7 @@ the _start and _send functions assume they are valid.
 */
 static lgw_context_t lgw_context = {
     .is_started = false,
+    .board_cfg.i2c_device = I2C_DEVICE,
     .board_cfg.com_type = LGW_COM_SPI,
     .board_cfg.com_path = "/dev/spidev0.0",
     .board_cfg.lorawan_public = true,
@@ -468,11 +470,13 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
     CONTEXT_COM_TYPE = conf->com_type;
-    strncpy(CONTEXT_COM_PATH, conf->com_path, sizeof CONTEXT_COM_PATH);
+    strncpy(CONTEXT_I2C_DEVICE, conf->i2c_device, sizeof(CONTEXT_I2C_DEVICE));
+    strncpy(CONTEXT_COM_PATH, conf->com_path, sizeof(CONTEXT_COM_PATH));
     CONTEXT_COM_PATH[sizeof CONTEXT_COM_PATH - 1] = '\0'; /* ensure string termination */
 
-    DEBUG_PRINTF("Note: board configuration: com_type: %s, com_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",   (CONTEXT_COM_TYPE == LGW_COM_SPI) ? "SPI" : "USB",
+    DEBUG_PRINTF("Note: board configuration: com_type: %s, com_path: %s, i2c_device: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",   (CONTEXT_COM_TYPE == LGW_COM_SPI) ? "SPI" : "USB",
                                                                                                                             CONTEXT_COM_PATH,
+                                                                                                                            CONTEXT_I2C_DEVICE,
                                                                                                                             CONTEXT_LWAN_PUBLIC,
                                                                                                                             CONTEXT_BOARD.clksrc,
                                                                                                                             CONTEXT_BOARD.full_duplex);
@@ -1096,7 +1100,7 @@ int lgw_start(void) {
         /* Find the temperature sensor on the known supported ports */
         for (i = 0; i < (int)(sizeof I2C_PORT_TEMP_SENSOR); i++) {
             ts_addr = I2C_PORT_TEMP_SENSOR[i];
-            err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
+            err = i2c_linuxdev_open(CONTEXT_I2C_DEVICE, ts_addr, &ts_fd);
             if (err != LGW_I2C_SUCCESS) {
                 printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
                 return LGW_HAL_ERROR;
@@ -1119,7 +1123,7 @@ int lgw_start(void) {
 
         /* Configure ADC AD338R for full duplex (CN490 reference design) */
         if (CONTEXT_BOARD.full_duplex == true) {
-            err = i2c_linuxdev_open(I2C_DEVICE, I2C_PORT_DAC_AD5338R, &ad_fd);
+            err = i2c_linuxdev_open(CONTEXT_I2C_DEVICE, I2C_PORT_DAC_AD5338R, &ad_fd);
             if (err != LGW_I2C_SUCCESS) {
                 printf("ERROR: failed to open I2C for ad5338r\n");
                 return LGW_HAL_ERROR;
