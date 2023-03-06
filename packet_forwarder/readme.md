@@ -75,7 +75,7 @@ chips) that must be matched with the proper version of the HAL.
 
 * Pick the global_conf.json file that fit with your platform, region and feature
 need.
-* Update the JSON configuration (global and local) files, as explained below.
+* Update the JSON configuration (global_conf.json) file, as explained below.
 * Run:
     ./lora_pkt_fwd -c global_conf.json
 
