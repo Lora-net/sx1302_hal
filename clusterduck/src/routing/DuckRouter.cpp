@@ -2,14 +2,23 @@
 
 void DuckRouter::insertIntoRoutingTable(Duid deviceID, Duid nextHop, SignalScore signalInfo) {
 
+    // Passively evict stale entries on every insert so the table stays bounded
+    // without a separate cleanup thread.  Uses the default 5-minute TTL.
+    evictStaleEntries();
+
     Neighbor neighborRecord(deviceID, nextHop, signalInfo, millis());
     auto index = routingTable.find(duckutils::toString(deviceID));
-    if (index == routingTable.end()) { //need to make sure we aren't adding Link1276->Link1276 to Mama1262
+
+    if (index == routingTable.end()) {
+        // First time we see this destination — create a new entry.
+        // Guard: do not add a self-loop (e.g. Link1276 -> Link1276 via Mama1262).
         std::list<Neighbor> neighborList;
         neighborList.push_back(neighborRecord);
         routingTable.insert(std::make_pair(neighborRecord.getDeviceId(), neighborList));
     } else {
-        // Update existing record
+        // Destination already known.  Remove any older record that uses the same
+        // next-hop so we don't accumulate duplicates, then append the fresh one.
+        // Records via *different* next-hops are kept to preserve alternative paths.
         index->second.remove_if([neighborRecord](const Neighbor& n) {
             return n.getLastSeen() < neighborRecord.getLastSeen() && n.getDeviceId() == neighborRecord.getDeviceId();
         });
@@ -18,29 +27,47 @@ void DuckRouter::insertIntoRoutingTable(Duid deviceID, Duid nextHop, SignalScore
 };
 
 std::optional<Duid> DuckRouter::getBestNextHop(Duid targetDeviceId){
-    //check if nextHop = the duid of the last duid in path/last duid that relayed to the current duck so that it doesn't transmit back the way it came from
+    // Look up all known paths to the requested destination.
     auto nextHopRecord = routingTable.find(duckutils::toString(targetDeviceId));
     if (nextHopRecord == routingTable.end()) {
-        return std::nullopt; // No entry found
+        return std::nullopt; // Destination not in table — caller should flood or drop.
     }
+
+    // Sort candidates by descending signal score so the best path is at front.
+    // Neighbor::operator> compares routingScore, which is a composite of RSSI and SNR.
     nextHopRecord->second.sort(std::greater<>());
+
     std::string nextHopStr = nextHopRecord->second.front().getDeviceId();
     Duid nextHopId;
-    std::copy(nextHopStr.begin(), nextHopStr.end(),nextHopId.begin());
+    std::copy(nextHopStr.begin(), nextHopStr.end(), nextHopId.begin());
 
-    // if(nextHop.ttl > 0){
-              //send a new rreq
-    // }
+    // TODO: if the best candidate's TTL is about to expire, pre-emptively send
+    //       a new RREQ to refresh the route before it goes stale:
+    // if (nextHop.ttl > 0) { sendRREQ(targetDeviceId); }
+
     return nextHopId;
-
 };
 
-void DuckRouter::CullRoutingTable(size_t maxSize) {
-    std::size_t size = routingTable.size();
-    while (size > maxSize) {
-        auto it = std::prev(routingTable.end(),1); // Get iterator to the last element
-        routingTable.erase(it);
-        size = routingTable.size(); // Update size after erasure
+void DuckRouter::evictStaleEntries(unsigned long ttl_ms) {
+    unsigned long now = millis();
+
+    for (auto it = routingTable.begin(); it != routingTable.end(); ) {
+        // Step 1 — remove individual Neighbor records that are too old.
+        // A record is stale when:  now - lastSeen > ttl_ms
+        // Using unsigned arithmetic avoids sign issues on platforms where
+        // millis() wraps around (e.g. after ~49 days on 32-bit systems).
+        it->second.remove_if([now, ttl_ms](const Neighbor& n) {
+            return (now - n.getLastSeen()) > ttl_ms;
+        });
+
+        // Step 2 — if all next-hop candidates for this destination were evicted,
+        // remove the destination key itself so the table doesn't hold empty lists.
+        if (it->second.empty()) {
+            loginfo_ln("[ROUTER] Evicted stale routing entry: %s", it->first.c_str());
+            it = routingTable.erase(it); // erase() returns the next valid iterator.
+        } else {
+            ++it;
+        }
     }
 };
 
