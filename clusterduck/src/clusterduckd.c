@@ -229,10 +229,20 @@ static uint32_t net_mac_h; /* Most Significant Nibble, network order */
 static uint32_t net_mac_l; /* Least Significant Nibble, network order */
 
 /* network sockets */
+static int sock_up;   /* socket for upstream traffic → LoRaWAN Network Server */
 static int sock_down; /* socket for downstream traffic */
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
+static struct timeval pull_timeout = {0, (PULL_TIMEOUT_MS * 1000)}; /* non critical for throughput */
+
+/* Dual-mode configuration:
+ * When lorawan_fwd_enabled is true, received packets are inspected and
+ * classified as either LoRaWAN or CDP.  LoRaWAN packets are forwarded to a
+ * Network Server (Chirpstack / TTN) via the standard Semtech UDP PUSH_DATA
+ * protocol on sock_up.  CDP packets are forwarded to the ClusterDuck bridge.
+ * Both paths share the same concentrator hardware (lgw_receive). */
+static bool lorawan_fwd_enabled = false; /* set via "lorawan_forward_enabled" in global_conf.json */
 
 /* hardware access control and correction */
 pthread_mutex_t mx_concent = PTHREAD_MUTEX_INITIALIZER; /* control access to the concentrator */
@@ -1622,6 +1632,13 @@ static int parse_gateway_configuration(const char * conf_file) {
         MSG("INFO: upstream PUSH_DATA time-out is configured to %u ms\n", (unsigned)(push_timeout_half.tv_usec / 500));
     }
 
+    /* dual-mode: enable LoRaWAN upstream forwarding to a Network Server (optional) */
+    val = json_object_get_value(conf_obj, "lorawan_forward_enabled");
+    if (json_value_get_type(val) == JSONBoolean) {
+        lorawan_fwd_enabled = (bool)json_value_get_boolean(val);
+        MSG("INFO: LoRaWAN upstream forwarding is %s\n", lorawan_fwd_enabled ? "ENABLED" : "DISABLED");
+    }
+
     /* packet filtering parameters */
     val = json_object_get_value(conf_obj, "forward_crc_valid");
     if (json_value_get_type(val) == JSONBoolean) {
@@ -2147,6 +2164,48 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
+    /* -----------------------------------------------------------------------
+     * LoRaWAN upstream socket setup (dual-mode only)
+     * Open a UDP socket to the configured Network Server so that LoRaWAN
+     * packets identified by the upstream classifier can be forwarded via the
+     * standard Semtech UDP protocol (PUSH_DATA / PUSH_ACK).
+     * lorawan_fwd_enabled is set by parse_gateway_configuration above.
+     * --------------------------------------------------------------------- */
+    MSG("INFO: [main] LoRaWAN upstream forwarding is %s\n", lorawan_fwd_enabled ? "ENABLED" : "DISABLED");
+
+    if (lorawan_fwd_enabled) {
+        struct addrinfo hints_lw, *result_lw = NULL, *q_lw = NULL;
+        memset(&hints_lw, 0, sizeof hints_lw);
+        hints_lw.ai_family   = AF_INET;
+        hints_lw.ai_socktype = SOCK_DGRAM;
+
+        i = getaddrinfo(serv_addr, serv_port_up, &hints_lw, &result_lw);
+        if (i != 0) {
+            MSG("ERROR: [main] getaddrinfo for LoRaWAN NS %s:%s failed: %s\n", serv_addr, serv_port_up, gai_strerror(i));
+            MSG("WARNING: [main] Disabling LoRaWAN forwarding\n");
+            lorawan_fwd_enabled = false;
+        } else {
+            for (q_lw = result_lw; q_lw != NULL; q_lw = q_lw->ai_next) {
+                sock_up = socket(q_lw->ai_family, q_lw->ai_socktype, q_lw->ai_protocol);
+                if (sock_up == -1) continue;
+                else break;
+            }
+            if (q_lw == NULL) {
+                MSG("ERROR: [main] failed to open upstream socket to LoRaWAN NS %s:%s\n", serv_addr, serv_port_up);
+                lorawan_fwd_enabled = false;
+            } else {
+                i = connect(sock_up, q_lw->ai_addr, q_lw->ai_addrlen);
+                if (i != 0) {
+                    MSG("ERROR: [main] connect to LoRaWAN NS failed: %s\n", strerror(errno));
+                    lorawan_fwd_enabled = false;
+                } else {
+                    MSG("INFO: [main] upstream socket open to LoRaWAN NS %s:%s\n", serv_addr, serv_port_up);
+                }
+            }
+            freeaddrinfo(result_lw);
+        }
+    }
+
     /* get the concentrator EUI */
     i = lgw_get_eui(&eui);
     if (i != LGW_HAL_SUCCESS) {
@@ -2400,56 +2459,81 @@ int main(int argc, char ** argv)
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 
+/* ---------------------------------------------------------------------------
+ * is_lorawan_packet - packet classifier
+ *
+ * Returns true if the packet looks like a LoRaWAN MAC frame, false if it
+ * should be treated as a CDP (ClusterDuck Protocol) packet.
+ *
+ * Decision is based on the MHDR byte (byte 0) layout defined by LoRaWAN
+ * spec 1.0 §4.2:
+ *   bits[7:5]  MType  (000=JoinReq … 101=ConfDataDown, 110=RFU, 111=Proprietary)
+ *   bits[4:2]  RFU    must be 000 for a valid LoRaWAN frame
+ *   bits[1:0]  Major  must be 00  for LoRaWAN r1
+ *
+ * A CDP source DUID starts at byte 0 and has no such bit-field constraints,
+ * so the RFU+Major check provides a clean separation in practice.
+ * --------------------------------------------------------------------------- */
+static bool is_lorawan_packet(const uint8_t *payload, uint16_t size) {
+    if (size < 8) return false;               /* too short for any valid LoRaWAN frame */
+    uint8_t mhdr = payload[0];
+    if ((mhdr & 0x1F) != 0x00) return false;  /* RFU bits[4:2] or Major bits[1:0] non-zero */
+    uint8_t mtype = (mhdr >> 5) & 0x07;
+    if (mtype == 0x06) return false;           /* MType=110 is LoRaWAN-RFU, discard */
+    return true;
+}
+
 void thread_up(void) {
+    int i, j, k;
     char stat_timestamp[24];
     time_t t;
 
     /* allocate memory for packet fetching and processing */
-    struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX]; /* array containing inbound packets + metadata */
+    struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX];
+    struct lgw_pkt_rx_s *p;
     int nb_pkt;
 
-    /* data buffers */
-    uint8_t buff_up[TX_BUFF_SIZE]; /* buffer to compose the upstream packet */
+    /* data buffer for Semtech UDP PUSH_DATA (LoRaWAN path) */
+    uint8_t buff_up[TX_BUFF_SIZE];
+    int buff_index;
+    uint8_t buff_ack[32];
 
-    /* report management variable */
+    /* PUSH_DATA framing */
+    uint8_t token_h, token_l;
+    int pkt_in_dgram;
+
+    /* report management */
     bool send_report = false;
 
-    /* Zaihan's code */
-    const uint8_t *payload;    // usually pkt->payload
-    uint16_t size;             // usually pkt->size
+    /* GPS time reference (copy taken once per fetch to avoid per-packet mutex) */
+    bool ref_ok = false;
+    struct tref local_ref;
+    struct timespec pkt_utc_time;
+    struct tm *x;
+    struct timespec pkt_gps_time;
+    uint64_t pkt_gps_time_ms;
 
-    // Map RSSI: common names are rssic (int16) or rssi (int8). Update to match your struct:
-    int16_t rssi = 0;
-    // rssi = pkt->rssic;      // uncomment if your struct has rssic (int16)
-    // rssi = (int16_t)pkt->rssi; // uncomment if rssi is int8
+    /* timing for ACK measurement */
+    struct timespec send_time, recv_time;
 
-    // Map SNR:
-    float snr = 0.0f;
-    // snr = pkt->snr;         // common
+    /* mote info (LoRaWAN DevAddr + FCnt extracted from FHDR) */
+    uint32_t mote_addr = 0;
+    uint16_t mote_fcnt  = 0;
 
-    // Frequency in Hz:
-    uint32_t freq_hz = 0;
-    // freq_hz = pkt->freq_hz; // common
+    /* -------------------------------------------------------------------
+     * LoRaWAN upstream socket: set receive timeout so the ACK wait does
+     * not block indefinitely when the Network Server is unreachable.
+     * ------------------------------------------------------------------- */
+    if (lorawan_fwd_enabled) {
+        i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO,
+                       (void *)&push_timeout_half, sizeof push_timeout_half);
+        if (i != 0) {
+            MSG("ERROR: [up] setsockopt for sock_up failed: %s\n", strerror(errno));
+            /* non-fatal: ACK waits may block longer, but forwarding still works */
+        }
+    }
 
-    // Concentrator timestamp (used for timed downlinks). Common names: count_us, tmst
-    uint32_t tmst = 0;
-    // tmst = pkt->count_us;   // common
-    // tmst = pkt->tmst;       // alternative
-
-    // RF/IF chain index:
-    uint8_t rf_chain = 0;
-    // rf_chain = pkt->if_chain; // common
-    // rf_chain = pkt->rf_chain; // alternative
-
-    // Optional modulation metadata (if present in your lgw_pkt_rx_s)
-    uint32_t bandwidth_hz = 0;
-    uint8_t datarate_sf = 0;
-    uint8_t coderate = 0;
-    // bandwidth_hz = pkt->bandwidth_hz; // if available
-    // datarate_sf = pkt->datarate;      // often encoded (for LoRa this is SF)
-    // coderate = pkt->coderate;         // if available
-
-    /* pre-fill the data buffer with fixed fields */
+    /* pre-fill the fixed header fields of the PUSH_DATA buffer */
     buff_up[0] = PROTOCOL_VERSION;
     buff_up[3] = PKT_PUSH_DATA;
     *(uint32_t *)(buff_up + 4) = net_mac_h;
@@ -2457,7 +2541,11 @@ void thread_up(void) {
 
     while (!exit_sig && !quit_sig) {
 
-        /* fetch packets */
+        /* ----------------------------------------------------------------
+         * Fetch all available packets from the concentrator in one call.
+         * Both LoRaWAN and CDP packets arrive here — the classifier below
+         * routes each one to the correct protocol path.
+         * -------------------------------------------------------------- */
         pthread_mutex_lock(&mx_concent);
         nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);
         pthread_mutex_unlock(&mx_concent);
@@ -2467,8 +2555,7 @@ void thread_up(void) {
         }
 
         /* check if there are status report to send */
-        send_report = report_ready; /* copy the variable so it doesn't change mid-function */
-        /* no mutex, we're only reading */
+        send_report = report_ready;
 
         /* wait a short time if no packets, nor status report */
         if ((nb_pkt == 0) && (send_report == false)) {
@@ -2476,13 +2563,22 @@ void thread_up(void) {
             continue;
         }
 
-        /* get timestamp for statistics */
+        /* get GPS time reference once per fetch cycle */
+        if ((nb_pkt > 0) && (gps_enabled == true)) {
+            pthread_mutex_lock(&mx_timeref);
+            ref_ok    = gps_ref_valid;
+            local_ref = time_reference_gps;
+            pthread_mutex_unlock(&mx_timeref);
+        } else {
+            ref_ok = false;
+        }
+
+        /* timestamp for statistics */
         t = time(NULL);
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
         MSG_DEBUG(DEBUG_PKT_FWD, "\nCurrent time: %s \n", stat_timestamp);
 
-
-        /* DEBUG: print the number of packets received per channel and per SF */
+        /* DEBUG channel/SF counters */
         {
             int l, m;
             MSG_PRINTF(DEBUG_PKT_FWD, "\n");
@@ -2493,62 +2589,319 @@ void thread_up(void) {
                 }
                 MSG_PRINTF(DEBUG_PKT_FWD, "\n");
             }
-            MSG_PRINTF(DEBUG_PKT_FWD, "FSK: \t%d", nb_pkt_log[9][0]);
-            MSG_PRINTF(DEBUG_PKT_FWD, "\n");
-            MSG_PRINTF(DEBUG_PKT_FWD, "Total number of LoRa packet received: %u\n", nb_pkt_received_lora);
-            MSG_PRINTF(DEBUG_PKT_FWD, "Total number of FSK packet received: %u\n", nb_pkt_received_fsk);
+            MSG_PRINTF(DEBUG_PKT_FWD, "FSK: \t%d\n", nb_pkt_log[9][0]);
+            MSG_PRINTF(DEBUG_PKT_FWD, "Total LoRa pkts received: %u\n", nb_pkt_received_lora);
+            MSG_PRINTF(DEBUG_PKT_FWD, "Total FSK  pkts received: %u\n", nb_pkt_received_fsk);
             for (l = 0; l < debugconf.nb_ref_payload; l++) {
-                MSG_PRINTF(DEBUG_PKT_FWD, "Total number of LoRa packet received from 0x%08X: %u\n", debugconf.ref_payload[l].id, nb_pkt_received_ref[l]);
+                MSG_PRINTF(DEBUG_PKT_FWD, "Total pkts from 0x%08X: %u\n",
+                           debugconf.ref_payload[l].id, nb_pkt_received_ref[l]);
             }
         }
 
-        /* Process each received packet */
         if (nb_pkt > 0) {
-            MSG("INFO: Received %d packet(s) from concentrator\n", nb_pkt);
-        }
-        for (int i = 0; i < nb_pkt; ++i) {
-            struct lgw_pkt_rx_s *p = &rxpkt[i];
-            
-            // Extract packet metadata
-            rssi = (int16_t)p->rssic;
-            snr  = p->snr;
-            freq_hz = p->freq_hz;
-            tmst = p->count_us;
-            rf_chain = p->if_chain;
-            bandwidth_hz = p->bandwidth;
-            datarate_sf = p->datarate;
-            coderate = p->coderate;
-            payload = p->payload;
-            size = p->size;
-
-            // Validate packet before passing to ClusterDuck
-            if (size == 0 || size > 255) {
-                MSG("WARNING: [%d/%d] Skipping invalid packet (size=%u)\n", i+1, nb_pkt, size);
-                continue;
-            }
-            
-            if (payload == NULL) {
-                MSG("WARNING: [%d/%d] Skipping packet with NULL payload\n", i+1, nb_pkt);
-                continue;
-            }
-            
-            // Check for invalid coding rate (0 is invalid in LoRa)
-            if (coderate == 0 || coderate > CR_LORA_4_8) {
-                MSG("WARNING: [%d/%d] Skipping packet with invalid coding rate (%u)\n", 
-                    i+1, nb_pkt, coderate);
-                continue;
-            }
-
-            // Pass validated packet to ClusterDuck bridge
-            MSG("INFO: [%d/%d] Passing packet to ClusterDuck (size=%u, rssi=%d, snr=%.1f)\n", 
-                       i+1, nb_pkt, size, rssi, snr);
-            cdp_bridge_handle_uplink(payload, size,
-                                     rssi, snr,
-                                     freq_hz, tmst, rf_chain,
-                                     bandwidth_hz, datarate_sf, coderate);
+            MSG("INFO: [up] fetched %d packet(s) from concentrator\n", nb_pkt);
         }
 
-    }
+        /* ----------------------------------------------------------------
+         * Begin the PUSH_DATA datagram for LoRaWAN packets.
+         * We build one datagram per fetch cycle, appending each LoRaWAN
+         * packet as a JSON rxpk object.  CDP packets bypass this buffer
+         * and go directly to the ClusterDuck bridge.
+         * -------------------------------------------------------------- */
+        token_h = (uint8_t)rand();
+        token_l = (uint8_t)rand();
+        buff_up[1] = token_h;
+        buff_up[2] = token_l;
+        buff_index  = 12;           /* 12-byte header */
+        pkt_in_dgram = 0;
+
+        /* open the rxpk JSON array */
+        memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[", 9);
+        buff_index += 9;
+
+        /* ----------------------------------------------------------------
+         * Per-packet loop: classify → route
+         * -------------------------------------------------------------- */
+        for (i = 0; i < nb_pkt; ++i) {
+            p = &rxpkt[i];
+
+            /* ---- basic validation ---- */
+            if (p->size == 0 || p->size > 255) {
+                MSG("WARNING: [up] [%d/%d] invalid size=%u, skipping\n", i+1, nb_pkt, p->size);
+                continue;
+            }
+            if (p->payload == NULL) {
+                MSG("WARNING: [up] [%d/%d] NULL payload, skipping\n", i+1, nb_pkt);
+                continue;
+            }
+
+            /* ---- CRC filter (applies to both paths) ---- */
+            pthread_mutex_lock(&mx_meas_up);
+            meas_nb_rx_rcv += 1;
+            switch (p->status) {
+                case STAT_CRC_OK:
+                    meas_nb_rx_ok += 1;
+                    if (!fwd_valid_pkt) { pthread_mutex_unlock(&mx_meas_up); continue; }
+                    break;
+                case STAT_CRC_BAD:
+                    meas_nb_rx_bad += 1;
+                    if (!fwd_error_pkt) { pthread_mutex_unlock(&mx_meas_up); continue; }
+                    break;
+                case STAT_NO_CRC:
+                    meas_nb_rx_nocrc += 1;
+                    if (!fwd_nocrc_pkt) { pthread_mutex_unlock(&mx_meas_up); continue; }
+                    break;
+                default:
+                    MSG("WARNING: [up] unknown status 0x%02X, skipping\n", p->status);
+                    pthread_mutex_unlock(&mx_meas_up);
+                    continue;
+            }
+            meas_up_pkt_fwd    += 1;
+            meas_up_payload_byte += p->size;
+            pthread_mutex_unlock(&mx_meas_up);
+
+            /* ---- PACKET CLASSIFIER ---- */
+            if (lorawan_fwd_enabled && is_lorawan_packet(p->payload, p->size)) {
+                /* ============================================================
+                 * PATH A: LoRaWAN → Semtech UDP PUSH_DATA → Network Server
+                 * ============================================================ */
+
+                /* extract DevAddr + FCnt from FHDR for logging */
+                if (p->size >= 8) {
+                    mote_addr  = p->payload[1];
+                    mote_addr |= p->payload[2] << 8;
+                    mote_addr |= p->payload[3] << 16;
+                    mote_addr |= p->payload[4] << 24;
+                    mote_fcnt  = p->payload[6];
+                    mote_fcnt |= p->payload[7] << 8;
+                } else {
+                    mote_addr = mote_fcnt = 0;
+                }
+                MSG("INFO: [up] [%d/%d] LoRaWAN pkt → NS (DevAddr=%08X fcnt=%u size=%u rssi=%.0f snr=%.1f)\n",
+                    i+1, nb_pkt, mote_addr, mote_fcnt, p->size, p->rssic, p->snr);
+
+                /* inter-packet separator */
+                if (pkt_in_dgram == 0) {
+                    buff_up[buff_index++] = '{';
+                } else {
+                    buff_up[buff_index++] = ',';
+                    buff_up[buff_index++] = '{';
+                }
+
+                /* jver */
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                             "\"jver\":%d", PROTOCOL_JSON_RXPK_FRAME_FORMAT);
+                if (j > 0) buff_index += j; else { MSG("ERROR: [up] snprintf jver\n"); exit(EXIT_FAILURE); }
+
+                /* tmst */
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                             ",\"tmst\":%u", p->count_us);
+                if (j > 0) buff_index += j; else { MSG("ERROR: [up] snprintf tmst\n"); exit(EXIT_FAILURE); }
+
+                /* GPS-based UTC + GPS time (optional) */
+                if (ref_ok == true) {
+                    j = lgw_cnt2utc(local_ref, p->count_us, &pkt_utc_time);
+                    if (j == LGW_GPS_SUCCESS) {
+                        x = gmtime(&(pkt_utc_time.tv_sec));
+                        j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                                     ",\"time\":\"%04i-%02i-%02iT%02i:%02i:%02i.%06liZ\"",
+                                     (x->tm_year)+1900, (x->tm_mon)+1, x->tm_mday,
+                                     x->tm_hour, x->tm_min, x->tm_sec,
+                                     (pkt_utc_time.tv_nsec)/1000);
+                        if (j > 0) buff_index += j;
+                    }
+                    j = lgw_cnt2gps(local_ref, p->count_us, &pkt_gps_time);
+                    if (j == LGW_GPS_SUCCESS) {
+                        pkt_gps_time_ms = pkt_gps_time.tv_sec * 1000ULL +
+                                          pkt_gps_time.tv_nsec / 1000000ULL;
+                        j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                                     ",\"tmms\":%" PRIu64, pkt_gps_time_ms);
+                        if (j > 0) buff_index += j;
+                    }
+                }
+
+                /* fine timestamp */
+                if (p->ftime_received == true) {
+                    j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                                 ",\"ftime\":%u", p->ftime);
+                    if (j > 0) buff_index += j;
+                }
+
+                /* channel, rf chain, freq, modem id */
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                             ",\"chan\":%1u,\"rfch\":%1u,\"freq\":%.6lf,\"mid\":%2u",
+                             p->if_chain, p->rf_chain, ((double)p->freq_hz / 1e6), p->modem_id);
+                if (j > 0) buff_index += j; else { MSG("ERROR: [up] snprintf chan\n"); exit(EXIT_FAILURE); }
+
+                /* CRC status */
+                switch (p->status) {
+                    case STAT_CRC_OK:  memcpy(buff_up + buff_index, ",\"stat\":1",  9); buff_index += 9;  break;
+                    case STAT_CRC_BAD: memcpy(buff_up + buff_index, ",\"stat\":-1", 10); buff_index += 10; break;
+                    case STAT_NO_CRC:  memcpy(buff_up + buff_index, ",\"stat\":0",  9); buff_index += 9;  break;
+                    default: break;
+                }
+
+                /* modulation, datarate, bandwidth, coderate */
+                if (p->modulation == MOD_LORA) {
+                    memcpy(buff_up + buff_index, ",\"modu\":\"LORA\"", 14); buff_index += 14;
+                    switch (p->datarate) {
+                        case DR_LORA_SF5:  memcpy(buff_up+buff_index, ",\"datr\":\"SF5",  12); buff_index+=12; break;
+                        case DR_LORA_SF6:  memcpy(buff_up+buff_index, ",\"datr\":\"SF6",  12); buff_index+=12; break;
+                        case DR_LORA_SF7:  memcpy(buff_up+buff_index, ",\"datr\":\"SF7",  12); buff_index+=12; break;
+                        case DR_LORA_SF8:  memcpy(buff_up+buff_index, ",\"datr\":\"SF8",  12); buff_index+=12; break;
+                        case DR_LORA_SF9:  memcpy(buff_up+buff_index, ",\"datr\":\"SF9",  12); buff_index+=12; break;
+                        case DR_LORA_SF10: memcpy(buff_up+buff_index, ",\"datr\":\"SF10", 13); buff_index+=13; break;
+                        case DR_LORA_SF11: memcpy(buff_up+buff_index, ",\"datr\":\"SF11", 13); buff_index+=13; break;
+                        case DR_LORA_SF12: memcpy(buff_up+buff_index, ",\"datr\":\"SF12", 13); buff_index+=13; break;
+                        default: memcpy(buff_up+buff_index, ",\"datr\":\"SF?",  12); buff_index+=12; break;
+                    }
+                    switch (p->bandwidth) {
+                        case BW_125KHZ: memcpy(buff_up+buff_index, "BW125\"", 6); buff_index+=6; break;
+                        case BW_250KHZ: memcpy(buff_up+buff_index, "BW250\"", 6); buff_index+=6; break;
+                        case BW_500KHZ: memcpy(buff_up+buff_index, "BW500\"", 6); buff_index+=6; break;
+                        default:        memcpy(buff_up+buff_index, "BW?\"",   4); buff_index+=4; break;
+                    }
+                    switch (p->coderate) {
+                        case CR_LORA_4_5: memcpy(buff_up+buff_index, ",\"codr\":\"4/5\"", 13); buff_index+=13; break;
+                        case CR_LORA_4_6: memcpy(buff_up+buff_index, ",\"codr\":\"4/6\"", 13); buff_index+=13; break;
+                        case CR_LORA_4_7: memcpy(buff_up+buff_index, ",\"codr\":\"4/7\"", 13); buff_index+=13; break;
+                        case CR_LORA_4_8: memcpy(buff_up+buff_index, ",\"codr\":\"4/8\"", 13); buff_index+=13; break;
+                        case 0:           memcpy(buff_up+buff_index, ",\"codr\":\"OFF\"", 13); buff_index+=13; break;
+                        default:          memcpy(buff_up+buff_index, ",\"codr\":\"?\"",  11); buff_index+=11; break;
+                    }
+                    j = snprintf((char *)(buff_up+buff_index), TX_BUFF_SIZE-buff_index,
+                                 ",\"rssis\":%.0f", roundf(p->rssis));
+                    if (j > 0) buff_index += j;
+                    j = snprintf((char *)(buff_up+buff_index), TX_BUFF_SIZE-buff_index,
+                                 ",\"lsnr\":%.1f", p->snr);
+                    if (j > 0) buff_index += j;
+                    j = snprintf((char *)(buff_up+buff_index), TX_BUFF_SIZE-buff_index,
+                                 ",\"foff\":%d", p->freq_offset);
+                    if (j > 0) buff_index += j;
+                    nb_pkt_log[p->if_chain][p->datarate - 5] += 1;
+                    nb_pkt_received_lora += 1;
+                    for (k = 0; k < debugconf.nb_ref_payload; k++) {
+                        if ((p->payload[0] == (uint8_t)(debugconf.ref_payload[k].id >> 24)) &&
+                            (p->payload[1] == (uint8_t)(debugconf.ref_payload[k].id >> 16)) &&
+                            (p->payload[2] == (uint8_t)(debugconf.ref_payload[k].id >>  8)) &&
+                            (p->payload[3] == (uint8_t)(debugconf.ref_payload[k].id >>  0))) {
+                            nb_pkt_received_ref[k] += 1;
+                        }
+                    }
+                } else if (p->modulation == MOD_FSK) {
+                    memcpy(buff_up+buff_index, ",\"modu\":\"FSK\"", 13); buff_index += 13;
+                    j = snprintf((char *)(buff_up+buff_index), TX_BUFF_SIZE-buff_index,
+                                 ",\"datr\":%u", p->datarate);
+                    if (j > 0) buff_index += j;
+                    nb_pkt_log[p->if_chain][0] += 1;
+                    nb_pkt_received_fsk += 1;
+                }
+
+                /* RSSI + size */
+                j = snprintf((char *)(buff_up+buff_index), TX_BUFF_SIZE-buff_index,
+                             ",\"rssi\":%.0f,\"size\":%u", roundf(p->rssic), p->size);
+                if (j > 0) buff_index += j;
+
+                /* base64 payload */
+                memcpy(buff_up+buff_index, ",\"data\":\"", 9); buff_index += 9;
+                j = bin_to_b64(p->payload, p->size, (char *)(buff_up+buff_index), 341);
+                if (j >= 0) buff_index += j;
+                buff_up[buff_index++] = '"';
+
+                /* close rxpk object */
+                buff_up[buff_index++] = '}';
+                ++pkt_in_dgram;
+
+            } else {
+                /* ============================================================
+                 * PATH B: CDP (ClusterDuck Protocol) → ClusterDuck bridge
+                 * ============================================================ */
+                MSG("INFO: [up] [%d/%d] CDP pkt → bridge (size=%u rssi=%.0f snr=%.1f)\n",
+                    i+1, nb_pkt, p->size, p->rssic, p->snr);
+
+                /* Reject obviously bad coding rates before handing to CDP */
+                if (p->coderate == 0 || p->coderate > CR_LORA_4_8) {
+                    MSG("WARNING: [up] invalid coderate (%u), skipping\n", p->coderate);
+                    continue;
+                }
+
+                cdp_bridge_handle_uplink(
+                    p->payload, (uint16_t)p->size,
+                    (int16_t)p->rssic, p->snr,
+                    p->freq_hz, p->count_us, (uint8_t)p->if_chain,
+                    p->bandwidth, p->datarate, p->coderate);
+            }
+        } /* end per-packet loop */
+
+        /* --------------------------------------------------------------------
+         * Send accumulated LoRaWAN PUSH_DATA datagram (if any) to the NS
+         * ------------------------------------------------------------------ */
+        if (lorawan_fwd_enabled && pkt_in_dgram > 0) {
+            /* close rxpk array + JSON object */
+            buff_up[buff_index++] = ']';
+
+            /* optionally append status report */
+            if (send_report == true) {
+                buff_up[buff_index++] = ',';
+                pthread_mutex_lock(&mx_stat_rep);
+                report_ready = false;
+                j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                             "%s", status_report);
+                pthread_mutex_unlock(&mx_stat_rep);
+                if (j > 0) buff_index += j;
+            }
+
+            buff_up[buff_index++] = '}';
+            buff_up[buff_index]   = 0; /* null-terminate for safety */
+
+            MSG_DEBUG(DEBUG_PKT_FWD, "\nJSON up: %s\n", (char *)(buff_up + 12));
+
+            send(sock_up, (void *)buff_up, buff_index, 0);
+            clock_gettime(CLOCK_MONOTONIC, &send_time);
+            pthread_mutex_lock(&mx_meas_up);
+            meas_up_dgram_sent   += 1;
+            meas_up_network_byte += buff_index;
+            pthread_mutex_unlock(&mx_meas_up);
+
+            /* wait for PUSH_ACK (two attempts to catch delayed responses) */
+            for (i = 0; i < 2; ++i) {
+                j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
+                clock_gettime(CLOCK_MONOTONIC, &recv_time);
+                if (j == -1) {
+                    if (errno == EAGAIN) continue; /* timeout */
+                    else break;                    /* socket error */
+                } else if ((j < 4) ||
+                           (buff_ack[0] != PROTOCOL_VERSION) ||
+                           (buff_ack[3] != PKT_PUSH_ACK)) {
+                    continue; /* ignore invalid ACK */
+                } else if ((buff_ack[1] != token_h) || (buff_ack[2] != token_l)) {
+                    continue; /* out-of-sync ACK */
+                } else {
+                    MSG("INFO: [up] PUSH_ACK received in %i ms\n",
+                        (int)(1000 * difftimespec(recv_time, send_time)));
+                    pthread_mutex_lock(&mx_meas_up);
+                    meas_up_ack_rcv += 1;
+                    pthread_mutex_unlock(&mx_meas_up);
+                    break;
+                }
+            }
+        } else if (send_report == true && !lorawan_fwd_enabled) {
+            /* If LoRaWAN forwarding is off but a stat report is pending,
+             * send it as a standalone PUSH_DATA with an empty rxpk array. */
+            buff_index = 12;
+            memcpy(buff_up + buff_index, "{\"stat\":", 9); buff_index += 9;
+            pthread_mutex_lock(&mx_stat_rep);
+            report_ready = false;
+            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
+                         "%s", status_report);
+            pthread_mutex_unlock(&mx_stat_rep);
+            if (j > 0) buff_index += j;
+            buff_up[buff_index++] = '}';
+            buff_up[buff_index]   = 0;
+            /* stat-only reports are discarded when NS forwarding is disabled */
+        }
+
+    } /* end main loop */
     MSG("\nINFO: End of upstream thread\n");
 }
 

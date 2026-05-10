@@ -88,6 +88,8 @@
         "forward_crc_valid": true,
         "forward_crc_error": false,
         "forward_crc_disabled": false,
+        /* dual-mode: set true to also forward LoRaWAN packets to server_address NS */
+        "lorawan_forward_enabled": false,
         /* GPS configuration */
         "gps_tty_path": "/dev/ttyS0",
         /* GPS reference coordinates */
