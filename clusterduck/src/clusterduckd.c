@@ -3295,34 +3295,43 @@ void thread_down(void) {
 
         if (duck_rc == 0 && buf_capacity > 0) {
 
-            MSG("INFO: ClusterDuck downlink received, size=%u\n", buf_capacity);
-                    /* Build lgw_pkt_tx_s - field names vary by HAL version */
+            MSG("INFO: ClusterDuck downlink received (outer loop), size=%u\n", buf_capacity);
+
+                    /* Wait for MamaDuck SX1262 to return to RX mode after its RREQ TX */
+                    struct timespec outer_dl_delay = {0, 500000000L}; /* 500 ms */
+                    nanosleep(&outer_dl_delay, NULL);
+
+                    /* Build lgw_pkt_tx_s */
                     memset(&txpkt, 0, sizeof(txpkt));
 
                     /* Copy payload */
                     memcpy(txpkt.payload, duck_payload_buf, buf_capacity);
                     txpkt.size = buf_capacity;
 
-                    /* Frequency and timestamp (fallback to CDP defaults if not provided) */
-                    txpkt.freq_hz  = CDPCFG_RF_LORA_FREQ_HZ;
-                    
+                    /* Frequency: use ext metadata if provided, else CDP default */
+                    txpkt.freq_hz = (dl_freq_hz > 0) ? dl_freq_hz : CDPCFG_RF_LORA_FREQ_HZ;
+                    MSG("INFO: ClusterDuck outer downlink TX freq=%u Hz\n", txpkt.freq_hz);
+
                     /* For ClusterDuck packets, use immediate transmission */
-                    /* Let JIT queue handle collision avoidance automatically */
-                    txpkt.count_us = 0;  /* 0 means ASAP - JIT will schedule avoiding collisions */
-                    txpkt.tx_mode = IMMEDIATE;  /* Use IMMEDIATE mode - JIT will find next available slot */
+                    txpkt.count_us = 0;
+                    txpkt.tx_mode = IMMEDIATE;
 
                 /* RF chain and power */
                 txpkt.rf_chain = (dl_rf_chain < LGW_RF_CHAIN_NB) ? dl_rf_chain : 0;
                 txpkt.rf_power = CDPCFG_RF_LORA_TXPOW;
 
-                /* Modulation params — LoRa defaults mapped from CDP config if not provided */
-                txpkt.modulation = MOD_LORA;
-                txpkt.bandwidth  = BW_125KHZ;
-                txpkt.datarate   = DR_LORA_SF7;
-                txpkt.coderate   = CR_LORA_4_5;
+                /* Modulation params */
+                txpkt.modulation  = MOD_LORA;
+                txpkt.bandwidth   = BW_125KHZ;
+                txpkt.datarate    = DR_LORA_SF7;
+                txpkt.coderate    = CR_LORA_4_5;
+                txpkt.invert_pol  = false; /* CDP is not LoRaWAN — use normal (non-inverted) IQ */
+                txpkt.preamble    = 8;     /* Standard LoRa preamble */
+                txpkt.no_crc      = false;
+                txpkt.no_header   = false;
 
 	        MSG("INFO: txpkt size is %u\n", txpkt.size);
-                downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_C;  /* CLASS_C calculates ASAP timing */                /* End of Zaihan's code */
+                downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_C;
 
                 /* reset error/warning results */
                 jit_result = warning_result = JIT_ERROR_OK;

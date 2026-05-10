@@ -329,7 +329,10 @@ int DuckLoRa::sendData(uint8_t* data, int length)
         logerr_ln("ERROR  LoRa radio not setup");
         return DUCKLORA_ERR_NOT_INITIALIZED;
     }
-    delay(length);
+    /* Gateway mode: skip embedded collision-avoidance delay.
+     * The SX1302 JIT queue handles TX timing. Adding a random
+     * sleep here would block thread_duck for up to 3 seconds,
+     * delaying RREP delivery past the MamaDuck's RX window. */
     return startTransmitData(data, length);
 }
 
