@@ -1587,13 +1587,13 @@ static int parse_gateway_configuration(const char * conf_file) {
      * If omitted, main() will fall back to the hardware EUI from lgw_get_eui().
      * When lorawan_forward_enabled is true this value must match the gateway
      * registered in your Network Server (Chirpstack / TTN). */
-    str = json_object_get_string(conf_obj, "gateway_ID");
+    str = json_object_get_string(conf_obj, "gateway_id");
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
         MSG("INFO: gateway MAC address is configured to %016llX\n", ull);
     } else {
-        MSG("INFO: gateway_ID not set in config, will use concentrator hardware EUI\n");
+        MSG("INFO: gateway_id not set in config, will use concentrator hardware EUI\n");
     }
 
     /* server hostname or IP address (optional) */
@@ -2217,13 +2217,13 @@ int main(int argc, char ** argv)
         printf("ERROR: failed to get concentrator EUI\n");
     } else {
         printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
-        /* If gateway_ID was not set in the config (lgwm == 0), fall back to
+        /* If gateway_id was not set in the config (lgwm == 0), fall back to
          * the hardware EUI burned into the SX1302 concentrator.  This ensures
          * PUSH_DATA datagrams always carry a valid, unique gateway identifier
          * without requiring the user to copy the EUI into global_conf.json. */
         if (lgwm == 0) {
             lgwm = eui;
-            MSG("INFO: gateway_ID not set in config, using concentrator EUI: %016" PRIx64 "\n", lgwm);
+            MSG("INFO: gateway_id not set in config, using concentrator EUI: %016" PRIx64 "\n", lgwm);
         }
     }
 

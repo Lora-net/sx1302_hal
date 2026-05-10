@@ -69,7 +69,7 @@ Dual-mode is **off by default**. To enable it, set the following in your
 
 ```json
 "gateway_conf": {
-    "gateway_ID": "AC1F09FFFE0XXXXX",
+    "gateway_id": "AC1F09FFFE0XXXXX",
     "server_address": "chirpstack.example.com",
     "serv_port_up":   1700,
     "serv_port_down": 1700,
@@ -78,7 +78,7 @@ Dual-mode is **off by default**. To enable it, set the following in your
 }
 ```
 
-### `gateway_ID`
+### `gateway_id`
 
 The **EUI-64** identifier for this gateway. This is what the Network Server
 (Chirpstack, TTN) uses to identify the gateway and route downlinks back to it.
@@ -88,16 +88,16 @@ Run `clusterduckd` and look for this line in the startup log:
 ```
 INFO: concentrator EUI: 0xAC1F09FFFE0XXXXX
 ```
-Use those 16 hex characters as your `gateway_ID` value. Register the same EUI
+Use those 16 hex characters as your `gateway_id` value. Register the same EUI
 in Chirpstack → Gateways → Add Gateway, or in TTN Console → Gateways → Register.
 
-**If `gateway_ID` is omitted from config:**  
+**If `gateway_id` is omitted from config:**  
 `clusterduckd` automatically detects the hardware EUI from the SX1302 concentrator
 via `lgw_get_eui()` and uses it. The log will confirm:
 ```
-INFO: gateway_ID not set in config, using concentrator EUI: AC1F09FFFE0XXXXX
+INFO: gateway_id not set in config, using concentrator EUI: AC1F09FFFE0XXXXX
 ```
-This means `gateway_ID` is **optional** — omitting it is safe and recommended
+This means `gateway_id` is **optional** — omitting it is safe and recommended
 if you only have one gateway, since the hardware EUI is always unique.
 
 **The placeholder `AA555A0000000000`** is Semtech's default and must be replaced
