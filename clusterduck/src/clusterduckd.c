@@ -3297,10 +3297,6 @@ void thread_down(void) {
 
             MSG("INFO: ClusterDuck downlink received (outer loop), size=%u\n", buf_capacity);
 
-                    /* Wait for MamaDuck SX1262 to return to RX mode after its RREQ TX */
-                    struct timespec outer_dl_delay = {0, 500000000L}; /* 500 ms */
-                    nanosleep(&outer_dl_delay, NULL);
-
                     /* Build lgw_pkt_tx_s */
                     memset(&txpkt, 0, sizeof(txpkt));
 
@@ -3695,14 +3691,9 @@ void thread_down(void) {
             
             if (duck_rc_inner == 0 && buf_capacity > 0) {
                 MSG("INFO: ClusterDuck downlink received (inner loop), size=%u\n", buf_capacity);
-
-                /* Wait for MamaDuck SX1262 to return to RX mode after its RREQ TX.
-                 * MamaDuck finishes TX, then its radio needs ~5-10ms turnaround.
-                 * Gateway processes RREQ and queues RREP very fast, so we delay
-                 * here to ensure MamaDuck is listening before we transmit. */
-                struct timespec dl_delay = {0, 500000000L}; /* 500ms */
-                nanosleep(&dl_delay, NULL);
-                MSG("INFO: ClusterDuck downlink delay done, transmitting now\n");
+                /* No nanosleep needed: JIT CLASS_C schedules TX at current_time + 2*TX_JIT_DELAY (~80ms),
+                 * which is well beyond the MamaDuck SX1262 RX turnaround (~5-10ms). Sleeping here
+                 * would block LoRaWAN PULL_RESP handling in this same loop. */
                 
                 /* Build and enqueue packet - same code as outer loop */
                 memset(&txpkt, 0, sizeof(txpkt));
