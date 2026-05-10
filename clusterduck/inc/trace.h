@@ -16,7 +16,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #ifndef _LORA_PKTFWD_TRACE_H
 #define _LORA_PKTFWD_TRACE_H
 
-#define DEBUG_PKT_FWD   0
+#define DEBUG_PKT_FWD   1
 #define DEBUG_JIT       0
 #define DEBUG_JIT_ERROR 1
 #define DEBUG_TIMERSYNC 0

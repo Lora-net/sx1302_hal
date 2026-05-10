@@ -2949,7 +2949,11 @@ void thread_up(void) {
 
             MSG_DEBUG(DEBUG_PKT_FWD, "\nJSON up: %s\n", (char *)(buff_up + 12));
 
-            send(sock_up, (void *)buff_up, buff_index, 0);
+            MSG("INFO: [up] sending PUSH_DATA to NS (%d pkt(s), %d bytes)\n", pkt_in_dgram, buff_index);
+            j = send(sock_up, (void *)buff_up, buff_index, 0);
+            if (j < 0) {
+                MSG("ERROR: [up] send() to NS failed: %s\n", strerror(errno));
+            }
             clock_gettime(CLOCK_MONOTONIC, &send_time);
             pthread_mutex_lock(&mx_meas_up);
             meas_up_dgram_sent   += 1;
@@ -2957,6 +2961,7 @@ void thread_up(void) {
             pthread_mutex_unlock(&mx_meas_up);
 
             /* wait for PUSH_ACK (two attempts to catch delayed responses) */
+            bool got_ack = false;
             for (i = 0; i < 2; ++i) {
                 j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
                 clock_gettime(CLOCK_MONOTONIC, &recv_time);
@@ -2975,8 +2980,12 @@ void thread_up(void) {
                     pthread_mutex_lock(&mx_meas_up);
                     meas_up_ack_rcv += 1;
                     pthread_mutex_unlock(&mx_meas_up);
+                    got_ack = true;
                     break;
                 }
+            }
+            if (!got_ack) {
+                MSG("WARNING: [up] no PUSH_ACK from NS after sending %d pkt(s) — NS unreachable or rejecting\n", pkt_in_dgram);
             }
         } else if (lorawan_fwd_enabled && send_report == true) {
             /* LoRaWAN enabled, no packets this cycle but stat report due:
