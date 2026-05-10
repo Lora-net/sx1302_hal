@@ -98,8 +98,8 @@ extern "C" {
 #define JSON_CONF_DEFAULT   "global_conf.json"
 
 #define DEFAULT_SERVER      127.0.0.1   /* hostname also supported */
-#define DEFAULT_PORT_UP     1780
-#define DEFAULT_PORT_DW     1782
+#define DEFAULT_PORT_UP     1700  /* standard Semtech UDP protocol port (Chirpstack / TTN) */
+#define DEFAULT_PORT_DW     1700  /* standard Semtech UDP protocol port (Chirpstack / TTN) */
 #define DEFAULT_KEEPALIVE   5           /* default time interval for downstream keep-alive packet */
 #define DEFAULT_STAT        30          /* default time interval for statistics */
 #define PUSH_TIMEOUT_MS     100
