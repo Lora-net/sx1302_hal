@@ -88,7 +88,7 @@
     },
 
     "gateway_conf": {
-        "gateway_id": "AA555A0000000000", /* EUI-64: replace with your concentrator EUI (see startup log) or omit to auto-detect */
+        "gateway_id": "0016C001F1000FB7", /* EUI-64: concentrator hardware EUI */
         /* change with default server address/ports */
         "server_address": "localhost",
         "serv_port_up": 1700,
