@@ -2641,6 +2641,26 @@ void thread_up(void) {
             exit(EXIT_FAILURE);
         }
 
+        /* RAW PACKET DIAGNOSTIC — print every received packet before any filtering */
+        if (nb_pkt > 0) {
+            int _d;
+            for (_d = 0; _d < nb_pkt; _d++) {
+                struct lgw_pkt_rx_s *_p = &rxpkt[_d];
+                MSG("RAW[%d/%d] freq=%u SF%u BW%ukHz CR%u size=%u status=%u rssi=%.0f snr=%.1f payload[0..3]=%02X %02X %02X %02X\n",
+                    _d+1, nb_pkt,
+                    _p->freq_hz,
+                    _p->datarate,
+                    (_p->bandwidth == BW_125KHZ ? 125 : _p->bandwidth == BW_250KHZ ? 250 : 500),
+                    _p->coderate,
+                    _p->size, _p->status,
+                    _p->rssic, _p->snr,
+                    (_p->size > 0 ? _p->payload[0] : 0xFF),
+                    (_p->size > 1 ? _p->payload[1] : 0xFF),
+                    (_p->size > 2 ? _p->payload[2] : 0xFF),
+                    (_p->size > 3 ? _p->payload[3] : 0xFF));
+            }
+        }
+
         /* check if there are status report to send */
         send_report = report_ready;
 
