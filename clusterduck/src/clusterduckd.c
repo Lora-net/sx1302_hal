@@ -2282,6 +2282,10 @@ int main(int argc, char ** argv)
         MSG("ERROR: [main] impossible to create upstream thread\n");
         exit(EXIT_FAILURE);
     }
+    /* thread_down and thread_jit are only spawned when LoRaWAN forwarding is
+     * enabled.  Without this guard, thread_down's inner recv() loop runs on
+     * an uninitialised sock_down (EBADF) and returns immediately every call,
+     * burning 100% CPU in a tight busy-loop. */
     if (lorawan_fwd_enabled) {
         i = pthread_create(&thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
         if (i != 0) {

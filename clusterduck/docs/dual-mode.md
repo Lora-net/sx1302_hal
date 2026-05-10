@@ -336,7 +336,56 @@ does not deliver downlinks.
 These threads are only spawned when `lorawan_forward_enabled` is `true`.
 If CDP downlinks from MQTT are not being transmitted, confirm the flag is
 enabled — CDP downlinks are also handled in `thread_down`.
+---
 
+## Known bugs fixed
+
+### 100% CPU usage — `thread_down` busy-loop (fixed in `6cdc47c`)
+
+**Symptom:** `clusterduckd` pinned one CPU core to 100% shortly after startup,
+making the system unresponsive.
+
+**Root cause:** `thread_down` was unconditionally spawned regardless of
+`lorawan_fwd_enabled`. Its inner receive loop is:
+
+```c
+while (difftimespec(recv_time, send_time) < keepalive_time) {
+    msg_len = recv(sock_down, ...);   // ← blocks on timeout
+    ...
+}
+```
+
+When `lorawan_fwd_enabled` was `false`, `sock_down` was never opened
+(`setsockopt(SO_RCVTIMEO)` was never called on it), so `recv()` returned
+immediately with `EBADF` every call. The loop ran at millions of iterations
+per second, consuming an entire CPU core.
+
+**Fix — two parts:**
+
+1. **Guard the thread spawn**: `thread_down` and `thread_jit` are now only
+   created when `lorawan_fwd_enabled` is `true`:
+   ```c
+   if (lorawan_fwd_enabled) {
+       pthread_create(&thrid_down, ...);
+       pthread_create(&thrid_jit,  ...);
+   }
+   ```
+
+2. **CDP-only pace**: For forward-compatibility (if `thread_down` runs but
+   LoRaWAN is disabled for some CDP-only path), the recv block now sleeps
+   10 ms instead of spinning:
+   ```c
+   if (lorawan_fwd_enabled) {
+       msg_len = recv(sock_down, buff_down, sizeof buff_down - 1, 0);
+   } else {
+       struct timespec slp = {0, 10000000L}; /* 10 ms */
+       nanosleep(&slp, NULL);
+       msg_len = -1; errno = EAGAIN;
+   }
+   ```
+   With `SO_RCVTIMEO` set on `sock_down` (via `setsockopt` in the
+   pre-loop setup), the `recv()` now blocks up to `PULL_TIMEOUT_MS`
+   (default 200 ms) each call, making the loop naturally CPU-friendly.
 ---
 
 ## Deployment examples
