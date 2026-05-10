@@ -2530,24 +2530,43 @@ int main(int argc, char ** argv)
 /* ---------------------------------------------------------------------------
  * is_lorawan_packet - packet classifier
  *
- * Returns true if the packet looks like a LoRaWAN MAC frame, false if it
- * should be treated as a CDP (ClusterDuck Protocol) packet.
+ * Returns true if the packet should be forwarded as LoRaWAN to the NS.
+ * Returns false if it looks like a CDP (ClusterDuck Protocol) packet.
  *
- * Decision is based on the MHDR byte (byte 0) layout defined by LoRaWAN
- * spec 1.0 §4.2:
- *   bits[7:5]  MType  (000=JoinReq … 101=ConfDataDown, 110=RFU, 111=Proprietary)
- *   bits[4:2]  RFU    must be 000 for a valid LoRaWAN frame
- *   bits[1:0]  Major  must be 00  for LoRaWAN r1
+ * Strategy: positively identify CDP first, then assume LoRaWAN for anything
+ * that doesn't match.  This is more robust than the inverse because:
  *
- * A CDP source DUID starts at byte 0 and has no such bit-field constraints,
- * so the RFU+Major check provides a clean separation in practice.
+ *   - The old approach checked the LoRaWAN MHDR byte (byte 0).  But CDP
+ *     byte 0 is SDUID[0] — a hardware-derived device ID byte that can
+ *     coincidentally satisfy the LoRaWAN MHDR bit-field constraints
+ *     (bits[4:0]==0, MType!=RFU), causing CDP packets to be misrouted to
+ *     the Network Server.
+ *
+ *   - CDP has tight, independently verifiable structural invariants:
+ *       · total size  >=  MIN_PACKET_LENGTH (28 bytes = 27-byte header + 1)
+ *       · byte 21 (Duck Type) in range [UNKNOWN=0 .. MAX_TYPE-1=4]
+ *       · byte 22 (Hop Count) in range [0 .. MAX_HOPS=6]
+ *     A LoRaWAN frame is extremely unlikely to satisfy all three
+ *     simultaneously at the same byte offsets.
+ *
+ *   - LoRaWAN JoinRequest (23 bytes) fails the CDP size floor → LoRaWAN ✓
+ *   - LoRaWAN data frames are >= 13 bytes but have FHDR/FCnt at bytes 21-22
+ *     which rarely both land inside duck-type and hop-count ranges together.
  * --------------------------------------------------------------------------- */
 static bool is_lorawan_packet(const uint8_t *payload, uint16_t size) {
-    if (size < 8) return false;               /* too short for any valid LoRaWAN frame */
-    uint8_t mhdr = payload[0];
-    if ((mhdr & 0x1F) != 0x00) return false;  /* RFU bits[4:2] or Major bits[1:0] non-zero */
-    uint8_t mtype = (mhdr >> 5) & 0x07;
-    if (mtype == 0x06) return false;           /* MType=110 is LoRaWAN-RFU, discard */
+    /* Must be at least the CDP minimum to even consider it CDP.
+     * MIN_PACKET_LENGTH = HEADER_LENGTH(27) + 1 = 28  (CdpPacket.h) */
+    if (size >= 28) {
+        uint8_t duck_type = payload[21]; /* DUCK_TYPE_POS (CdpPacket.h) */
+        uint8_t hop_count = payload[22]; /* HOP_COUNT_POS (CdpPacket.h) */
+        /* DuckType: UNKNOWN=0 .. MAX_TYPE-1=4  (DuckTypes.h)
+         * MAX_HOPS: 6                           (CdpPacket.h) */
+        if (duck_type <= 4 && hop_count <= 6) {
+            return false; /* looks like CDP — route to ClusterDuck bridge */
+        }
+    }
+    /* Everything else: treat as LoRaWAN */
+    if (size < 8) return false;  /* too short for any valid LoRaWAN frame */
     return true;
 }
 
