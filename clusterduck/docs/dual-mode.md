@@ -161,13 +161,181 @@ bounded by `push_timeout_ms / 2` from config).
 
 ## Downstream path: Network Server → concentrator
 
-The downstream path (`thread_down()`) remains **unchanged**. It connects to the
-NS via `sock_down` and handles `PULL_RESP` / `TX_ACK` as usual. LoRaWAN
-downlinks from the NS are scheduled through the JIT queue and transmitted via
-`lgw_send()`.
+`thread_down()` handles **all communication from the Network Server back to the
+concentrator**. It runs only when `lorawan_forward_enabled` is `true`
+(otherwise `thread_down` and `thread_jit` are not spawned at all).
 
-CDP downlinks from the MQTT broker continue to be injected via
-`cdp_bridge_pop_downlink()` → JIT queue on the separate `thread_duck()`.
+### PULL_DATA keepalive
+
+The Semtech UDP protocol requires the gateway to send periodic `PULL_DATA`
+datagrams to the NS. The NS uses these to:
+
+1. Maintain NAT hole-punching so it can reach the gateway through firewalls
+2. Track gateway liveness — if no `PULL_DATA` arrives within ~60 s the NS marks
+   the gateway **Disconnected**
+
+`thread_down()` sends `PULL_DATA` once per `keepalive_time` seconds (configurable
+via `keepalive_interval` in config, default **5 seconds**).
+
+```
+thread_down loop:
+  ┌─ every keepalive_time seconds ───────────────────────────── ┐
+  │  send PULL_DATA(token_h, token_l) → sock_down               │
+  │                                                               │
+  │  inner receive loop (duration = keepalive_time):             │
+  │    recv(sock_down):                                           │
+  │      PKT_PULL_ACK  → record ack, reset autoquit counter      │
+  │      PKT_PULL_RESP → parse JSON, build lgw_pkt_tx_s          │
+  │                      → jit_enqueue() → send_tx_ack() to NS   │
+  │      timeout/error → continue (non-fatal)                    │
+  └──────────────────────────────────────────────────────────────┘
+```
+
+Log lines to look for:
+```
+INFO: [down] PULL_ACK received in X ms
+INFO: [down] PULL_RESP received - token[N:N]
+```
+
+### PULL_RESP → downlink TX
+
+When the NS wants to send a downlink (Class A/B/C), it returns a `PULL_RESP`
+datagram containing a `txpk` JSON object. `thread_down()` parses the full
+Semtech UDP protocol fields:
+
+| JSON key | Meaning |
+|----------|---------|
+| `imme`   | If `true`, transmit immediately (Class C) |
+| `tmst`   | Concentrator timestamp to send at (Class A) |
+| `freq`   | TX frequency in MHz |
+| `rfch`   | RF chain (0 or 1) |
+| `powe`   | TX power in dBm (minus `antenna_gain`) |
+| `modu`   | `"LORA"` or `"FSK"` |
+| `datr`   | Data rate string e.g. `"SF7BW125"` |
+| `codr`   | Coding rate e.g. `"4/5"` |
+| `ipol`   | Invert IQ polarity (true for LoRaWAN downlinks) |
+| `prea`   | Preamble length (optional, min `MIN_LORA_PREAMB`) |
+| `size`   | Payload size in bytes |
+| `data`   | Base64-encoded payload |
+
+The packet is then passed to `jit_enqueue()` for collision-aware scheduling,
+and a `PKT_TX_ACK` datagram is sent back to the NS via `send_tx_ack()` to
+confirm the scheduling result.
+
+### TX acknowledgement (`send_tx_ack`)
+
+After every `PULL_RESP`, `clusterduckd` sends a `PKT_TX_ACK` datagram back to
+the NS on `sock_down`. The `error` field reflects the JIT queue result:
+
+| Error | Meaning |
+|-------|---------|
+| `NONE` | Packet accepted and scheduled |
+| `COLLISION_PACKET` | JIT queue collision with another downlink |
+| `TOO_LATE` | TX timestamp already passed |
+| `TOO_EARLY` | TX timestamp too far in future |
+| `TX_FREQ` | Frequency out of allowed TX range |
+| `TX_POWER` | Requested RF power not in TX LUT (nearest used instead) |
+| `GPS_UNLOCKED` | GPS-based timestamp requested but GPS not locked |
+
+### CDP downlinks
+
+CDP downlinks arrive via `cdp_bridge_pop_downlink()` and are processed in
+both the outer loop and the inner recv loop of `thread_down()`. This gives
+CDP downlinks fast response (< 10 ms latency in the idle case) without
+requiring a separate thread.
+
+CDP downlinks always use:
+- `tx_mode = IMMEDIATE`
+- `invert_pol = false` (CDP is not LoRaWAN — MamaDucks expect normal IQ)
+- `preamble = 8`
+- 500 ms delay before TX to allow MamaDuck radio turnaround after its RREQ TX
+
+---
+
+## Gateway status heartbeat
+
+The NS displays gateway statistics (RX count, TX count, uptime) from periodic
+`PUSH_DATA` datagrams containing a `stat` JSON object.
+
+`thread_up()` sends the stat object:
+
+- **When packets were received**: the `stat` object is appended inside the
+  `rxpk` datagram at the end of each `stat_interval` cycle
+- **When no packets arrived**: a stat-only `PUSH_DATA` is sent with an empty
+  `rxpk` array:
+  ```json
+  {"rxpk":[], "stat":{"time":"...","rxnb":0,"rxok":0,...}}
+  ```
+
+This ensures the NS always receives regular heartbeats regardless of RF
+activity, so the gateway stays **Connected** in the console.
+
+The stat interval is controlled by `stat_interval` in `gateway_conf`
+(default: **30 seconds**):
+
+```json
+"stat_interval": 30
+```
+
+If the NS shows **"no status"**, wait 30–60 s after connect. If it persists,
+check the log for `PUSH_ACK received` — absence means UDP replies from the NS
+are not reaching the gateway (firewall/NAT issue on port 1700).
+
+---
+
+## Troubleshooting
+
+### Gateway shows "Disconnected" on NS console
+
+Cause: `PULL_DATA` keepalives not reaching the NS.
+
+Check log:
+```
+INFO: [down] PULL_ACK received in X ms
+```
+If absent:
+- Confirm `lorawan_forward_enabled` is `true` in config (check startup log)
+- Confirm `sock_down` connected — look for:
+  ```
+  INFO: [main] downstream socket open to LoRaWAN NS host:port
+  ```
+- Check firewall allows outbound UDP to NS port 1700
+
+### Gateway shows "no status" on NS console
+
+Cause: `PUSH_DATA` (containing `stat` object) not being acknowledged.
+
+Check log:
+```
+INFO: [up] PUSH_ACK received in X ms
+```
+or:
+```
+INFO: [up] stat-only PUSH_DATA sent to NS
+```
+If absent, wait one more `stat_interval` (30 s). If still absent, check
+that `sock_up` is open and UDP replies on port 1700 are not blocked.
+
+### Gateway EUI mismatch
+
+The gateway EUI reported in the startup log must exactly match what is
+registered on the NS:
+```
+INFO: concentrator EUI: 0x0016C001F1000FB7
+```
+Or if `gateway_id` is set in config:
+```
+INFO: gateway_id configured to 0016C001F1000FB7
+```
+Register this 16-character hex EUI on the NS. If the EUI does not match,
+the NS accepts the UDP datagrams but marks the gateway as unauthorised and
+does not deliver downlinks.
+
+### `thread_down` / `thread_jit` not running
+
+These threads are only spawned when `lorawan_forward_enabled` is `true`.
+If CDP downlinks from MQTT are not being transmitted, confirm the flag is
+enabled — CDP downlinks are also handled in `thread_down`.
 
 ---
 

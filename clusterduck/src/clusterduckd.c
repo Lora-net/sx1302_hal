@@ -2945,7 +2945,7 @@ void thread_up(void) {
              * send a PUSH_DATA with empty rxpk array + stat object so the
              * NS sees regular gateway status heartbeats. */
             buff_index = 12;
-            memcpy(buff_up + buff_index, "{\"rxpk\":[],\"stat\":", 20); buff_index += 20;
+            memcpy(buff_up + buff_index, "{\"rxpk\":[],", 11); buff_index += 11;
             pthread_mutex_lock(&mx_stat_rep);
             report_ready = false;
             j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
