@@ -72,7 +72,7 @@
     "radio_1": {
       "enable": true,
       "type": "SX1250",
-      "freq": 923300000,
+      "freq": 922100000,
       "rssi_offset": -166,
       "tx_enable": false,
       "tx_freq_min": 920000000,
