@@ -2416,28 +2416,32 @@ int main(int argc, char ** argv)
             cp_gps_coord = reference_coord;
         }
 
-	/*
-        pthread_mutex_lock(&mx_concent);
-        i = lgw_get_temperature(&temperature);
-        pthread_mutex_unlock(&mx_concent);
-        if (i != LGW_HAL_SUCCESS) {
-            printf("### Concentrator temperature unknown ###\n");
-        } else {
-            printf("### Concentrator temperature: %.0f C ###\n", temperature);
+        /* print periodic status report to console */
+        printf("##### %s #####\n", stat_timestamp);
+        printf("### [UPSTREAM] ###\n");
+        printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
+        printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n",
+               100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
+        if (lorawan_fwd_enabled) {
+            printf("# RF packets forwarded to NS: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
         }
-	*/
-
-        /* generate a JSON report (will be sent to server by upstream thread) */
-	/*
-        pthread_mutex_lock(&mx_stat_rep);
-        if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
-        } else {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"dwnb\":%u,\"txnb\":%u,\"temp\":%.1f}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, cp_dw_dgram_rcv, cp_nb_tx_ok, temperature);
+        printf("### [DOWNSTREAM] ###\n");
+        printf("# Downlinks received from NS: %u\n", cp_dw_dgram_rcv);
+        printf("# Packets emitted successfully: %u\n", cp_nb_tx_ok);
+        printf("# Packets failed to emit: %u\n", cp_nb_tx_fail);
+        if (cp_nb_tx_requested > 0) {
+            printf("# TX requested: %u, rejected (collision): %u, too late: %u, too early: %u\n",
+                   cp_nb_tx_requested,
+                   cp_nb_tx_rejected_collision_packet + cp_nb_tx_rejected_collision_beacon,
+                   cp_nb_tx_rejected_too_late,
+                   cp_nb_tx_rejected_too_early);
         }
-        report_ready = true;
-        pthread_mutex_unlock(&mx_stat_rep);
-	*/
+        if ((gps_enabled == true) && (coord_ok == true)) {
+            printf("### [GPS] lat=%.5f lon=%.5f alt=%d\n",
+                   cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+        }
+        printf("##### END #####\n");
+        fflush(stdout);
     }
 
     /* wait for all threads with a COM with the concentrator board to finish (1 fetch cycle max) */
@@ -3486,7 +3490,7 @@ void thread_down(void) {
                             pthread_mutex_lock(&mx_meas_dw);
                             meas_dw_ack_rcv += 1;
                             pthread_mutex_unlock(&mx_meas_dw);
-                            MSG("INFO: [down] PULL_ACK received in %i ms\n",
+                            MSG("DEBUG: [down] PULL_ACK received in %i ms\n",
                                 (int)(1000 * difftimespec(recv_time, send_time)));
                         }
                     } else {
