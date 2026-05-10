@@ -2246,6 +2246,11 @@ int main(int argc, char ** argv)
         }
     }
 
+    /* Final confirmation: lorawan_fwd_enabled may have been cleared above
+     * if DNS resolution or socket connect failed — log the actual state. */
+    MSG("INFO: [main] LoRaWAN forwarding FINAL state: %s\n",
+        lorawan_fwd_enabled ? "ACTIVE (sockets open)" : "DISABLED (check DNS/socket errors above)");
+
     /* get the concentrator EUI */
     i = lgw_get_eui(&eui);
     if (i != LGW_HAL_SUCCESS) {
@@ -2724,6 +2729,12 @@ void thread_up(void) {
             pthread_mutex_unlock(&mx_meas_up);
 
             /* ---- PACKET CLASSIFIER ---- */
+            if (lorawan_fwd_enabled) {
+                bool is_lw = is_lorawan_packet(p->payload, p->size);
+                MSG("DEBUG: [up] pkt[%d/%d] MHDR=0x%02X size=%u → %s\n",
+                    i+1, nb_pkt, (p->size > 0 ? p->payload[0] : 0xFF), p->size,
+                    is_lw ? "LoRaWAN" : "CDP");
+            }
             if (lorawan_fwd_enabled && is_lorawan_packet(p->payload, p->size)) {
                 /* ============================================================
                  * PATH A: LoRaWAN → Semtech UDP PUSH_DATA → Network Server
