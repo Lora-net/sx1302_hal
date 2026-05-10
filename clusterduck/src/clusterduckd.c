@@ -3348,7 +3348,8 @@ void thread_down(void) {
 
                 /* insert packet to be sent into JIT queue */
                 if (jit_result == JIT_ERROR_OK) {
-                    /* current_concentrator_time already obtained above */
+                    /* Get fresh concentrator time for CDP downlink scheduling */
+                    lgw_get_instcnt(&current_concentrator_time);
                     jit_result = jit_enqueue(&jit_queue[txpkt.rf_chain], current_concentrator_time, &txpkt, downlink_type);
                     if (jit_result != JIT_ERROR_OK) {
                         printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
