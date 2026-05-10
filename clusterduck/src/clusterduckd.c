@@ -372,6 +372,7 @@ static void gps_process_sync(void);
 static void gps_process_coords(void);
 
 static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index);
+static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value);
 
 /* MQTT function declarations */
 static int mqtt_queue_message(const char* topic, const char* message, int length);
@@ -2209,6 +2210,40 @@ int main(int argc, char ** argv)
             }
             freeaddrinfo(result_lw);
         }
+
+        /* open downstream socket (PULL_DATA keepalive + PULL_RESP downlinks) */
+        if (lorawan_fwd_enabled) {
+            struct addrinfo hints_dw, *result_dw = NULL, *q_dw = NULL;
+            memset(&hints_dw, 0, sizeof hints_dw);
+            hints_dw.ai_family   = AF_INET;
+            hints_dw.ai_socktype = SOCK_DGRAM;
+
+            i = getaddrinfo(serv_addr, serv_port_down, &hints_dw, &result_dw);
+            if (i != 0) {
+                MSG("ERROR: [main] getaddrinfo for downstream NS %s:%s failed: %s\n", serv_addr, serv_port_down, gai_strerror(i));
+                MSG("WARNING: [main] Disabling LoRaWAN forwarding (no downstream socket)\n");
+                lorawan_fwd_enabled = false;
+            } else {
+                for (q_dw = result_dw; q_dw != NULL; q_dw = q_dw->ai_next) {
+                    sock_down = socket(q_dw->ai_family, q_dw->ai_socktype, q_dw->ai_protocol);
+                    if (sock_down == -1) continue;
+                    else break;
+                }
+                if (q_dw == NULL) {
+                    MSG("ERROR: [main] failed to open downstream socket to LoRaWAN NS %s:%s\n", serv_addr, serv_port_down);
+                    lorawan_fwd_enabled = false;
+                } else {
+                    i = connect(sock_down, q_dw->ai_addr, q_dw->ai_addrlen);
+                    if (i != 0) {
+                        MSG("ERROR: [main] connect downstream to LoRaWAN NS failed: %s\n", strerror(errno));
+                        lorawan_fwd_enabled = false;
+                    } else {
+                        MSG("INFO: [main] downstream socket open to LoRaWAN NS %s:%s\n", serv_addr, serv_port_down);
+                    }
+                }
+                freeaddrinfo(result_dw);
+            }
+        }
     }
 
     /* get the concentrator EUI */
@@ -2247,15 +2282,17 @@ int main(int argc, char ** argv)
         MSG("ERROR: [main] impossible to create upstream thread\n");
         exit(EXIT_FAILURE);
     }
-    i = pthread_create(&thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create downstream thread\n");
-        exit(EXIT_FAILURE);
-    }
-    i = pthread_create(&thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create JIT thread\n");
-        exit(EXIT_FAILURE);
+    if (lorawan_fwd_enabled) {
+        i = pthread_create(&thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
+        if (i != 0) {
+            MSG("ERROR: [main] impossible to create downstream thread\n");
+            exit(EXIT_FAILURE);
+        }
+        i = pthread_create(&thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
+        if (i != 0) {
+            MSG("ERROR: [main] impossible to create JIT thread\n");
+            exit(EXIT_FAILURE);
+        }
     }
     i = pthread_create(&thrid_duck, NULL, (void * (*)(void *))thread_duck, NULL);
     if (i != 0) {
@@ -2903,11 +2940,12 @@ void thread_up(void) {
                     break;
                 }
             }
-        } else if (send_report == true && !lorawan_fwd_enabled) {
-            /* If LoRaWAN forwarding is off but a stat report is pending,
-             * send it as a standalone PUSH_DATA with an empty rxpk array. */
+        } else if (lorawan_fwd_enabled && send_report == true) {
+            /* LoRaWAN enabled, no packets this cycle but stat report due:
+             * send a PUSH_DATA with empty rxpk array + stat object so the
+             * NS sees regular gateway status heartbeats. */
             buff_index = 12;
-            memcpy(buff_up + buff_index, "{\"stat\":", 9); buff_index += 9;
+            memcpy(buff_up + buff_index, "{\"rxpk\":[],\"stat\":", 20); buff_index += 20;
             pthread_mutex_lock(&mx_stat_rep);
             report_ready = false;
             j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index,
@@ -2916,7 +2954,12 @@ void thread_up(void) {
             if (j > 0) buff_index += j;
             buff_up[buff_index++] = '}';
             buff_up[buff_index]   = 0;
-            /* stat-only reports are discarded when NS forwarding is disabled */
+            send(sock_up, (void *)buff_up, buff_index, 0);
+            pthread_mutex_lock(&mx_meas_up);
+            meas_up_dgram_sent   += 1;
+            meas_up_network_byte += buff_index;
+            pthread_mutex_unlock(&mx_meas_up);
+            MSG("INFO: [up] stat-only PUSH_DATA sent to NS\n");
         }
 
     } /* end main loop */
@@ -2925,6 +2968,46 @@ void thread_up(void) {
 
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 2: POLLING SERVER AND ENQUEUING PACKETS IN JIT QUEUE ---------- */
+
+/* Send TX acknowledgement datagram back to the Network Server.
+ * Only called when lorawan_fwd_enabled is true (sock_down is valid). */
+static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) {
+    uint8_t buff_ack[64];
+    int buff_index = 0;
+    memset(buff_ack, 0, sizeof buff_ack);
+    buff_ack[buff_index++] = PROTOCOL_VERSION;
+    buff_ack[buff_index++] = token_h;
+    buff_ack[buff_index++] = token_l;
+    buff_ack[buff_index++] = PKT_TX_ACK;
+    *(uint32_t *)(buff_ack + buff_index) = net_mac_h; buff_index += 4;
+    *(uint32_t *)(buff_ack + buff_index) = net_mac_l; buff_index += 4;
+    if (error != JIT_ERROR_OK) {
+        memcpy(buff_ack + buff_index, "{\"txpk_ack\":{\"error\":", 21); buff_index += 21;
+        switch (error) {
+            case JIT_ERROR_FULL:
+            case JIT_ERROR_COLLISION_PACKET:
+                memcpy(buff_ack + buff_index, "\"COLLISION_PACKET\"}}", 20); buff_index += 20; break;
+            case JIT_ERROR_TOO_LATE:
+                memcpy(buff_ack + buff_index, "\"TOO_LATE\"}}", 13); buff_index += 13; break;
+            case JIT_ERROR_TOO_EARLY:
+                memcpy(buff_ack + buff_index, "\"TOO_EARLY\"}}", 14); buff_index += 14; break;
+            case JIT_ERROR_COLLISION_BEACON:
+                memcpy(buff_ack + buff_index, "\"COLLISION_BEACON\"}}", 21); buff_index += 21; break;
+            case JIT_ERROR_TX_FREQ:
+                memcpy(buff_ack + buff_index, "\"TX_FREQ\"}}", 12); buff_index += 12; break;
+            case JIT_ERROR_TX_POWER:
+                memcpy(buff_ack + buff_index, "\"TX_POWER\"}}", 13); buff_index += 13; break;
+            case JIT_ERROR_GPS_UNLOCKED:
+                memcpy(buff_ack + buff_index, "\"GPS_UNLOCKED\"}}", 17); buff_index += 17; break;
+            default:
+                memcpy(buff_ack + buff_index, "\"UNKNOWN\"}}", 12); buff_index += 12; break;
+        }
+    } else {
+        memcpy(buff_ack + buff_index, "{\"txpk_ack\":{\"error\":\"NONE\"}}", 31); buff_index += 31;
+    }
+    (void)error_value; /* reserved for future extended error reporting */
+    return send(sock_down, (void *)buff_ack, buff_index, 0);
+}
 
 static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index) {
     uint8_t pow_index;
@@ -3024,6 +3107,18 @@ void thread_down(void) {
     uint8_t dl_cr = 0;
     uint8_t dl_rf_chain = 0;
     /* End of Zaihan's code */
+
+    /* LoRaWAN PULL_DATA / PULL_RESP state */
+    bool req_ack = false;       /* true once PULL_ACK received for current token */
+    bool sent_immediate = false;
+    JSON_Value *root_val = NULL;
+    JSON_Object *txpk_obj = NULL;
+    JSON_Value *val = NULL;
+    const char *str = NULL;
+    short x0, x1;
+    double x2, x3, x4;
+    struct timespec gps_tx;
+    struct tref local_ref;
 
     /* beacon variables initialization */
     last_beacon_gps_time.tv_sec = 0;
@@ -3125,6 +3220,20 @@ void thread_down(void) {
     jit_queue_init(&jit_queue[0]);
     jit_queue_init(&jit_queue[1]);
 
+    /* LoRaWAN downstream socket setup */
+    if (lorawan_fwd_enabled) {
+        i = setsockopt(sock_down, SOL_SOCKET, SO_RCVTIMEO, (void *)&pull_timeout, sizeof pull_timeout);
+        if (i != 0) {
+            MSG("ERROR: [down] setsockopt returned %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        /* pre-fill the PULL_DATA buffer with fixed fields */
+        buff_req[0] = PROTOCOL_VERSION;
+        buff_req[3] = PKT_PULL_DATA;
+        *(uint32_t *)(buff_req + 4) = net_mac_h;
+        *(uint32_t *)(buff_req + 8) = net_mac_l;
+    }
+
     while (!exit_sig && !quit_sig) {
 
 
@@ -3222,9 +3331,33 @@ void thread_down(void) {
         buff_req[1] = token_h;
         buff_req[2] = token_l;
 
+        /* send PULL_DATA request to NS and record time */
+        if (lorawan_fwd_enabled) {
+            send(sock_down, (void *)buff_req, sizeof buff_req, 0);
+            clock_gettime(CLOCK_MONOTONIC, &send_time);
+            pthread_mutex_lock(&mx_meas_dw);
+            meas_dw_pull_sent += 1;
+            pthread_mutex_unlock(&mx_meas_dw);
+            req_ack = false;
+            autoquit_cnt++;
+        }
+
         /* listen to packets and process them until a new PULL request must be sent */
         recv_time = send_time;
         while (((int)difftimespec(recv_time, send_time) < keepalive_time) && !exit_sig && !quit_sig) {
+
+            /* receive datagram from NS (blocks up to pull_timeout) */
+            if (lorawan_fwd_enabled) {
+                msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
+                clock_gettime(CLOCK_MONOTONIC, &recv_time);
+            } else {
+                /* CDP-only mode: sleep briefly to yield the CPU */
+                struct timespec slp = {0, 10000000L}; /* 10 ms */
+                nanosleep(&slp, NULL);
+                clock_gettime(CLOCK_MONOTONIC, &recv_time);
+                msg_len = -1;
+                errno = EAGAIN;
+            }
 
             /* Pre-allocate beacon slots in JiT queue, to check downlink collisions */
             beacon_loop = JIT_NUM_BEACON_IN_QUEUE - jit_queue[0].num_beacon;
@@ -3330,6 +3463,173 @@ void thread_down(void) {
                     break;
                 }
             }
+
+            /* Handle LoRaWAN datagram received from NS (PULL_ACK or PULL_RESP) */
+            if (lorawan_fwd_enabled) {
+                if (msg_len == -1) {
+                    /* timeout or no packet — continue to CDP downlink check */
+                } else if ((msg_len < 4) || (buff_down[0] != PROTOCOL_VERSION) ||
+                           ((buff_down[3] != PKT_PULL_RESP) && (buff_down[3] != PKT_PULL_ACK))) {
+                    MSG("WARNING: [down] ignoring invalid packet len=%d, protocol_version=%d, id=%d\n",
+                        msg_len, buff_down[0], buff_down[3]);
+                } else if (buff_down[3] == PKT_PULL_ACK) {
+                    if ((buff_down[1] == token_h) && (buff_down[2] == token_l)) {
+                        if (req_ack) {
+                            MSG("INFO: [down] duplicate ACK received :)\n");
+                        } else {
+                            req_ack = true;
+                            autoquit_cnt = 0;
+                            pthread_mutex_lock(&mx_meas_dw);
+                            meas_dw_ack_rcv += 1;
+                            pthread_mutex_unlock(&mx_meas_dw);
+                            MSG("INFO: [down] PULL_ACK received in %i ms\n",
+                                (int)(1000 * difftimespec(recv_time, send_time)));
+                        }
+                    } else {
+                        MSG("INFO: [down] received out-of-sync ACK\n");
+                    }
+                } else {
+                    /* PULL_RESP: parse and enqueue downlink packet */
+                    buff_down[msg_len] = 0;
+                    MSG("INFO: [down] PULL_RESP received - token[%d:%d]\n", buff_down[1], buff_down[2]);
+
+                    memset(&txpkt, 0, sizeof txpkt);
+                    root_val = json_parse_string_with_comments((const char *)(buff_down + 4));
+                    if (root_val == NULL) {
+                        MSG("WARNING: [down] invalid JSON, TX aborted\n");
+                        goto pull_resp_done;
+                    }
+                    txpk_obj = json_object_get_object(json_value_get_object(root_val), "txpk");
+                    if (txpk_obj == NULL) {
+                        MSG("WARNING: [down] no \"txpk\" in JSON, TX aborted\n");
+                        json_value_free(root_val); root_val = NULL;
+                        goto pull_resp_done;
+                    }
+                    /* transmission mode */
+                    i = json_object_get_boolean(txpk_obj, "imme");
+                    if (i == 1) {
+                        sent_immediate = true;
+                        downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_C;
+                    } else {
+                        sent_immediate = false;
+                        val = json_object_get_value(txpk_obj, "tmst");
+                        if (val != NULL) {
+                            txpkt.count_us = (uint32_t)json_value_get_number(val);
+                            downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_A;
+                        } else {
+                            MSG("WARNING: [down] no tmst or imme in PULL_RESP, TX aborted\n");
+                            json_value_free(root_val); root_val = NULL;
+                            send_tx_ack(buff_down[1], buff_down[2], JIT_ERROR_GPS_UNLOCKED, 0);
+                            goto pull_resp_done;
+                        }
+                    }
+                    /* optional fields */
+                    val = json_object_get_value(txpk_obj, "ncrc");
+                    if (val != NULL) txpkt.no_crc = (bool)json_value_get_boolean(val);
+                    val = json_object_get_value(txpk_obj, "nhdr");
+                    if (val != NULL) txpkt.no_header = (bool)json_value_get_boolean(val);
+                    /* frequency */
+                    val = json_object_get_value(txpk_obj, "freq");
+                    if (val == NULL) { MSG("WARNING: [down] no freq, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                    txpkt.freq_hz = (uint32_t)((double)(1.0e6) * json_value_get_number(val));
+                    /* rf chain */
+                    val = json_object_get_value(txpk_obj, "rfch");
+                    if (val == NULL) { MSG("WARNING: [down] no rfch, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                    txpkt.rf_chain = (uint8_t)json_value_get_number(val);
+                    /* power */
+                    val = json_object_get_value(txpk_obj, "powe");
+                    if (val != NULL) txpkt.rf_power = (int8_t)json_value_get_number(val) - antenna_gain;
+                    /* modulation */
+                    str = json_object_get_string(txpk_obj, "modu");
+                    if (str == NULL) { MSG("WARNING: [down] no modu, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                    if (strcmp(str, "LORA") == 0) {
+                        txpkt.modulation = MOD_LORA;
+                        str = json_object_get_string(txpk_obj, "datr");
+                        if (str == NULL || sscanf(str, "SF%2hdBW%3hd", &x0, &x1) != 2) {
+                            MSG("WARNING: [down] bad datr, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done;
+                        }
+                        switch (x0) {
+                            case  5: txpkt.datarate = DR_LORA_SF5;  break;
+                            case  6: txpkt.datarate = DR_LORA_SF6;  break;
+                            case  7: txpkt.datarate = DR_LORA_SF7;  break;
+                            case  8: txpkt.datarate = DR_LORA_SF8;  break;
+                            case  9: txpkt.datarate = DR_LORA_SF9;  break;
+                            case 10: txpkt.datarate = DR_LORA_SF10; break;
+                            case 11: txpkt.datarate = DR_LORA_SF11; break;
+                            case 12: txpkt.datarate = DR_LORA_SF12; break;
+                            default: MSG("WARNING: [down] bad SF, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done;
+                        }
+                        switch (x1) {
+                            case 125: txpkt.bandwidth = BW_125KHZ; break;
+                            case 250: txpkt.bandwidth = BW_250KHZ; break;
+                            case 500: txpkt.bandwidth = BW_500KHZ; break;
+                            default:  MSG("WARNING: [down] bad BW, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done;
+                        }
+                        str = json_object_get_string(txpk_obj, "codr");
+                        if (str == NULL) { MSG("WARNING: [down] no codr, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                        if      (strcmp(str,"4/5")==0) txpkt.coderate = CR_LORA_4_5;
+                        else if (strcmp(str,"4/6")==0 || strcmp(str,"2/3")==0) txpkt.coderate = CR_LORA_4_6;
+                        else if (strcmp(str,"4/7")==0) txpkt.coderate = CR_LORA_4_7;
+                        else if (strcmp(str,"4/8")==0 || strcmp(str,"1/2")==0) txpkt.coderate = CR_LORA_4_8;
+                        else { MSG("WARNING: [down] bad codr, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                        val = json_object_get_value(txpk_obj, "ipol");
+                        if (val != NULL) txpkt.invert_pol = (bool)json_value_get_boolean(val);
+                        val = json_object_get_value(txpk_obj, "prea");
+                        txpkt.preamble = (val != NULL && (int)json_value_get_number(val) >= MIN_LORA_PREAMB)
+                                       ? (uint16_t)json_value_get_number(val) : (uint16_t)STD_LORA_PREAMB;
+                    } else {
+                        MSG("WARNING: [down] unsupported modulation \"%s\", TX aborted\n", str);
+                        json_value_free(root_val); root_val = NULL; goto pull_resp_done;
+                    }
+                    /* size + payload */
+                    val = json_object_get_value(txpk_obj, "size");
+                    if (val == NULL) { MSG("WARNING: [down] no size, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                    txpkt.size = (uint16_t)json_value_get_number(val);
+                    str = json_object_get_string(txpk_obj, "data");
+                    if (str == NULL) { MSG("WARNING: [down] no data, TX aborted\n"); json_value_free(root_val); root_val = NULL; goto pull_resp_done; }
+                    b64_to_bin(str, strlen(str), txpkt.payload, sizeof txpkt.payload);
+                    json_value_free(root_val); root_val = NULL;
+
+                    txpkt.tx_mode = sent_immediate ? IMMEDIATE : TIMESTAMPED;
+
+                    pthread_mutex_lock(&mx_meas_dw);
+                    meas_dw_dgram_rcv    += 1;
+                    meas_dw_network_byte += msg_len;
+                    meas_dw_payload_byte += txpkt.size;
+                    pthread_mutex_unlock(&mx_meas_dw);
+
+                    jit_result = warning_result = JIT_ERROR_OK;
+                    warning_value = 0;
+                    if ((txpkt.freq_hz < tx_freq_min[txpkt.rf_chain]) || (txpkt.freq_hz > tx_freq_max[txpkt.rf_chain])) {
+                        jit_result = JIT_ERROR_TX_FREQ;
+                        MSG("ERROR: [down] PULL_RESP REJECTED: bad TX freq %u\n", txpkt.freq_hz);
+                    }
+                    if (jit_result == JIT_ERROR_OK) {
+                        i = get_tx_gain_lut_index(txpkt.rf_chain, txpkt.rf_power, &tx_lut_idx);
+                        if ((i < 0) || (txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power != txpkt.rf_power)) {
+                            warning_result = JIT_ERROR_TX_POWER;
+                            warning_value  = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
+                            txpkt.rf_power = txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
+                        }
+                    }
+                    if (jit_result == JIT_ERROR_OK) {
+                        pthread_mutex_lock(&mx_concent);
+                        lgw_get_instcnt(&current_concentrator_time);
+                        pthread_mutex_unlock(&mx_concent);
+                        jit_result = jit_enqueue(&jit_queue[txpkt.rf_chain], current_concentrator_time, &txpkt, downlink_type);
+                        if (jit_result != JIT_ERROR_OK) {
+                            MSG("ERROR: [down] PULL_RESP enqueue failed (jit=%d)\n", jit_result);
+                        } else {
+                            jit_result = warning_result;
+                        }
+                        pthread_mutex_lock(&mx_meas_dw);
+                        meas_nb_tx_requested += 1;
+                        pthread_mutex_unlock(&mx_meas_dw);
+                    }
+                    send_tx_ack(buff_down[1], buff_down[2], jit_result, warning_value);
+                    pull_resp_done:;
+                }
+            } /* end lorawan_fwd_enabled datagram handling */
 
             /* Check for ClusterDuck downlinks inside inner loop for faster response */
             int duck_rc_inner = cdp_bridge_pop_downlink(duck_payload_buf, &buf_capacity,
