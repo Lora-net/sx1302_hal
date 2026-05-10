@@ -1,0 +1,160 @@
+{
+  "SX130x_conf": {
+    "lorawan_public": true,
+    "com_type": "USB",
+    "com_path": "/dev/ttyACM0",
+    "clksrc": 1,
+    "antenna_gain": 0,
+    "lbt_cfg": {
+      "enable": false,
+      "rssi_target": -80,
+      "chan_cfg": [
+        {
+          "freq_hz": 923200000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 923400000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 922200000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 922400000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 922600000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 922800000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 923000000,
+          "scan_time_us": 128
+        },
+        {
+          "freq_hz": 922000000,
+          "scan_time_us": 128
+        }
+      ],
+      "sx127x_rssi_offset": -4
+    },
+    "radio_0": {
+      "enable": true,
+      "type": "SX1250",
+      "freq": 923000000,
+      "rssi_offset": -166,
+      "tx_enable": true,
+      "tx_freq_min": 920000000,
+      "tx_freq_max": 923400000,
+      "tx_gain_lut": [
+        {"rf_power": 0,  "pa_gain": 0, "pwr_idx": 0},
+        {"rf_power": 12, "pa_gain": 0, "pwr_idx": 15},
+        {"rf_power": 13, "pa_gain": 0, "pwr_idx": 16},
+        {"rf_power": 14, "pa_gain": 0, "pwr_idx": 17},
+        {"rf_power": 15, "pa_gain": 0, "pwr_idx": 19},
+        {"rf_power": 16, "pa_gain": 0, "pwr_idx": 20},
+        {"rf_power": 17, "pa_gain": 0, "pwr_idx": 22},
+        {"rf_power": 18, "pa_gain": 1, "pwr_idx": 1},
+        {"rf_power": 19, "pa_gain": 1, "pwr_idx": 2},
+        {"rf_power": 20, "pa_gain": 1, "pwr_idx": 3},
+        {"rf_power": 21, "pa_gain": 1, "pwr_idx": 4},
+        {"rf_power": 22, "pa_gain": 1, "pwr_idx": 5},
+        {"rf_power": 23, "pa_gain": 1, "pwr_idx": 6},
+        {"rf_power": 24, "pa_gain": 1, "pwr_idx": 9}
+      ]
+    },
+    "radio_1": {
+      "enable": true,
+      "type": "SX1250",
+      "freq": 923300000,
+      "rssi_offset": -166,
+      "tx_enable": false,
+      "tx_freq_min": 920000000,
+      "tx_freq_max": 923400000
+    },
+    "chan_multiSF_0": {
+      "enable": true,
+      "radio": 0,
+      "if": 200000
+    },
+    "chan_multiSF_1": {
+      "enable": true,
+      "radio": 0,
+      "if": 400000
+    },
+    "chan_multiSF_2": {
+      "enable": true,
+      "radio": 1,
+      "if": 100000
+    },
+    "chan_multiSF_3": {
+      "enable": true,
+      "radio": 1,
+      "if": 300000
+    },
+    "chan_multiSF_4": {
+      "enable": true,
+      "radio": 0,
+      "if": -400000
+    },
+    "chan_multiSF_5": {
+      "enable": true,
+      "radio": 0,
+      "if": -200000
+    },
+    "chan_multiSF_6": {
+      "enable": true,
+      "radio": 0,
+      "if": 0
+    },
+    "chan_multiSF_7": {
+      "enable": true,
+      "radio": 1,
+      "if": -100000
+    },
+    "chan_Lora_std": {
+      "enable": true,
+      "radio": 1,
+      "if": 0,
+      "bandwidth": 250000,
+      "spread_factor": 7
+    },
+    "chan_FSK": {
+      "enable": true,
+      "radio": 1,
+      "if": -300000,
+      "bandwidth": 125000,
+      "datarate": 50000
+    }
+  },
+  "gateway_conf": {
+    "gateway_id": "0016C001F1000FB7",
+    "server_address": "thethingstack.service.consul",
+    "serv_port_up": 1700,
+    "serv_port_down": 1700,
+    "lorawan_forward_enabled": true
+  },
+  "mqtt_conf": {
+    "enabled": true,
+    "server": "mosquitto.service.consul",
+    "port": 1883,
+    "client_id": "clusterduck-concentrator",
+    "username": "",
+    "password": "",
+    "topics": {
+      "publish": "hub/event",
+      "subscribe": "hub/command",
+      "response": "hub/response",
+      "description": "publish: Gateway sends received packets | subscribe: Gateway receives commands | response: Gateway sends command acknowledgments"
+    },
+    "keepalive": 60,
+    "use_tls": false,
+    "ca_cert_file": ""
+  }
+}

@@ -159,9 +159,10 @@ int DuckLoRa::setupRadio(const LoRaConfigParams &config) {
     lora.setDio0Action(config.func,RISING);
 #endif
 
-    // set sync word to private network
-
-    rc = lora.setSyncWord(0x12); //should this be passed?
+    // set sync word to public (0x34) — dual-protocol requires both CDP and
+    // LoRaWAN to share the same sync word so the SX1302 concentrator receives
+    // packets from both protocols on the same channel configuration.
+    rc = lora.setSyncWord(0x34);
 
     if (rc != RADIOLIB_ERR_NONE) {
         logerr_ln("ERROR  sync word is invalid");
