@@ -24,6 +24,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdlib.h>     /* malloc free */
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
+#include <sys/ioctl.h>  /* ioctl, TIOCEXCL */
 #include <string.h>     /* strncmp */
 #include <errno.h>      /* Error number definitions */
 #include <termios.h>    /* POSIX terminal control definitions */
@@ -163,6 +164,12 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
             printf("ERROR: failed to configure COM port %s\n", portname);
             free(usb_device);
             return LGW_USB_ERROR;
+        }
+
+        /* Set exclusive access to prevent multiple processes from opening the port */
+        printf("INFO: Setting TTY exclusive access\n");
+        if (ioctl(fd, TIOCEXCL) != 0) {
+            printf("WARNING: failed to set exclusive access on COM port %s - %s\n", portname, strerror(errno));
         }
 
         /* flush tty port before setting it as blocking */

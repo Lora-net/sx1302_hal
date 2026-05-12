@@ -2277,6 +2277,7 @@ int main(int argc, char ** argv)
     void* hub_ptr = hub_init_and_setup();
     if (hub_ptr == NULL) {
         MSG("ERROR: [main] failed to initialize ClusterDuck Protocol\n");
+        lgw_stop();
         exit(EXIT_FAILURE);
     }
     MSG("INFO: [main] ClusterDuck Protocol initialized successfully\n");
@@ -2285,6 +2286,7 @@ int main(int argc, char ** argv)
     i = pthread_create(&thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create upstream thread\n");
+        lgw_stop();
         exit(EXIT_FAILURE);
     }
     /* thread_down and thread_jit are only spawned when LoRaWAN forwarding is
@@ -2295,17 +2297,20 @@ int main(int argc, char ** argv)
         i = pthread_create(&thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create downstream thread\n");
+            lgw_stop();
             exit(EXIT_FAILURE);
         }
         i = pthread_create(&thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create JIT thread\n");
+            lgw_stop();
             exit(EXIT_FAILURE);
         }
     }
     i = pthread_create(&thrid_duck, NULL, (void * (*)(void *))thread_duck, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create ClusterDuck processing thread\n");
+        lgw_stop();
         exit(EXIT_FAILURE);
     }
 
@@ -2314,6 +2319,7 @@ int main(int argc, char ** argv)
         i = pthread_create(&thrid_ss, NULL, (void * (*)(void *))thread_spectral_scan, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create Spectral Scan thread\n");
+            lgw_stop();
             exit(EXIT_FAILURE);
         }
     }
@@ -2323,11 +2329,13 @@ int main(int argc, char ** argv)
         i = pthread_create(&thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create GPS thread\n");
+            lgw_stop();
             exit(EXIT_FAILURE);
         }
         i = pthread_create(&thrid_valid, NULL, (void * (*)(void *))thread_valid, NULL);
         if (i != 0) {
             MSG("ERROR: [main] impossible to create validation thread\n");
+            lgw_stop();
             exit(EXIT_FAILURE);
         }
     }
@@ -2638,7 +2646,8 @@ void thread_up(void) {
         pthread_mutex_unlock(&mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
             MSG("ERROR: [up] failed packet fetch, exiting\n");
-            exit(EXIT_FAILURE);
+            exit_sig = true; /* let the main thread perform a clean lgw_stop() shutdown */
+            return;
         }
 
         /* RAW PACKET DIAGNOSTIC — print every received packet before any filtering */
