@@ -2591,7 +2591,6 @@ void thread_up(void) {
     /* data buffer for Semtech UDP PUSH_DATA (LoRaWAN path) */
     uint8_t buff_up[TX_BUFF_SIZE];
     int buff_index;
-    uint8_t buff_ack[32];
 
     /* PUSH_DATA framing */
     uint8_t token_h, token_l;
@@ -2608,25 +2607,9 @@ void thread_up(void) {
     struct timespec pkt_gps_time;
     uint64_t pkt_gps_time_ms;
 
-    /* timing for ACK measurement */
-    struct timespec send_time, recv_time;
-
     /* mote info (LoRaWAN DevAddr + FCnt extracted from FHDR) */
     uint32_t mote_addr = 0;
     uint16_t mote_fcnt  = 0;
-
-    /* -------------------------------------------------------------------
-     * LoRaWAN upstream socket: set receive timeout so the ACK wait does
-     * not block indefinitely when the Network Server is unreachable.
-     * ------------------------------------------------------------------- */
-    if (lorawan_fwd_enabled) {
-        i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO,
-                       (void *)&push_timeout_half, sizeof push_timeout_half);
-        if (i != 0) {
-            MSG("ERROR: [up] setsockopt for sock_up failed: %s\n", strerror(errno));
-            /* non-fatal: ACK waits may block longer, but forwarding still works */
-        }
-    }
 
     /* pre-fill the fixed header fields of the PUSH_DATA buffer */
     buff_up[0] = PROTOCOL_VERSION;
@@ -2983,39 +2966,17 @@ void thread_up(void) {
             if (j < 0) {
                 MSG("ERROR: [up] send() to NS failed: %s\n", strerror(errno));
             }
-            clock_gettime(CLOCK_MONOTONIC, &send_time);
             pthread_mutex_lock(&mx_meas_up);
             meas_up_dgram_sent   += 1;
             meas_up_network_byte += buff_index;
             pthread_mutex_unlock(&mx_meas_up);
-
-            /* wait for PUSH_ACK (two attempts to catch delayed responses) */
-            bool got_ack = false;
-            for (i = 0; i < 2; ++i) {
-                j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
-                clock_gettime(CLOCK_MONOTONIC, &recv_time);
-                if (j == -1) {
-                    if (errno == EAGAIN) continue; /* timeout */
-                    else break;                    /* socket error */
-                } else if ((j < 4) ||
-                           (buff_ack[0] != PROTOCOL_VERSION) ||
-                           (buff_ack[3] != PKT_PUSH_ACK)) {
-                    continue; /* ignore invalid ACK */
-                } else if ((buff_ack[1] != token_h) || (buff_ack[2] != token_l)) {
-                    continue; /* out-of-sync ACK */
-                } else {
-                    MSG("INFO: [up] PUSH_ACK received in %i ms\n",
-                        (int)(1000 * difftimespec(recv_time, send_time)));
-                    pthread_mutex_lock(&mx_meas_up);
-                    meas_up_ack_rcv += 1;
-                    pthread_mutex_unlock(&mx_meas_up);
-                    got_ack = true;
-                    break;
-                }
-            }
-            if (!got_ack) {
-                MSG("WARNING: [up] no PUSH_ACK from NS after sending %d pkt(s) — NS unreachable or rejecting\n", pkt_in_dgram);
-            }
+            /* PUSH_ACK is not awaited here: blocking on recv() for up to
+             * 100 ms (2 × push_timeout_half) stalls the fetch loop and
+             * delays CDP packet delivery.  The NS does not require an ACK
+             * confirmation from the gateway to process uplink packets, so
+             * dropping the wait is safe.  The sock_up socket is non-blocking
+             * for reads; any stray PUSH_ACK arriving later is silently
+             * discarded by the OS. */
         } else if (lorawan_fwd_enabled && send_report == true) {
             /* LoRaWAN enabled, no packets this cycle but stat report due:
              * send a PUSH_DATA with empty rxpk array + stat object so the
