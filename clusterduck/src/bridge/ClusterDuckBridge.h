@@ -80,6 +80,16 @@ void cdp_bridge_handle_uplink(
     uint32_t bandwidth_hz, uint8_t datarate_sf, uint8_t coderate
 );
 
+/**
+ * @brief Block until an uplink packet is queued or the timeout expires.
+ *
+ * Called by thread_duck instead of a fixed sleep so that CDP packets are
+ * processed immediately rather than waiting up to timeout_ms milliseconds.
+ *
+ * @param timeout_ms Maximum time to wait in milliseconds.
+ */
+void cdp_bridge_wait_for_uplink(int timeout_ms);
+
 /* -------------------------------------------------------------------------- */
 /* --- DOWNLINK (TX): ClusterDuck -> Concentrator --------------------------- */
 /* -------------------------------------------------------------------------- */

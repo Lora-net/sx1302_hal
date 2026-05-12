@@ -4222,9 +4222,15 @@ void thread_duck(void) {
     
     /* Main loop: call hub.main() to process ClusterDuck packets */
     while (!exit_sig && !quit_sig) {
+        /* Block until a CDP packet is queued or 100 ms elapses (whichever
+         * comes first).  Using a condition variable here means packets are
+         * processed with sub-millisecond latency instead of waiting up to
+         * 100 ms for the old fixed sleep to expire. */
+        cdp_bridge_wait_for_uplink(100);
+
         /* Call the ClusterDuck main loop to process received packets */
         hub_run_loop();
-        
+
         /* Periodic MQTT connection health check */
         if (mqtt_enabled) {
             mqtt_check_counter++;
@@ -4250,11 +4256,6 @@ void thread_duck(void) {
                 }
             }
         }
-        
-        /* Sleep to reduce CPU usage - ClusterDuck processes packets via 
-           callbacks from the uplink thread, so this thread only needs to 
-           do periodic housekeeping and MQTT reconnection attempts */
-        wait_ms(100);  // 10 times per second is sufficient
     }
     
     MSG("\nINFO: End of ClusterDuck processing thread\n");

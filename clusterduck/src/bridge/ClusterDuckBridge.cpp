@@ -6,6 +6,8 @@
 #include "ClusterDuckBridge.h"
 #include <deque>
 #include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include <vector>
 #include <optional>
 #include <cstring>
@@ -35,6 +37,7 @@ struct DownlinkPacket {
 static struct {
     // Uplink state
     std::mutex uplink_mutex;
+    std::condition_variable uplink_cv;  /* signalled when a packet is queued */
     cdp_rx_callback_t rx_callback = nullptr;
     std::deque<std::vector<uint8_t>> uplink_queue;  // Queue to handle multiple concurrent packets
     
@@ -90,14 +93,24 @@ void cdp_bridge_handle_uplink(
     } else {
         // Polling mode: store packet in queue for later retrieval
         printf("[CDP_BRIDGE] No callback registered, storing in queue for polling\n");
-        std::lock_guard<std::mutex> lock(g_bridge.uplink_mutex);
-        const size_t MAX_QUEUE_SIZE = 50;
-        if (g_bridge.uplink_queue.size() >= MAX_QUEUE_SIZE) {
-            printf("[CDP_BRIDGE] WARNING: Polling queue full, dropping oldest\n");
-            g_bridge.uplink_queue.pop_front();
+        {
+            std::lock_guard<std::mutex> lock(g_bridge.uplink_mutex);
+            const size_t MAX_QUEUE_SIZE = 50;
+            if (g_bridge.uplink_queue.size() >= MAX_QUEUE_SIZE) {
+                printf("[CDP_BRIDGE] WARNING: Polling queue full, dropping oldest\n");
+                g_bridge.uplink_queue.pop_front();
+            }
+            g_bridge.uplink_queue.emplace_back(payload, payload + size);
         }
-        g_bridge.uplink_queue.emplace_back(payload, payload + size);
+        /* Wake thread_duck immediately so it doesn't wait for its sleep to expire */
+        g_bridge.uplink_cv.notify_one();
     }
+}
+
+void cdp_bridge_wait_for_uplink(int timeout_ms) {
+    std::unique_lock<std::mutex> lock(g_bridge.uplink_mutex);
+    if (!g_bridge.uplink_queue.empty()) return; /* packet already waiting */
+    g_bridge.uplink_cv.wait_for(lock, std::chrono::milliseconds(timeout_ms));
 }
 
 } // extern "C"
