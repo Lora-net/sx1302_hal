@@ -1098,8 +1098,9 @@ int lgw_start(void) {
             ts_addr = I2C_PORT_TEMP_SENSOR[i];
             err = i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
             if (err != LGW_I2C_SUCCESS) {
-                printf("ERROR: failed to open I2C for temperature sensor on port 0x%02X\n", ts_addr);
-                return LGW_HAL_ERROR;
+                printf("INFO: no I2C device at temperature sensor address 0x%02X\n", ts_addr);
+                ts_fd = -1;
+                continue;
             }
 
             err = stts751_configure(ts_fd, ts_addr);
@@ -1113,8 +1114,7 @@ int lgw_start(void) {
             }
         }
         if (i == sizeof I2C_PORT_TEMP_SENSOR) {
-            printf("ERROR: no temperature sensor found.\n");
-            return LGW_HAL_ERROR;
+            printf("WARNING: no temperature sensor found, using fixed 25 C for RSSI compensation.\n");
         }
 
         /* Configure ADC AD338R for full duplex (CN490 reference design) */
@@ -1597,7 +1597,12 @@ int lgw_get_temperature(float* temperature) {
 
     switch (CONTEXT_COM_TYPE) {
         case LGW_COM_SPI:
-            err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+            if (ts_fd <= 0) {
+                *temperature = 25.0;
+                err = LGW_HAL_SUCCESS;
+            } else {
+                err = stts751_get_temperature(ts_fd, ts_addr, temperature);
+            }
             break;
         case LGW_COM_USB:
             err = lgw_com_get_temperature(temperature);
