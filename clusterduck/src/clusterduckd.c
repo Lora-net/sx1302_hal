@@ -82,7 +82,7 @@ extern "C" {
 
 /* CDP default radio parameters (from cdpcfg.h).
    If cdpcfg.h is not available in this build context, use these constants. */
-#define CDPCFG_RF_LORA_FREQ_HZ 923000000
+#define CDPCFG_RF_LORA_FREQ_HZ 922800000
 #define CDPCFG_RF_LORA_BW 125.0f
 #define CDPCFG_RF_LORA_SF 7
 #define CDPCFG_RF_LORA_TXPOW 14
@@ -452,34 +452,34 @@ int mqtt_message_arrived(void *context, char *topicName, int topicLen, MQTTClien
         MSG("[MQTT] Sending command: topic=%d, message='%s', length=%d\n", topic, cmd_message, cmd_len);
 
         /* --- Command deduplication: drop identical commands within the rate-limit window --- */
-        pthread_mutex_lock(&cmd_dedup_mutex);
-        struct timespec now_ts;
-        clock_gettime(CLOCK_MONOTONIC, &now_ts);
-        long elapsed_ms = (now_ts.tv_sec  - cmd_dedup_last_time.tv_sec)  * 1000L
-                        + (now_ts.tv_nsec - cmd_dedup_last_time.tv_nsec) / 1000000L;
-        bool is_duplicate = (elapsed_ms < CMD_DEDUP_WINDOW_MS)
-                         && (cmd_dedup_topic == topic)
-                         && (strncmp(cmd_dedup_target, target_str, sizeof(cmd_dedup_target) - 1) == 0)
-                         && (strncmp(cmd_dedup_message, cmd_message, sizeof(cmd_dedup_message) - 1) == 0);
-        if (!is_duplicate) {
-            /* Record this command as the last seen */
-            strncpy(cmd_dedup_target,  target_str,  sizeof(cmd_dedup_target)  - 1);
-            cmd_dedup_target[sizeof(cmd_dedup_target) - 1] = '\0';
-            strncpy(cmd_dedup_message, cmd_message, sizeof(cmd_dedup_message) - 1);
-            cmd_dedup_message[sizeof(cmd_dedup_message) - 1] = '\0';
-            cmd_dedup_topic     = topic;
-            cmd_dedup_last_time = now_ts;
-        }
-        pthread_mutex_unlock(&cmd_dedup_mutex);
+        //pthread_mutex_lock(&cmd_dedup_mutex);
+        //struct timespec now_ts;
+        //clock_gettime(CLOCK_MONOTONIC, &now_ts);
+        //long elapsed_ms = (now_ts.tv_sec  - cmd_dedup_last_time.tv_sec)  * 1000L
+        //                + (now_ts.tv_nsec - cmd_dedup_last_time.tv_nsec) / 1000000L;
+        //bool is_duplicate = (elapsed_ms < CMD_DEDUP_WINDOW_MS)
+        //                 && (cmd_dedup_topic == topic)
+        //                 && (strncmp(cmd_dedup_target, target_str, sizeof(cmd_dedup_target) - 1) == 0)
+        //                 && (strncmp(cmd_dedup_message, cmd_message, sizeof(cmd_dedup_message) - 1) == 0); 
+        //if (!is_duplicate) {
+        //    /* Record this command as the last seen */
+        //    strncpy(cmd_dedup_target,  target_str,  sizeof(cmd_dedup_target)  - 1);
+        //    cmd_dedup_target[sizeof(cmd_dedup_target) - 1] = '\0';
+        //    strncpy(cmd_dedup_message, cmd_message, sizeof(cmd_dedup_message) - 1);
+        //    cmd_dedup_message[sizeof(cmd_dedup_message) - 1] = '\0';
+        //    cmd_dedup_topic     = topic;
+        //    cmd_dedup_last_time = now_ts;
+        //}
+        //pthread_mutex_unlock(&cmd_dedup_mutex);
 
-        if (is_duplicate) {
-            MSG("WARNING: [MQTT] Duplicate command dropped (same target/topic/message within %d ms)\n", CMD_DEDUP_WINDOW_MS);
-            json_value_free(root_value);
-            free(payload_str);
-            MQTTClient_freeMessage(&message);
-            MQTTClient_free(topicName);
-            return 1;
-        }
+        //if (is_duplicate) {
+        //    MSG("WARNING: [MQTT] Duplicate command dropped (same target/topic/message within %d ms)\n", CMD_DEDUP_WINDOW_MS);
+        //    json_value_free(root_value);
+        //    free(payload_str);
+        //    MQTTClient_freeMessage(&message);
+        //    MQTTClient_free(topicName);
+        //    return 1;
+        //}
         /* --- End deduplication --- */
 
         int result = hub_send_data(topic, cmd_message, cmd_len, target_device);
@@ -3386,6 +3386,7 @@ void thread_down(void) {
         }
 
         /* listen to packets and process them until a new PULL request must be sent */
+        clock_gettime(CLOCK_MONOTONIC, &send_time); /* anchor: marks when this PULL cycle started */
         recv_time = send_time;
         while (((int)difftimespec(recv_time, send_time) < keepalive_time) && !exit_sig && !quit_sig) {
 
@@ -3735,6 +3736,15 @@ void thread_down(void) {
                 buf_capacity = sizeof(duck_payload_buf);
             }
 
+            /* Pace the inner poll loop: the original Semtech thread_down was paced by
+             * recv(sock_down) which blocks up to PULL_TIMEOUT_MS per call.  That recv
+             * was removed in the CDP-only port (no NS socket exists), so without an
+             * explicit sleep here the loop busy-spins at millions of iterations/second,
+             * pegging one CPU core at 100%.  Also advance recv_time so the while
+             * condition (difftimespec < keepalive_time) can eventually become false
+             * and we re-send the keepalive (PULL_DATA) at the right interval. */
+            wait_ms(PULL_TIMEOUT_MS);
+            clock_gettime(CLOCK_MONOTONIC, &recv_time);
         }
     }
     MSG("\nINFO: End of downstream thread\n");

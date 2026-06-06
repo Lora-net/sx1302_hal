@@ -58,10 +58,10 @@
 /** @brief Asyncwebserver Port */
 #define CDPCFG_WEB_PORT 80
 
-/// Frequency Range. Set for US Region 915.0Mhz, Asia Region AS923 is 923.0Mhz
+/// Frequency Range. Set for US Region 915.0Mhz, Asia Region AS923 is below 923.0Mhz
 #ifdef AS923_RADIO
-#define CDPCFG_RF_LORA_FREQ 923.0f
-#define CDPCFG_RF_LORA_FREQ_HZ 923000000
+#define CDPCFG_RF_LORA_FREQ 922.8f
+#define CDPCFG_RF_LORA_FREQ_HZ 922800000
 #else
 #define CDPCFG_RF_LORA_FREQ 915.0f
 #define CDPCFG_RF_LORA_FREQ_HZ 915000000
@@ -70,6 +70,7 @@
 #define CDPCFG_RF_LORA_BW 125.0f
 /// Spread Factor
 #define CDPCFG_RF_LORA_SF 7
+//#define CDPCFG_RF_LORA_SF 12
 /// Transmit Power
 #define CDPCFG_RF_LORA_TXPOW 14
 /// Antenna Gain correction
@@ -99,11 +100,14 @@
 /// If AS923 RADIO is configured
 #ifdef AS923_RADIO
 #define CDPCFG_RADIO_CHANNEL_1 CDPCFG_RF_LORA_FREQ
-#define CDPCFG_RADIO_CHANNEL_2 923.2
-#define CDPCFG_RADIO_CHANNEL_3 923.4
-#define CDPCFG_RADIO_CHANNEL_4 922.8
-#define CDPCFG_RADIO_CHANNEL_5 922.6
-#define CDPCFG_RADIO_CHANNEL_6 922.4
+#define CDPCFG_RADIO_CHANNEL_2 922.6
+#define CDPCFG_RADIO_CHANNEL_3 922.4
+#define CDPCFG_RADIO_CHANNEL_4 922.2
+#define CDPCFG_RADIO_CHANNEL_5 922.0
+#define CDPCFG_RADIO_CHANNEL_6 921.8
+#define CDPCFG_RADIO_CHANNEL_7 921.6
+#define CDPCFG_RADIO_CHANNEL_8 921.4
+#define CDPCFG_RADIO_CHANNEL_9 921.2
 /// use North America 915Mhz
 #else
 #define CDPCFG_RADIO_CHANNEL_1 CDPCFG_RF_LORA_FREQ
