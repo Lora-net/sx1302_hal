@@ -186,6 +186,22 @@ void cdp_bridge_reset_stats(void);
 namespace cdp_bridge {
 
 /**
+ * @brief Uplink packet with full radio metadata.
+ *
+ * Carries the raw CDP payload together with the channel information
+ * provided by the SX1302 HAL so that the routing layer can record
+ * which frequency and SF a neighbor was heard on.
+ */
+struct UplinkPacket {
+    std::vector<uint8_t> payload;
+    uint32_t freq_hz     = 0;  ///< Receive frequency in Hz
+    uint8_t  datarate_sf = 0;  ///< LoRa Spreading Factor (5–12)
+    uint8_t  rf_chain    = 0;  ///< SX1302 if_chain index (0–7)
+    int16_t  rssi        = 0;  ///< RSSI in dBm
+    float    snr         = 0.0f; ///< SNR in dB
+};
+
+/**
  * @brief Check if an uplink packet is available
  * 
  * Alternative to callback-based reception. ClusterDuck can poll
@@ -196,20 +212,18 @@ namespace cdp_bridge {
 bool has_uplink_packet();
 
 /**
- * @brief Pop an uplink packet from the queue
- * 
- * @return Packet data if available, std::nullopt otherwise
+ * @brief Pop an uplink packet from the queue (with full radio metadata).
+ *
+ * @return UplinkPacket if available, std::nullopt otherwise
  */
-std::optional<std::vector<uint8_t>> pop_uplink_packet();
+std::optional<UplinkPacket> pop_uplink_packet();
 
 /**
- * @brief Push an uplink packet (for testing/simulation)
- * 
- * Allows injecting packets directly into the bridge for testing.
- * 
- * @param payload Packet data
+ * @brief Push an uplink packet with full radio metadata (for bridge/testing).
+ *
+ * @param pkt UplinkPacket containing payload and radio metadata
  */
-void push_uplink_packet(const std::vector<uint8_t>& payload);
+void push_uplink_packet(const UplinkPacket& pkt);
 
 } // namespace cdp_bridge
 

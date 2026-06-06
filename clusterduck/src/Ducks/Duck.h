@@ -403,6 +403,8 @@ class Duck {
       signalInfo.rssi = (duckRadio.getRSSI() - RSSI_MIN)/(RSSI_MAX-RSSI_MIN);
       signalInfo.snr = (duckRadio.getSNR() - SNR_MIN)/(SNR_MAX-SNR_MIN);
       signalInfo.signalScore = (signalInfo.rssi + signalInfo.snr) / 2.0f;
+      signalInfo.freq_hz = duckRadio.getFreqHz();
+      signalInfo.sf      = duckRadio.getRxSF();
       return signalInfo;
     }
 

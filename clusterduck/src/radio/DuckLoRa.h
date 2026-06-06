@@ -127,6 +127,23 @@ class DuckLoRa {
          */
         float getSNR();
 
+        /**
+         * @brief Get the frequency (Hz) on which the last packet was received.
+         *
+         * In SX1302 gateway mode this is the exact channel frequency reported
+         * by the HAL (e.g. 922800000 for 922.8 MHz).
+         *
+         * @returns Frequency in Hz, or CDPCFG_RF_LORA_FREQ_HZ if no packet received yet.
+         */
+        uint32_t getFreqHz();
+
+        /**
+         * @brief Get the Spreading Factor used by the last received packet.
+         *
+         * @returns SF value (5–12), or CDPCFG_RF_LORA_SF if no packet received yet.
+         */
+        uint8_t getRxSF();
+
     private:
         static volatile uint16_t interruptFlags;
         static volatile bool receivedFlag;

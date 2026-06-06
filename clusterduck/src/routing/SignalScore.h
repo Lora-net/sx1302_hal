@@ -38,5 +38,22 @@ struct SignalScore {
      * representing the overall quality of the signal connection.
      */
     float signalScore;
+
+    /**
+     * @brief Receive frequency in Hz (e.g. 922800000 for 922.8 MHz).
+     *
+     * Populated from the SX1302 HAL uplink metadata so the router can
+     * record which channel a neighbor was heard on and reply on the same
+     * frequency.  Defaults to 0 when not available (e.g. on Arduino nodes).
+     */
+    uint32_t freq_hz = 0;
+
+    /**
+     * @brief LoRa Spreading Factor used by the sender (5–12).
+     *
+     * Stored alongside freq_hz so that downlink replies can match the
+     * sender's SF.  Defaults to 0 when not available.
+     */
+    uint8_t sf = 0;
 };
 #endif //CLUSTERDUCK_PROTOCOL_SIGNALSCORE_H
