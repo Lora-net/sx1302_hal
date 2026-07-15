@@ -307,10 +307,10 @@ int rx_buffer_pop(rx_buffer_t * self, rx_packet_t * pkt) {
     }
 
     /* Packet timestamp (32MHz ) */
-    pkt->timestamp_cnt  = (uint32_t)((SX1302_PKT_TIMESTAMP_7_0(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  0) & 0x000000FF);
-    pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_15_8(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  8) & 0x0000FF00);
-    pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
-    pkt->timestamp_cnt |= (uint32_t)((SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
+    pkt->timestamp_cnt  = ((uint32_t)(SX1302_PKT_TIMESTAMP_7_0(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  0) & 0x000000FF);
+    pkt->timestamp_cnt |= ((uint32_t)(SX1302_PKT_TIMESTAMP_15_8(self->buffer, self->buffer_index + pkt->rxbytenb_modem) <<  8) & 0x0000FF00);
+    pkt->timestamp_cnt |= ((uint32_t)(SX1302_PKT_TIMESTAMP_23_16(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 16) & 0x00FF0000);
+    pkt->timestamp_cnt |= ((uint32_t)(SX1302_PKT_TIMESTAMP_31_24(self->buffer, self->buffer_index + pkt->rxbytenb_modem) << 24) & 0xFF000000);
 
     /* TS metrics: it is expected the nb_symbols parameter is set to 0 here */
     for (i = 0; i < (pkt->num_ts_metrics_stored * 2); i++) {
