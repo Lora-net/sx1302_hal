@@ -138,11 +138,19 @@ int rx_buffer_fetch(rx_buffer_t * self) {
     CHECK_NULL(self);
 
     /* Check if there is data in the FIFO */
-    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    res = lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    if (res != LGW_REG_SUCCESS) {
+        return LGW_REG_ERROR;
+    }
+
     nb_bytes_1 = (buff[0] << 8) | (buff[1] << 0);
 
     /* Workaround for multi-byte read issue: read again and ensure new read is not lower than the previous one */
-    lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    res = lgw_reg_rb(SX1302_REG_RX_TOP_RX_BUFFER_NB_BYTES_MSB_RX_BUFFER_NB_BYTES, buff, sizeof buff);
+    if (res != LGW_REG_SUCCESS) {
+        return LGW_REG_ERROR;
+    }
+
     nb_bytes_2 = (buff[0] << 8) | (buff[1] << 0);
 
     self->buffer_size = (nb_bytes_2 > nb_bytes_1) ? nb_bytes_2 : nb_bytes_1;
