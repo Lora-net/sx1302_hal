@@ -354,8 +354,8 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
         memcpy(buff, buff_wa, 8); /* use the new read value */
     }
 
-    counter_pps_us_raw_27bits_now  = (buff[0]<<24) | (buff[1]<<16) | (buff[2]<<8) | buff[3];
-    counter_inst_us_raw_27bits_now = (buff[4]<<24) | (buff[5]<<16) | (buff[6]<<8) | buff[7];
+    counter_pps_us_raw_27bits_now  = ((uint32_t)buff[0]<<24) | ((uint32_t)buff[1]<<16) | ((uint32_t)buff[2]<<8) | (uint32_t)buff[3];
+    counter_inst_us_raw_27bits_now = ((uint32_t)buff[4]<<24) | ((uint32_t)buff[5]<<16) | ((uint32_t)buff[6]<<8) | (uint32_t)buff[7];
 
     /* Store PPS counter to history, for fine timestamp calculation */
     timestamp_pps_history_save(counter_pps_us_raw_27bits_now);
@@ -554,10 +554,10 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
         printf("ERROR: Failed to get timestamp counter value\n");
         return 0;
     }
-    timestamp_pps_reg  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    timestamp_pps_reg |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    timestamp_pps_reg |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    timestamp_pps_reg |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+    timestamp_pps_reg  = ((uint32_t)(buff[0] << 24) & 0xFF000000);
+    timestamp_pps_reg |= ((uint32_t)(buff[1] << 16) & 0x00FF0000);
+    timestamp_pps_reg |= ((uint32_t)(buff[2] << 8)  & 0x0000FF00);
+    timestamp_pps_reg |= ((uint32_t)(buff[3] << 0)  & 0x000000FF);
 
     /* Ensure that the timestamp PPS history is up-to-date */
     timestamp_pps_history_save(timestamp_pps_reg);
